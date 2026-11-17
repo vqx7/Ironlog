@@ -817,7 +817,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (!d) return;
     act(
       () => {
-        (d.cardio || (d.cardio = [])).push(cleanDraftCardio({ id: uid(), kind: 'walk', when: t.dataset.when }));
+        (d.cardio || (d.cardio = [])).push(cleanDraftCardio({ id: uid(), kind: 'walk', when: t.dataset.when }, d.date));
       },
       { inProgress: true }
     );

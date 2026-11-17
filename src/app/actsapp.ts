@@ -31,10 +31,14 @@ import { csvGuard } from './importing';
 export function trashTidy(): void {
   const tr = state.trash || [];
   const keep = tr.filter(t => !(t.kind === 'routine' && plainTemplate(t.data)));
+  // The app's own bookkeeping, no edit (act's `app`).
   if (keep.length !== tr.length)
-    act(() => {
-      state.trash = keep;
-    });
+    act(
+      () => {
+        state.trash = keep;
+      },
+      { app: true }
+    );
 }
 /** Notes that a backup was made today (the Backup due reminder counts from it). */
 function markExported(): void {

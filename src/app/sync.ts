@@ -44,7 +44,15 @@ import { draftCardio, draftSession } from './session';
 import type { DraftLike } from './session';
 import type { CardioEntry, Session } from './types';
 import { routineEmpty } from './routines';
-import { cleanCardio, machineReadings, nameSessions, normalize, plainTemplate, putAside } from './normalize';
+import {
+  cleanCardio,
+  joinExercises,
+  machineReadings,
+  nameSessions,
+  normalize,
+  plainTemplate,
+  putAside
+} from './normalize';
 import { FIRST_MACHINE } from './model';
 import { invalidate } from './live';
 import { AUTH, codeOf } from './providers';
@@ -824,7 +832,10 @@ function trackEdits(): void {
   }
 }
 /* After adopting or merging, record the new content as seen without marking
-   it as a local edit. */
+   it as a local edit. The rule that keeps the lifter's edit times right: the tracker notes edits
+   only after the taps pause, so before the sync or another tab's save changes the log, the lifter's edits are noted
+   (trackEdits), and right after, the log is taken as seen (here). Between the two only what was taken in changes the
+   log, so nothing the lifter did is taken as seen unnoted, and nothing taken in is noted as an edit made here. */
 /** Takes the log as it is now as this device's last-seen content. */
 function resyncLocalH(): void {
   try {
@@ -835,6 +846,23 @@ function resyncLocalH(): void {
   } catch (e) {
     log('sync-track', e);
   }
+}
+/* A change the app makes on its own (a fix of a log an older build saved, made once at start; its own bookkeeping) is
+   sent as any change is, but is no edit: the edit time it set was the moment the app made it, which outranked a
+   lifter's edit made before it on another phone wherever the two clashed, and lost that edit. The lifter's
+   edits made before it are noted first, with their own times; once it is saved, the log is taken as seen, so it moves
+   no document's edit time. A document it changed then differs from the copy last agreed, so the flush still sends it,
+   with the edit time the document had (cloudFlush). */
+/** Notes the lifter's edits made so far, with their times: before a change the app makes on its own (act's `app`). */
+export function editsNoted(): void {
+  trackEdits();
+}
+/** Takes the log as it is now as seen, no edit time moved: once a change the app made on its own is saved (act's `app`). */
+export function seenAsIs(): void {
+  clearTimer(trackT);
+  trackT = null;
+  cloud.pendAt = null;
+  resyncLocalH();
 }
 /* The session in progress is one record, so another device finishing or
    discarding it replaces this one's (the later edit wins). Said in its own
@@ -989,6 +1017,9 @@ async function sessionFromCloud(d: DraftLike, legB: Base | null): Promise<void> 
   if (d.editingId || state.sessions.some(q => q.id === d.id)) return;
   const id = chunkOf(d.date);
   const sn = await withTimeout(ref(id).get(), SYNC_MS.net, 'sync-read');
+  // An edit made while the account was read is noted with its time before anything below reads or takes the log
+  // (the rule above resyncLocalH).
+  trackEdits();
   const sb = sn && sn.exists ? rec(sn.data()) : null;
   ownWrite(id, sb);
   if (!sb || typeof sb.json !== 'string') return;
@@ -1000,13 +1031,13 @@ async function sessionFromCloud(d: DraftLike, legB: Base | null): Promise<void> 
   const localDirty = !m || hashStr(JSON.stringify(mine)) !== m.h;
   const et = Number(sb.et) || Number(sb.at) || 0;
   if (!localDirty) applyChunk(id, rec(data));
-  else {
-    applyChunk(id, mergeChunk(id, baseFor(id, m, legB), mine, data, et > (cloud.editAt[id] || 0), { conflicts: 0 }));
-    cloud.editAt[id] = Math.max(cloud.editAt[id] || 0, et);
-  }
+  else applyChunk(id, mergeChunk(id, baseFor(id, m, legB), mine, data, et > (cloud.editAt[id] || 0), { conflicts: 0 }));
+  // Taken as it is or merged, the document's edit time is at least the account's copy's (cloudFlush sends it on).
+  cloud.editAt[id] = Math.max(cloud.editAt[id] || 0, et);
   // The account's copy is now the agreed base, as after a pull; what this device adds to it is its own later edit.
   cloud.meta[id] = { h, at: Number(sb.at), b: baseOf(id, data) };
   saveMeta();
+  resyncLocalH();
 }
 /** Says how many records were edited on two devices, if any (the later edit kept). */
 /* What a clash kept, in words that are true of it. Between devices the later edit is kept, by each document's time
@@ -1246,6 +1277,9 @@ export async function cloudFlush(): Promise<void> {
         /* Read before write. If another device changed this document since we
            last agreed on it, merge record by record instead of overwriting. */
         const snap = await withTimeout(ref(x.id).get(), SYNC_MS.net, 'sync-read');
+        // An edit made while the account was read is noted with its time before the edit time is read below (the
+        // rule above resyncLocalH).
+        trackEdits();
         ownWrite(x.id, snap && snap.exists ? rec(snap.data()) : null);
         const m = cloud.meta[x.id];
         /* Sets logged while that read was in flight are in state, not in the
@@ -1294,6 +1328,9 @@ export async function cloudFlush(): Promise<void> {
               if (dn.kept || dn.lost || canon(state.sessions) !== canon(dn.sessions0)) again = true;
             }
             if (x.id === 'core' && absorbLegacy(legacyBody(rec(rd)))) moreBody = true;
+            // What was taken in is taken as seen at once, so an edit made at the next wait is all the tracker finds
+            // (the rule above resyncLocalH).
+            resyncLocalH();
             json = JSON.stringify(chunksOf(state)[x.id] || emptyChunk(x.id));
             if (hashStr(json) === hashStr(b.json)) {
               cloud.meta[x.id] = took;
@@ -1311,7 +1348,12 @@ export async function cloudFlush(): Promise<void> {
           continue;
         }
         const at = Date.now();
-        const doc: CloudDoc = { v: 1, at, et: cloud.editAt[x.id] || at, w: writeMark(), json };
+        /* Sent with the time of the last edit made to it, here or in the copy taken in (editAt). A document this
+           phone took from the account under an older build has none: it is sent with the time of the copy last
+           agreed, never this moment, which made a change the app made on its own (a newer build's reading of an old
+           log) outrank a lifter's edit made before it on another phone. A document never agreed is new here: this
+           moment. */
+        const doc: CloudDoc = { v: 1, at, et: cloud.editAt[x.id] || (m ? m.at : at), w: writeMark(), json };
         // Kept until the answer comes, so a write applied whose answer is lost is known as this device's own (ownWrite).
         cloud.sent[x.id] = {
           w: doc.w,
@@ -1342,7 +1384,8 @@ export async function cloudFlush(): Promise<void> {
     if (adopted) {
       invalidate();
       writeTakenIn();
-      resyncLocalH();
+      // Each copy taken in was taken as seen as it came: what differs now is an edit made at a wait since, noted here.
+      trackEdits();
       if (!ui.modal) fx.rerenderKeepScroll();
       conflictNote(stat);
       if (dn) {
@@ -1467,10 +1510,12 @@ function mergeFirstLink(mine: State, rState: State, rids: readonly string[], rem
   // a routine or exercise made here is the phone's own too, never replaced by the account's
   const base = realCount(mine) > realCount(rState) ? mine : rState,
     other = base === mine ? rState : mine;
-  /* Settings come from the side with more sessions, but exercises and
-     routines are combined by id (that side's copy wins a clash), so a
-     custom exercise or routine made on the other device is not lost and
-     its logged sets keep their name. Of two workouts in progress, this device's stays in progress and the other's ticked sets and cardio are saved, as Finish saves them, never dropped. */
+  /* Settings come from the side with more sessions, but exercises and routines are combined by id, so a custom
+     exercise or routine made on the other device is not lost and its logged sets keep their name. A routine both hold
+     is that side's copy; a lift both hold is that side's with each field set only on the other side taken from there
+     (normalize.ts joinExercises), so neither phone's kg or lb, step, heaviest load, goal or bar for a lift is lost.
+     Of two workouts in progress, this device's stays in progress and the other's ticked sets and cardio are saved, as
+     Finish saves them, never dropped. */
   const aside = state.draft && rState.draft && rState.draft.id !== state.draft.id ? rState.draft : null;
   const kept = aside ? draftSession(aside) : null;
   const keptDraft = !!kept && ![...mine.sessions, ...rState.sessions].some(x => x.id === kept.id);
@@ -1504,7 +1549,7 @@ function mergeFirstLink(mine: State, rState: State, rids: readonly string[], rem
     acctCardio = acct(aside ? [...rState.cardio, ...draftCardio(aside)] : rState.cardio, mine.cardio, 'cardio', y => y);
   const joined = normalize({
     ...base,
-    exercises: unionById(base.exercises, other.exercises),
+    exercises: joinExercises(base.exercises, other.exercises),
     routines: unionById(base.routines, other.routines),
     sessions: unionById(acctSessions, own.sessions),
     bodyweights: unionById(mine.bodyweights, rState.bodyweights),
@@ -1624,6 +1669,11 @@ export async function cloudPull(): Promise<void> {
     await cloudFlush();
     return;
   }
+  /* An edit made while the account was read is noted now, with its time, before the log is taken as seen below
+     (resyncLocalH): read back within the 800 ms the tracker waits, it was merged with the time of the document's last
+     noted edit, and an older edit to the same record on another phone outranked it. Nothing but the lifter changes the
+     log here between the last time it was taken as seen and this line (the pull takes nothing in before it). */
+  trackEdits();
   const local = chunksOf(state);
   const first = !Object.keys(cloud.meta).length;
   // For a workout merged below: the copy both agreed on, read before the notes take the account's copy, and whether the account's edit is later.
@@ -1679,6 +1729,8 @@ export async function cloudPull(): Promise<void> {
       // change a document (a newer build adds defaults); it then differs from
       // the agreed hash, so the flush below writes the normalized form back.
       cloud.meta[id] = { h: remote[id].h, at: remote[id].at, b: baseOf(id, remote[id].data) };
+      // Its edit time is the copy's: a change the app makes to it later (normalize's) is sent with that time, no later.
+      cloud.editAt[id] = Math.max(cloud.editAt[id] || 0, remote[id].et);
     }
     saveMeta();
     resyncLocalH();
@@ -1687,7 +1739,11 @@ export async function cloudPull(): Promise<void> {
     {
       const n0 = state.trash.length;
       state.trash = state.trash.filter(t => !(t.kind === 'routine' && plainTemplate(t.data)));
-      if (state.trash.length !== n0) saveNow();
+      if (state.trash.length !== n0) {
+        saveNow();
+        // The app's own bookkeeping, no edit (seenAsIs).
+        seenAsIs();
+      }
     }
     if (!ui.modal) fx.rerenderKeepScroll();
     else fx.render();
@@ -1874,14 +1930,14 @@ function holdsLog(): boolean {
     mine.exercises.some(e => e.custom)
   );
 }
-/** A log kept aside joined with the lifter's log here, as a first link joins them: every record of both by id (the log kept aside winning a clash), its settings, and the workout in progress here, which stays open as a first link keeps this device's, the other's ticked sets and cardio saved. */
+/** A log kept aside joined with the lifter's log here, as a first link joins them: every record of both by id (the log kept aside winning a clash, a lift both hold joined field by field as a first link joins it), its settings, and the workout in progress here, which stays open as a first link keeps this device's, the other's ticked sets and cardio saved. */
 function joinLogs(base: State, here: State): State {
   const away = base.draft && here.draft && here.draft.id !== base.draft.id ? base.draft : null;
   const kept = away ? draftSession(away) : null;
   const own = firstUnnamed(kept ? [...here.sessions, kept] : here.sessions, base.sessions);
   const joined = normalize({
     ...base,
-    exercises: unionById(base.exercises, here.exercises),
+    exercises: joinExercises(base.exercises, here.exercises),
     routines: unionById(base.routines, here.routines),
     sessions: unionById(base.sessions, own.sessions),
     bodyweights: unionById(base.bodyweights, here.bodyweights),
@@ -2181,6 +2237,9 @@ function mergeIn(text: string, own: boolean): void {
     log('tabs', e);
     base = null;
   }
+  // This tab's edits not yet noted keep their own time: noted before the other tab's save is merged in (the rule
+  // above resyncLocalH).
+  trackEdits();
   const stat = { conflicts: 0 };
   // The workout here before the merge: the copy that may lose it (below), and what is then said.
   const dr0 = state.draft;

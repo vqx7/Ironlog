@@ -227,7 +227,7 @@ export interface Measurement {
   neck?: number | undefined;
 }
 
-/** An injury the lifter flagged: a muscle or a joint (`m`), since `date`. */
+/** An injury the lifter flagged: a muscle or a joint (`m`), since `date` ('' when a damaged save had none: normalize.ts). */
 export interface Injury {
   id: string;
   m: string;

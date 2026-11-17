@@ -57,10 +57,12 @@ export const PARKED_KEY = KEY + '.parked';
 /** The workout this phone closed last, for the next one started here to note (act.ts, followsAfter): kept on the phone, as the next is often started after the app was closed. */
 export const CLOSED_KEY = KEY + '.closed';
 /** The account's profile photo as this phone holds it (kept on this phone only in 2.33), the note of where that
-    copy stands against the account (photo.ts), and its one-time line on Today answered (Add photo or Not now). */
+    copy stands against the account (photo.ts), its one-time line on Today answered (Add photo or Not now), and the
+    one-time tip to pick a photo an older build kept small again said (page.ts photoTip). */
 export const PHOTO_KEY = KEY + '.photo',
   PHOTO_SYNC = KEY + '.photoSync',
-  PHOTO_ASKED = KEY + '.photoAsked';
+  PHOTO_ASKED = KEY + '.photoAsked',
+  PHOTO_TIP = KEY + '.photoTip';
 /** Moves a set-aside workout from the log of account `from` ('' for none) to `to`, when a sign-in takes the phone's log into that account (takeAccount): it goes where the log goes. */
 export function parkedRetag(from: string, to: string): void {
   const r = rec(parseJson(prefGet(PARKED_KEY) || 'null'));

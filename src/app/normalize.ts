@@ -32,7 +32,7 @@ import { sameExOnce } from './session';
 import { isWork } from './formulas';
 import { machineKeys } from './model';
 import type { State } from './store';
-import { clampN, hashStr, isDate, isNum, numOr, today, r1, r3, HUNDREDTHS, WEEK_DAYS, SUNDAY } from './util';
+import { clampN, hashStr, isDate, isNum, numOr, r1, r3, HUNDREDTHS, WEEK_DAYS, SUNDAY } from './util';
 import { LB } from './units';
 import {
   BANDS,
@@ -248,10 +248,13 @@ type CardioRow = Omit<CardioEntry, 'min'> & { min: number | null };
 
 /* One cardio or mobility entry, cleaned, its minutes the one field a saved
    entry and a workout's row read differently: a saved one's are 1 at the
-   least (`none` 1), a row's may still be blank (`none` null). */
+   least (`none` 1), a row's may still be blank (`none` null). Its date is its own; a row of a workout with none takes
+   the workout's (`dateIfNone`, the date its session saves it under), never the phone's, so every phone reads it alike.
+   A saved entry keeps what came: one with no valid date is left out where the log is read, as a weigh-in is. */
 function cardioOf<M extends number | null>(
   c: unknown,
   none: M,
+  dateIfNone: string | null,
   i?: number
 ): Omit<CardioEntry, 'min'> & { min: number | M } {
   const C = rec(c) || {};
@@ -262,7 +265,10 @@ function cardioOf<M extends number | null>(
     c,
     {
       id: typeof C.id === 'string' ? fixId(C.id) : did('c', c, i),
-      date: typeof C.date === 'string' && isDate(C.date) ? C.date : today(),
+      date:
+        typeof C.date === 'string' && isDate(C.date)
+          ? C.date
+          : (dateIfNone ?? (typeof C.date === 'string' ? C.date : '')),
       kind: typeof C.kind === 'string' && CARDIO_KINDS.has(C.kind) ? C.kind : 'other',
       min: isNum(m) && m > 0 ? Math.min(Math.round(m), LIMITS.minutes) : none,
       hr: isNum(hr) && hr >= LIMITS.hr[0] && hr <= LIMITS.hr[1] ? Math.round(hr) : null,
@@ -275,9 +281,9 @@ function cardioOf<M extends number | null>(
   );
 }
 /** One saved cardio or mobility entry, cleaned. */
-export const cleanCardio = (c: unknown, i?: number): CardioEntry => cardioOf(c, 1, i);
-/** One cardio row of a workout in progress, cleaned: its minutes may still be blank. */
-export const cleanDraftCardio = (c: unknown, i?: number): CardioRow => cardioOf(c, null, i);
+export const cleanCardio = (c: unknown, i?: number): CardioEntry => cardioOf(c, 1, null, i);
+/** One cardio row of a workout in progress, on the workout's date when it has none of its own, cleaned: its minutes may still be blank. */
+export const cleanDraftCardio = (c: unknown, date: string, i?: number): CardioRow => cardioOf(c, null, date, i);
 
 /** A record's pictures as a field to spread last: { pics } when it has any, nothing otherwise. */
 const picsField = (v: unknown): { pics?: string[] } => {
@@ -487,10 +493,13 @@ export function machineReadings(st: State): Map<string, { key: string; ss: Sessi
 }
 /** Names in place, in log `st` after a change, each session that names no machine and now reads on another than it did
     before the change (`before`, machineReadings of the log then) with the machine it was on, and each the change put in
-    Recently deleted with the one it was on there, so it comes back to it (above); true when it named one. */
+    Recently deleted with the one it was on there, so it comes back to it (above); true when it named one. `beforeWrite`
+    runs once, before the first name is written: act.ts notes the lifter's change there, so names written into sessions
+    the change did not touch move no edit time (sync.ts editsNoted). */
 export function keepMachines(
   st: State,
-  before: ReadonlyMap<string, { key: string; ss: Session; at: number[] }>
+  before: ReadonlyMap<string, { key: string; ss: Session; at: number[] }>,
+  beforeWrite?: () => void
 ): boolean {
   if (!before.size) return false;
   const named = new Map<Session, Map<number, string>>();
@@ -501,9 +510,9 @@ export function keepMachines(
     for (const i of now.at) at.set(i, was.key);
     named.set(now.ss, at);
   }
-  nameSessions(st, named);
   const here = new Set(st.sessions.map(q => q.id));
-  let gone = false;
+  // Each entry of Recently deleted to name, with its exercises named: worked out first, written below with the rest.
+  const puts: { t: Trashed; ex: unknown[] }[] = [];
   for (const t of st.trash) {
     if (t.kind !== 'session' || here.has(t.id)) continue;
     const ex = arr(t.data.ex);
@@ -514,12 +523,13 @@ export function keepMachines(
         B && typeof B.exId === 'string' && !B.mc ? before.get(`${t.id}|${B.exId}|${B.light ? 1 : 0}`) : undefined;
       return was && B ? { ...B, ...keptName(was.key) } : b;
     });
-    if (put.some((b, i) => b !== ex[i])) {
-      t.data = { ...t.data, ex: put };
-      gone = true;
-    }
+    if (put.some((b, i) => b !== ex[i])) puts.push({ t, ex: put });
   }
-  return named.size > 0 || gone;
+  if (!named.size && !puts.length) return false;
+  if (beforeWrite) beforeWrite();
+  nameSessions(st, named);
+  for (const { t, ex } of puts) t.data = { ...t.data, ex };
+  return true;
 }
 /** Names in place, as names the app kept, the exercises of log `st` given in `named` (a session, then each exercise's place and its machine's key). */
 export function nameSessions(st: State, named: ReadonlyMap<Session, ReadonlyMap<number, string>>): void {
@@ -841,6 +851,50 @@ function cleanExercise(e0: unknown, e: Rec, name: string): Exercise {
   });
 }
 
+/* Two logs joined (a first sign-in, a log kept aside: sync.ts) take every exercise of both by id, and a lift both hold
+   is one record, `base`'s, with each field set only on the other side taken from there. Every log holds a record for
+   every library lift it has not deleted, so nearly every built-in is in both, and the whole record of one side dropped
+   the other side's own kg or lb, step, heaviest load, goal and bar. Set means other than what the field holds on a lift
+   nobody has changed: the library's record for a built-in; for a lift of the lifter's own, the empty record, except
+   the name, main muscle and equipment it is made with (CUSTOM_MADE_WITH), where `base`'s stands. Set on both sides,
+   `base`'s stands, as the whole record did. Machine names join machine by machine, `base`'s first.
+   Since the library became its own module (library.ts) it has changed only names and notes of its lifts, each
+   rewritten where a log holds the old one (cleanExercises: LIB_NAMES_BEFORE, LIB_NOTES_BEFORE), so both logs hold the
+   library's values as this build has them. A library change to any other field needs the same rewrite, or a log
+   still holding the old value would read here as one the lifter set. */
+/** The fields a lift of the lifter's own is made with (actspick.ts newEx, importflow.ts): never unset. */
+const CUSTOM_MADE_WITH: ReadonlySet<string> = new Set(['name', 'primary', 'equip']);
+/** Two logs' exercises joined field by field (above): every one of both, by id. */
+export function joinExercises(base: readonly Exercise[], other: readonly Exercise[]): Exercise[] {
+  const lib = new Map(libExercises().map(e => [e.id, e]));
+  const theirs = new Map(other.map(e => [e.id, e]));
+  const out = base.map(b => {
+    const o = theirs.get(b.id);
+    if (!o) return b;
+    const L = lib.get(b.id);
+    const untouched: Rec = {
+      ...(L ? cleanExercise(L, rec(L) || {}, L.name) : cleanExercise({}, { id: b.id }, b.name))
+    };
+    const bR: Rec = { ...b },
+      oR: Rec = { ...o };
+    const joined: Rec = { ...bR };
+    for (const k of Object.keys(oR)) {
+      if (k === 'id' || k === 'machines' || (!L && CUSTOM_MADE_WITH.has(k))) continue;
+      if (canon(bR[k]) === canon(untouched[k]) && canon(oR[k]) !== canon(untouched[k])) joined[k] = oR[k];
+    }
+    if (o.machines) {
+      const mine = b.machines || {};
+      joined.machines = {
+        ...mine,
+        ...Object.fromEntries(Object.entries(o.machines).filter(([k]) => !(k in mine)))
+      };
+    }
+    return cleanExercise(joined, joined, typeof joined.name === 'string' ? joined.name : b.name);
+  });
+  const have = new Set(base.map(e => e.id));
+  return [...out, ...other.filter(e => !have.has(e.id))];
+}
+
 /** What a machine's key looks like: the first machine's or a session's id (machineKeys). */
 const MACHINE_KEY = /^[A-Za-z0-9_-]{1,40}$/;
 
@@ -1137,7 +1191,9 @@ function cleanDraft(d: Rec, date: string): DraftLike {
     // The notes the app wrote when the session started, so Discard can tell them from yours.
     note0: typeof d.note0 === 'string' ? d.note0.slice(0, LIMITS.startNote) : undefined,
     chk: cleanChk(rec(d.chk)) || undefined,
-    cardio: (arr(d.cardio) || []).filter(c => !!c && typeof c === 'object').map((c, ci) => cleanDraftCardio(c, ci)),
+    cardio: (arr(d.cardio) || [])
+      .filter(c => !!c && typeof c === 'object')
+      .map((c, ci) => cleanDraftCardio(c, date, ci)),
     ex: (arr(d.ex) || []).flatMap(cleanDraftBlock)
   };
   // The unknown fields kept: copied into the known ones, then every field of the draft not among them taken off it.
@@ -1392,7 +1448,10 @@ function cleanMeasurements(listed: unknown[]): Measurement[] {
 
 /** The injuries a save holds, each checked. */
 function cleanInjuries(listed: unknown[]): Injury[] {
-  // As the weigh-ins: numbered among those kept, each a muscle or a joint (the filter), the '' never reached.
+  /* As the weigh-ins: numbered among those kept, each a muscle or a joint (the filter), the '' never reached. Every
+     build dates an injury as it is flagged; one with no valid date (a damaged save) keeps its flag, which holds the
+     lifts that load it, with no date ('', Today then says no "since"), never the date of the phone reading it: two
+     phones would read one log two ways (normalize also runs in the sync's comparison). */
   return listed
     .filter(x0 => {
       const x = rec(x0);
@@ -1404,7 +1463,7 @@ function cleanInjuries(listed: unknown[]): Injury[] {
         id: typeof x.id === 'string' ? fixId(x.id) : did('j', x0, xi),
         m: typeof x.m === 'string' ? x.m : '',
         note: typeof x.note === 'string' ? x.note : '',
-        date: typeof x.date === 'string' && isDate(x.date) ? x.date : today()
+        date: typeof x.date === 'string' && isDate(x.date) ? x.date : ''
       });
     });
 }

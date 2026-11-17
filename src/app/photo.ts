@@ -32,6 +32,10 @@ import { acct, cloud } from './store';
 const PHOTO_EDGE = 1024;
 /** The JPEG quality the photo is kept at. */
 const PHOTO_QUALITY = 0.85;
+/** The sides older builds kept the photo at, 256 and then 512, before PHOTO_EDGE. Kept so, it is soft opened large,
+    and picked again it is kept at PHOTO_EDGE. A photo smaller than PHOTO_EDGE at another side was picked smaller
+    than that, and picking it again keeps it the same. */
+const OLD_EDGES: readonly number[] = [256, 512];
 /** What a kept photo must look like: a JPEG data address and nothing else. */
 const PHOTO_SHAPE = /^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/;
 
@@ -52,6 +56,17 @@ export function photoOf(v: unknown): string | null {
 /** The photo the phone holds, signed in or not: what the sync sends and compares. */
 export function photoHeld(): string | null {
   return photoOf(prefGet(PHOTO_KEY));
+}
+
+/** Whether the photo at `url` is a square at a side an older build kept it at (OLD_EDGES), so that picked again it
+    would be kept sharper; false when it cannot be read as an image. */
+export function photoKeptSmall(url: string): Promise<boolean> {
+  return new Promise(res => {
+    const im = new Image();
+    im.onload = () => res(im.naturalWidth === im.naturalHeight && OLD_EDGES.includes(im.naturalWidth));
+    im.onerror = () => res(false);
+    im.src = url;
+  });
 }
 
 /** The profile photo to show, as an address an image can show, or null: none without an account (V, 2026-11-08). */

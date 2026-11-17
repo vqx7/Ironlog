@@ -4406,14 +4406,14 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       Object.assign(out, { [k2]: was[k2] });
     }
   }
-  function cardioOf(c4, none, i5) {
+  function cardioOf(c4, none, dateIfNone, i5) {
     const C2 = rec(c4) || {};
     const m3 = numOr(C2.min, NaN), hr = numOr(C2.hr, NaN), dk = numOr(C2.dist, NaN);
     return keepExtra(
       c4,
       {
         id: typeof C2.id === "string" ? fixId(C2.id) : did("c", c4, i5),
-        date: typeof C2.date === "string" && isDate(C2.date) ? C2.date : today(),
+        date: typeof C2.date === "string" && isDate(C2.date) ? C2.date : dateIfNone ?? (typeof C2.date === "string" ? C2.date : ""),
         kind: typeof C2.kind === "string" && CARDIO_KINDS.has(C2.kind) ? C2.kind : "other",
         min: isNum(m3) && m3 > 0 ? Math.min(Math.round(m3), LIMITS.minutes) : none,
         hr: isNum(hr) && hr >= LIMITS.hr[0] && hr <= LIMITS.hr[1] ? Math.round(hr) : null,
@@ -4425,8 +4425,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       KNOWN_CARDIO
     );
   }
-  var cleanCardio = (c4, i5) => cardioOf(c4, 1, i5);
-  var cleanDraftCardio = (c4, i5) => cardioOf(c4, null, i5);
+  var cleanCardio = (c4, i5) => cardioOf(c4, 1, null, i5);
+  var cleanDraftCardio = (c4, date, i5) => cardioOf(c4, null, date, i5);
   var picsField = (v3) => {
     const p3 = picIds(v3);
     return p3 ? { pics: p3 } : {};
@@ -4573,7 +4573,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     return out;
   }
-  function keepMachines(st, before2) {
+  function keepMachines(st, before2, beforeWrite) {
     if (!before2.size) return false;
     const named3 = /* @__PURE__ */ new Map();
     for (const [k2, now2] of machineReadings(st)) {
@@ -4583,9 +4583,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       for (const i5 of now2.at) at2.set(i5, was.key);
       named3.set(now2.ss, at2);
     }
-    nameSessions(st, named3);
     const here = new Set(st.sessions.map((q) => q.id));
-    let gone2 = false;
+    const puts = [];
     for (const t4 of st.trash) {
       if (t4.kind !== "session" || here.has(t4.id)) continue;
       const ex = arr(t4.data.ex);
@@ -4595,12 +4594,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         const was = B5 && typeof B5.exId === "string" && !B5.mc ? before2.get(`${t4.id}|${B5.exId}|${B5.light ? 1 : 0}`) : void 0;
         return was && B5 ? { ...B5, ...keptName(was.key) } : b2;
       });
-      if (put.some((b2, i5) => b2 !== ex[i5])) {
-        t4.data = { ...t4.data, ex: put };
-        gone2 = true;
-      }
+      if (put.some((b2, i5) => b2 !== ex[i5])) puts.push({ t: t4, ex: put });
     }
-    return named3.size > 0 || gone2;
+    if (!named3.size && !puts.length) return false;
+    if (beforeWrite) beforeWrite();
+    nameSessions(st, named3);
+    for (const { t: t4, ex } of puts) t4.data = { ...t4.data, ex };
+    return true;
   }
   function nameSessions(st, named3) {
     st.sessions.forEach((ss, k2) => {
@@ -4850,6 +4850,35 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       machines: machineNames(e5.machines)
     });
   }
+  var CUSTOM_MADE_WITH = /* @__PURE__ */ new Set(["name", "primary", "equip"]);
+  function joinExercises(base, other) {
+    const lib = new Map(libExercises().map((e5) => [e5.id, e5]));
+    const theirs = new Map(other.map((e5) => [e5.id, e5]));
+    const out = base.map((b2) => {
+      const o3 = theirs.get(b2.id);
+      if (!o3) return b2;
+      const L2 = lib.get(b2.id);
+      const untouched = {
+        ...L2 ? cleanExercise(L2, rec(L2) || {}, L2.name) : cleanExercise({}, { id: b2.id }, b2.name)
+      };
+      const bR = { ...b2 }, oR = { ...o3 };
+      const joined2 = { ...bR };
+      for (const k2 of Object.keys(oR)) {
+        if (k2 === "id" || k2 === "machines" || !L2 && CUSTOM_MADE_WITH.has(k2)) continue;
+        if (canon(bR[k2]) === canon(untouched[k2]) && canon(oR[k2]) !== canon(untouched[k2])) joined2[k2] = oR[k2];
+      }
+      if (o3.machines) {
+        const mine = b2.machines || {};
+        joined2.machines = {
+          ...mine,
+          ...Object.fromEntries(Object.entries(o3.machines).filter(([k2]) => !(k2 in mine)))
+        };
+      }
+      return cleanExercise(joined2, joined2, typeof joined2.name === "string" ? joined2.name : b2.name);
+    });
+    const have = new Set(base.map((e5) => e5.id));
+    return [...out, ...other.filter((e5) => !have.has(e5.id))];
+  }
   var MACHINE_KEY = /^[A-Za-z0-9_-]{1,40}$/;
   function machineNames(v3) {
     const r4 = rec(v3);
@@ -5074,7 +5103,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       // The notes the app wrote when the session started, so Discard can tell them from yours.
       note0: typeof d3.note0 === "string" ? d3.note0.slice(0, LIMITS.startNote) : void 0,
       chk: cleanChk(rec(d3.chk)) || void 0,
-      cardio: (arr(d3.cardio) || []).filter((c4) => !!c4 && typeof c4 === "object").map((c4, ci) => cleanDraftCardio(c4, ci)),
+      cardio: (arr(d3.cardio) || []).filter((c4) => !!c4 && typeof c4 === "object").map((c4, ci) => cleanDraftCardio(c4, date, ci)),
       ex: (arr(d3.ex) || []).flatMap(cleanDraftBlock)
     };
     extraInto(d3, out, DRAFT_KNOWN);
@@ -5254,7 +5283,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         id: typeof x2.id === "string" ? fixId(x2.id) : did("j", x0, xi),
         m: typeof x2.m === "string" ? x2.m : "",
         note: typeof x2.note === "string" ? x2.note : "",
-        date: typeof x2.date === "string" && isDate(x2.date) ? x2.date : today()
+        date: typeof x2.date === "string" && isDate(x2.date) ? x2.date : ""
       });
     });
   }
@@ -5433,7 +5462,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var BWSNOOZE_KEY = KEY + ".bwSnooze", BWASK_KEY = KEY + ".bwAsk";
   var PARKED_KEY = KEY + ".parked";
   var CLOSED_KEY = KEY + ".closed";
-  var PHOTO_KEY = KEY + ".photo", PHOTO_SYNC = KEY + ".photoSync", PHOTO_ASKED = KEY + ".photoAsked";
+  var PHOTO_KEY = KEY + ".photo", PHOTO_SYNC = KEY + ".photoSync", PHOTO_ASKED = KEY + ".photoAsked", PHOTO_TIP = KEY + ".photoTip";
   function parkedRetag(from, to) {
     const r4 = rec(parseJson(prefGet(PARKED_KEY) || "null"));
     if (r4 && r4["uid"] === from) prefSet(PARKED_KEY, JSON.stringify({ ...r4, uid: to }));
@@ -10865,12 +10894,21 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   // src/app/photo.ts
   var PHOTO_EDGE = 1024;
   var PHOTO_QUALITY = 0.85;
+  var OLD_EDGES = [256, 512];
   var PHOTO_SHAPE = /^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/;
   function photoOf(v3) {
     return typeof v3 === "string" && PHOTO_SHAPE.test(v3) ? v3 : null;
   }
   function photoHeld() {
     return photoOf(prefGet(PHOTO_KEY));
+  }
+  function photoKeptSmall(url) {
+    return new Promise((res) => {
+      const im = new Image();
+      im.onload = () => res(im.naturalWidth === im.naturalHeight && OLD_EDGES.includes(im.naturalWidth));
+      im.onerror = () => res(false);
+      im.src = url;
+    });
   }
   function photoUrl() {
     return acct.user ? photoHeld() : null;
@@ -11471,6 +11509,15 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       log("sync-track", e5);
     }
   }
+  function editsNoted() {
+    trackEdits();
+  }
+  function seenAsIs() {
+    clearTimer(trackT);
+    trackT = null;
+    cloud.pendAt = null;
+    resyncLocalH();
+  }
   function draftNote(prev, kept, where = "on another device") {
     const P2 = rec(prev);
     const d3 = state.draft;
@@ -11549,6 +11596,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (d3.editingId || state.sessions.some((q) => q.id === d3.id)) return;
     const id = chunkOf(d3.date);
     const sn = await withTimeout(ref(id).get(), SYNC_MS.net, "sync-read");
+    trackEdits();
     const sb = sn && sn.exists ? rec(sn.data()) : null;
     ownWrite(id, sb);
     if (!sb || typeof sb.json !== "string") return;
@@ -11559,12 +11607,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const localDirty = !m3 || hashStr(JSON.stringify(mine)) !== m3.h;
     const et = Number(sb.et) || Number(sb.at) || 0;
     if (!localDirty) applyChunk(id, rec(data));
-    else {
-      applyChunk(id, mergeChunk(id, baseFor(id, m3, legB), mine, data, et > (cloud.editAt[id] || 0), { conflicts: 0 }));
-      cloud.editAt[id] = Math.max(cloud.editAt[id] || 0, et);
-    }
+    else applyChunk(id, mergeChunk(id, baseFor(id, m3, legB), mine, data, et > (cloud.editAt[id] || 0), { conflicts: 0 }));
+    cloud.editAt[id] = Math.max(cloud.editAt[id] || 0, et);
     cloud.meta[id] = { h: h3, at: Number(sb.at), b: baseOf(id, data) };
     saveMeta();
+    resyncLocalH();
   }
   function conflictNote(stat, tabs = false) {
     const n3 = stat.conflicts;
@@ -11730,6 +11777,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         let done = false;
         for (let tries = 0; tries < WRITE_TRIES && !done; tries++) {
           const snap = await withTimeout(ref(x2.id).get(), SYNC_MS.net, "sync-read");
+          trackEdits();
           ownWrite(x2.id, snap && snap.exists ? rec(snap.data()) : null);
           const m3 = cloud.meta[x2.id];
           let json = JSON.stringify(chunksOf(state)[x2.id] || emptyChunk(x2.id));
@@ -11765,6 +11813,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
                 if (dn.kept || dn.lost || canon(state.sessions) !== canon(dn.sessions0)) again = true;
               }
               if (x2.id === "core" && absorbLegacy(legacyBody(rec(rd)))) moreBody2 = true;
+              resyncLocalH();
               json = JSON.stringify(chunksOf(state)[x2.id] || emptyChunk(x2.id));
               if (hashStr(json) === hashStr(b2.json)) {
                 cloud.meta[x2.id] = took;
@@ -11781,7 +11830,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
             continue;
           }
           const at2 = Date.now();
-          const doc = { v: 1, at: at2, et: cloud.editAt[x2.id] || at2, w: writeMark(), json };
+          const doc = { v: 1, at: at2, et: cloud.editAt[x2.id] || (m3 ? m3.at : at2), w: writeMark(), json };
           cloud.sent[x2.id] = {
             w: doc.w,
             uid: cloud.uid || "",
@@ -11808,7 +11857,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (adopted) {
         invalidate();
         writeTakenIn();
-        resyncLocalH();
+        trackEdits();
         if (!ui.modal) fx.rerenderKeepScroll();
         conflictNote(stat);
         if (dn) {
@@ -11927,7 +11976,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     ), acctCardio = acct2(aside ? [...rState.cardio, ...draftCardio(aside)] : rState.cardio, mine.cardio, "cardio", (y2) => y2);
     const joined2 = normalize({
       ...base,
-      exercises: unionById(base.exercises, other.exercises),
+      exercises: joinExercises(base.exercises, other.exercises),
       routines: unionById(base.routines, other.routines),
       sessions: unionById(acctSessions, own2.sessions),
       bodyweights: unionById(mine.bodyweights, rState.bodyweights),
@@ -12019,6 +12068,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       await cloudFlush();
       return;
     }
+    trackEdits();
     const local = chunksOf(state);
     const first = !Object.keys(cloud.meta).length;
     const agreedDraft = cloud.meta.draft && cloud.meta.draft.b ? cloud.meta.draft.b.draft : null;
@@ -12063,13 +12113,17 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       writeTakenIn();
       for (const id of adoptedIds) {
         cloud.meta[id] = { h: remote[id].h, at: remote[id].at, b: baseOf(id, remote[id].data) };
+        cloud.editAt[id] = Math.max(cloud.editAt[id] || 0, remote[id].et);
       }
       saveMeta();
       resyncLocalH();
       {
         const n0 = state.trash.length;
         state.trash = state.trash.filter((t4) => !(t4.kind === "routine" && plainTemplate(t4.data)));
-        if (state.trash.length !== n0) saveNow();
+        if (state.trash.length !== n0) {
+          saveNow();
+          seenAsIs();
+        }
       }
       if (!ui.modal) fx.rerenderKeepScroll();
       else fx.render();
@@ -12185,7 +12239,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const own2 = firstUnnamed(kept ? [...here.sessions, kept] : here.sessions, base.sessions);
     const joined2 = normalize({
       ...base,
-      exercises: unionById(base.exercises, here.exercises),
+      exercises: joinExercises(base.exercises, here.exercises),
       routines: unionById(base.routines, here.routines),
       sessions: unionById(base.sessions, own2.sessions),
       bodyweights: unionById(base.bodyweights, here.bodyweights),
@@ -12411,6 +12465,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       log("tabs", e5);
       base = null;
     }
+    trackEdits();
     const stat = { conflicts: 0 };
     const dr0 = state.draft;
     let kept = null;
@@ -12526,10 +12581,16 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     depth++;
     let inside = false;
     outerBegun = begunBefore();
+    if (opts.app) editsNoted();
+    let seen = false;
     try {
       change();
       const was = readings || (logBefore && !opts.whole ? machineReadings(logBefore) : null);
-      if (was) named3 = keepMachines(state, was);
+      if (was) named3 = keepMachines(state, was, editsNoted);
+      if (named3) {
+        seenAsIs();
+        seen = true;
+      }
       clockAfter(outerBegun);
       followsAfter(outerBegun);
     } catch (e5) {
@@ -12538,6 +12599,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         if (logBefore) setState(logBefore);
         state.draft = draftWas;
       }
+      if (seen) seenAsIs();
       if (step && undoStack[undoStack.length - 1] === step) {
         undoStack.pop();
         undoPersist();
@@ -12551,8 +12613,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       logBefore = null;
     }
     if (!opts.inProgress || inside || named3) invalidate();
-    if (opts.soon) saveSoon();
+    if (opts.soon && !opts.app) saveSoon();
     else saveNow();
+    if (opts.app) seenAsIs();
     return true;
   }
   function begunBefore() {
@@ -14282,6 +14345,29 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   }
   var saveShown = "";
   var notSavingSaid = false;
+  var PHOTO_TIP_MS = { first: 1500, retry: 500, show: 7e3 };
+  var photoMeasured = null;
+  function photoTip(ph) {
+    if (ph === photoMeasured || prefGet(PHOTO_TIP)) return;
+    photoMeasured = ph;
+    void photoKeptSmall(ph).then((small) => {
+      if (!small || photoUrl() !== ph || prefGet(PHOTO_TIP)) return;
+      if (!prefSet(PHOTO_TIP, "1")) return;
+      const say = () => {
+        const t4 = document.getElementById("toast");
+        if (t4 && !t4.hidden) {
+          setTimeout(say, PHOTO_TIP_MS.retry);
+          return;
+        }
+        toast(
+          "Your profile photo was kept small by an earlier version, so it looks soft opened large. Open the menu, tap your photo and choose Change photo to keep it sharp.",
+          false,
+          PHOTO_TIP_MS.show
+        );
+      };
+      setTimeout(say, PHOTO_TIP_MS.first);
+    });
+  }
   function setSaveState() {
     const el = document.getElementById("saveState");
     if (!el) return;
@@ -14297,6 +14383,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     );
     el.setAttribute("aria-label", "Menu. " + txt);
     el.setAttribute("data-tip", txt);
+    if (ph) photoTip(ph);
     const who2 = acct.user ? acct.user.email : "";
     const key = cls + "|" + txt + "|" + who2;
     if (saveShown !== key) {
@@ -21675,7 +21762,10 @@ ${howText("starts", STARTS_HELP)}${moreRow(deload, playable, di, part)}</section
       title: "Injuries",
       sub: b`<span class="pill red">${inj.length} flagged</span>`,
       body: b`<ul class="inj-list u-lsnone_m0_p0">${inj.map(
-        (x2) => b`<li><span><b>${injLabel(x2.m)}</b> <span class="muted small">since ${fmtDate(x2.date)}${x2.note ? " · " + x2.note : ""}</span></span><button class="btn sm" data-act="injClear" data-id=${x2.id}>Cleared</button></li>`
+        (x2) => (
+          // An injury with no date (a damaged save's: normalize.ts cleanInjuries) says no "since".
+          b`<li><span><b>${injLabel(x2.m)}</b> <span class="muted small">${[x2.date ? "since " + fmtDate(x2.date) : "", x2.note].filter(Boolean).join(" · ")}</span></span><button class="btn sm" data-act="injClear" data-id=${x2.id}>Cleared</button></li>`
+        )
       )}</ul>
 <p class="small muted hastip u-m8-0-0" data-tip="Exercises that load these are marked in each session, their targets are paused, and the muscle is left out of below-target advice. Tap Cleared when it has settled.">What a flag does</p>`
     });
@@ -25076,9 +25166,12 @@ ${JSON.stringify(ctx, null, 1)}`;
     const tr = state.trash || [];
     const keep = tr.filter((t4) => !(t4.kind === "routine" && plainTemplate(t4.data)));
     if (keep.length !== tr.length)
-      act(() => {
-        state.trash = keep;
-      });
+      act(
+        () => {
+          state.trash = keep;
+        },
+        { app: true }
+      );
   }
   function markExported() {
     act(() => {
@@ -28405,7 +28498,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       if (!d3) return;
       act(
         () => {
-          (d3.cardio || (d3.cardio = [])).push(cleanDraftCardio({ id: uid(), kind: "walk", when: t4.dataset.when }));
+          (d3.cardio || (d3.cardio = [])).push(cleanDraftCardio({ id: uid(), kind: "walk", when: t4.dataset.when }, d3.date));
         },
         { inProgress: true }
       );
@@ -30101,9 +30194,12 @@ ${JSON.stringify(ctx, null, 1)}`;
   function recordOldFloors() {
     const fit = oldFloors();
     if (fit)
-      act(() => {
-        state.settings.bandsFit = fit;
-      });
+      act(
+        () => {
+          state.settings.bandsFit = fit;
+        },
+        { app: true }
+      );
     return !!fit;
   }
   function framed() {
@@ -30136,15 +30232,18 @@ ${JSON.stringify(ctx, null, 1)}`;
     try {
       const rf = refit();
       if (rf)
-        act(() => {
-          const b2 = state.settings.bands;
-          for (const m3 of MK) {
-            const v3 = rf.bands[m3];
-            if (v3) b2[m3] = [v3[0], v3[1]];
-          }
-          if (Object.keys(rf.fit).length) state.settings.bandsFit = rf.fit;
-          else delete state.settings.bandsFit;
-        });
+        act(
+          () => {
+            const b2 = state.settings.bands;
+            for (const m3 of MK) {
+              const v3 = rf.bands[m3];
+              if (v3) b2[m3] = [v3[0], v3[1]];
+            }
+            if (Object.keys(rf.fit).length) state.settings.bandsFit = rf.fit;
+            else delete state.settings.bandsFit;
+          },
+          { app: true }
+        );
     } catch (e5) {
       log("refit", e5);
     }

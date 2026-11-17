@@ -884,6 +884,32 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       }
       ok(rounds.every(r => r.clean), 'S-6: a set removed after the other tab wrote back older sync notes stays removed, in both tabs and in the account, with no message of an edit on two devices, five times in five (REV16-A1)', rounds.filter(r => !r.clean));
     }
+    {
+      /* An edit not yet noted when the other tab's save comes in keeps its own time. The tracker notes an edit 800 ms
+         after the taps pause; a save heard from the other tab before then took the log here as seen, edit and all, so
+         the edit kept the time of its document's last noted edit, and an older edit to the same session from another
+         phone beat it at the next sync: tab A corrects Oct 31 after phone Z did, and tab B, a moment later, changes a
+         setting (another document, so its edit time is not Oct 31's). Fails on 2.71: Z's edit everywhere. */
+      const C = cloudOf(), uid = 'u6t';
+      const two = [{ id: 't1', date: '2026-10-30', dayIdx: 0, dayName: 'Day 1', notes: 'first', ex: [{ exId: 'bench', sets: [{ w: 60, r: 8, rir: 2, done: true }] }] }, { id: 't2', date: '2026-10-31', dayIdx: 0, dayName: 'Day 1', notes: 'first', ex: [{ exId: 'bench', sets: [{ w: 60, r: 8, rir: 2, done: true }] }] }];
+      const A = await phone({ cloud: C, uid, arg: two, seed: (S, L, xs) => { S.sessions.push(...xs); S.settings.lastExport = '2026-11-11'; } });
+      ok(await A.settled(), 'S-6: (setup) an account holds two sessions in one half-month (an edit not yet noted when the other tab saves)');
+      const B = await tab(A, FILE, C.setup(uid, 'B')); B.ev = (f, a) => B.page.evaluate(f, a);
+      const Z = await phone({ cloud: C, uid, who: 'Z', browser: A.browser, clock: await clockOf(A) });
+      ok(await Z.settled(), 'S-6: (setup) another phone on the account'); await Z.sync();
+      await B.page.waitForFunction(() => { const c = window.__ironlog.cloudState(); return c.on && c.status === 'synced'; }, null, { timeout: 10000 }).catch(() => {});
+      await Z.ev(() => { const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 't2').notes = 'from Z'; }); }); await Z.flush();
+      await wait(400);
+      const t2 = P => P.ev(() => (window.__ironlog.state.sessions.find(s => s.id === 't2') || {}).notes);
+      ok((await t2(A)) === 'first' && (await t2(B)) === 'first', 'S-6: (setup) neither tab has taken in the other phone\'s edit yet');
+      // Tab B's change a moment after tab A's edit, well inside the 800 ms the tracker waits.
+      await Promise.all([A.ev(() => { const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 't2').notes = 'from tab A, later'; }); }), wait(40).then(() => B.ev(() => { const L = window.__ironlog; L.act(() => { L.state.settings.userName = 'B'; }); }))]);
+      await wait(2500);
+      await A.flush(); await B.ev(() => window.__ironlog.flush()); await wait(400); await A.sync(); await Z.sync();
+      const got = { A: await t2(A), B: await t2(B), Z: await t2(Z), account: (C.sessionsIn(uid).find(s => s.id === 't2') || {}).notes };
+      ok(['A', 'B', 'Z', 'account'].every(k => got[k] === 'from tab A, later'), 'S-6: an edit not yet noted when the other tab\'s save comes in keeps its own time: later than another phone\'s edit of the same session, it is kept in both tabs, on the other phone and in the account', got);
+      await A.close();
+    }
   }
 
   /* ---------- S-7: Undo ---------- */
@@ -1259,6 +1285,112 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
     const held = { F: await both(F), G: await both(G), account: { c1: inC3('c1') ? inC3('c1').ex[0].sets.map(x => x.r).join() : 'gone', c2: inC3('c2') ? inC3('c2').ex[0].mc || '-' : 'gone' }, said: (await G.toasts()).filter(t => /two devices/.test(t)) };
     ok(['F', 'G'].every(k => held[k].c1 === '12,12,12' && held[k].on === 'b1' && held[k].c2 === '0') && held.account.c1 === '12,12,12' && held.account.c2 === '0' && !held.said.length, 'S-11: a correction and a pick made with no signal on one phone stand when the other phone, later, deleted the session that began the machine: on both phones and in the account, the corrected session still on its machine, and no clash said (REV26-2)', held);
     await F.close();
+    /* A change the app makes on its own is no edit (L3-5's class): it is sent, but with the time of the last edit the
+       lifter made to that document, never the moment the app made it, so it never beats a lifter's edit made before it.
+       Phone H corrects a session's notes with no signal; then phone K changes the same session without the lifter: (1) a
+       field written into its saved log while the app was closed, as a new build's reading of an old log writes one,
+       read when the app opens again; (2) a change the app makes through act as its own (`app`), as the start-up
+       refits do. K's copy goes up first. H's correction is kept on both phones and in the account. A test page's clock
+       starts again at its opening time when it is reloaded, so K opens 30 s ahead of H: opened again later, as a phone
+       is, and never behind the correction it follows. */
+    for (const how of ['while closed', 'app change']) {
+      const C4 = cloudOf(), uid = how === 'app change' ? 'u11a' : 'u11c';
+      const H = await phone({ cloud: C4, uid, seed: S => { S.sessions.push({ id: 'q1', date: '2026-11-03', dayIdx: 0, dayName: 'Day 1', notes: 'first', ex: [{ exId: 'bench', sets: [{ w: 60, r: 8, rir: 2, done: true }] }] }); S.settings.lastExport = '2026-11-11'; } });
+      ok(await H.settled(), `S-11: (setup) an account holds a session (${how})`);
+      const K = await phone({ cloud: C4, uid, who: 'K', browser: H.browser, clock: new Date(Date.parse(await clockOf(H)) + 30000).toISOString() });
+      ok(await K.settled(), `S-11: (setup) a second phone takes the account's copy as it is (${how})`); await K.sync();
+      await H.ev(() => { window.__offline = true; const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 'q1').notes = 'corrected on H'; }); });
+      await wait(400);
+      if (how === 'while closed') {
+        await K.ev(k => { const v = JSON.parse(localStorage.getItem(k)); v.sessions.find(s => s.id === 'q1').zz = 1; localStorage.setItem(k, JSON.stringify(v)); }, KEY);
+        await K.page.reload(); await wait(300);
+      } else await K.ev(() => { const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 'q1').zz = 1; }, { app: true }); });
+      await K.settled(); await K.flush();
+      await H.ev(() => { window.__offline = false; }); await H.flush(); await H.sync(); await K.sync();
+      const notes = P => P.ev(() => (window.__ironlog.state.sessions.find(s => s.id === 'q1') || {}).notes);
+      const kept = { H: await notes(H), K: await notes(K), account: (C4.sessionsIn(uid).find(s => s.id === 'q1') || {}).notes };
+      ok(kept.H === 'corrected on H' && kept.K === 'corrected on H' && kept.account === 'corrected on H', `S-11: a change the app made on its own (${how}) after a lifter's correction on another phone: the correction is kept on both phones and in the account`, kept);
+      await H.close();
+    }
+    /* An edit the lifter makes while a pull waits for the account keeps its own time. The pull took the log here as seen
+       once it came back, before the edit tracker (800 ms after the taps pause) had noted the edit, so a pull back
+       within that time merged the edit with the time of the document's last noted edit: an older edit to the same
+       session on another phone outranked it and it was lost, on both phones and in the account (found building 2.72). */
+    {
+      const C5 = cloudOf(), uid = 'u11p';
+      const M = await phone({ cloud: C5, uid, seed: S => { S.sessions.push({ id: 'q2', date: '2026-11-03', dayIdx: 0, dayName: 'Day 1', notes: 'first', ex: [{ exId: 'bench', sets: [{ w: 60, r: 8, rir: 2, done: true }] }] }); S.settings.lastExport = '2026-11-11'; } });
+      ok(await M.settled(), 'S-11: (setup) an account holds a session (an edit made while a pull waits)');
+      const N = await phone({ cloud: C5, uid, who: 'N', browser: M.browser, clock: await clockOf(M) });
+      ok(await N.settled(), 'S-11: (setup) a second phone takes the account\'s copy (an edit made while a pull waits)'); await N.sync();
+      await M.ev(() => { const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 'q2').notes = 'from M'; }); });
+      await M.flush(); await wait(300);
+      C5.holdReads(new RegExp(`users/${uid}$`));
+      const pulling = N.ev(() => window.__ironlog.sync());
+      await wait(150);
+      await N.ev(() => { const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 'q2').notes = 'from N, later'; }); });
+      C5.releaseReads(); await pulling; await wait(1500);
+      await N.flush(); await M.sync(); await N.sync();
+      const notes = P => P.ev(() => (window.__ironlog.state.sessions.find(s => s.id === 'q2') || {}).notes);
+      const kept = { M: await notes(M), N: await notes(N), account: (C5.sessionsIn(uid).find(s => s.id === 'q2') || {}).notes };
+      ok(kept.M === 'from N, later' && kept.N === 'from N, later' && kept.account === 'from N, later', 'S-11: an edit made while a pull waits for the account, later than an edit to the same session on another phone, is kept on both phones and in the account', kept);
+      await M.close();
+    }
+    /* The same in a flush: an edit made while a flush waits for the account, in a flush that takes in the account's copy
+       of the document, keeps its own time. The flush took the log as seen once it was done, before the edit tracker had
+       noted the edit, and judged the clash by the time of the document's last noted edit: with no signal, phone S had
+       corrected another session in the same half-month earlier, so phone R's edit of Oct 31, made before S's edit
+       here, beat it (found building 2.72). */
+    {
+      const C7 = cloudOf(), uid = 'u11f';
+      const two = [{ id: 'f1', date: '2026-10-30', dayIdx: 0, dayName: 'Day 1', notes: 'first', ex: [{ exId: 'bench', sets: [{ w: 60, r: 8, rir: 2, done: true }] }] }, { id: 'f2', date: '2026-10-31', dayIdx: 0, dayName: 'Day 1', notes: 'first', ex: [{ exId: 'bench', sets: [{ w: 60, r: 8, rir: 2, done: true }] }] }];
+      const R = await phone({ cloud: C7, uid, arg: two, seed: (S, L, xs) => { S.sessions.push(...xs); S.settings.lastExport = '2026-11-11'; } });
+      ok(await R.settled(), 'S-11: (setup) an account holds two sessions in one half-month (an edit made while a flush waits)');
+      const S2 = await phone({ cloud: C7, uid, who: 'S', browser: R.browser, clock: await clockOf(R) });
+      ok(await S2.settled(), 'S-11: (setup) a second phone takes them (an edit made while a flush waits)'); await S2.sync();
+      await S2.ev(() => { window.__offline = true; const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 'f1').notes = 'S, earlier'; }); });
+      await wait(1000);
+      await R.ev(() => { const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 'f2').notes = 'from R'; }); }); await R.flush();
+      await wait(400);
+      await S2.ev(() => { window.__offline = false; });
+      let open7; const gate7 = new Promise(r => { open7 = r; });
+      const reached7 = C7.holdGet(/\/s-2026-10-2$/, 'S', gate7);
+      const flushing = S2.ev(() => window.__ironlog.flush());
+      await reached7;
+      await S2.ev(() => { const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 'f2').notes = 'from S, later'; }); });
+      open7(); await flushing; await wait(1500);
+      await S2.flush(); await R.sync(); await S2.sync();
+      const notes = P => P.ev(() => Object.fromEntries(window.__ironlog.state.sessions.filter(s => /^f/.test(s.id)).map(s => [s.id, s.notes])));
+      const acct = Object.fromEntries(C7.sessionsIn(uid).filter(s => /^f/.test(s.id)).map(s => [s.id, s.notes]));
+      const got = { R: await notes(R), S: await notes(S2), account: acct };
+      ok(['R', 'S', 'account'].every(k => got[k].f2 === 'from S, later' && got[k].f1 === 'S, earlier'), 'S-11: an edit made while a flush waits for the account, later than an edit to the same session on another phone, is kept on both phones and in the account, with the earlier correction of another session in the same half-month', got);
+      await R.close();
+    }
+    /* L3-5: the machine names a change keeps for sessions it did not touch move no edit time. With no signal, phone Q
+       edits Oct 20's notes; phone P, later, edits them too and sends it; then Q deletes Oct 14, which began the chest
+       press's second machine, in the first half of October, so the change keeps Oct 18 on that machine by writing its
+       name into the second half's document, beside Oct 20. That document's edit time was the moment of the delete,
+       later than P's edit, so Q's older edit of Oct 20 won the clash; it is P's later edit that stands, on both phones
+       and in the account, Oct 18 still on the second machine and Oct 14 gone. */
+    {
+      const C6 = cloudOf(), uid = 'u11n';
+      const Pp = await phone({ cloud: C6, uid, arg: [mkM('a1', '2026-10-01', 90), mkM('a2', '2026-10-07', 90), mkM('b1', '2026-10-14', 55, { nw: true }), mkM('c1', '2026-10-18', 57.5), { id: 'r1', date: '2026-10-20', dayIdx: 0, dayName: 'Day 1', notes: 'first', ex: [{ exId: 'bench', sets: [{ w: 60, r: 8, rir: 2, done: true }] }] }], seed: (S, L, xs) => { S.sessions.push(...xs); S.settings.lastExport = '2026-11-11'; } });
+      ok(await Pp.settled(), 'S-11: (setup) an account holds a chest press on two machines, Oct 14 beginning the second, and an Oct 20 session');
+      const Q = await phone({ cloud: C6, uid, who: 'Q', browser: Pp.browser, clock: await clockOf(Pp) });
+      ok(await Q.settled(), 'S-11: (setup) a second phone takes it (kept names)'); await Q.sync();
+      await Q.ev(() => { window.__offline = true; const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 'r1').notes = 'older, on Q'; }); });
+      await wait(1000);
+      await Pp.ev(() => { const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 'r1').notes = 'later, on P'; }); }); await Pp.flush();
+      await wait(400);
+      await Q.ev(() => { window.__ironlog.ACT.histDel({ dataset: { id: 'b1' } }); }); await wait(80); await confirmOk(Q); await wait(1000);
+      const keptOn = await Q.ev(() => { const L = window.__ironlog; return (L.state.sessions.find(s => s.id === 'c1').ex[0].mc) || '-'; });
+      ok(keptOn !== '-', 'S-11: (setup) deleting Oct 14 on Q keeps Oct 18 on its machine by name (the name written into the second half of October)', keptOn);
+      await Q.ev(() => { window.__offline = false; }); await Q.flush(); await Q.sync(); await Pp.sync();
+      const r1 = P => P.ev(() => { const L = window.__ironlog; const q = id => L.state.sessions.find(s => s.id === id); return { r1: q('r1') ? q('r1').notes : 'gone', b1: q('b1') ? 'here' : 'gone', on: ((L.IDX().byEx.machPress || []).find(x => x.sid === 'c1') || {}).mk }; });
+      const acct = (C6.sessionsIn(uid).find(s => s.id === 'r1') || {}).notes;
+      const got = { P: await r1(Pp), Q: await r1(Q), account: acct };
+      ok(['P', 'Q'].every(k => got[k].r1 === 'later, on P' && got[k].b1 === 'gone' && got[k].on === 'b1') && got.account === 'later, on P', 'S-11: the machine names a delete keeps for a session it did not touch move no edit time: an older edit made with no signal on one phone loses to the later edit on the other, on both phones and in the account, the kept session still on its machine (L3-5)', got);
+      await Pp.close();
+    }
   }
 
   /* ---------- S-12 and S-13: one workout open on two phones; a first sign-in with two workouts in progress (moved from tests/r56-1.js in 2.50, every check kept) ---------- */
@@ -2082,6 +2214,31 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       }
       await F.close();
     }
+    /* A built-in lift's own settings, set on one side only, survive the sign-in (L3-3): every log holds a record for
+       every library lift, so the two logs always both have bench, and the whole record of the side with more sessions
+       used to win, dropping the other side's kg/lb, step, heaviest load, goal and bar. Joined field by field, a setting
+       made on one side is kept; set on both, the side with more sessions keeps its own, as before. */
+    for (const phoneHasMore of [false, true]) {
+      const C9 = cloudOf(), uid = phoneHasMore ? 'u13s2' : 'u13s1';
+      const sess = (id, date) => ({ id, date, dayIdx: 0, dayName: 'Day 1', notes: '', ex: [{ exId: 'bench', sets: [{ w: 100, r: 8, rir: 2, done: true }] }] });
+      const acctLog = phoneHasMore ? [sess('a1', '2026-11-03')] : [sess('a1', '2026-10-20'), sess('a2', '2026-10-27'), sess('a3', '2026-11-03')];
+      const phoneLog = phoneHasMore ? [sess('b1', '2026-10-20'), sess('b2', '2026-10-27'), sess('b3', '2026-11-05')] : [sess('b1', '2026-11-05')];
+      // The side with fewer sessions set its own bench; the other set only its rows' grip note, and both set a goal.
+      const fewer = { unit: 'lb', inc: 1.25, maxLoad: 140, barKg: 15, goal: { w: 120, r: 5 } };
+      const more = { note: 'Grip at the rings', goal: { w: 110, r: 5 } };
+      const O = await phone({ cloud: C9, uid, arg: [acctLog, phoneHasMore ? fewer : more], seed: (S, L, [xs, set]) => { S.sessions.push(...xs); Object.assign(S.exercises.find(e => e.id === 'bench'), set); S.settings.lastExport = '2026-11-11'; } });
+      ok(await O.settled(), `S-13: (setup) an account with ${acctLog.length} session(s) and its own settings on bench`);
+      const R = await phone({ cloud: C9, uid: null, who: 'R', browser: O.browser, clock: await clockOf(O), arg: [phoneLog, phoneHasMore ? more : fewer], seed: (S, L, [xs, set]) => { S.sessions.push(...xs); Object.assign(S.exercises.find(e => e.id === 'bench'), set); S.settings.lastExport = '2026-11-11'; } });
+      await R.ev(uid => { window.__uid = uid; window.__ironlog.cloudInit(); }, uid);
+      ok(await R.settled(), `S-13: the phone with ${phoneLog.length} session(s) signs in`);
+      await O.sync(); await O.settled();
+      const benchOf = P => P.ev(() => { const e = window.__ironlog.state.exercises.find(x => x.id === 'bench'); return { unit: e.unit || null, inc: e.inc || null, maxLoad: e.maxLoad || null, barKg: e.barKg || null, goal: e.goal ? `${e.goal.w}x${e.goal.r}` : null, note: e.note }; });
+      const acctBench = (C9.doc(uid, 'core').exercises || []).find(x => x.id === 'bench') || {};
+      const got = { phone: await benchOf(R), other: await benchOf(O), account: { unit: acctBench.unit || null, inc: acctBench.inc || null, maxLoad: acctBench.maxLoad || null, barKg: acctBench.barKg || null, goal: acctBench.goal ? `${acctBench.goal.w}x${acctBench.goal.r}` : null, note: acctBench.note } };
+      const want = { unit: 'lb', inc: 1.25, maxLoad: 140, barKg: 15, goal: '110x5', note: 'Grip at the rings' };
+      ok(['phone', 'other', 'account'].every(k => JSON.stringify(got[k]) === JSON.stringify(want)), `S-13: a first sign-in where the ${phoneHasMore ? 'phone' : 'account'} has more sessions: bench keeps the kg/lb, step, heaviest load and bar set only on the other side, the note set only on its own, and its own goal where both set one, on both phones and in the account (L3-3)`, got);
+      await O.close();
+    }
   }
 
   /* ---------- S-15: news about the log is never lost under a tap's message ---------- */
@@ -2287,6 +2444,23 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
     const readDup = async tz => { const P = await phone({ tz, clock: instant, fresh: true }); const c = await P.ev(r => JSON.stringify(window.__ironlog.normalize(JSON.parse(r)).trash), withDup); await P.close(); return c; };
     const laD = await readDup('America/Los_Angeles'), tokyoD = await readDup('Asia/Tokyo');
     ok(laD === tokyoD && /dup/.test(laD), 'S-26: and a session held twice puts the same entry in Recently deleted on both (REV13-12)', laD === tokyoD ? laD.slice(0, 120) : { losAngeles: laD.slice(0, 160), tokyo: tokyoD.slice(0, 160) });
+    /* L3-6: nothing normalize writes depends on the phone's date. A cardio row of a workout in progress saved with no
+       date takes the workout's own date (the date its session saves it under), and an injury saved with no valid date
+       keeps its flag with no date; read at that instant on both phones, the same log. */
+    const undated = JSON.stringify({ ...raw, draft: { ...raw.draft, date: '2026-11-05', cardio: [{ id: 'dc', kind: 'walk', when: 'post', min: 10 }] }, injuries: [{ id: 'j1', m: 'j_knee', note: '' }, { id: 'j2', m: 'j_shoulder', note: '', date: '2026-11-01' }] });
+    const readUndated = async tz => { const P = await phone({ tz, clock: instant, fresh: true }); const c = await P.ev(r => { const n = window.__ironlog.normalize(JSON.parse(r)); return JSON.stringify({ cardio: n.draft && n.draft.cardio, injuries: n.injuries }); }, undated); await P.close(); return c; };
+    const laU = await readUndated('America/Los_Angeles'), tokyoU = await readUndated('Asia/Tokyo');
+    // Today's list says "since" only for an injury with a date.
+    {
+      const P = await phone({ tz: 'America/Los_Angeles', clock: instant });
+      await P.ev(r => { const L = window.__ironlog; L.state.injuries = JSON.parse(r).injuries; L.state = L.normalize(L.state); L.invalidate(); L.saveNow(); L.ui.tab = 'today'; L.render(); }, undated);
+      await secOpen(P, 'today:injuries');
+      const lines = await P.ev(() => [...document.querySelectorAll('#view .inj-list li')].map(li => li.innerText.replace(/\s+/g, ' ').trim()));
+      ok(lines.length === 2 && /^Knee Cleared$/.test(lines.find(l => /Knee/.test(l)) || '') && /^Shoulder since Nov 1 Cleared$/.test(lines.find(l => /Shoulder/.test(l)) || ''), 'S-26: Today lists the injury with no date without a "since", the dated one since its date', lines);
+      await P.close();
+    }
+    const u = JSON.parse(laU);
+    ok(laU === tokyoU && u.cardio && u.cardio[0].date === '2026-11-05' && u.injuries.map(j => `${j.id}:${j.date}`).join() === 'j1:,j2:2026-11-01', 'S-26: a workout\'s cardio row with no date takes the workout\'s date, and an injury with no date keeps its flag with no date, never the phone\'s: the same on both phones at one instant (L3-6)', { losAngeles: laU, tokyo: tokyoU });
     // REV15-1: the other copy is kept for the lifter, whatever its date. A session from Sep 14 held twice (moved to Sep 20
     // on one phone while its reps were corrected on another): the copy put aside is offered in Recently deleted, and a
     // deletion made after keeps it (dated Sep 14, it was hidden at once and dropped by the next deletion, and the

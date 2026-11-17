@@ -823,7 +823,8 @@ function injuryCard(): TemplateResult | null {
     sub: html`<span class="pill red">${inj.length} flagged</span>`,
     body: html`<ul class="inj-list u-lsnone_m0_p0">${inj.map(
       x =>
-        html`<li><span><b>${injLabel(x.m)}</b> <span class="muted small">since ${fmtDate(x.date)}${x.note ? ' · ' + x.note : ''}</span></span><button class="btn sm" data-act="injClear" data-id=${x.id}>Cleared</button></li>`
+        // An injury with no date (a damaged save's: normalize.ts cleanInjuries) says no "since".
+        html`<li><span><b>${injLabel(x.m)}</b> <span class="muted small">${[x.date ? 'since ' + fmtDate(x.date) : '', x.note].filter(Boolean).join(' · ')}</span></span><button class="btn sm" data-act="injClear" data-id=${x.id}>Cleared</button></li>`
     )}</ul>
 <p class="small muted hastip u-m8-0-0" data-tip="Exercises that load these are marked in each session, their targets are paused, and the muscle is left out of below-target advice. Tap Cleared when it has settled.">What a flag does</p>`
   });

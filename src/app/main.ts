@@ -355,10 +355,14 @@ declare global {
 /** Records the floors of a fit made before r44 that are not recorded yet, inside `act`; whether it did (the suites' fitRecordOld). */
 function recordOldFloors(): boolean {
   const fit = oldFloors();
+  // The app's own fix, no edit (act's `app`).
   if (fit)
-    act(() => {
-      state.settings.bandsFit = fit;
-    });
+    act(
+      () => {
+        state.settings.bandsFit = fit;
+      },
+      { app: true }
+    );
   return !!fit;
 }
 /** Whether this page is inside another page's frame; a frame whose top cannot be read is read as framed. */
@@ -405,17 +409,21 @@ function oldLogFixes(): void {
   // Targets fitted to a cycle by the reading of its plan builds before r54 made follow the current one (refit, src/app/profile.ts).
   try {
     const rf = refit();
+    // The app's own fix, no edit (act's `app`).
     if (rf)
-      act(() => {
-        const b = state.settings.bands;
-        // In the muscles' order, the order refit gives them in.
-        for (const m of MK) {
-          const v = rf.bands[m];
-          if (v) b[m] = [v[0], v[1]];
-        }
-        if (Object.keys(rf.fit).length) state.settings.bandsFit = rf.fit;
-        else delete state.settings.bandsFit;
-      });
+      act(
+        () => {
+          const b = state.settings.bands;
+          // In the muscles' order, the order refit gives them in.
+          for (const m of MK) {
+            const v = rf.bands[m];
+            if (v) b[m] = [v[0], v[1]];
+          }
+          if (Object.keys(rf.fit).length) state.settings.bandsFit = rf.fit;
+          else delete state.settings.bandsFit;
+        },
+        { app: true }
+      );
   } catch (e) {
     log('refit', e);
   }

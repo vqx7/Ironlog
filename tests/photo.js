@@ -12,6 +12,11 @@
 //      puts the new one in the sheet and on the menu button; Remove asks first and then takes it away; with no
 //      photo, the menu's photo picks one, as before. Every button there is a 44 px target, and nothing scrolls
 //      sideways at 320 px.
+//   3  A photo an older build kept at 256 or 512 px is soft opened large, and picked again it is kept at 1024 (V,
+//      2026-11-16: his came out sharp once picked again): the first time the menu shows one, and once no other message
+//      shows, the app says once to pick it again, with the button to use; not again on that phone, and not for a photo
+//      kept at 1024 or one picked smaller than 1024 (picked again, it stays the same). Fails on 2.71
+//      (`node tests/photo.js baselines/r117.html`): nothing is said.
 // PHOTO_ONLY=1,2 runs some sections.
 const { open } = require('./h');
 const fails = [];
@@ -122,6 +127,50 @@ const imgOf = (page, sel) => page.evaluate(sel => new Promise(res => {
     ok(!t.wide && !t.sheetWide && t.sizes.length === 4 && t.sizes.every(([w, h]) => w >= 44 && h >= 44), '2. at 320 px its buttons are 44 px targets and nothing scrolls sideways', t);
     ok(!N.errors.length, '2. no page errors at 320 px', N.errors);
     await N.browser.close();
+  }
+
+  if (run(3)) {
+    const TIP = 'Your profile photo was kept small by an earlier version, so it looks soft opened large. Open the menu, tap your photo and choose Change photo to keep it sharp.';
+    /** The app opened again holding a photo kept at `edge` px as the phone's copy, as an older build left it, shown in the menu button. */
+    const withPhoto = async (edge, D0) => {
+      const D = D0 || await app();
+      if (edge) await D.page.evaluate(edge => { const c = document.createElement('canvas'); c.width = edge; c.height = edge; const x = c.getContext('2d'); x.fillStyle = '#4a6'; x.fillRect(0, 0, edge, edge); x.fillStyle = '#fff'; x.fillRect(edge / 4, edge / 4, edge / 2, edge / 2); localStorage.setItem(window.__ironlog.KEY + '.photo', c.toDataURL('image/jpeg', 0.85)); }, edge);
+      await D.page.reload(); await D.page.waitForFunction(() => window.__ironlog && window.__ironlog.acctUser(), null, { timeout: 8000 }).catch(() => {});
+      await D.page.evaluate(() => window.__ironlog.render());
+      return D;
+    };
+    /** Every message shown within `ms`, as read off the page every 200 ms. */
+    const said = async (page, ms) => { const seen = []; for (let t = 0; t < ms; t += 200) { const s = await page.evaluate(() => { const e = document.getElementById('toast'); return e && !e.hidden ? e.innerText.replace(/\s+/g, ' ').trim() : ''; }); if (s && !seen.includes(s)) seen.push(s); await wait(200); } return seen; };
+    for (const edge of [512, 256]) {
+      const D = await withPhoto(edge);
+      const shown = await photoIn(D.page);
+      const first = await said(D.page, 4000);
+      ok(shown && first.includes(TIP), `3. a photo kept at ${edge} px, shown in the menu: the app says once to pick it again, with the button to use`, { shown, said: first });
+      await withPhoto(0, D); await photoIn(D.page);
+      const again = await said(D.page, 3500);
+      ok(!again.includes(TIP), `3. opened again on that phone (${edge} px), it is not said again`, again);
+      ok(!D.errors.length, `3. no page errors (${edge} px)`, D.errors);
+      await D.browser.close();
+    }
+    // Another message showing when the photo shows: the tip waits for it to go, never covering it.
+    {
+      const D = await app();
+      await D.page.evaluate(() => { const c = document.createElement('canvas'); c.width = 512; c.height = 512; c.getContext('2d').fillRect(0, 0, 512, 512); localStorage.setItem(window.__ironlog.KEY + '.photo', c.toDataURL('image/jpeg', 0.85)); });
+      await D.page.reload(); await D.page.waitForFunction(() => window.__ironlog && window.__ironlog.acctUser(), null, { timeout: 8000 }).catch(() => {});
+      await D.page.evaluate(() => { window.__ironlog.toast('Another message', false, 4000); window.__ironlog.render(); });
+      const t0 = Date.now(); const log = [];
+      for (let t = 0; t < 8000; t += 200) { const s = await D.page.evaluate(() => { const e = document.getElementById('toast'); return e && !e.hidden ? e.innerText.replace(/\s+/g, ' ').trim() : ''; }); log.push([Date.now() - t0, s]); if (s === TIP) break; await wait(200); }
+      const lastOther = Math.max(...log.filter(([, s]) => s === 'Another message').map(([t]) => t)), tipAt = (log.find(([, s]) => s === TIP) || [null])[0];
+      ok(tipAt != null && lastOther >= 3600 && tipAt > lastOther, '3. with another message showing, the tip waits until it has gone, never covering it', { lastOther, tipAt });
+      await D.browser.close();
+    }
+    for (const edge of [1024, 600]) {
+      const D = await withPhoto(edge);
+      const shown = await photoIn(D.page);
+      const heard = await said(D.page, 3500);
+      ok(shown && !heard.includes(TIP), `3. a photo kept at ${edge} px${edge < 1024 ? ' (picked smaller than 1024)' : ''}: nothing is said`, { shown, said: heard });
+      await D.browser.close();
+    }
   }
 
   console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS');

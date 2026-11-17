@@ -140,10 +140,14 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   and cases in `tests/migration.js`.
 - **Sync across builds:** settings keys keep one order across builds; records keep unknown fields in the order they
   came (`keepExtra`); a new field is relied on only once every device runs a build that keeps it. `normalize` writes
-  nothing that depends on the device: it also runs in the sync comparison, Undo and imports. A first sign-in keeps
-  everything the phone made (sessions, weigh-ins, cardio, a workout in progress, routines, custom exercises) beside the
-  account's, with no Undo; of two workouts in progress, the other device's ticked sets are saved; demo data never goes
-  into an account (r55).
+  nothing that depends on the device or the date it is read on: it also runs in the sync comparison, Undo and imports.
+  A first sign-in keeps everything the phone made (sessions, weigh-ins, cardio, a workout in progress, routines, custom
+  exercises) beside the account's, with no Undo; of two workouts in progress, the other device's ticked sets are saved;
+  demo data never goes into an account (r55). A lift both logs hold, there or when a log kept aside is joined, is joined
+  field by field: a setting made on one side only is kept (`joinExercises`, normalize.ts). A document's edit time,
+  which decides a clash, moves only for the lifter's change: what the app writes on its own (a fix made at start, its
+  own bookkeeping, a name it keeps, a newer build's reading of an old log) is sent, but moves none (`app` in act.ts,
+  `editsNoted` and `seenAsIs` in sync.ts).
 - **Numbers:** no number without a source in `docs/EVIDENCE.md`; a convention is labelled as one there and as a rule of thumb on screen. Studies are named in the Guide's Sources, not in tips (V, 2026-11-08).
   Trends are never shown as a 1RM; a muscle with no clear lift reads unclear, never 0%; weight lifted is never a
   percentage against last week; no projections. Deloads and lighter loads are whole steps, never under the bar on a
