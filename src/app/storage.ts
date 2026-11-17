@@ -89,6 +89,25 @@ interface Device {
 /** Where the save on this device stands (the type above). */
 export const device: Device = { ok: true, boot: true, hadLocal: false, hadLog: false, lastSaved: null };
 
+/* Safari clears a site's stored data after seven days of use with no visit to it, an app on the home screen counted
+   apart, and any browser may clear a site's storage when the phone runs short of space, unless the site asked to be
+   kept and the browser granted it. A phone that holds a log asks, once a visit, at its first save; the browser decides
+   without a question to the lifter (Chrome and Safari by how the app is used, a home-screen app among them). */
+let keepAsked = false;
+/** Asks the browser, once a visit, to keep this site's storage (above). */
+export function keepStorage(): void {
+  if (keepAsked) return;
+  keepAsked = true;
+  const s = navigator.storage;
+  // A browser without the ask (an older one) keeps storage by its own rules; nothing to do.
+  if (!s || typeof s.persist !== 'function' || typeof s.persisted !== 'function') return;
+  s.persisted()
+    .then(kept => kept || s.persist())
+    .catch((e: unknown) => {
+      log('storage-persist', e);
+    });
+}
+
 /** Clears a timer that may not be set (a browser takes null, TypeScript's types do not). */
 export const clearTimer = (t: number | null): void => {
   if (t != null) clearTimeout(t);
@@ -747,6 +766,17 @@ async function asideStart(): Promise<void> {
 
 /** A backup is due this many days after the last one when this device holds the only copy, and an account counts as synced when it synced within as many. */
 const BACKUP_DAYS = 7;
+/* A browser keeps up to 5 MiB of a site's local storage, counted in UTF-16, about 2.5 million characters of the log's
+   text; past it every save fails. Settings says so from 60% of it, a rule of thumb, while there is time to sign in or
+   export a backup (docs/EVIDENCE.md). */
+/** The characters of the log's text a browser keeps at most (above). */
+const LOG_CAP_CHARS = 2_500_000;
+/** The share of LOG_CAP_CHARS from which Settings says the log is near the limit (above). */
+const LOG_NEAR_SHARE = 0.6;
+/** Whether the log saved on this device is near the browser's limit (above). */
+export function logNearFull(): boolean {
+  return (device.lastSaved || '').length >= LOG_CAP_CHARS * LOG_NEAR_SHARE;
+}
 
 /* Everything lives in this one browser, so a backup is the only thing that
    survives a cleared cache or a new phone. Once real sessions exist, the

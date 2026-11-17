@@ -84,10 +84,16 @@ export function stallStretch<X extends { date: string }>(wE: readonly X[]): X[] 
 }
 
 /* The sessions in a range the stall test reads a strength reading over: those
-   with one, not held for an injury. One list for the
-   test (idxLiftIn) and for the span it says it read (stallSpans), so the
-   span never counts the held sessions. */
-export const stallReads = (inR: readonly Exposure[]): Exposure[] => inR.filter(x => !x.held && x.tv != null);
+   with one, not held for an injury, and not short of the sets the lift is held to,
+   its sets skipped (usual.ts): such a session repeats its target by V's one rule,
+   so it is no test of progress (V, 2026-11-15). A set tried and missed is one of
+   the session's sets, so a session with one is read. One list for the test
+   (idxLiftIn) and for the span it says it read (stallSpans), so the span never
+   counts the sessions left out. */
+/** Whether the stall test leaves a session out: held for an injury, or its sets skipped. */
+export const stallLeftOut = (x: Exposure): boolean => x.held || x.short === 'sets';
+/** The sessions of a range the stall test reads a strength reading over (above). */
+export const stallReads = (inR: readonly Exposure[]): Exposure[] => inR.filter(x => !stallLeftOut(x) && x.tv != null);
 
 /* The rep ranges a lift's stall is read in (V 2026-10-18: "stalled only
    if every range is"): its newest session's, as the trend's, and each other
@@ -196,13 +202,25 @@ export function liftTrendIn(M: Model, exI: Pick<ExerciseLike, 'bw'>, w: (Exposur
     const z = w[w.length - 1],
       a0 = w[0];
     const zr = z.pts.filter(p => Math.abs(p.w - z.topW) < EPS_SAME).map(p => p.r);
-    if (z.topW > a0.topW + EPS_SAME && zr.length && Math.min(...zr) >= (z.rr ? +z.rr[0] : 1) && pct < 0) {
+    const stepped = z.topW > a0.topW + EPS_SAME && zr.length > 0 && Math.min(...zr) >= (z.rr ? +z.rr[0] : 1);
+    if (stepped && pct < 0) {
       loadUp = true;
       falling = false;
       if (pHi != null && pHi < 0) {
         pLo = null;
         pHi = null;
       }
+    }
+    /* And it is progress: the load step the targets ask for at the top of the range trades reps for load, which the
+       estimate reads as a dip (185 x 10 is 247 by Brzycki, 195 x 7 is 234) for weeks after it while every target is
+       beaten. Where the estimate dipped at the step, the lift is moving at the step itself, and after it while its
+       reading at the new load is above the first session's there; the same sets repeated there are not moving, and
+       the stall test reads them. A load that rises with no dip (the same reps, heavier) is read by the line above. */
+    if (stepped && !moving) {
+      const k = w.findIndex(x => x.topW >= z.topW - EPS_SAME);
+      const atLoad = w[k],
+        before = k > 0 ? w[k - 1] : undefined;
+      if (atLoad && before && atLoad.tv < before.tv && (z === atLoad || z.tv > atLoad.tv + EPS_SAME)) moving = true;
     }
   }
   return { pct, slope, slopeSe, moving, falling, pLo, pHi, spanW, loadUp };

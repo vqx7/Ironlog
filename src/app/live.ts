@@ -103,11 +103,13 @@ import {
   atRangeTopIn,
   coachIn,
   dropOnlyLiftIn,
+  fatigueCallIn,
   fatigueStallsIn,
   liftsMovingIn,
   moversIn,
   readinessIn,
-  stalledIdsIn
+  stalledIdsIn,
+  verdictIn
 } from './coach';
 import { daysOffIn, easierTextIn, suggestCoreIn, suggestIn } from './engine';
 import { heavierLoadIn, stepLoadIn, incOfIn, lighterLoadIn, progStepIn, rackStepIn } from './loadsteps';
@@ -303,10 +305,12 @@ export const atRangeTop = live(atRangeTopIn);
 export const coach = live(coachIn);
 export const dropOnlyLift = live(dropOnlyLiftIn);
 export const fatigueStalls = live(fatigueStallsIn);
+export const fatigueCall = live(fatigueCallIn);
 export const movers = live(moversIn);
 export const liftsMoving = live(liftsMovingIn);
 export const readiness = live(readinessIn);
 export const stalledIds = live(stalledIdsIn);
+export const verdict = live(verdictIn);
 export const daysOff = live(daysOffIn);
 export const easierText = live(easierTextIn);
 export const incOf = live(incOfIn);

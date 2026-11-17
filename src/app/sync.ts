@@ -20,8 +20,8 @@
 import { NET_MS } from './config';
 import { uid, hashStr, SECOND_MS } from './util';
 import { fmtDate } from './format';
-import { arr, parseJson, rec } from './records';
-import type { Rec } from './records';
+import { arr, parseJson, rec, sessCmp } from './records';
+import type { Rec, Trashed } from './records';
 import {
   CORE_ARR,
   CORE_FIELDS,
@@ -38,12 +38,14 @@ import {
   stripDemo,
   unionById
 } from './chunks';
-import { Hx, canon, merge3List, merge3Val, mergeSession, mergeWorkout } from './merge';
+import { Hx, canon, merge3List, merge3Val, mergeSession, mergeWorkout, sameRecord } from './merge';
+import { keptOnSession, unname } from './machines';
 import { draftCardio, draftSession } from './session';
 import type { DraftLike } from './session';
-import type { CardioEntry } from './types';
+import type { CardioEntry, Session } from './types';
 import { routineEmpty } from './routines';
-import { cleanCardio, normalize, plainTemplate } from './normalize';
+import { cleanCardio, machineReadings, nameSessions, normalize, plainTemplate, putAside } from './normalize';
+import { FIRST_MACHINE } from './model';
 import { invalidate } from './live';
 import { AUTH, codeOf } from './providers';
 import { photoHeld, photoNote, photoOf, photoPending, photoSent, photoTake } from './photo';
@@ -72,6 +74,7 @@ import {
   parkedRetag,
   dropAside,
   load,
+  keepStorage,
   undoForget
 } from './storage';
 
@@ -129,6 +132,7 @@ export function onSaved(f: () => void): void {
 function writeLocal(j: string): void {
   localStorage.setItem(KEY, j);
   device.lastSaved = j;
+  keepStorage();
   for (const f of savedHooks)
     try {
       f();
@@ -892,6 +896,23 @@ function draftNote(prev: unknown, kept?: Kept, where = 'on another device'): voi
    copy that carried changes the account did not have is kept: the callers
    pass the local copy when it was dirty, and the account's copy a later edit
    here replaced. */
+/* Whether a copy of a workout holds something logged that the copy both sides agreed on lacks: a set ticked or changed
+   once ticked, or cardio entered. Only such a copy is kept when it loses a merge, between tabs and between phones alike:
+   a load being typed, a question answered, or the same workout written back in another phone's form (fields it fills
+   in, its sets as they were, by a phone that only opened the app) is no reason to bring back a workout discarded on
+   the phone it was done on. With no agreed copy every set ticked counts. */
+/** Whether copy `d` holds a set ticked or cardio entered that the agreed copy lacks (above). */
+function loggedSince(d: DraftLike | null | undefined, agreed: DraftLike | null | undefined): boolean {
+  if (!d) return false;
+  const was = agreed && agreed.id === d.id ? agreed : null;
+  const rows = new Set(was ? was.ex.flatMap(b => b.sets.filter(x => x.done).map(x => canon(x))) : []);
+  const cards = new Set(was ? (was.cardio || []).map(c => canon(c)) : []);
+  return (
+    d.ex.some(b => b.sets.some(x => x.done && !rows.has(canon(x)))) ||
+    (d.cardio || []).some(c => !!c.min && !cards.has(canon(c)))
+  );
+}
+
 /** What became of a losing copy (keepLost): its sets saved as a session, joined to the one saved elsewhere, its cardio alone saved, or nothing. */
 type Kept = 'saved' | 'joined' | 'cardio' | 'cardioJoined' | null;
 /** Keeps a losing copy's ticked sets and cardio (above); says what was done, for the toast. */
@@ -1267,8 +1288,9 @@ export async function cloudFlush(): Promise<void> {
             if (x.id === 'draft' && dn) {
               // The copy that lost (this device's, dirty here, or the account's, which a later edit here replaced) keeps its sets.
               const remoteDraft = draftOf(rec(rd));
-              dn.kept = keepLost(prev, mergedDraft, agreed, remoteWins) || dn.kept;
-              dn.lost = keepLost(remoteDraft, mergedDraft, agreed, remoteWins) || dn.lost;
+              if (loggedSince(prev, agreed)) dn.kept = keepLost(prev, mergedDraft, agreed, remoteWins) || dn.kept;
+              if (loggedSince(remoteDraft, agreed))
+                dn.lost = keepLost(remoteDraft, mergedDraft, agreed, remoteWins) || dn.lost;
               if (dn.kept || dn.lost || canon(state.sessions) !== canon(dn.sessions0)) again = true;
             }
             if (x.id === 'core' && absorbLegacy(legacyBody(rec(rd)))) moreBody = true;
@@ -1376,6 +1398,70 @@ function remoteDocs(docs: readonly { id: string; exists: boolean; data(): unknow
   return remote;
 }
 
+/* Each log names a lift's first machine "0", its own first machine. Joined with another log that has the lift too, the
+   sessions only this phone holds that it named "0" are left unnamed, so they read on the machine the joined log has
+   them on by their dates, as the two logs read before sessions named their machines. One of them that then reads on a
+   machine this phone added (a session back on its first machine after another was added) is named where the earliest
+   of them reads, so the phone's first machine never becomes one it added. When the phone's earliest session of the lift
+   is one the other log holds too (the same log, restored from a backup), both logs' first machine is the same one and
+   every name stays. */
+/** The sessions `ss` with the first machine's name taken off those `other` lacks (above); which ids lost it, by lift; and the ids of the sessions only `ss` holds, the keys of the machines it added. */
+function firstUnnamed(
+  ss: readonly Session[],
+  other: readonly Session[]
+): { sessions: Session[]; unnamed: Map<string, Set<string>>; own: Set<string> } {
+  const there = new Set(other.map(q => q.id)),
+    lifts = new Set(other.flatMap(q => q.ex.map(b => b.exId)));
+  // A lift whose earliest session here is in the other log too: both logs' "0" is one machine. Read by date, as a past workout is put last.
+  const shared = new Set<string>(),
+    seen = new Set<string>();
+  for (const q of [...ss].sort(sessCmp))
+    for (const b of q.ex)
+      if (!seen.has(b.exId)) {
+        seen.add(b.exId);
+        if (there.has(q.id)) shared.add(b.exId);
+      }
+  const strip = (b: Session['ex'][number]): boolean =>
+    b.mc === FIRST_MACHINE && lifts.has(b.exId) && !shared.has(b.exId);
+  const unnamed = new Map<string, Set<string>>();
+  const sessions = ss.map(q => {
+    if (there.has(q.id) || !q.ex.some(strip)) return q;
+    return {
+      ...q,
+      ex: q.ex.map(b => {
+        if (!strip(b)) return b;
+        const ids = unnamed.get(b.exId) || new Set<string>();
+        unnamed.set(b.exId, ids.add(q.id));
+        const c = { ...b };
+        unname(c);
+        return c;
+      })
+    };
+  });
+  return { sessions, unnamed, own: new Set(ss.filter(q => !there.has(q.id)).map(q => q.id)) };
+}
+/** In the joined log `st` (above), names each session of `unnamed` that reads on a machine of `own` where the earliest of its lift's reads. */
+function nameJoined(st: State, unnamed: ReadonlyMap<string, ReadonlySet<string>>, own: ReadonlySet<string>): void {
+  const rd = machineReadings(st);
+  const named = new Map<Session, Map<number, string>>();
+  for (const [exId, ids] of unnamed)
+    for (const light of [0, 1]) {
+      let to: string | undefined;
+      // Read by date, so the first met is the earliest, wherever a past workout put it in the log.
+      for (const q of [...st.sessions].sort(sessCmp)) {
+        const r = ids.has(q.id) ? rd.get(`${q.id}|${exId}|${light}`) : undefined;
+        if (!r) continue;
+        if (to === undefined) to = r.key;
+        else if (own.has(r.key) && !own.has(to)) {
+          const at = named.get(q) || new Map<number, string>();
+          for (const i of r.at) at.set(i, to);
+          named.set(q, at);
+        }
+      }
+    }
+  nameSessions(st, named);
+}
+
 /** A first sign-in on a phone that holds a log of its own: the two combined (below), the account's copy made the agreed base; true when the other phone's workout in progress was saved as a session. */
 function mergeFirstLink(mine: State, rState: State, rids: readonly string[], remote: Record<string, Remote>): boolean {
   // a routine or exercise made here is the phone's own too, never replaced by the account's
@@ -1388,19 +1474,47 @@ function mergeFirstLink(mine: State, rState: State, rids: readonly string[], rem
   const aside = state.draft && rState.draft && rState.draft.id !== state.draft.id ? rState.draft : null;
   const kept = aside ? draftSession(aside) : null;
   const keptDraft = !!kept && ![...mine.sessions, ...rState.sessions].some(x => x.id === kept.id);
-  setState(
-    normalize({
-      ...base,
-      exercises: unionById(base.exercises, other.exercises),
-      routines: unionById(base.routines, other.routines),
-      sessions: unionById(mine.sessions, keptDraft && kept ? [...rState.sessions, kept] : rState.sessions),
-      bodyweights: unionById(mine.bodyweights, rState.bodyweights),
-      measurements: unionById(mine.measurements, rState.measurements),
-      cardio: unionById(mine.cardio, aside ? [...rState.cardio, ...draftCardio(aside)] : rState.cardio),
-      trash: unionById(arr(state.trash) || [], arr(rState.trash) || []),
-      draft: state.draft || rState.draft
-    })
-  );
+  const own = firstUnnamed(mine.sessions, rState.sessions);
+  /* A session or cardio entry both logs hold with different contents (an old backup restored on the phone, say) keeps
+     the account's copy, the one every other device has, and the phone's is put aside in Recently deleted, so nothing
+     the account holds is taken back and nothing is lost. Copies that differ only in the machine names the phone kept
+     are the same entry: the account's copy is kept with those names (machines.ts). */
+  const trash: Trashed[] = unionById(state.trash, rState.trash);
+  const acct = <T extends { id?: string | undefined; date: string }>(
+    list: readonly T[],
+    phone: readonly T[],
+    kind: 'session' | 'cardio',
+    keep: (y: T, x: T) => T
+  ): T[] => {
+    const by = new Map(phone.map(x => [x.id, x]));
+    return list.map(y => {
+      const x = y.id ? by.get(y.id) : undefined;
+      if (!x || !x.id) return y;
+      if (sameRecord(y, x)) return keep(y, x);
+      putAside(trash, { ...x, id: x.id }, kind);
+      return y;
+    });
+  };
+  const acctSessions = acct(
+      keptDraft && kept ? [...rState.sessions, kept] : rState.sessions,
+      own.sessions,
+      'session',
+      keptOnSession
+    ),
+    acctCardio = acct(aside ? [...rState.cardio, ...draftCardio(aside)] : rState.cardio, mine.cardio, 'cardio', y => y);
+  const joined = normalize({
+    ...base,
+    exercises: unionById(base.exercises, other.exercises),
+    routines: unionById(base.routines, other.routines),
+    sessions: unionById(acctSessions, own.sessions),
+    bodyweights: unionById(mine.bodyweights, rState.bodyweights),
+    measurements: unionById(mine.measurements, rState.measurements),
+    cardio: unionById(acctCardio, mine.cardio),
+    trash,
+    draft: state.draft || rState.draft
+  });
+  nameJoined(joined, own.unnamed, own.own);
+  setState(joined);
   // The cloud copy becomes the agreed base, so the merged result is what
   // the flush writes, rather than being merged a second time.
   for (const id of rids) {
@@ -1552,8 +1666,9 @@ export async function cloudPull(): Promise<void> {
     // A workout merged with the account's copy: the copy that lost keeps its sets (this device's, which held changes the account did not have, or the account's, which a later edit here replaced).
     if (draftMerged) {
       const remoteDraft = remote.draft ? draftOf(rec(remote.draft.data)) : null;
-      kept = keepLost(dr0, state.draft, agreedDraft, draftRemoteWins);
-      lost = keepLost(remoteDraft, state.draft, agreedDraft, draftRemoteWins);
+      if (loggedSince(dr0, agreedDraft)) kept = keepLost(dr0, state.draft, agreedDraft, draftRemoteWins);
+      if (loggedSince(remoteDraft, agreedDraft))
+        lost = keepLost(remoteDraft, state.draft, agreedDraft, draftRemoteWins);
     }
   }
   if (parts || merged) {
@@ -1763,17 +1878,20 @@ function holdsLog(): boolean {
 function joinLogs(base: State, here: State): State {
   const away = base.draft && here.draft && here.draft.id !== base.draft.id ? base.draft : null;
   const kept = away ? draftSession(away) : null;
-  return normalize({
+  const own = firstUnnamed(kept ? [...here.sessions, kept] : here.sessions, base.sessions);
+  const joined = normalize({
     ...base,
     exercises: unionById(base.exercises, here.exercises),
     routines: unionById(base.routines, here.routines),
-    sessions: unionById(base.sessions, kept ? [...here.sessions, kept] : here.sessions),
+    sessions: unionById(base.sessions, own.sessions),
     bodyweights: unionById(base.bodyweights, here.bodyweights),
     measurements: unionById(base.measurements, here.measurements),
     cardio: unionById(base.cardio, away ? [...here.cardio, ...draftCardio(away)] : here.cardio),
     trash: unionById(arr(base.trash) || [], arr(here.trash) || []),
     draft: here.draft || base.draft
   });
+  nameJoined(joined, own.unnamed, own.own);
+  return joined;
 }
 /** Keeps the log here aside for its account, with its notes, as it stands once written (a set ticked while the copy is written makes a second copy): 'room' when the phone has no room for it. */
 async function keepHere(from: string): Promise<'kept' | 'room' | 'busy'> {
@@ -2095,18 +2213,8 @@ function mergeIn(text: string, own: boolean): void {
        workout back in History). Without this, a set ticked in a tab behind, in a workout the other tab had finished,
        would be dropped without a word. */
     const agreed = base.draft;
-    const loggedNew = (d: DraftLike | null | undefined): boolean => {
-      if (!d) return false;
-      const was = agreed && agreed.id === d.id ? agreed : null;
-      const rows = new Set(was ? was.ex.flatMap(b => b.sets.filter(x => x.done).map(x => canon(x))) : []);
-      const cards = new Set(was ? (was.cardio || []).map(c => canon(c)) : []);
-      return (
-        d.ex.some(b => b.sets.some(x => x.done && !rows.has(canon(x)))) ||
-        (d.cardio || []).some(c => !!c.min && !cards.has(canon(c)))
-      );
-    };
-    if (loggedNew(dr0)) kept = keepLost(dr0, state.draft, agreed, true, true);
-    if (loggedNew(incoming.draft)) keepLost(incoming.draft, state.draft, agreed, true, true);
+    if (loggedSince(dr0, agreed)) kept = keepLost(dr0, state.draft, agreed, true, true);
+    if (loggedSince(incoming.draft, agreed)) keepLost(incoming.draft, state.draft, agreed, true, true);
   }
   device.lastSaved = text;
   clearTimer(saveT);

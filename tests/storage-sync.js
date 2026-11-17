@@ -293,6 +293,32 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
     ok(first && first.at - last <= SAVE_TYPED_MS + LATE_MS, `S-1: typing is saved ${SAVE_TYPED_MS} ms after it pauses, not later`, { delay: first && first.at - last });
     await P.close();
 
+    /* The phone is asked to keep the site's storage, so a browser short of space or Safari after a week away does not
+       clear the log: once a visit, at its first save (the start writes the log), never again in that visit (UAT-13). */
+    {
+      const ask = `(()=>{window.__keep=[];const api={persisted:()=>{window.__keep.push('persisted');return Promise.resolve(false);},persist:()=>{window.__keep.push('persist');return Promise.resolve(true);}};Object.defineProperty(Navigator.prototype,'storage',{get:()=>api,configurable:true});})()`;
+      const K = await phone({ setup: async ctx => { await ctx.addInitScript(ask); } });
+      const opened = await K.ev(() => window.__keep.slice());
+      await start(K); await K.page.fill('#view input[data-f="w"][data-b="0"][data-s="0"]', '100'); await K.page.fill('#view input[data-f="r"][data-b="0"][data-s="0"]', '8');
+      await K.page.click(tickBtn(0, 0)); await wait(100);
+      await K.page.click(tickBtn(0, 1)); await wait(100);
+      const saved = await K.ev(() => window.__keep.slice());
+      ok(JSON.stringify(opened) === '["persisted","persist"]' && JSON.stringify(saved) === '["persisted","persist"]', 'S-1: the phone is asked to keep the log once a visit, at its first save, and not again as sets are ticked (UAT-13)', { opened, saved });
+      await K.close();
+    }
+    /* A log near the browser's limit (5 MiB of local storage, about 2.5 million characters): Settings says so from 60% of
+       it, with what to do, and says nothing for a log well under it (UAT-4). */
+    {
+      const K = await phone();
+      const line = () => K.ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.render(); const el = document.getElementById('logNearFull'); return el ? el.textContent.replace(/\s+/g, ' ').trim() : null; });
+      const small = await line();
+      await K.ev(() => { const L = window.__ironlog; const mk = i => ({ id: 'big' + i, date: '2026-0' + (1 + (i % 9)) + '-1' + (i % 10), dayIdx: 0, dayName: 'Day 1', notes: 'n'.repeat(2400), ex: [{ exId: 'bench', sets: [{ w: 60, r: 8, rir: 2, done: true }] }] }); L.act(() => { for (let i = 0; i < 700; i++) L.state.sessions.push(mk(i)); }); });
+      const size = await K.ev(() => localStorage.getItem('ironlog.v1').length);
+      const big = await line();
+      ok(small === null && size > 1500000 && big === 'Your log is near this browser\'s storage limit. Sign in or export a backup, so nothing is lost when it fills.', 'S-1: a log past 60% of the browser\'s storage limit is said in Settings with what to do; one well under it is not (UAT-4)', { small, size, big });
+      await K.close();
+    }
+
     // With an account: the account's copy follows 1.2 s after the last change.
     const C = cloudOf();
     const A = await phone({ cloud: C, uid: 'u1' });
@@ -371,6 +397,28 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
     ok(storedTicks(st) && storedTicks(st).length === 3, 'S-3: once a save succeeds, every change made meanwhile is saved', storedTicks(st));
     const m2 = await P.menu();
     ok(m2.cls !== 'bad' && m2.txt !== 'Not saving: export a backup', 'S-3: and the menu no longer says Not saving', m2);
+    await P.close();
+  }
+  if (run('S-3')) {
+    /* UAT-7 (the acceptance review of 2.68): signed out, the phone refusing every save from the second set on. It is said
+       once, as news, the moment it starts; the menu where the red dot is offers Export backup; and Finish never says
+       "Session saved" while nothing reaches the phone: its sheet says it was not saved here and where to export. */
+    const P = await phone();
+    await start(P); await wait(200);
+    await tick(P, 0, 0);
+    await P.ev(() => { window.__toasts = []; window.__full = 'ironlog\\.v1$'; });
+    await tick(P, 0, 1); await wait(250);
+    await tick(P, 0, 2); await wait(250);
+    const said = (await P.toasts()).filter(t => /Not saving/.test(t));
+    ok(said.length === 1 && said[0] === 'Not saving: export a backup', 'S-3: signed out, the phone\'s refused save is said once, as it starts, in the menu\'s words', await P.toasts());
+    await P.page.click('#saveState'); await wait(250);
+    const exp = await P.ev(() => !!document.querySelector('#modal [data-act="export"]'));
+    ok(exp, 'S-3: the menu, where the red dot is, offers Export backup while the phone is not saving', exp);
+    await P.ev(() => window.__ironlog.ACT.mClose()); await wait(150);
+    await P.page.click('#view [data-act="finish"]'); await wait(300);
+    for (let k = 0; k < 4; k++) { const kind = await P.ev(() => (window.__ironlog.ui.modal || {}).kind || ''); if (kind !== 'confirm') break; await P.page.click('#modal [data-act="mOk"]'); await wait(300); }
+    const rc = await P.ev(() => { const m = window.__ironlog.ui.modal; const el = document.querySelector('#modal .sheet'); return m ? { kind: m.kind, title: m.title || '', text: el ? el.innerText.replace(/\s+/g, ' ') : '' } : null; });
+    ok(rc && rc.kind === 'recap' && rc.title === 'Not saved on this phone' && /Export a backup from the menu\./.test(rc.text) && !/Session saved/.test(rc.text), 'S-3: Finish on a phone not saving never says "Session saved": "Not saved on this phone", and where to export', rc);
     await P.close();
   }
   if (run('S-3')) {
@@ -1174,6 +1222,43 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
     const xa = (await notesOf(A)).x, xb = (await notesOf(B)).x;
     ok(xa === 'kept on B' && xb === 'kept on B', 'S-11: changed on one side and deleted on the other, it is kept, with the change', { xa, xb });
     await A.close();
+    /* A machine picked for a session is an edit like any other: picked on one phone with no signal while the other
+       deleted the session, it is kept, on the machine picked (REV25-2). The chest press began a second machine on Oct 24;
+       Oct 31 reads on it by its date, and the pick puts it back on the first. */
+    const C2 = cloudOf();
+    const mkM = (id, date, kg, x) => ({ id, date, dayIdx: 0, dayName: 'Day 1', notes: '', ex: [{ exId: 'machPress', rr: [8, 12], sets: [11, 11, 10].map(r => ({ w: kg, r, rir: 2, done: true })), ...x }] });
+    const D = await phone({ cloud: C2, uid: 'u11m', arg: [mkM('a1', '2026-10-10', 90), mkM('a2', '2026-10-17', 90), mkM('b1', '2026-10-24', 55, { nw: true }), mkM('c1', '2026-10-31', 57.5)], seed: (S, L, xs) => { S.sessions.push(...xs); S.settings.lastExport = '2026-11-11'; } });
+    ok(await D.settled(), 'S-11: (setup) an account holds a chest press on two machines');
+    const E = await phone({ cloud: C2, uid: 'u11m', who: 'E', browser: D.browser, clock: await clockOf(D) });
+    ok(await E.settled(), 'S-11: (setup) a second phone takes it'); await E.sync();
+    await del(D, 'c1'); await D.flush();
+    await E.ev(() => { window.__offline = true; const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 'c1').ex[0].mc = '0'; }); });
+    await wait(400);
+    await E.ev(() => { window.__offline = false; }); await E.flush(); await E.sync(); await D.sync();
+    const at = P => P.ev(() => { const q = window.__ironlog.state.sessions.find(s => s.id === 'c1'); return q ? q.ex[0].mc || '-' : 'gone'; });
+    const inAcct = ((C2.doc('u11m', 's-2026-10-2') || { sessions: [] }).sessions.find(s => s.id === 'c1') || { ex: [{ mc: 'gone' }] }).ex[0].mc || '-';
+    const picked = { D: await at(D), E: await at(E), account: inAcct };
+    ok(picked.D === '0' && picked.E === '0' && picked.account === '0', 'S-11: a machine picked for a session on one phone while the other deleted it: the session is kept, on the machine picked, on both phones and in the account (REV25-2)', picked);
+    await D.close();
+    /* The machine a change keeps for a session it does not touch is no edit of that session (REV26-2). With no signal,
+       phone G corrects Oct 31's reps and picks the first machine for Nov 7; phone F, later, deletes Oct 24, which began
+       the second machine, so it keeps Oct 31 and Nov 7 on that machine. Both of G's edits stand, on both phones and in
+       the account, Oct 31 still on the second machine, and nothing is said of an item edited on two devices. */
+    const C3 = cloudOf();
+    const F = await phone({ cloud: C3, uid: 'u11k', arg: [mkM('a1', '2026-10-10', 90), mkM('a2', '2026-10-17', 90), mkM('b1', '2026-10-24', 55, { nw: true }), mkM('c1', '2026-10-31', 57.5), mkM('c2', '2026-11-07', 57.5)], seed: (S, L, xs) => { S.sessions.push(...xs); S.settings.lastExport = '2026-11-11'; } });
+    ok(await F.settled(), 'S-11: (setup) an account holds a chest press as 2.69 saved it, Oct 24 beginning a second machine');
+    const G = await phone({ cloud: C3, uid: 'u11k', who: 'G', browser: F.browser, clock: await clockOf(F) });
+    ok(await G.settled(), 'S-11: (setup) a second phone takes it'); await G.sync();
+    await G.ev(() => { window.__offline = true; const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 'c1').ex[0].sets.forEach(x => { x.r = 12; }); }); });
+    await G.ev(() => { const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 'c2').ex[0].mc = '0'; }); });
+    await wait(400);
+    await F.ev(() => { window.__ironlog.ACT.histDel({ dataset: { id: 'b1' } }); }); await wait(80); await confirmOk(F); await F.flush();
+    await G.ev(() => { window.__offline = false; }); await G.flush(); await G.sync(); await F.sync();
+    const both = P => P.ev(() => { const L = window.__ironlog; const xs = L.IDX().byEx.machPress || []; const q = id => L.state.sessions.find(s => s.id === id); return { c1: q('c1') ? q('c1').ex[0].sets.map(x => x.r).join() : 'gone', on: (xs.find(x => x.sid === 'c1') || {}).mk, c2: q('c2') ? q('c2').ex[0].mc || '-' : 'gone' }; });
+    const inC3 = id => C3.sessionsIn('u11k').find(s => s.id === id);
+    const held = { F: await both(F), G: await both(G), account: { c1: inC3('c1') ? inC3('c1').ex[0].sets.map(x => x.r).join() : 'gone', c2: inC3('c2') ? inC3('c2').ex[0].mc || '-' : 'gone' }, said: (await G.toasts()).filter(t => /two devices/.test(t)) };
+    ok(['F', 'G'].every(k => held[k].c1 === '12,12,12' && held[k].on === 'b1' && held[k].c2 === '0') && held.account.c1 === '12,12,12' && held.account.c2 === '0' && !held.said.length, 'S-11: a correction and a pick made with no signal on one phone stand when the other phone, later, deleted the session that began the machine: on both phones and in the account, the corrected session still on its machine, and no clash said (REV26-2)', held);
+    await F.close();
   }
 
   /* ---------- S-12 and S-13: one workout open on two phones; a first sign-in with two workouts in progress (moved from tests/r56-1.js in 2.50, every check kept) ---------- */
@@ -1238,6 +1323,18 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       ok(/closed on another device\. Its ticked sets are saved in History/.test(await A.toast()), 'A is told the workout was closed on the other phone and its sets saved', await A.toast());
       await B.sync();
       ok(!(await B.draft()) && (await B.sessions()).some(s => s.id === xid && s.sets.length === 2), 'B then has that session and stays closed', { draft: await B.draft(), sessions: await B.sessions() });
+      /* The review of 2.68 to 2.70, REV20-2: discarded on A, the phone it was done on, after B only pulled it and wrote it
+         back in its own form, nothing ticked there: the discard stands on A, on B and in the account, and nothing is
+         said of sets saved. The copy kept as a session is only one holding a set the agreed copy lacks. */
+      await A.start(); await A.tick(0, 85, 9); await A.flush(); await B.sync(); await wait(1600); await B.flush();
+      const rid20 = (await A.draft()).id;
+      await A.watch();
+      await A.ev(() => { const L = window.__ironlog; L.ACT.discard(); }); await wait(200);
+      await A.page.click('#modal [data-act="mOk"]'); await wait(200); await A.flush(); await wait(1600); await A.flush();
+      await B.sync(); await B.flush(); await A.sync();
+      const inA = (await A.sessions()).some(s => s.id === rid20), inB = (await B.sessions()).some(s => s.id === rid20);
+      const inCloud = cloud.sessionsIn('u1').some(s => s.id === rid20);
+      ok(!(await A.draft()) && !inA && !inB && !inCloud && !(await A.toasts()).some(t => /saved in History/.test(t)), 'discarded on A after B only pulled it and wrote it back: it stays discarded on A, on B and in the account, and nothing says sets were saved (REV20-2)', { inA, inB, inCloud, toasts: await A.toasts() });
       // Finished on A while B had ticked a set A had not pulled: B's set joins the session saved on A.
       await A.start(); await A.tick(0, 90, 10); await A.flush(); await B.sync();
       const yid = (await A.draft()).id;
@@ -1867,6 +1964,124 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
     ok(onB.undo <= undo0, 'S-13: the sign-in leaves no Undo step to take it back', { before: undo0, after: onB.undo });
     ok((await A.ev(() => window.__ironlog.state.sessions.map(s => s.id).sort().join())) === 'acct,mine', 'S-13: and the account\'s other phone receives them');
     await A.close();
+    /* A machine lift on both logs. Each log names its own first machine the same way, so the phone's first is not the
+       account's: a session the phone did on no machine picked is read, at the sign-in, on the machine the lift is on
+       by then in the account. The account did the chest press on its first machine in October, a second from Oct 24;
+       the phone did it once, on Nov 7, at the second machine's load. */
+    {
+      const C2 = cloudOf();
+      const mk = (id, date, kg, x) => ({ id, date, dayIdx: 0, dayName: 'Day 1', notes: '', ex: [{ exId: 'machPress', rr: [8, 12], ps: 3, sets: [11, 11, 10].map(r => ({ w: kg, r, rir: 2, done: true })), ...x }] });
+      const acct = [mk('a1', '2026-10-10', 90, { mc: '0' }), mk('a2', '2026-10-17', 90, { mc: '0' }), mk('b1', '2026-10-24', 55, { nw: true, mc: 'b1' }), mk('c1', '2026-10-31', 57.5, { mc: 'b1' })];
+      const D = await phone({ cloud: C2, uid: 'u13m', arg: acct, seed: (S, L, xs) => { S.sessions.push(...xs); S.settings.lastExport = '2026-11-11'; } });
+      ok(await D.settled(), 'S-13: (setup) the account holds a chest press on two machines');
+      const E = await phone({ cloud: C2, uid: null, who: 'E', browser: D.browser, clock: await clockOf(D), arg: [mk('mine', '2026-11-07', 59, { mc: '0' })], seed: (S, L, xs) => { S.sessions.push(...xs); S.settings.lastExport = '2026-11-11'; } });
+      await E.ev(() => { window.__uid = 'u13m'; window.__ironlog.cloudInit(); });
+      ok(await E.settled(), 'S-13: the phone with its own chest press signs in and syncs');
+      await D.sync();
+      const read = P => P.ev(() => { const L = window.__ironlog; const s = L.state.sessions.find(x => x.id === 'mine'); return { mc: s && s.ex[0].mc, mk: ((L.IDX().byEx.machPress || []).find(x => x.sid === 'mine') || {}).mk }; });
+      const onE = await read(E), onD = await read(D);
+      ok(onE.mk === 'b1' && onD.mk === 'b1', 'S-13: the phone\'s chest press, done on no machine picked, is read on the machine the lift is on in the account, on both phones, never on the account\'s first machine (REV23-2)', { onE, onD });
+      await D.close();
+    }
+    /* The phone's first machine stays one machine at the sign-in: Nov 1 on it, Nov 8 on a machine added (Hammer), Nov 15
+       back on the first, picked. Nov 15 is read with Nov 1, never on Hammer, where the lifter did 80 lb (REV24-4). And
+       the same log restored from a backup and then signed in to its own account keeps every name (REV24-4). */
+    {
+      const C3 = cloudOf();
+      const mk = (id, date, kg, x) => ({ id, date, dayIdx: 0, dayName: 'Day 1', notes: '', ex: [{ exId: 'machPress', rr: [8, 12], ps: 3, sets: [11, 11, 11].map(r => ({ w: kg, r, rir: 2, done: true })), ...x }] });
+      const acct = [mk('a1', '2026-10-10', 90, { mc: '0' }), mk('a2', '2026-10-17', 90, { mc: '0' })];
+      const mine = [mk('p1', '2026-11-01', 59, { mc: '0' }), mk('p2', '2026-11-08', 36, { nw: true, mc: 'p2' }), mk('p3', '2026-11-10', 61, { mc: '0' })];
+      const D = await phone({ cloud: C3, uid: 'u13n', arg: acct, seed: (S, L, xs) => { S.sessions.push(...xs); S.settings.lastExport = '2026-11-11'; } });
+      ok(await D.settled(), 'S-13: (setup) the account holds a chest press on its first machine');
+      const E = await phone({ cloud: C3, uid: null, who: 'E', browser: D.browser, clock: await clockOf(D), arg: mine, seed: (S, L, xs) => { S.sessions.push(...xs); S.settings.lastExport = '2026-11-11'; } });
+      await E.ev(() => { window.__uid = 'u13n'; window.__ironlog.cloudInit(); });
+      ok(await E.settled(), 'S-13: the phone with its chest press on two machines signs in and syncs');
+      const mcs = await E.ev(() => { const L = window.__ironlog; const xs = L.IDX().byEx.machPress || []; return Object.fromEntries(L.state.sessions.map(q => [q.id, (xs.find(x => x.sid === q.id) || {}).mk])); });
+      ok(mcs.p3 === mcs.p1 && mcs.p2 === 'p2' && mcs.p3 !== 'p2', 'S-13: the session back on the phone\'s first machine stays with the others on it, never on the machine added after (REV24-4)', mcs);
+      await D.close();
+      const C4 = cloudOf();
+      const F = await phone({ cloud: C4, uid: 'u13r', arg: mine, seed: (S, L, xs) => { S.sessions.push(...xs); S.settings.lastExport = '2026-11-11'; } });
+      ok(await F.settled(), 'S-13: (setup) an account holds the log');
+      const G = await phone({ cloud: C4, uid: null, who: 'G', browser: F.browser, clock: await clockOf(F), arg: mine, seed: (S, L, xs) => { S.sessions.push(...xs); S.settings.lastExport = '2026-11-11'; } });
+      await G.ev(() => { window.__uid = 'u13r'; window.__ironlog.cloudInit(); });
+      ok(await G.settled(), 'S-13: the same log on a new phone signs in to its own account');
+      const same = await G.ev(() => window.__ironlog.state.sessions.map(q => `${q.id}:${q.ex[0].mc}`).join(' '));
+      ok(same === 'p1:0 p2:p2 p3:0', 'S-13: and every session keeps its machine name (REV24-4)', same);
+      /* The phone's sessions read by their dates in the joined log, each where the account had the lift then: Oct 17 on the
+         account's first machine, Nov 7 on the second the account began on Oct 24, never moved together onto the first
+         (REV25-4). And a backup of the account's log restored on a phone, a session then logged back on its first machine:
+         that session stays on the first machine at the sign-in, never on the one the log added (REV25-5). */
+      const readsOf = P => P.ev(() => { const L = window.__ironlog; const xs = L.IDX().byEx.machPress || []; return Object.fromEntries(L.state.sessions.map(q => [q.id, (xs.find(x => x.sid === q.id) || {}).mk])); });
+      const C6 = cloudOf();
+      const K = await phone({ cloud: C6, uid: 'u13s', arg: [mk('a1', '2026-10-10', 90, { mc: '0' }), mk('a2', '2026-10-24', 55, { nw: true, mc: 'a2' }), mk('a3', '2026-10-31', 57.5, { mc: 'a2' })], seed: (S, L, xs) => { S.sessions.push(...xs); S.settings.lastExport = '2026-11-11'; } });
+      ok(await K.settled(), 'S-13: (setup) an account holds the chest press on two machines, the second from Oct 24');
+      const M = await phone({ cloud: C6, uid: null, who: 'M', browser: K.browser, clock: await clockOf(K), arg: [mk('q1', '2026-10-17', 59, { mc: '0' }), mk('q2', '2026-11-07', 61, { mc: '0' })], seed: (S, L, xs) => { S.sessions.push(...xs); S.settings.lastExport = '2026-11-11'; } });
+      await M.ev(() => { window.__uid = 'u13s'; window.__ironlog.cloudInit(); });
+      ok(await M.settled(), 'S-13: a phone with two sessions of the lift on one machine of its own signs in');
+      const straddle = await readsOf(M);
+      ok(straddle.q1 === '0' && straddle.q2 === 'a2', 'S-13: the phone\'s sessions read where the account had the lift on their dates: Oct 17 on its first machine, Nov 7 on the second (REV25-4)', straddle);
+      await K.close();
+      const C7 = cloudOf();
+      const both = [mk('r1', '2026-11-01', 59, { mc: '0' }), mk('r2', '2026-11-08', 36, { nw: true, mc: 'r2' })];
+      const N = await phone({ cloud: C7, uid: 'u13t', arg: both, seed: (S, L, xs) => { S.sessions.push(...xs); S.settings.lastExport = '2026-11-11'; } });
+      ok(await N.settled(), 'S-13: (setup) an account holds the chest press, a machine added on Nov 8');
+      const Q = await phone({ cloud: C7, uid: null, who: 'Q', browser: N.browser, clock: await clockOf(N), arg: [...both, mk('r3', '2026-11-10', 61, { mc: '0' })], seed: (S, L, xs) => { S.sessions.push(...xs); S.settings.lastExport = '2026-11-11'; } });
+      await Q.ev(() => { window.__uid = 'u13t'; window.__ironlog.cloudInit(); });
+      ok(await Q.settled(), 'S-13: the same log restored on a phone, a session then logged on its first machine, signs in');
+      const restored = await readsOf(Q);
+      ok(restored.r3 === '0' && restored.r1 === '0' && restored.r2 === 'r2', 'S-13: the session logged after the backup stays on the first machine with Nov 1, never on the machine added (REV25-5)', restored);
+      await N.close();
+      /* The earliest of the phone's sessions is the earliest by date, wherever a past workout put it in the log (NEW-177):
+         the phone's Oct 25 session, logged last as a past workout, on its first machine before the account's machine
+         added on Oct 28; Nov 15, back on the phone's first machine after the one it added on Nov 8, reads with Oct 25. */
+      const C9 = cloudOf();
+      const K9 = await phone({ cloud: C9, uid: 'u13o', arg: [mk('a1', '2026-10-10', 90, { mc: '0' }), mk('a2', '2026-10-28', 55, { nw: true, mc: 'a2' }), mk('a3', '2026-11-03', 57.5, { mc: 'a2' })], seed: (S, L, xs) => { S.sessions.push(...xs); S.settings.lastExport = '2026-11-11'; } });
+      ok(await K9.settled(), 'S-13: (setup) an account holds the chest press on two machines, the second from Oct 28');
+      const M9 = await phone({ cloud: C9, uid: null, who: 'M9', browser: K9.browser, clock: await clockOf(K9), arg: [mk('p1', '2026-11-01', 59, { mc: '0' }), mk('p2', '2026-11-08', 36, { nw: true, mc: 'p2' }), mk('p3', '2026-11-15', 61, { mc: '0' }), mk('p0', '2026-10-25', 58, { mc: '0' })], seed: (S, L, xs) => { S.sessions.push(...xs); S.settings.lastExport = '2026-11-11'; } });
+      await M9.ev(() => { window.__uid = 'u13o'; window.__ironlog.cloudInit(); });
+      ok(await M9.settled(), 'S-13: a phone with a past workout logged last, dated before its other sessions, signs in');
+      const earliest = await readsOf(M9);
+      ok(earliest.p0 === '0' && earliest.p1 === 'a2' && earliest.p2 === 'p2' && earliest.p3 === '0', 'S-13: the session back on the phone\'s first machine reads where the phone\'s earliest session by date reads (Oct 25, on the first machine), never where the one first in the log reads (NEW-177)', earliest);
+      await K9.close();
+      /* An old backup restored on a new phone, then the sign-in: a session both logs hold with different contents keeps
+         the account's copy (corrected since the backup) on the phone and in the account, and the phone's goes to Recently
+         deleted as a copy put aside, so nothing is lost (REV25-8). */
+      const C5 = cloudOf();
+      const fixed = mk('k1', '2026-10-17', 60, {});
+      fixed.ex[0].sets = [9, 9, 8].map(r => ({ w: 60, r, rir: 2, done: true }));
+      const stale = mk('k1', '2026-10-17', 60, {});
+      stale.ex[0].sets = [8, 8, 7].map(r => ({ w: 60, r, rir: 2, done: true }));
+      const H = await phone({ cloud: C5, uid: 'u13k', arg: [fixed], seed: (S, L, xs) => { S.sessions.push(...xs); S.settings.lastExport = '2026-11-11'; } });
+      ok(await H.settled(), 'S-13: (setup) an account holds Oct 17 as corrected');
+      const J = await phone({ cloud: C5, uid: null, who: 'J', browser: H.browser, clock: await clockOf(H), arg: [stale], seed: (S, L, xs) => { S.sessions.push(...xs); S.settings.lastExport = '2026-11-11'; } });
+      await J.ev(() => { window.__uid = 'u13k'; window.__ironlog.cloudInit(); });
+      ok(await J.settled(), 'S-13: a phone holding the older copy signs in and syncs');
+      await H.sync();
+      const reps = P => P.ev(() => { const L = window.__ironlog; const q = L.state.sessions.find(x => x.id === 'k1'); return { reps: q ? q.ex[0].sets.map(x => x.r).join() : null, aside: L.state.trash.filter(t => t.clash && t.data.ex && t.data.ex[0]).map(t => t.data.ex[0].sets.map(x => x.r).join()) }; });
+      const kept = { phone: await reps(J), other: await reps(H), account: ((C5.doc('u13k', 's-2026-10-2') || { sessions: [] }).sessions.find(x => x.id === 'k1') || { ex: [{ sets: [] }] }).ex[0].sets.map(x => x.r).join() };
+      ok(kept.phone.reps === '9,9,8' && kept.other.reps === '9,9,8' && kept.account === '9,9,8' && kept.phone.aside.includes('8,8,7'), 'S-13: a session both logs hold with different contents keeps the account\'s copy on both phones and in the account, the phone\'s put aside in Recently deleted (REV25-8)', kept);
+      await H.close();
+      /* The account's log, as 2.69 saved it, restored on a new phone, sessions deleted there before the sign-in: each
+         deletion stands on both phones and in the account, Oct 31 stays on the machine Oct 24 began, and nothing is put
+         aside. The machine the phone kept for the sessions a delete did not touch is no edit of them (REV26-1). */
+      for (const gone of ['a2', 'b1']) {
+        const C8 = cloudOf(), uid = 'u13d' + gone;
+        const log = () => [mk('a1', '2026-10-10', 90), mk('a2', '2026-10-17', 90), mk('b1', '2026-10-24', 55, { nw: true }), mk('c1', '2026-10-31', 57.5)];
+        const O = await phone({ cloud: C8, uid, arg: log(), seed: (S, L, xs) => { S.sessions.push(...xs); S.settings.lastExport = '2026-11-11'; } });
+        ok(await O.settled(), `S-13: (setup) an account holds the chest press as 2.69 saved it, Oct 24 beginning a second machine (${gone})`);
+        const R = await phone({ cloud: C8, uid: null, who: 'R', browser: O.browser, clock: await clockOf(O), arg: log(), seed: (S, L, xs) => { S.sessions.push(...xs); S.settings.lastExport = '2026-11-11'; } });
+        await R.ev(id => { window.__ironlog.ACT.histDel({ dataset: { id } }); }, gone); await wait(80); await confirmOk(R);
+        await R.ev(uid => { window.__uid = uid; window.__ironlog.cloudInit(); }, uid);
+        ok(await R.settled(), `S-13: the phone signs in after deleting ${gone}`);
+        await O.sync(); await O.settled();
+        const st = P => P.ev(() => { const L = window.__ironlog; const xs = L.IDX().byEx.machPress || []; return { ids: L.state.sessions.map(q => q.id).sort().join(' '), c1: (xs.find(x => x.sid === 'c1') || {}).mk, aside: L.state.trash.filter(t => t.clash).length }; });
+        const got = { phone: await st(R), other: await st(O), account: C8.sessionsIn(uid).map(q => q.id).sort().join(' ') };
+        const want = ['a1', 'a2', 'b1', 'c1'].filter(x => x !== gone).join(' ');
+        ok(got.phone.ids === want && got.other.ids === want && got.account === want && got.phone.c1 === 'b1' && got.other.c1 === 'b1' && got.phone.aside === 0 && got.other.aside === 0, `S-13: the account's log restored on a phone, ${gone === 'a2' ? 'Oct 17' : 'Oct 24, which began the second machine,'} deleted there and then the sign-in: the deletion stands on both phones and in the account, Oct 31 stays on the second machine, and nothing is put aside (REV26-1)`, got);
+        await O.close();
+      }
+      await F.close();
+    }
   }
 
   /* ---------- S-15: news about the log is never lost under a tap's message ---------- */

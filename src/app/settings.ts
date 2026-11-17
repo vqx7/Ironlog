@@ -53,6 +53,7 @@ import {
   asideClear,
   asideList,
   backupDue,
+  logNearFull,
   demoRestore,
   device,
   log,
@@ -704,6 +705,11 @@ function dataBody(): TemplateResult {
   }${asideLine()}${privacyLine()}${safetyLine()}${
     backupDue()
       ? html`<p class="callout yellow u-m10-0-0"><b>Backup due.</b> ${s.lastExport ? `Last backup file ${fmtDate(s.lastExport)}.` : 'No backup file yet.'}${cloud.on ? ' Your account has not synced this week. Export one below.' : ''}</p>
+`
+      : nothing
+  }${
+    logNearFull()
+      ? html`<p class="callout yellow u-m10-0-0" id="logNearFull"><b>Your log is near this browser's storage limit.</b> ${cloud.on ? 'Your account keeps it. Export a backup too.' : 'Sign in or export a backup, so nothing is lost when it fills.'}</p>
 `
       : nothing
   }${
@@ -1381,7 +1387,7 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
             if (!cloud.on) cloudStop(true);
             asideClear();
           },
-          { undo: true }
+          { undo: true, whole: true }
         );
         // Pictures are not part of the log Undo keeps, so they go at once, as the question says. The profile photo
         // with them: from the account too while it syncs, as the cloud copy of the log goes, else from this phone.

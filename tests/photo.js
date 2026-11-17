@@ -2,7 +2,12 @@
 // of the profile photo go here. Signed in, as the photo is the account's (on a stand-in account service, so the source
 // build; the built app's own account script reads it in tests/storage-sync-account.js). Run on the build before
 // (`node tests/photo.js baselines/r105.html`, 2.59) every section fails there.
-//   1  A photo picked in the menu is kept as a 512 px square JPEG (256 until 2.60, soft once enlarged).
+//   1  A photo picked in the menu is kept as a 1024 px square JPEG (256 until 2.60 and 512 until 2.70, each soft once
+//      enlarged: V, 2026-11-15, NEW-169). Opened large on a 393 pt iPhone at 3 pixels a point, it is drawn at about its
+//      own size, never stretched. Shrunk by averaging, in the app's own code, so every browser gives the same: a
+//      picture of fine black and white lines shrunk 3 times comes out every kept pixel a mix of the lines it covers,
+//      never black or white as they are (WebKit's drawImage, every iPhone's browser, read one pixel of each 3 and kept
+//      the lines whole: GitHub's WebKit run of 6adeefe, and the same here with that drawing's smoothing off).
 //   2  With a photo, a tap on it in the menu opens it large, with Change photo, Remove photo and Close; Change photo
 //      puts the new one in the sheet and on the menu button; Remove asks first and then takes it away; with no
 //      photo, the menu's photo picks one, as before. Every button there is a 44 px target, and nothing scrolls
@@ -50,13 +55,35 @@ const imgOf = (page, sel) => page.evaluate(sel => new Promise(res => {
     const D = await app();
     const pg = D.page;
     await pg.click('#saveState'); await wait(200);
-    await pg.setInputFiles('#modal #menuPhoto input[data-photo]', await pngFile(pg, 1200, 900)); await photoIn(pg);
+    await pg.setInputFiles('#modal #menuPhoto input[data-photo]', await pngFile(pg, 3024, 4032)); await photoIn(pg);
     const b = await imgOf(pg, '#saveState img.ssb-ph');
-    ok(b && b.src.startsWith('data:image/jpeg;base64,') && b.w === 512 && b.h === 512, '1. a photo picked in the menu is kept as a 512 px square JPEG', b);
+    ok(b && b.src.startsWith('data:image/jpeg;base64,') && b.w === 1024 && b.h === 1024, '1. a photo picked in the menu, a phone camera\'s 3024 x 4032, is kept as a 1024 px square JPEG', b && { w: b.w, h: b.h });
     const size = await pg.evaluate(() => (localStorage.getItem(window.__ironlog.KEY + '.photo') || '').length);
     ok(size > 0 && size < 120000, '1. and still small on the phone', size);
     ok(!D.errors.length, '1. no page errors', D.errors);
     await D.browser.close();
+    // Fine lines, one pixel each, black and white: shrunk 3 times, each kept pixel is the average of the 3 rows it covers
+    // (two of one and one of the other: 85 or 170, as an area average gives), never black or white as the lines are, which
+    // is the grain of a photo shrunk by reading one pixel of each 3.
+    const G = await app();
+    await G.page.click('#saveState'); await wait(200);
+    const lines = await G.page.evaluate(() => { const c = document.createElement('canvas'); c.width = 3072; c.height = 3072; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 3072, 3072); x.fillStyle = '#000'; for (let y = 0; y < 3072; y += 2) x.fillRect(0, y, 3072, 1); return c.toDataURL('image/png').split(',')[1]; });
+    await G.page.setInputFiles('#modal #menuPhoto input[data-photo]', { name: 'lines.png', mimeType: 'image/png', buffer: Buffer.from(lines, 'base64') }); await photoIn(G.page);
+    const grey = await G.page.evaluate(() => new Promise(res => { const im = new Image(); im.onload = () => { const c = document.createElement('canvas'); c.width = im.width; c.height = im.height; const x = c.getContext('2d'); x.drawImage(im, 0, 0); const d = x.getImageData(0, 0, c.width, c.height).data; let n = 0, s = 0, s2 = 0, lo = 255, hi = 0; for (let i = 0; i < d.length; i += 4 * 7) { const v = d[i]; n++; s += v; s2 += v * v; lo = Math.min(lo, v); hi = Math.max(hi, v); } const m = s / n; res({ mean: Math.round(m), sd: Math.round(Math.sqrt(s2 / n - m * m) * 10) / 10, lo, hi }); }; im.src = localStorage.getItem(window.__ironlog.KEY + '.photo'); }));
+    ok(grey.lo >= 40 && grey.hi <= 215 && grey.mean > 100 && grey.mean < 156, '1. fine black and white lines shrunk to the kept size are averaged: every kept pixel a mix of the lines it covers, none black or white as they are, grey overall', grey);
+    await G.browser.close();
+    // Opened large on V's iPhone (393 pt, 3 pixels a point): drawn at no more than about its own pixels.
+    const I = await open(FILE, { w: 393, h: 852, dpr: 3, clock: '2026-11-12T10:00:00', setup: ctx => ctx.addInitScript(SIGNED_IN) });
+    await I.page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; localStorage.setItem(L.KEY + '.installLater', '1'); localStorage.setItem(L.KEY + '.tipWake', '1'); L.saveNow(); L.render(); });
+    await I.page.waitForFunction(() => !!window.__ironlog.acctUser(), null, { timeout: 5000 }).catch(() => {});
+    await I.page.evaluate(() => window.__ironlog.render()); await wait(300);
+    await I.page.click('#saveState'); await wait(200);
+    await I.page.setInputFiles('#modal #menuPhoto input[data-photo]', await pngFile(I.page, 3024, 4032)); await photoIn(I.page); await wait(150);
+    await I.page.click('#modal #menuPhoto'); await wait(250);
+    const big = await imgOf(I.page, '#modal .sheet img.pbig');
+    ok(big && big.shown * 3 <= big.w * 1.1, '1. opened large on a 393 pt iPhone, its pixels cover the screen\'s: shown at no more than about its own size', big && { kept: big.w, shownPt: big.shown, screenPx: big.shown * 3 });
+    ok(!I.errors.length, '1. no page errors on the iPhone', I.errors);
+    await I.browser.close();
   }
 
   if (run(2)) {

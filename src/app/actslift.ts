@@ -31,12 +31,13 @@ import { fmtDate } from './format';
 import { typedUnit } from './units';
 import { state, ui } from './store';
 import { act } from './act';
-import { goalWords } from './display';
+import { goalWords, machineName, newMachineKey, pendingMachine } from './display';
 import { closeModal, openModal, render, renderModal, rerenderKeepScroll } from './page';
 import { toast } from './toast';
 import { carried } from './workstate';
 import type { Tap } from './workstate';
 import { blockWords, distIn, fillSets, parseSets, refreshBlock, refreshEx } from './worksets';
+import { pickName, unname } from './machines';
 
 /** The heaviest load a lift's limit may be, by the unit typed in. */
 const MAX_LOAD = { lb: 4000, kg: 2000 } as const;
@@ -57,6 +58,76 @@ function fieldText(id: string): string {
 /** A load typed, as kilograms. */
 // A load typed for a lift, in its unit, in kilograms.
 const kg = (ex: Pick<Exercise, 'unit'> | null | undefined, n: number): number => fromDOf(ex, n) ?? 0;
+
+/* A machine picked for a lift in a session (390 C): every block of it is on that machine, read from that machine's
+   sessions alone. In a workout its target is read again, the sets done kept (a target from another machine is no
+   target here), and a machine done on before brings its own kg or lb (as its weights were typed); New machine marks
+   the lift's session new (nw), so it starts there, under the name given it if any (V, 2026-11-15). In an edit from
+   History the pick names this session's machine and nothing else, never the sessions after it or the lift's unit: a
+   machine done on before by its key, a new one by the session's own; its mark, which later sessions may follow, and
+   the lift's unit stay as they are, and the readings follow once it is saved. One Undo step. */
+/** Puts block `bi`'s lift on machine `k` (NEW_MACHINE: a new one, named `name` when given), as above. */
+function pickMachine(bi: number, k: string | undefined, name: string): void {
+  const d = state.draft;
+  const b0 = d && d.ex[bi];
+  const e = b0 && state.exercises.find(x => x.id === b0.exId);
+  if (!d || !b0 || !e || !k || k === draftMachine(b0.exId)) return;
+  const was = k === NEW_MACHINE ? null : liftMachines(b0.exId).find(x => x.key === k);
+  if (k !== NEW_MACHINE && !was) return;
+  const ed = d.editingId;
+  // A new machine in an edit is named by the session's own key, which is the machine it is on already when it began one.
+  if (ed && k === NEW_MACHINE && draftMachine(b0.exId) === ed) return;
+  const u = was && !ed ? typedUnit(was.w) : null;
+  const key = k === NEW_MACHINE ? newMachineKey() : k;
+  act(
+    () => {
+      if (u) {
+        if (u === appU()) delete e.unit;
+        else e.unit = u;
+      }
+      for (const b of d.ex)
+        if (b.exId === b0.exId) {
+          if (ed) pickName(b, k === NEW_MACHINE ? ed : k);
+          else if (k === NEW_MACHINE) {
+            b.nw = true;
+            unname(b);
+          } else {
+            pickName(b, k);
+            delete b.nw;
+          }
+        }
+      // A machine added is named as its field was left: cleared, it has no name.
+      if (k === NEW_MACHINE && key) nameMachine(e, key, name);
+      if (!ed) for (const b of d.ex) if (b.exId === b0.exId) refreshBlock(b);
+    },
+    { undo: true }
+  );
+  rerenderKeepScroll();
+  const named = k === NEW_MACHINE ? name : machineName(e.id, k);
+  toast(
+    // The machine's label is one thing to read, so it is kept on one line (no-break spaces) when the message wraps.
+    named
+      ? `${e.name}: ${named.replace(/ /g, '\u00a0')}`
+      : was
+        ? `${e.name}: ${`${fmtDate(was.date)} · ${listLabel(e, was.w, true)} × ${was.r}`.replace(/ /g, '\u00a0')}`
+        : `${e.name}: new machine`,
+    true
+  );
+}
+
+/* A lift's machine named, inside a change: the name under the machine's key, in its place among the others (none
+   takes it away), and every other name kept as it is, whether or not its machine is in the log now: a workout set aside,
+   a session in Recently deleted or a workout discarded and brought back by Undo brings its machine back, and with it its
+   name. A name whose machine is gone is never offered or said (machineNamesOf). Absent once none is left, as on a lift
+   never named. */
+/** Names machine `key` of lift `e` (an empty name takes the name away), as above. */
+function nameMachine(e: Exercise, key: string, name: string): void {
+  const next: Record<string, string> = { ...(e.machines || {}) };
+  if (name) next[key] = name;
+  else delete next[key];
+  if (Object.keys(next).length) e.machines = next;
+  else delete e.machines;
+}
 
 /** A lift's sheets and the log's smaller entries, by data-act. */
 export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
@@ -88,64 +159,59 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     rerenderKeepScroll();
     toast(fill ? 'Loads filled in' : 'Loads in grey');
   },
-  /* The unit beside a lift's loads, tapped: the lift's equipment is marked in the other unit. Kept on the lift (back in
-     the app's unit it follows the app again, as one never switched does), so every screen and the next session read it;
-     the lift's blocks in the workout read their targets again in it, and a load already typed is converted, never read
-     as a number of the new unit. */
+  // A machine lift's Machine sheet, from its card or its ⋯ menu.
   machineOpen(t) {
     const b = Number(t.dataset.b);
     if (state.draft && state.draft.ex[b]) openModal({ kind: 'machine', b });
   },
-  /* A machine picked for a lift in a session (390 C): every block of it is on that machine, read from that machine's
-     sessions alone. In a workout its target is read again, the sets done kept (a target from another machine is no
-     target here), and a machine done on before brings its own kg or lb (as its weights were typed); New machine marks
-     the lift's session new (nw), so it starts there. In an edit from History the pick names this session's machine
-     and nothing else, never the sessions after it or the lift's unit: a machine done on before by its key, a new one by the session's own; its mark,
-     which later sessions may follow, and the lift's unit stay as they are, and the readings follow once it is saved.
-     One Undo step. */
+  // A machine in the Machine sheet, tapped: the lift on it (pickMachine).
   machinePick(t) {
-    const d = state.draft;
-    const b0 = d && d.ex[Number(t.dataset.b)];
-    const e = b0 && state.exercises.find(x => x.id === b0.exId);
     if (ui.modal && ui.modal.kind === 'machine') closeModal();
-    const k = t.dataset.k;
-    if (!d || !b0 || !e || !k || k === draftMachine(b0.exId)) return;
-    const was = k === NEW_MACHINE ? null : liftMachines(b0.exId).find(x => x.key === k);
-    if (k !== NEW_MACHINE && !was) return;
-    const ed = d.editingId;
-    // A new machine in an edit is named by the session's own key, which is the machine it is on already when it began one.
-    if (ed && k === NEW_MACHINE && draftMachine(b0.exId) === ed) return;
-    const u = was && !ed ? typedUnit(was.w) : null;
-    act(
-      () => {
-        if (u) {
-          if (u === appU()) delete e.unit;
-          else e.unit = u;
-        }
-        for (const b of d.ex)
-          if (b.exId === b0.exId) {
-            if (ed) b.mc = k === NEW_MACHINE ? ed : k;
-            else if (k === NEW_MACHINE) {
-              b.nw = true;
-              delete b.mc;
-            } else {
-              b.mc = k;
-              delete b.nw;
-            }
-          }
-        if (!ed) for (const b of d.ex) if (b.exId === b0.exId) refreshBlock(b);
-      },
-      { undo: true }
-    );
-    rerenderKeepScroll();
-    toast(
-      // The machine's label is one thing to read, so it is kept on one line (no-break spaces) when the message wraps.
-      was
-        ? `${e.name}: ${`${fmtDate(was.date)} · ${listLabel(e, was.w, true)} × ${was.r}`.replace(/ /g, '\u00a0')}`
-        : `${e.name}: new machine`,
-      true
-    );
+    pickMachine(Number(t.dataset.b), t.dataset.k, '');
   },
+  // A machine's pencil, or Add a machine: its name to type, in the same sheet.
+  machineNaming(t) {
+    const b = Number(t.dataset.b);
+    if (state.draft && state.draft.ex[b] && t.dataset.k) openModal({ kind: 'machine', b, naming: t.dataset.k });
+  },
+  // A name given on another lift, tapped: typed into the field, to add or change before saving.
+  machineChip(t) {
+    const f = document.getElementById('mcName');
+    if (f instanceof HTMLInputElement && t.dataset.v) {
+      f.value = t.dataset.v;
+      f.focus();
+    }
+  },
+  /* A machine's name saved. Adding, a new machine is picked under it, as Add a machine's sheet says, in one Undo step;
+     a machine already listed, or the new one already picked, is named and the list shown again. */
+  machineNameSave(t) {
+    const d = state.draft;
+    const b = Number(t.dataset.b);
+    const b0 = d && d.ex[b];
+    const e = b0 && state.exercises.find(x => x.id === b0.exId);
+    const k = t.dataset.k;
+    const f = document.getElementById('mcName');
+    if (!d || !b0 || !e || !k) return;
+    const name = f instanceof HTMLInputElement ? f.value.replace(/\s+/g, ' ').trim().slice(0, LIMITS.name) : '';
+    if (k === NEW_MACHINE && !pendingMachine(b0.exId)) {
+      closeModal();
+      pickMachine(b, k, name);
+      return;
+    }
+    const key = k === NEW_MACHINE ? newMachineKey() : k;
+    if (!key || (machineName(e.id, key) || '') === name) {
+      openModal({ kind: 'machine', b });
+      return;
+    }
+    act(() => nameMachine(e, key, name), { undo: true });
+    openModal({ kind: 'machine', b });
+    rerenderKeepScroll();
+    toast(name ? `Named ${name}` : 'Machine name taken off', true);
+  },
+  /* The unit beside a lift's loads, tapped: the lift's equipment is marked in the other unit. Kept on the lift (back in
+     the app's unit it follows the app again, as one never switched does), so every screen and the next session read it;
+     the lift's blocks in the workout read their targets again in it, and a load already typed is converted, never read
+     as a number of the new unit. */
   unitOpen(t) {
     const b = Number(t.dataset.b);
     if (state.draft && state.draft.ex[b]) openModal({ kind: 'unit', b });

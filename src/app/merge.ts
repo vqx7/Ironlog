@@ -1,12 +1,15 @@
 /* Record fingerprints and the three-way merge. Each synced document remembers the per-record hashes of the
    version both sides last agreed on, its base; on a conflict every record is
    judged on its own: changed on one side only, that side wins; changed on
-   both, the newer side does (remoteWins), and the conflict is counted.
+   both, the newer side does (remoteWins), and the conflict is counted. A
+   machine name the app kept is no edit (machines.ts): read as absent, and
+   kept on whichever copy wins where it names none.
    Undo's merge of a session in progress is the same idea per exercise.
    Merging whole documents (mergeChunk) is sync.ts's. */
 
 import { hashStr } from './util';
 import { arr, rec } from './records';
+import { keptOn, keptOnSession, unkept } from './machines';
 import type { Rec } from './records';
 import type { Session } from './types';
 import type { DraftLike } from './session';
@@ -41,8 +44,22 @@ export function canon(x: unknown): string {
   );
 }
 
-/** A record's fingerprint. */
-export const Hx = (x: unknown): string => hashStr(canon(x));
+/** A record's fingerprint, as a merge compares it: the machine names the app kept read as absent (machines.ts). */
+export const Hx = (x: unknown): string => hashStr(canon(unkept(x)));
+
+/** Whether two copies of one record are the same record, the machine names the app kept read as absent (machines.ts). */
+export const sameRecord = (a: unknown, b: unknown): boolean => canon(unkept(a)) === canon(unkept(b));
+
+/* Two copies of one record that differ only in the machine names the app kept are one: the same copy on every device,
+   the one first by its fingerprint, given the other's kept names where it names none (machines.ts). */
+/** Two copies of a stored record, as a merge reads them, as one (above). */
+function oneCopy(a: Rec, b: Rec): Rec {
+  return canon(a) <= canon(b) ? keptOn(a, b) : keptOn(b, a);
+}
+/** Two copies of a session as one (above). */
+export function oneSession(a: Session, b: Session): Session {
+  return canon(a) <= canon(b) ? keptOnSession(a, b) : keptOnSession(b, a);
+}
 
 /** Merges two versions of a list of records with ids against their base (id
     to fingerprint), record by record as described at the top. With no base
@@ -76,10 +93,9 @@ export function merge3List(
       bh = known ? base[id] : '?';
     const ah = a ? Hx(a) : undefined,
       rh = b ? Hx(b) : undefined;
-    // Every id came from one side or the other, so at least one of a and b
-    // is there, and equal fingerprints mean both are (the ! on a).
-    if (ah === rh) {
-      out.push(a!);
+    // Every id came from one side or the other, so at least one of a and b is there.
+    if (a && b && ah === rh) {
+      out.push(oneCopy(a, b));
       continue;
     }
     if (!a || !b) {
@@ -92,16 +108,17 @@ export function merge3List(
       out.push(p);
       continue;
     }
+    // The copy kept takes the names the app kept on the other where it names none (machines.ts).
     if (ah === bh) {
-      out.push(b);
+      out.push(keptOn(b, a));
       continue;
     }
     if (rh === bh) {
-      out.push(a);
+      out.push(keptOn(a, b));
       continue;
     }
     stat.conflicts++;
-    out.push(remoteWins ? b : a);
+    out.push(remoteWins ? keptOn(b, a) : keptOn(a, b));
   }
   return out;
 }

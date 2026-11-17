@@ -545,6 +545,60 @@ const clashes = r => r.stalls.filter(st => r.prs.some(p => p.name === st.name &&
     await P.ctx.close();
   }
 
+  // ---- The week's word (2.70, NEW-156): Stats' opening line and Today's Coach say one word and one change, and the
+  // lines under Why name the lifts each group holds, the rising ones as many as Today's Lifts moving counts. On the demo,
+  // on four main lifts rising beside three flat (NEW-167: no deload beside Progressing), and on a lift falling alone.
+  {
+    const logs = {
+      demo: null,
+      // Each lift: its load in the first week and its change a week, in kilograms.
+      'four rising, three flat': [['ohp', 40, 0.6], ['incBench', 80, 1], ['hackSquat', 120, 1.5], ['rdl', 100, 1.2], ['bbRow', 80, 0], ['backSquat', 120, 0], ['legPress', 150, 0]],
+      'one falling': [['rdl', 110, -2]],
+      // The review of 2.68 to 2.70, REV20-4: one rising and one falling in the same muscle, neither stalled.
+      'one rising, one falling': [['bench', 80, 1], ['dbBench', 34, -0.8]]
+    };
+    for (const [name, lifts] of Object.entries(logs)) {
+      const P = await open(FILE, { browser, clock: '2026-11-16T10:00:00' });
+      const r = await P.page.evaluate(lifts => { const L = window.__ironlog; const S = L.state; S.settings.onboarded = true; S.settings.hidden = []; S.injuries = []; S.draft = null; S.deloadWeek = null;
+        if (!lifts) { L.makeDemo(); for (const x of S.sessions) delete x.demo; }
+        else S.sessions = [-35, -28, -21, -14, -7, 0].flatMap((k, i) => lifts.map(([exId, w0, dw], j) => ({ id: `v${i}_${j}`, date: L.addDays('2026-11-16', k), dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '',
+          ex: [{ exId, rr: [6, 10], sets: [0, 1, 2].map(() => ({ w: w0 + dw * i, r: 8, rir: 2, done: true })) }] })));
+        L.state = L.normalize(S); L.invalidate(); L.saveNow();
+        const t = e => { if (!e) return ''; const c = e.cloneNode(true); c.querySelectorAll('.tipi').forEach(x => x.remove()); return c.textContent.replace(/\s+/g, ' ').trim(); };
+        L.ui.tab = 'today'; L.ui.folds['today:coach'] = true; L.ui.folds['today:moving'] = true; L.render();
+        const pill = t(document.querySelector('[data-mkey="coach"] .sec-s .pill')), body = t(document.querySelector('[data-mkey="coach"] .sec-b p'));
+        const rising = /(\d+) rising/.exec(t(document.querySelector('[data-mkey="moving"] .sec-s')));
+        L.ui.tab = 'dash'; L.ui.folds['dash:why'] = true; L.ui.folds['dash:exercise'] = true; L.ui.folds['dash:sub:stalls'] = true; L.render();
+        const line = t(document.querySelector('#dashSummary .vline'));
+        // Where Stats says main lifts flat together point to fatigue: the Stuck line's red, the Stalls pill's, and Stalls' own line.
+        const stuckRow = [...document.querySelectorAll('#dashSummary .srow')].find(e => /stuck/i.test(t(e.querySelector('.sl'))));
+        const fatigue = { stuckRed: !!(stuckRow && stuckRow.querySelector('.dot.red')), pillRed: !!document.querySelector('#sub-stalls > summary .pill.red'), said: /stalled at once: likely fatigue/.test(t(document.getElementById('sub-stalls'))) };
+        const rows = Object.fromEntries([...document.querySelectorAll('#dashSummary .srow')].map(e => [t(e.querySelector('.sl')).toLowerCase(), t(e.querySelector('.st'))]));
+        const v = L.verdict ? L.verdict() : { word: null, rising: [], stalled: [], falling: [] };
+        const names = ids => ids.map(id => L.EX(id).name);
+        // The lifts being trained with a trend that are in none of the word's groups: within the noise.
+        const ex = L.IDX().exStats; const grouped = new Set([...v.rising, ...v.stalled, ...v.falling, ...L.stalledIds()]);
+        const noise = Object.keys(ex).filter(id => ex[id] && ex[id].current && ex[id].pct != null && !grouped.has(id)).length;
+        return { pill, body, line, rows, fatigue, risingToday: rising ? +rising[1] : 0, v: { word: v.word, rising: v.rising.length, stalled: names(L.stalledIds()), falling: names(v.falling), noise }, coach: L.coach().text };
+      }, lifts);
+      const named = (row, list) => list.every(n => (r.rows[row] || '').includes(n)) || (list.length > 2 && /more/.test(r.rows[row] || ''));
+      ok(r.v.word && r.line === `${r.v.word}. ${r.body}` && r.pill === r.v.word && r.body === r.coach,
+        `${name}: Stats' opening line is the week's word and the coach's change, as Today's Coach says them`, r);
+      ok(r.v.rising === r.risingToday && named('stuck', r.v.stalled) && (r.v.falling.length ? named('falling', r.v.falling) : !('falling' in r.rows)),
+        `${name}: Why names the lifts the word is read from: as many rising as Today's Lifts moving, the stalled under Stuck, the falling under Falling`, r);
+      const deload = /A deload week may help/.test(r.line), f = r.fatigue;
+      // REV20-4 and REV20-5: the line never says nothing is stalled beside a lift stalled or falling, and Moving counts
+      // as within the noise only the lifts in no group.
+      const noise = /(\d+) with a trends?, each within day-to-day noise|(\d+) with a trend, each within day-to-day noise/.exec(r.rows.moving || '');
+      ok(!((r.v.stalled.length || r.v.falling.length) && /nothing stalled/.test(r.line)) && (!noise || +(noise[1] || noise[2]) === r.v.noise),
+        `${name}: the line never says nothing is stalled beside a lift stalled or falling, and Moving counts within the noise only lifts in no group`, { line: r.line, moving: r.rows.moving, v: r.v });
+      ok(!(r.v.word === 'Progressing' && deload) && f.stuckRed === f.pillRed && f.pillRed === f.said && (!f.said || r.v.word !== 'Progressing'),
+        `${name}: no deload beside a week that is Progressing, and Stats calls lifts flat together likely fatigue in red only where the coach could ask for one`, { word: r.v.word, line: r.line, fatigue: f });
+      ok(!P.errors.length, `no page errors (the week's word, ${name})`, P.errors);
+      await P.ctx.close();
+    }
+  }
+
   await browser.close();
   console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS'); process.exit(fails.length ? 1 : 0);
 })().catch(e => { console.log('FAIL crashed:', e && e.stack || e); process.exit(1); });

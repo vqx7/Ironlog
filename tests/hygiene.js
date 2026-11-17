@@ -420,6 +420,29 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
       }
       ok(bad.length === 0, 'a moved screen, and the page\'s start, changes the log only inside act, and never saves or keeps an Undo step by itself', bad);
     }
+    /* A machine's name (mc) and the mark of one the app kept (kp) are made, changed and taken off only in machines.ts,
+       so a name the app kept is never written as the lifter's, never taken for an edit, and never lost (V, 2026-11-16).
+       Read from the syntax tree: an assignment to, or delete of, a property of either name, or an object literal
+       giving one, anywhere else in src/app/. */
+    {
+      const NAMES = new Set(['mc', 'kp']);
+      const prop = n => (ts.isPropertyAccessExpression(n) ? n.name.text : ts.isElementAccessExpression(n) && ts.isStringLiteralLike(n.argumentExpression) ? n.argumentExpression.text : null);
+      const bad = [];
+      for (const m of mods.filter(x => x !== 'machines')) {
+        const txt = fs.readFileSync(path.join(APP, m + '.ts'), 'utf8');
+        const sf = ts.createSourceFile(m, txt, ts.ScriptTarget.Latest, true);
+        const at = n => `${m}.ts:${sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1}`;
+        (function walk(n) {
+          let w = null;
+          if (ts.isBinaryExpression(n) && n.operatorToken.kind >= ts.SyntaxKind.FirstAssignment && n.operatorToken.kind <= ts.SyntaxKind.LastAssignment && NAMES.has(prop(n.left))) w = n;
+          else if (ts.isDeleteExpression(n) && NAMES.has(prop(n.expression))) w = n;
+          else if ((ts.isPropertyAssignment(n) || ts.isShorthandPropertyAssignment(n)) && ts.isObjectLiteralExpression(n.parent) && n.name && NAMES.has(n.name.text)) w = n;
+          if (w) bad.push(`${at(w)} ${w.getText(sf).slice(0, 60)}`);
+          ts.forEachChild(n, walk);
+        })(sf);
+      }
+      ok(mods.includes('machines') && bad.length === 0, 'a machine\'s name and the mark of one the app kept are written only in machines.ts', bad);
+    }
   }
   // The checker is never switched off: no @ts-nocheck or @ts-ignore, and an
   // expected error only where listed with its reason (the second r51 review
@@ -673,12 +696,13 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     ok(silent.length === 0, 'every catch and promise handler in src/app/ ends in a throw, logs the error or carries a comment saying why the error is expected, and no finally returns, breaks or continues', silent);
   }
   // The history of the code is docs/ARCHIVE.md's, not the comments' (CA-4, from V's audit of 2026-11-10): a comment
-  // says the rule and its reason, which stand on their own, so it names no tracker row (NEW-110, REV13-2, PENDING 338,
-  // 387-B3, RC-3 and the like), and a build (r54, 2.57) only where the code still reads what that build saved or
+  // says the rule and its reason, which stand on their own, so it names no tracker row in any form the tracker's IDs
+  // take (NEW-110, REV13-2, PENDING 338, 387-B3, W-1, F5, 2.27-S1 and the rest below; the specs' rule IDs, such as
+  // S-6 or L-41, are not rows and stay), and a build (r54, 2.57) only where the code still reads what that build saved or
   // does. Those build names are counted against ARCHITECTURE.md's number, which only falls, as the casts' does. A
   // suite's file name (tests/r36.js) is a path to it, not history, and is not counted.
   {
-    const TRACKER = /\b(?:NEW-\d+|REV\d+(?:-\w+)?|R\d{2}-\d+|PENDING \d+|CA-\d+|CL-\d+|ST-\d+|RC-\d+|P-S\d-\d+|\d{3}-[A-Z]\d+|2\.\d{2}-F\d+)\b/g;
+    const TRACKER = /\b(?:NEW-\d+|UAT-\d+|REV\d+(?:-\w+)?|R\d{2}-\d+|R-S?\d+|PENDING \d+|CA-\d+|CL-\d+|ST-\d+|RC-\d+|P-S\d-\d+|P-r\d+b?|U-\d+|W-\d+|A-S?\d+|N-\d+|F\d+|AUD-\d+|HK-r\d+|\d{3}-[A-Z]\d*|\d\.\d{2}-[A-Z]\d+)\b/g;
     const BUILD = /\b(?:r\d{2,3}(?:\.\d)?|2\.\d{2})\b/g;
     const rows = []; let builds = 0;
     for (const id of MODS) {

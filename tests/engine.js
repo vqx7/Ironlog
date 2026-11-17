@@ -63,6 +63,8 @@ const EXTRA = {
   withPlanSets: (s, ids) => { const day = ((s.routines.find(r => r.id === s.activeRoutineId) || { days: [] }).days[0] || {}).id || null; const ex = () => ids.slice(0, 4).map((id, k) => ({ exId: id, sets: Array.from({ length: [1, 3, 4, 5][k] }, (_, j) => ({ w: 50, r: 8, warm: j === 0 && k === 3, drop: false })) })); const on = { routineId: s.activeRoutineId, freestyle: false }; return [[ex(), { routineId: s.activeRoutineId, dayId: day }, s.routines, on], [ex(), { routineId: s.activeRoutineId, dayId: day, free: true }, s.routines, on], [ex(), { routineId: s.activeRoutineId, dayId: null }, s.routines, on], [ex(), { routineId: '', dayId: null, free: true }, s.routines, { routineId: s.activeRoutineId, freestyle: true }], [ex(), { routineId: '', dayId: null, free: true }, s.routines, { routineId: 'none', freestyle: false }], [ex(), { routineId: s.activeRoutineId, dayId: day, editingId: 'e1' }, s.routines, on]]; },
   // r70 (364 b-2): Today's Lifts moving, the rising lifts with their lines and latest heaviest sets.
   liftsMoving: () => [[]],
+  // 2.70 (NEW-156, NEW-167): the week's word and the lifts in each of its groups, and whether lifts flat together point to fatigue.
+  verdict: () => [[]], fatigueCall: () => [[]],
   planItemOf: (s, ids) => s.routines.slice(0, 2).flatMap(r => ids.slice(0, 6).flatMap(id => [[r, id], [r, id, r.days.length > 1 ? r.days[1].id : null]])),
   // A lift's all-time bests, now and as of the log's middle session (a past workout's), and where the weeks are counted from.
   allTimeBests: (s, ids) => ids.flatMap(id => [[id], [id, s.sessions.length ? s.sessions[Math.floor(s.sessions.length / 2)].date : '']]),
@@ -320,7 +322,16 @@ const SCENARIOS = [
   // since you came back and the next sets read those alone. No wide history has a gap of more than six months.
   h => ({ ...h, ids: ['bench', 'plank', 'bbRow', ...h.ids], raw: { ...h.raw, injuries: [], deloadWeek: null, draft: null, settings: { ...h.raw.settings, restWeeks: [] },
     sessions: [[-3650, 'bench', 140, 1, 1], [-3650, 'plank', 0, 60, null], [-1000, 'bbRow', 100, 8, 2], [-993, 'bbRow', 102.5, 8, 2], [-21, 'bbRow', 60, 10, 3], [-14, 'bbRow', 65, 10, 2], [-7, 'bbRow', 70, 9, 2]].map(([n, exId, w, r, rir], i) => ({ id: 'lb' + i, date: day(h.today, n), dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '',
-      ex: [{ exId, rr: exId === 'plank' ? [30, 60] : [6, 10], sets: [0, 1, 2].map(() => ({ w, r, rir, done: true })) }] })) } })
+      ex: [{ exId, rr: exId === 'plank' ? [30, 60] : [6, 10], sets: [0, 1, 2].map(() => ({ w, r, rir, done: true })) }] })) } }),
+  // One lift falling while no muscle falls (2.70, REV20-4): a bench 1 kg up a week, and a DB bench heavier each week with
+  // fewer reps (its load up, so not stalled; its estimate down, so falling), every muscle's minimum at 0 so all are at
+  // target. The coach says the lift (coach.ts lastWordIn), which no wide history reaches.
+  (h, { BANDS }) => { const db = [[30, 9, 8, 8], [31, 8, 7, 7], [32, 7, 6, 6], [32, 6, 5, 5], [32, 5, 4, 4], [32, 4, 3, 3]];
+    const b = { ...BANDS, ...(h.raw.settings.bands || {}) }, bands = {};
+    for (const m in b) bands[m] = [0, b[m][1]];
+    const one = (id, k, exId, w, rs) => ({ id, date: day(h.today, k), dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', notes: '', ex: [{ exId, rr: [6, 10], sets: rs.map(r => ({ w, r, rir: 2, done: true })) }] });
+    return { ...h, ids: ['bench', 'dbBench', ...h.ids], raw: { ...h.raw, injuries: [], deloadWeek: null, draft: null, settings: { ...h.raw.settings, restWeeks: [], bands },
+      sessions: [-35, -28, -21, -14, -7, 0].flatMap((k, i) => [one('fb' + i, k, 'bench', 80 + i, [8, 8]), one('fd' + i, k, 'dbBench', db[i][0], db[i].slice(1))]).sort((x, y) => (x.date < y.date ? -1 : x.date > y.date ? 1 : 0)) } }; }
 ];
 
 // The child: the bundle on the page's histories, under V8's coverage.
@@ -458,7 +469,7 @@ function lineCoverage(covDir, bundleFile, mapPayload) {
     histories.push({ seed: 52000 + i, today: h.today, state, calls });
     if (histories.length === BATCH || i === K + SCENARIOS.length - 1) { batches.push(path.join(tmp, `data-${batches.length}.json`)); fs.writeFileSync(batches[batches.length - 1], JSON.stringify({ histories })); histories.length = 0; }
   }
-  ok(/Volume advice appears here after your second week back/.test(made[0] || '') && /Every muscle on plan, nothing stalled/.test(made[1] || '') && /Every muscle at target, nothing stalled/.test(made[3] || '') && /Chest strength is falling over \d+ weeks/.test(made[4] || '') && /is at the top of its range at [^:]+ and has stalled over the last \d+ weeks: it is due a step up/.test(made[5] || '') && /Every muscle at target, nothing stalled/.test(made[6] || '') && /Barbell Bench Press has stalled\. Try another rep range/.test(made[made.length - 2] || ''), 'the hand-made histories reach the coach lines they were made for', made);
+  ok(/Volume advice appears here after your second week back/.test(made[0] || '') && /Every muscle on plan, nothing stalled/.test(made[1] || '') && /Every muscle at target, nothing stalled/.test(made[3] || '') && /Chest strength is falling over \d+ weeks/.test(made[4] || '') && /is at the top of its range at [^:]+ and has stalled over the last \d+ weeks: it is due a step up/.test(made[5] || '') && /Every muscle at target, nothing stalled/.test(made[6] || '') && /Barbell Bench Press has stalled\. Try another rep range/.test(made[made.length - 3] || '') && /"DB Bench Press is falling over \d+ weeks\. Check sleep and recovery before adding sets\./.test(made[made.length - 1] || ''), 'the hand-made histories reach the coach lines they were made for', made);
   ok(!B.errors.length, 'no page errors while the page answered', B.errors.slice(0, 3));
   await settle(browser.close(), 'closing the browser');
 

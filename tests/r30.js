@@ -69,7 +69,8 @@ function strongCsv() {
       const L = window.__ironlog; const I = L.IDX(); const st = id => I.exStats[id];
       const pick = id => { const s = st(id); return s && { pct: s.pct == null ? null : Math.round(s.pct * 10) / 10, moving: s.moving, stalled: s.stalled, useAdj: s.useAdj, wN: s.wN }; };
       const auto = Object.fromEntries(['bench', 'deadlift', 'bbRow', 'backSquat', 'legPress', 'ohp'].map(id => [id, (I.byEx[id] || []).filter(x => x.auto).map(x => x.date)]));
-      L.ui.tab = 'dash'; L.render(); const moveRow = (document.querySelector('#dashSummary .srow') || {}).innerText || '';
+      // Why opened as a lifter opens it (2.70, NEW-156: the summary's lines start folded under the week's word).
+      L.ui.tab = 'dash'; L.ui.folds['dash:why'] = true; L.render(); const moveRow = (document.querySelector('#dashSummary .srow') || {}).innerText || '';
       return { bench: pick('bench'), dl: pick('deadlift'), row: pick('bbRow'), squat: pick('backSquat'), press: pick('legPress'), ohp: pick('ohp'), auto, coach: L.coach().text, moveRow: moveRow.replace(/\s+/g, ' '), chest: (I.scores.find(s => s.m === 'chest') || {}), light: Object.keys(I.lightWk) };
     });
     ok(['bench', 'deadlift', 'bbRow', 'backSquat', 'legPress'].every(id => a.auto[id].length === 1 && a.auto[id][0].startsWith('2026-09-1')), 'the unmarked deload week is read as lighter on every lift that had it', a.auto);

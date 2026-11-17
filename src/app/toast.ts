@@ -80,8 +80,8 @@ function watchTaps(): void {
     document.addEventListener(t, moved, { capture: true, passive: true });
 }
 
-/* A part ends with a full stop when another follows it, so the joined message reads as sentences (W-1: periods once
-   there are two). */
+/* A part ends with a full stop when another follows it, so a message joined from two or more parts reads as
+   sentences. */
 const joined = (parts: readonly string[]): string =>
   parts.map((p, i) => (i < parts.length - 1 && !/[.!?:]$/.test(p) ? p + '.' : p)).join(' ');
 
@@ -183,6 +183,17 @@ export function undoToastHide(): void {
     clearTimeout(toastT);
     gone(el);
   }
+}
+
+/** Takes `msg` out of the message showing, the message going when nothing else is left in it (a PR said and no longer one). */
+export function toastTakeBack(msg: string): void {
+  const el = box();
+  if (!el || el.hidden || !cur || !cur.parts.includes(msg)) return;
+  cur.parts = cur.parts.filter(p => p !== msg);
+  if (!cur.parts.length) {
+    clearTimeout(toastT);
+    gone(el);
+  } else draw(el);
 }
 
 /** Hides the toast whatever it says (Undo done); news waiting its turn then shows. */

@@ -1,6 +1,8 @@
 // Unit tests: analytics built from constructed logs.
 const {open}=require('./h');
-(async()=>{const {browser,page,errors}=await open('index.html',{clock:'2026-09-26T10:00:00'});
+// A build to run on can be named (node tests/unit-analytics.js baselines/rN.html), as every suite's can.
+const FILE=process.argv[2]||'index.html';
+(async()=>{const {browser,page,errors}=await open(FILE,{clock:'2026-09-26T10:00:00'});
 const res=await page.evaluate(()=>{
   const L=window.__ironlog;const out=[];const ok=(c,m,x)=>out.push([!!c,m+(x!==undefined?' → '+JSON.stringify(x):'')]);
   const near=(a,b,t=1e-6)=>a!=null&&b!=null&&Math.abs(a-b)<=t;
@@ -22,6 +24,30 @@ const res=await page.evaluate(()=>{
   ok(I.exStats.bench.moving&&I.exStats.bench.pct>=3,'steady +1.2%/wk: moving',I.exStats.bench.pct);
   I=reset([0,7,14,21,28,35].map((k,i)=>S(addDays(T,-35+k),'bench',[[100+i*0.3,8,2]])));
   ok(!I.exStats.bench.moving,'+0.3%/wk (1.5% total): not moving',I.exStats.bench.pct);
+  // ---- UAT-8: the load step the targets ask for at the top of the range is progress. A bench lifter on 6 to 10 beats
+  // every target by a rep a week, 185 lb to 10, 10, 10, then 195: the estimate reads the step as a dip (185 x 10 is 247
+  // by Brzycki, 195 x 8 is 242) for weeks while he gains, so he is moving at the step and after it while his reading at
+  // 195 is above the first session's there; the same sets repeated there are not moving, and are left to the stall test.
+  {const LBk=0.45359237;const wk=(reps,lb)=>reps.map(r=>[lb*LBk,r,null]);
+   const climb=[[[8,8,8],185],[[9,8,8],185],[[9,9,8],185],[[9,9,9],185],[[10,9,9],185],[[10,10,9],185],[[10,10,10],185],[[8,8,7],195],[[8,8,8],195]];
+   const at=(list)=>list.map(([r,lb],i)=>S(addDays(T,-7*(list.length-1)+7*i),'bench',wk(r,lb)));
+   I=reset(at(climb));const st=I.exStats.bench;
+   ok(st.moving&&!st.falling&&!st.stalled&&L.movers().some(x=>x.id==='bench'),'UAT-8: a rep a week past the load step (195 x 8, 8, 8 after 8, 8, 7): moving, among the lifts moving',[st.pct,st.slope]);
+   I=reset(at(climb.slice(0,8)));
+   ok(I.exStats.bench.moving,'UAT-8: the step itself (195 x 8, 8, 7 after 185 x 10, 10, 10): moving',I.exStats.bench.pct);
+   /* The review of 2.68 to 2.70, REV20-6: a lift moving by its step is never shown rising beside numbers that fall.
+      185 x 10, 10, 10 twice, then 195 x 7, 7, 6 and 7, 7, 7: Lifts moving's line rises (the loads), and the lift's
+      history line says what was lifted (its top sets) where its estimates fall across the step. */
+   I=reset(at([[[10,10,10],185],[[10,10,10],185],[[7,7,6],195],[[7,7,7],195]]));
+   {const lm=(L.liftsMoving()||[]).find(x=>x.id==='bench');const line=lm?lm.line:[];const sheet=String((L.liftTrend('bench')||{}).strings?L.liftTrend('bench').strings.join('')+L.liftTrend('bench').values.join(' '):L.liftTrend('bench'));
+    ok(I.exStats.bench.moving&&I.exStats.bench.pct<0&&line.length>1&&line[line.length-1]>line[0]&&/up/.test(sheet)&&!/Est\. 1RM/.test(sheet)&&/195/.test(sheet),'REV20-6: moving by its step with the estimate below where it began: Lifts moving\'s line ends higher than it starts, and the history line shows the top sets, not falling estimates beside "up"',{pct:I.exStats.bench.pct,line,sheet});}
+   I=reset(at([...climb.slice(0,8),[[8,8,7],195],[[8,8,7],195]]));
+   ok(!I.exStats.bench.moving&&!I.exStats.bench.falling,'UAT-8: the same 195 x 8, 8, 7 repeated after the step: not moving, not falling',I.exStats.bench.pct);
+   // A step whose estimate reads lower than where the window began: the lift is moving, and its muscle is never pulled
+   // down by that dip (a muscle's change is read from lifts whose change agrees with their direction).
+   I=reset(at([[[10,10,10],185],[[10,10,10],185],[[7,7,6],195],[[7,7,7],195]]));
+   {const b=I.exStats.bench,sc=I.scores.find(x=>x.m==='chest');
+    ok(b.moving&&b.pct<0&&!b.falling&&(!sc||sc.score>=0),'UAT-8: moving by the step with the estimate below the window\'s start: chest is not read down by it',{pct:b.pct,chest:sc&&{score:sc.score,label:sc.label}});}}
   // The 4-week projection was removed in r41 (V: guide, do not predict); tests/r41.js checks nothing projects.
   // ---- PR bands
   I=reset([S(addDays(T,-20),'bench',[[100,5,0]]),S(addDays(T,-13),'bench',[[80,12,0]]),S(addDays(T,-6),'bench',[[102,5,0]])]);
@@ -131,6 +157,94 @@ const res=await page.evaluate(()=>{
    reset(mix);L.state.settings.rirMode='off';L.invalidate();
    ok(L.rirUsual('bench',L.today())==null&&L.isHard({r:8,w:100,rir:5,warm:false},L.EX('bench'),L.today()),'RIR off: nothing is read, every working set is hard');
    L.state.settings.rirMode='on';L.invalidate();}
+  // ---- NEW-165 (V, 2026-11-15): a session short of the sets it is held to, its sets skipped, repeats its target by V's
+  // one rule and is no test of progress, so the stall test leaves it out, as it does a lighter one. Bench planned for 3
+  // sets, done 3 times at 100 x 8, then 6 weeks with the third set skipped: not stalled, and the coach says nothing of it.
+  // A set tried and missed (0 reps) is one of the session's sets, so those weeks with it missed read stalled; so do 2
+  // sets with no plan holding the lift to 3, which become its usual.
+  {const P=(date,sets,ps)=>{const s=S(date,'bench',sets);if(ps)s.ex[0].ps=ps;return s;};
+   const three=[[100,8,2],[100,8,2],[100,8,2]],two=[[100,8,2],[100,8,2]],missed=[[100,8,2],[100,8,2],[100,0,null]];
+   const full=[-56,-49,-42].map(k=>P(addDays(T,k),three,3));const wk=[-35,-28,-21,-14,-7,0];
+   I=reset([...full,...wk.map(k=>P(addDays(T,k),two,3))]);
+   ok(!I.exStats.bench.stalled&&!L.stalledIds().includes('bench')&&!/Bench Press has stalled/.test(L.coach().text),'NEW-165: the third planned set skipped for 6 weeks: not stalled, and the coach names no stall',{short:I.byEx.bench.map(x=>x.short||'-').join(','),coach:L.coach().text});
+   I=reset([...full,...wk.map(k=>P(addDays(T,k),missed,3))]);
+   ok(I.exStats.bench.stalled,'NEW-165: the third set tried and missed for 6 weeks: stalled (a guard)',I.byEx.bench.map(x=>x.short||'-').join(','));
+   I=reset([...full,...wk.map(k=>P(addDays(T,k),two,null))]);
+   ok(I.exStats.bench.stalled,'NEW-165: 2 sets for 6 weeks with no plan holding 3, its usual from the second: stalled (a guard)',I.byEx.bench.map(x=>x.short||'-').join(','));}
+  // ---- NEW-166 (V, 2026-11-15): a lift taken out of the routine is not being trained, so from that moment it is read by
+  // none of Stalls, the coach, Lifts moving or its muscle's trend. Bench, barbell row and back squat flat for 4 weeks,
+  // overhead press rising, then bench swapped for incline bench and the press taken out: before, bench stayed in "3 main
+  // lifts stalled at once ... a deload week may help" for 4 more weeks. A lift still in the routine keeps its reading
+  // until the 4-week break, as does one in Freestyle, which follows no routine, and one never planned, done as an extra.
+  {const R=ids=>({id:'R1',name:'Mine',schedule:'cycle',days:[{id:'A',name:'A',rest:false,items:ids.map((ex,k)=>({uid:'i'+k,exId:ex,sets:3,repMin:6,repMax:10,rir:2,rest:120,ss:null}))}]});
+   const D=(date,lifts,ps)=>({id:'t'+(n++),date,dayIdx:0,dayId:'A',dayName:'A',routineId:'R1',notes:'',ex:lifts.map(([ex,w])=>({exId:ex,rr:[6,10],...(ps===false?{}:{ps:3}),sets:[0,1,2].map(()=>({w,r:8,rir:2,warm:false,drop:false}))}))});
+   const before=k=>[['bench',100],['bbRow',80],['backSquat',120],['ohp',40+2*k]];
+   const flat=[-42,-35,-28,-21].map((d,k)=>D(addDays(T,d),before(k)));
+   const after=[-14,-7,0].map(d=>D(addDays(T,d),[['incBench',80],['bbRow',80],['backSquat',120]]));
+   const run=(routine,o)=>{L.state.routines=[R(routine)];L.state.activeRoutineId='R1';if(o&&o.free)L.state.settings.todayStart='free';else delete L.state.settings.todayStart;const I=reset([...(o&&o.extra?o.extra:flat),...after]);return {I,stalled:L.stalledIds(),movers:L.movers().map(x=>x.id),coach:L.coach().text};};
+   let r=run(['incBench','bbRow','backSquat']);
+   ok(!r.I.exStats.bench.stalled&&!r.stalled.includes('bench')&&!/3 main lifts stalled/.test(r.coach),'NEW-166: bench swapped out of the routine 3 weeks after its last session: not stalled, and no deload for 3 main lifts',{stalled:r.stalled,coach:r.coach});
+   ok(r.I.exStats.ohp.moving&&!r.movers.includes('ohp'),'NEW-166: the press taken out of the routine while rising: not among the lifts moving',{movers:r.movers,ohp:r.I.exStats.ohp.pct});
+   r=run(['bench','incBench','bbRow','backSquat']);
+   ok(r.stalled.includes('bench')&&/3 main lifts stalled/.test(r.coach),'NEW-166: bench still in the routine, not done for 3 weeks: stalled until its 4-week break (a guard)',r.stalled);
+   r=run(['incBench','bbRow','backSquat'],{free:true});
+   ok(r.stalled.includes('bench'),'NEW-166: in Freestyle, which follows no routine: bench stalled until its 4-week break (a guard)',r.stalled);
+   r=run(['incBench','bbRow','backSquat'],{extra:[-42,-35,-28,-21].map(d=>D(addDays(T,d),[['bench',100]],false)).concat(flat.map(s=>({...s,ex:s.ex.filter(b=>b.exId!=='bench')})))});
+   ok(r.stalled.includes('bench'),'NEW-166: bench never planned, done as an extra, not in the routine: stalled as before (a guard)',r.stalled);
+   delete L.state.settings.todayStart;}
+  // ---- NEW-156: the weekly verdict, one word for what the lifts being trained are doing (V, 2026-11-14 and 15). Each such
+  // lift is in one group, falling before stalled; Progressing while the rising outnumber the stalled and falling together,
+  // Regressing while the falling outnumber the rising, Stalled otherwise; no word in a deload or rest week, or with no lift
+  // in a group. Six weekly sessions a lift: bench up 1.2 kg a week and the press 0.6, the row and squat flat, the Romanian
+  // deadlift down 2 kg a week (stalled too, by the stall test).
+  {const wk6=[-35,-28,-21,-14,-7,0];
+   // A build before the verdict has none: each check fails rather than the suite stopping.
+   const verdictOf=()=>L.verdict?L.verdict():{word:'none on this build',tone:'',rising:[],stalled:[],falling:[]};
+   const lift=(id,f)=>wk6.map((k,i)=>S(addDays(T,k),id,[[f(i),8,2],[f(i),8,2]]));
+   const up={bench:i=>100+1.2*i,ohp:i=>40+0.6*i},flat={bbRow:()=>80,backSquat:()=>120},down={rdl:i=>110-2*i,dbRdl:i=>60-1.2*i};
+   const log=ids=>{const all=ids.flatMap(id=>lift(id,up[id]||flat[id]||down[id]));all.sort((a,b)=>a.date.localeCompare(b.date));L.state.deloadWeek=null;L.state.settings.restWeeks=[];reset(all);return verdictOf();};
+   const same=(a,b)=>JSON.stringify([...a].sort())===JSON.stringify([...b].sort());
+   let v=log(['bench','ohp','bbRow']);
+   ok(v.word==='Progressing'&&v.tone==='green'&&same(v.rising,['bench','ohp'])&&same(v.stalled,['bbRow'])&&!v.falling.length,'NEW-156: two lifts rising, one stalled: Progressing',v);
+   v=log(['bench','bbRow']);
+   ok(v.word==='Stalled'&&v.tone==='yellow','NEW-156: one rising, one stalled: Stalled, as rising is not the majority',v);
+   v=log(['bench','bbRow','backSquat']);
+   ok(v.word==='Stalled','NEW-156: one rising, two stalled: Stalled',v);
+   v=log(['rdl']);
+   ok(v.word==='Regressing'&&v.tone==='red'&&same(v.falling,['rdl'])&&!v.stalled.length&&L.stalledIds().includes('rdl'),'NEW-156: a lift falling, stalled by the stall test too: counted once, as falling, so Regressing',{v,stalledIds:L.stalledIds()});
+   v=log(['bench','rdl']);
+   ok(v.word==='Stalled','NEW-156: one rising, one falling: Stalled',v);
+   v=log(['bench','rdl','dbRdl']);
+   ok(v.word==='Regressing','NEW-156: one rising, two falling: Regressing',v);
+   v=log(['bench','ohp','bbRow']);L.state.deloadWeek=L.weekStart(T);L.invalidate();
+   const dl=verdictOf();L.state.deloadWeek=null;L.state.settings.restWeeks=[L.weekStart(T)];L.invalidate();const rw=verdictOf();L.state.settings.restWeeks=[];
+   ok(dl.word===null&&rw.word===null,'NEW-156: the same log in a deload week, and in a rest week: no word',{deload:dl.word,rest:rw.word});
+   I=reset([0,7,14].map((k,i)=>S(addDays(T,-14+k),'bench',[[100+i,8,2]])));v=verdictOf();
+   ok(I.exStats.bench.pct!=null&&!I.exStats.bench.moving&&!I.exStats.bench.stalled&&v.word===null,'NEW-156: a lift with a trend inside day-to-day noise, too new to stall: in no group, so no word',{pct:I.exStats.bench.pct,v});
+   const P=(date,sets)=>{const s=S(date,'bench',sets);s.ex[0].ps=3;return s;};
+   reset([...[-56,-49,-42].map(k=>P(addDays(T,k),[[100,8,2],[100,8,2],[100,8,2]])),...wk6.map(k=>P(addDays(T,k),[[100,8,2],[100,8,2]]))]);v=verdictOf();
+   ok(!v.stalled.includes('bench')&&v.word!=='Stalled','NEW-156: a lift whose third planned set was skipped for 6 weeks is never counted stalled (NEW-165)',v);
+   L.state.sessions=[];L.invalidate();
+   ok(verdictOf().word===null,'NEW-156: nothing logged: no word',verdictOf());
+   // NEW-167: a deload is for main lifts flat together while progress has stopped broadly, which a week whose word is
+   // Progressing says it has not. Four main lifts rising and three flat: the coach names a stalled lift to change, and
+   // asks for no deload; two rising and the same three flat, the week reads Stalled, and the deload is asked for.
+   const rise={ohp:i=>40+0.6*i,incBench:i=>80+1*i,hackSquat:i=>120+1.5*i,rdl:i=>100+1.2*i,bench:i=>100+1.2*i};
+   const mains=ids=>{const all=ids.flatMap(id=>lift(id,rise[id]||(()=>({bbRow:80,backSquat:120,legPress:150})[id])));all.sort((a,b)=>a.date.localeCompare(b.date));L.state.deloadWeek=null;reset(all);return {v:verdictOf().word,stalled:L.stalledIds(),coach:L.coach().text};};
+   // Every minimum at 0, so no muscle below target comes before the stalled lift in the coach's order.
+   const keepB=JSON.parse(JSON.stringify(L.state.settings.bands));for(const k in L.state.settings.bands)L.state.settings.bands[k]=[0,L.state.settings.bands[k][1]];
+   let m=mains(['ohp','incBench','hackSquat','rdl','bbRow','backSquat','legPress']);L.state.settings.bands=keepB;L.invalidate();
+   ok(m.v==='Progressing'&&m.stalled.length===3&&!/A deload week may help/.test(m.coach)&&/has stalled|top of its range/.test(m.coach),'NEW-167: four main lifts rising, three flat: Progressing, and the coach names a stalled lift rather than asking for a deload',m);
+   /* The review of 2.68 to 2.70, REV20-4: bench rising and DB bench falling, neither stalled, every muscle at target: the
+      week reads Stalled, and the coach names the falling lift, never "nothing stalled" beside it. */
+   {const keep=JSON.parse(JSON.stringify(L.state.settings.bands));for(const k in L.state.settings.bands)L.state.settings.bands[k]=[0,L.state.settings.bands[k][1]];
+    // The DB bench heavier each week with fewer reps: its load rose, so the stall test reads it moved, while its estimate falls.
+    const db=[[30,9,8,8],[31,8,7,7],[32,7,6,6],[32,6,5,5],[32,5,4,4],[32,4,3,3]];
+    const all=[...lift('bench',i=>80+1*i),...wk6.map((k,i)=>S(addDays(T,k),'dbBench',db[i].slice(1).map(r=>[db[i][0],r,2])))].sort((a,b)=>a.date.localeCompare(b.date));L.state.deloadWeek=null;reset(all);
+    const c=L.coach();const v=verdictOf();L.state.settings.bands=keep;L.invalidate();
+    ok(v.word==='Stalled'&&L.IDX().exStats.dbBench.falling&&!L.IDX().exStats.dbBench.stalled&&/^DB Bench Press is falling over \d+ weeks\./.test(c.text)&&!/nothing stalled/.test(c.text)&&c.act&&c.act.ex==='dbBench','REV20-4: one lift rising and one falling, neither stalled: the coach names the falling lift, never "nothing stalled"',{word:v.word,coach:c.text});}
+   m=mains(['ohp','incBench','bbRow','backSquat','legPress']);
+   ok(m.v==='Stalled'&&/3 main lifts stalled at once/.test(m.coach),'NEW-167: two rising and the same three flat: Stalled, and the deload is asked for (a guard)',m);}
   return out;});
 let f=0;for(const [p,m] of res){console.log((p?'ok  ':'FAIL')+' '+m);if(!p)f++;}
 console.log(errors.length?errors:'no errors');console.log(f?'FAILURES '+f:'ALL PASS');await browser.close();})();

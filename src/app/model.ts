@@ -70,7 +70,7 @@ export interface Exposure {
   /** Done at a new machine or gym (SessionEx.nw): a machine of its own starts here (machineKeys). */
   nw?: true;
   /** The machine it was saved as done on (SessionEx.mc); absent when none was named. */
-  mc?: string;
+  named?: string;
   /** The machine it was done on (machineKeys): its key. */
   mk: string;
   /** Back from a break (BACK_DAYS) or a long one (LONG_BREAK_DAYS) since the lift's session before on its machine, read on every machine (markBreaks); absent when not. */
@@ -81,7 +81,7 @@ export interface Exposure {
 }
 
 /* A lift's machines (390 C, V 2026-11-14). Each session of a lift was done on one machine, named by a key: the one
-   it was saved with (mc), written once the lift has been done on more than one machine; else the machine its stretch
+   it was saved with (mc, read as `named`); else the machine its stretch
    began on, the session marked "New machine or gym" (nw) at or before it, or the lift's first machine (FIRST_MACHINE).
    An unnamed session follows its stretch, never the session before it, so moving one session to another machine in
    its edit moves only that session. A lift never marked is one machine, as before. Its readings (target, PRs, bests,
@@ -92,13 +92,13 @@ export interface Exposure {
 export const FIRST_MACHINE = '0';
 
 /** Gives each of a lift's sessions (in date order) the key of the machine it was done on (above). */
-export function machineKeys<X extends { sid: string; nw?: true | undefined; mc?: string | undefined; mk: string }>(
+export function machineKeys<X extends { sid: string; nw?: true | undefined; named?: string | undefined; mk: string }>(
   xs: readonly X[]
 ): void {
   let stretch = FIRST_MACHINE;
   for (const x of xs) {
     if (x.nw) stretch = x.sid;
-    x.mk = x.mc || stretch;
+    x.mk = x.named || stretch;
   }
 }
 
@@ -135,6 +135,8 @@ export interface Drift {
 export interface ExStat {
   n: number;
   stalled: boolean;
+  /** Being trained now: in the trend's window, not on a break, kept, not held for an injury and not taken out of the routine. Stalled, rising and a muscle's trend read only such a lift. */
+  current: boolean;
   pct: number | null;
   slope: number | null;
   slopeSe: number | null;

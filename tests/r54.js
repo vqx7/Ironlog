@@ -194,15 +194,17 @@ const FILE = process.argv[2] || 'index.html';
     // Every place that says why there is no average says the same week (the review of r54: "Finish a full week" beside "after your second week").
     const said = () => ev(() => {
       const L = window.__ironlog; const txt = el => el ? el.textContent.replace(/\s+/g, ' ').trim() : '';
-      L.ui.tab = 'dash'; L.ui.folds['dash:volume'] = true; L.ui.volMode = 'avg'; L.render();
+      // Since 2.70 (NEW-156) the coach's change opens Stats, after the week's word, and the lines under it fold under Why.
+      L.ui.tab = 'dash'; L.ui.folds['dash:volume'] = true; L.ui.folds['dash:why'] = true; L.ui.volMode = 'avg'; L.render();
       const rows = [...document.querySelectorAll('#dashSummary .srow')].map(txt);
+      const line = txt(document.querySelector('#dashSummary .vline'));
       const recent = txt([...document.querySelectorAll('#view [data-mkey="volume"] p')].find(e => /Averaged over|An average/.test(e.textContent)));
       L.ui.volMode = 'trend'; L.ui.dashMuscle = 'chest'; L.render();
       const head = txt([...document.querySelectorAll('#view p.headline')].find(e => /^Chest\./.test(txt(e))));
-      return { volume: rows.find(t => /^Volume/.test(t)) || '', change: rows.find(t => /^Change/.test(t)) || null, recent, head };
+      return { line, volume: rows.find(t => /^Volume/.test(t)) || '', change: rows.find(t => /^Change/.test(t)) || null, recent, head };
     });
     const w2 = await said();
-    ok(/^VolumeVolume advice appears here after your second week\./.test(w2.volume) && w2.change === null && /^An average starts after your second week\./.test(w2.recent) && /Compare against it after your second week\./.test(w2.head), 'in the log\'s second week, Stats\' summary says once that volume advice comes after the second week, as the coach does, and Recent average and a muscle\'s headline say the same week (r53: "Finish a full week for a volume read" beside it, and "No sessions in the previous 4 full weeks")', w2);
+    ok(/(^|\. )Volume advice appears here after your second week\.$/.test(w2.line) && !/after your second week/.test(w2.volume) && w2.change === null && /^An average starts after your second week\./.test(w2.recent) && /Compare against it after your second week\./.test(w2.head), 'in the log\'s second week, Stats\' summary says once that volume advice comes after the second week, as the coach does, and Recent average and a muscle\'s headline say the same week (r53: "Finish a full week for a volume read" beside it, and "No sessions in the previous 4 full weeks")', w2);
     // The same first week three weeks back, with the week after it trained: the average is of one week, and Recent average says which.
     const w3 = await ev(() => { const L = window.__ironlog; const S = L.state; const R = L.activeRoutine(); const out = [];
       for (const [w, mon] of [[1, '2026-09-28'], [2, '2026-10-05']]) R.days.forEach((day, i) => { if (day.rest || !day.items.length) return; const date = new Date(Date.parse(mon + 'T12:00:00Z') + i * 864e5).toISOString().slice(0, 10);

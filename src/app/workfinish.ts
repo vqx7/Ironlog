@@ -15,7 +15,7 @@ import type { Rec } from './records';
 import { loadNote } from './loads';
 import { prName, prOverall } from './prs';
 import { stripDemo } from './chunks';
-import { demoRestore } from './storage';
+import { demoRestore, device } from './storage';
 import {
   activeRoutine,
   bwLoad,
@@ -78,34 +78,102 @@ const HEAVIEST_SHOWN = 4;
 
 /* ---------- Finish ---------- */
 
-/** Asks about sets left untouched when something was done (finish says when); true when it asked, and Finish waits on the answer. */
+/** A set with reps and no tick (a typed 0, a missed set, among them): kept only when marked done. */
+const typedNotDone = (s: DraftSet): boolean => !s.done && (+(s.r ?? 0) > 0 || isMissed(s));
+
+/** The sets with reps and no tick, by exercise, as Finish names them. */
+function uncheckedIn(d: Draft): { n: number; name: string }[] {
+  const out: { n: number; name: string }[] = [];
+  for (const b of d.ex) {
+    const n = b.sets.filter(typedNotDone).length;
+    if (n) out.push({ n, name: EX(b.exId).name });
+  }
+  return out;
+}
+
+/* Each set with reps and no tick is ticked in turn; one far off asks first, and once it is logged the rest are ticked
+   and the session saved, with no second tap on Finish. Fix it leaves the workout open there. */
+/** Marks the sets with reps and no tick done, then saves (above). */
+function markAll(): void {
+  const dd = state.draft;
+  if (!dd) return;
+  for (const [bi, b] of dd.ex.entries())
+    for (const [si, s] of b.sets.entries())
+      if (typedNotDone(s)) {
+        if (oddReps(b, s) || oddLoad(b, si, dd.date) || lightZero(b, si, dd.date)) {
+          setDone(bi, si, true, false, markAll);
+          if (!s.done) return;
+        } else
+          act(
+            () => {
+              settleLoad(b, si);
+              noteAsked(dd, b, si);
+              s.done = true;
+            },
+            { inProgress: true }
+          );
+      }
+  saveAfterRamps();
+}
+
+/* Sets left untouched when something was done (finish says when), asked once. With sets that have reps and no tick
+   besides, the two are one question: those named, to mark done or leave out with the rest. True when it asked, and
+   Finish waits on the answer. */
+/** Asks about sets left untouched, and those with reps and no tick with them (above). */
 function askSetsLeft(d: Draft): boolean {
   let n = 0,
-    left = 0;
+    left = 0,
+    typedWork = 0,
+    any = false;
   for (const b of d.ex)
     for (const x of b.sets) {
       if (x.warm) continue;
       n++;
-      if (!x.done && rowBlank(b, x)) left++;
+      if (x.done) any = true;
+      else if (rowBlank(b, x)) left++;
+      else if (typedNotDone(x)) typedWork++;
     }
-  const any = d.ex.some(b => b.sets.some(x => x.done && !x.warm));
-  if (any && left > 0) {
+  if (!any || left === 0) return false;
+  const asked = (): void => {
+    const dd = state.draft;
+    if (dd) dd._leftAsked = true;
+  };
+  const fewer =
+    'An exercise with fewer sets than usual does not set your next target, and still counts toward its trend.';
+  const typed = uncheckedIn(d);
+  if (typed.length) {
+    const total = typed.reduce((a, u) => a + u.n, 0);
     confirmBox(
-      `${left} of ${n} sets not done`,
-      `Finish now and they are left out. An exercise with fewer sets than usual does not set your next target, and still counts toward its trend.`,
-      'Finish now',
+      `${left + typedWork} of ${n} sets not done`,
+      `${andList(typed.map(u => `${u.name} (${u.n} set${u.n > 1 ? 's' : ''})`))} ${typed.length > 1 ? 'have' : 'has'} reps and no checkmark. ${left > 1 ? `The other ${left} are empty and left out.` : 'The other set is empty and left out.'} ${fewer}`,
+      `Mark ${total > 1 ? 'them' : 'it'} done and save`,
       () => {
-        const dd = state.draft;
-        if (!dd) return;
-        dd._leftAsked = true;
-        finish();
+        asked();
+        markAll();
       },
       false,
-      { label: 'Keep going', fn: () => {} }
+      {
+        label: 'Save without them',
+        fn: () => {
+          asked();
+          saveAfterRamps();
+        }
+      }
     );
     return true;
   }
-  return false;
+  confirmBox(
+    `${left} of ${n} sets not done`,
+    `Finish now and they are left out. ${fewer}`,
+    'Finish now',
+    () => {
+      asked();
+      finish();
+    },
+    false,
+    { label: 'Keep going', fn: () => {} }
+  );
+  return true;
 }
 
 /** Asks about done sets that look like ramp-ups (finish says which); true when it asked. */
@@ -164,7 +232,7 @@ function askRamps(d: Draft): boolean {
         },
         { inProgress: true }
       );
-      finish();
+      saveAfterRamps();
     };
     confirmBox(
       'These look like ramp-up sets',
@@ -204,50 +272,33 @@ function askRamps(d: Draft): boolean {
 
 /** Asks about sets with reps and no tick (finish says how); true when it asked. */
 function askUnchecked(d: Draft): boolean {
-  const unchecked: { n: number; name: string }[] = [];
-  for (const b of d.ex) {
-    const n = b.sets.filter(s => !s.done && (+(s.r ?? 0) > 0 || isMissed(s))).length;
-    if (n) unchecked.push({ n, name: EX(b.exId).name });
-  }
-  if (unchecked.length) {
-    const list = unchecked.map(u => `${u.name} (${u.n} set${u.n > 1 ? 's' : ''})`).join(', ');
-    const total = unchecked.reduce((a, u) => a + u.n, 0);
-    confirmBox(
-      'Some sets are not marked done',
-      `${total} set${total > 1 ? 's have' : ' has'} reps entered but no checkmark, so ${total > 1 ? 'they' : 'it'} will not be saved: ${list}.`,
-      `Mark ${total > 1 ? 'them' : 'it'} done and save`,
-      /* Each set is ticked in turn; one far off asks first, and once it is logged the rest are ticked and the
-         session saved, with no second tap on Finish. Fix it leaves the workout open there. */
-      function markAll(): void {
-        const dd = state.draft;
-        if (!dd) return;
-        for (const [bi, b] of dd.ex.entries())
-          for (const [si, s] of b.sets.entries())
-            if (!s.done && (+(s.r ?? 0) > 0 || isMissed(s))) {
-              if (oddReps(b, s) || oddLoad(b, si, dd.date) || lightZero(b, si, dd.date)) {
-                setDone(bi, si, true, false, markAll);
-                if (!s.done) return;
-              } else
-                act(
-                  () => {
-                    settleLoad(b, si);
-                    noteAsked(dd, b, si);
-                    s.done = true;
-                  },
-                  { inProgress: true }
-                );
-            }
-        finishNow();
-      },
-      false,
-      { label: 'Save without them', fn: () => finishNow() }
-    );
-    return true;
-  }
-  return false;
+  const unchecked = uncheckedIn(d);
+  if (!unchecked.length) return false;
+  const list = unchecked.map(u => `${u.name} (${u.n} set${u.n > 1 ? 's' : ''})`).join(', ');
+  const total = unchecked.reduce((a, u) => a + u.n, 0);
+  confirmBox(
+    'Some sets are not marked done',
+    `${total} set${total > 1 ? 's have' : ' has'} reps entered but no checkmark, so ${total > 1 ? 'they' : 'it'} will not be saved: ${list}.`,
+    `Mark ${total > 1 ? 'them' : 'it'} done and save`,
+    markAll,
+    false,
+    { label: 'Save without them', fn: saveAfterRamps }
+  );
+  return true;
 }
 
-/* Sets left: finishing with half the planned sets untouched is never
+/* Ramp-up sets are asked about last, once the sets to save are settled (one just marked done among them), and then the
+   session is saved. */
+/** Asks about ramp-up sets once, then saves. */
+function saveAfterRamps(): void {
+  const d = state.draft;
+  if (!d) return;
+  if (!d._rampAsked && askRamps(d)) return;
+  finishNow();
+}
+
+/* Finish asks one thing at a time and never the same thing twice: sets left, with those holding reps and no tick
+   (one question), then ramp-up sets, then it saves. Sets left: finishing with half the planned sets untouched is never
    saved without a word. Asked once, only when something was done, and not for
    an edit or a past workout typed in afterwards. Ramp-up sets logged as work
    count as hard sets and inflate weekly volume: a done working set before
@@ -267,9 +318,8 @@ export function finish(): void {
   const d = state.draft;
   if (!d) return;
   if (!d._leftAsked && !d.editingId && !d.past && askSetsLeft(d)) return;
-  if (!d._rampAsked && askRamps(d)) return;
   if (askUnchecked(d)) return;
-  finishNow();
+  saveAfterRamps();
 }
 
 /* Nothing is marked trimmed (V's one rule): an
@@ -388,17 +438,22 @@ function setCounts(ex: ReturnType<typeof savedEx>[], date: string): { work: numb
 /** A PR as the recap says it: the lift, what was done, and what it beat. */
 function recapPr(pr: Pr): { name: string; what: string; was: string } {
   const e = EX(pr.exId);
-  if (pr.type === 'Weight PR')
+  if (pr.type === 'Weight PR') {
+    /* The weight PR set's own estimate is said only when it is the session's best for the lift: after 155 x 7, 145 x 10
+       set a higher one, and Stats names that (203), so 199 here would be a second best estimate. */
+    const top = prSet(pr.exId, pr.sid);
+    const own = pr.value != null && isCompound(e) && !(top && top.v > pr.value + EPS_SAME);
     return {
       name: e.name,
-      what: `Weight PR, ${setShort(e, pr.w, pr.r)}${pr.value != null && isCompound(e) ? `, best estimate ${fmtE(e, pr.value)} ${liftU(e)}${loadNote(e)}` : ''}`,
+      what: `Weight PR, ${setShort(e, pr.w, pr.r)}${own && pr.value != null ? `, best estimate ${fmtE(e, pr.value)} ${liftU(e)}${loadNote(e)}` : ''}`,
       was: e.assist
         ? 'less help than ever'
         : isFinite(pr.prevW ?? NaN)
           ? `heaviest before ${listLabel(e, pr.prevW ?? 0, !e.bw)}`
           : ''
     };
-  const ps = pr.type === 'e1RM' && !isCompound(e) ? prSet(pr.exId, pr.date) : null;
+  }
+  const ps = pr.type === 'e1RM' && !isCompound(e) ? prSet(pr.exId, pr.sid) : null;
   if (ps) return { name: e.name, what: `PR, ${setShort(e, ps.w, ps.r)}`, was: 'your best for that number of reps' };
   return pr.type === 'e1RM'
     ? {
@@ -583,9 +638,11 @@ function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioE
   const prList = prs.map(recapPr);
   if (cardio.length) lines.push(`Cardio and mobility: ${cardio.reduce((a, c) => a + c.min, 0)} min`);
   if (demoGone) lines.push('Demo data removed, so your stats show only your own sessions');
+  // A phone refusing saves kept none of it: the sheet never says saved, and says where to export.
+  if (!device.ok) lines.unshift('Export a backup from the menu.');
   openModal({
     kind: 'recap',
-    title: 'Session saved',
+    title: device.ok ? 'Session saved' : 'Not saved on this phone',
     lines,
     prs: prList,
     note: prs.length

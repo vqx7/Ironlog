@@ -75,7 +75,7 @@ import {
 import type { Draft } from './workstate';
 
 /** A remainder of plates this light, per unit of the gym's plates, is conversion dust when the app shows the other unit: not said. */
-/** The calibration set is offered once CAL_OFFER.sessions sessions are logged, and again CAL_OFFER.weeks weeks after the last (or after Later). */
+/** The calibration set is offered once CAL_OFFER.sessions sessions have rated sets, and again CAL_OFFER.weeks weeks after the last (or after Later). */
 export const CAL_OFFER = { sessions: 3, weeks: 3 } as const;
 /** Reps past ODD_REPS, and more than ODD_REPS_TIMES the top of the range and anything logged on the lift, are asked about first: a slipped digit (a convention). */
 export const ODD_REPS = 30,
@@ -83,8 +83,8 @@ export const ODD_REPS = 30,
 /** A PR's toast stays this many milliseconds, and the phone buzzes this pattern where it can. */
 const PR_TOAST_MS = 4200,
   PR_BUZZ = [30, 50, 30];
-/** The effort strip is scrolled into view when its bottom is within STRIP_ROOM_PX.edge of what covers the screen, leaving STRIP_ROOM_PX.gap. */
-const STRIP_ROOM_PX = { edge: 8, gap: 16 } as const;
+/** The effort strip, or the set to do next, is scrolled into view when its bottom is within BAR_ROOM_PX.edge of the bars along the bottom, leaving BAR_ROOM_PX.gap. */
+const BAR_ROOM_PX = { edge: 8, gap: 16 } as const;
 /** A load under MIX_RANGE[0] or over MIX_RANGE[1] of last time's is asked about once: a per-dumbbell or per-side mix-up (a convention). */
 const MIX_RANGE = [0.6, 1.4] as const;
 /** The mix-up toast stays this many milliseconds: it has two sentences. */
@@ -94,9 +94,10 @@ const ORDER_MS = { soon: 900, again: 1500 } as const;
 import { LIMITS, sessCmp } from './records';
 import { readSets } from './importing';
 import type { TypedSet } from './importing';
-import { toast } from './toast';
+import { toast, toastTakeBack } from './toast';
 import { confirmBox, rerenderKeepScroll } from './page';
 import { bottomBarsTop, startTimer } from './timer';
+import { copyName, unname } from './machines';
 
 /* ---------- rows and blocks ---------- */
 
@@ -345,12 +346,31 @@ export function rowPR(b: DraftBlock, si: number, at: ReadDay): string | null {
   // As strong: a higher score, or the same with as many reps at as much load (prJudge's big).
   const asStrong = (x: DraftSet): boolean =>
     scq(x) > me + EPS || (scq(x) >= me - EPS && prLoad(ex, x, date) >= myLoad - EPS && +(x.r ?? 0) >= myR);
-  return b.sets.some(
-    (x, i) => i < si && x.done && !x.warm && !x.drop && +(x.r ?? 0) > 0 && asStrong(x) && livePR(b.exId, x, at)
+  if (
+    b.sets.some(
+      (x, i) => i < si && x.done && !x.warm && !x.drop && +(x.r ?? 0) > 0 && asStrong(x) && livePR(b.exId, x, at)
+    )
   )
-    ? null
-    : pr;
+    return null;
+  /* Heavier than every session before, it is no Weight PR after a set of this session as heavy or heavier: it is
+     named by its next kind, a best estimate when it set one (145 x 10 after 155 x 7), else more reps. */
+  if (pr === 'Weight PR' && earlierSets(b, si).some(x => prLoad(ex, x, date) >= myLoad - EPS)) {
+    const m = liveMade(b.exId, s, at);
+    return m && m.pr && m.pr.type === 'Weight PR' && m.pr.value != null ? 'Best' : ex.timed ? 'Time PR' : 'Rep PR';
+  }
+  return pr;
 }
+
+/** The working sets ticked before row si of a block, with reps, its lift's earlier cards in the workout included (the
+    session reads them as one, prs.ts): this session's sets a PR said at row si comes after. */
+const earlierSets = (b: DraftBlock, si: number): DraftSet[] => {
+  const ex = state.draft ? state.draft.ex : [];
+  const at = ex.indexOf(b);
+  const cards = at > 0 ? ex.slice(0, at).filter(x => x.exId === b.exId && !!x.light === !!b.light) : [];
+  return [...cards.flatMap(x => x.sets), ...b.sets.slice(0, si)].filter(
+    x => x.done && !x.warm && !x.drop && +(x.r ?? 0) > 0
+  );
+};
 
 /* What a live PR beat, as a short tail for the toast: the old best estimate
    in the set's band, or the most reps done at this load or heavier, judged as
@@ -368,7 +388,7 @@ export function prBeat(exId: string, s: DraftSet, at: ReadDay, pr: string): stri
   if (!m || !j) return '';
   const { ex } = m;
   const bandW = (j.type !== 'Rep PR' && j.bb != null && BAND_WORDS[j.bb]) || '';
-  if (pr === 'Best' && j.type === 'e1RM') {
+  if (pr === 'Best' && (j.type === 'e1RM' || j.type === 'Weight PR')) {
     if (j.value == null) return '';
     if (!isCompound(ex)) return ` (your best for ${bandW})`;
     const all = j.prevAll;
@@ -523,14 +543,20 @@ export function draftPlanMin(d: Draft | null | undefined): number {
 
 /* The first machine, cable or Smith exercise in a session is offered a
    calibration set when none was done in the last 3 weeks, RIR is on, and
-   you have at least 3 real sessions. Not now waits another 3 weeks. Not on a
+   you have rated working sets in at least 3 real sessions: it measures your
+   RIR calls, so it never asks a lifter who makes none for a set to failure.
+   Not now waits another 3 weeks. Not on a
    day meant to be easy: a deload, a lighter day, or two or more low
    check-in answers; nor on a lift's first session back after weeks off:
    a set to failure is the last thing it needs. */
 /** The block offered a calibration set, or -1. */
 export function calDueIdx(d: Draft): number {
   if (state.settings.rirMode === 'off') return -1;
-  if (state.sessions.filter(s => !s.demo).length < CAL_OFFER.sessions) return -1;
+  if (
+    state.sessions.filter(s => !s.demo && s.ex.some(b => b.sets.some(x => x.rir != null && !x.warm))).length <
+    CAL_OFFER.sessions
+  )
+    return -1;
   const cut = addDays(today(), -WEEK_DAYS * CAL_OFFER.weeks);
   if (state.settings.calSnooze && state.settings.calSnooze > cut) return -1;
   const c = calStats();
@@ -595,6 +621,36 @@ export function newBlock(
     sw: sg.w == null ? null : sg.w,
     sets: Array.from({ length: +plan.sets || DEFAULT_PLAN.sets }, () => newRow({ w: fillLoads() ? sg.w : null }))
   };
+}
+
+/* A lift is on one machine in a workout, whichever of its cards holds the mark (a machine picked, mc, or added, nw):
+   a card taken out first hands its mark to the lift's cards left, so their sets stay on that machine, and the change's
+   Undo, putting the card back, takes the handed marks back (takeBackMachine), so a later Undo of the pick finds them as
+   it left them. */
+/** Hands the machine marks of the cards in `gone` to the cards of the same lifts left in workout `d` (above); the cards given one. */
+export function keepLiftMachine(d: { ex: DraftBlock[] }, gone: readonly DraftBlock[]): DraftBlock[] {
+  const handed: DraftBlock[] = [];
+  for (const g of gone) {
+    if (!g.mc && !g.nw) continue;
+    for (const b of d.ex)
+      if (b.exId === g.exId && !gone.includes(b) && !b.mc && !b.nw) {
+        if (g.mc) copyName(b, g);
+        else b.nw = true;
+        handed.push(b);
+      }
+  }
+  return handed;
+}
+
+/** Takes off the marks keepLiftMachine handed to `cards` from workout `d`, as a removal's Undo puts the card that held them back. */
+export function takeBackMachine(d: { ex: DraftBlock[] }, cards: readonly DraftBlock[]): void {
+  for (const c of cards) {
+    // By the card's id: an Undo or a merge in between draws the workout's cards again, as other objects.
+    const b = (c.bid && d.ex.find(x => x.bid === c.bid)) || (d.ex.includes(c) ? c : null);
+    if (!b) continue;
+    unname(b);
+    delete b.nw;
+  }
 }
 
 /* Re-run the suggestion for one block, for example after its heaviest
@@ -932,15 +988,9 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean, t
   if (val && isMissed(s) && !s.warm && !s.drop) toast(MISSED_SAID);
   if (val && !d.editingId && blockDone(b) && !blkIsOpen(bi, b)) W.foldWait.add(b);
   onLiftDraw(bi, redraw);
-  const pr = rowPR(b, si, d);
-  if (pr && !wasPR) {
-    const ex = EX(b.exId);
-    toast(
-      `${pr === 'Best' ? (isCompound(ex) ? 'New best estimate' : 'PR') : pr}: ${exName(b.exId)}, ${setShort(ex, +(s.w ?? 0) || 0, s.r)}${prBeat(b.exId, s, d, pr)}`,
-      false,
-      PR_TOAST_MS,
-      'pr'
-    );
+  const said = prSaid(bi, si);
+  if (said && !wasPR) {
+    toast(said, false, PR_TOAST_MS, 'pr');
     /* The PR moment: a short gold pulse on the row, and a buzz where
        the phone allows it (Android; iPhones give web apps no vibration). */
     const btn = document.querySelector(`[data-act="sDone"][data-b="${bi}"][data-s="${si}"]`);
@@ -981,6 +1031,7 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean, t
   if (askRir) rirShowStrip(bi, si);
   else if (!val) rirClose();
   if (val && !again && !askRir && !d.editingId && b.plan.ss && !(nx && nx.drop && !nx.done)) ssNext(b);
+  else if (val && !again && !askRir && !d.editingId && !b.plan.ss && !blockDone(b)) nextSetClear(bi);
   if (val && !askRir && !d.editingId && blockDone(b)) {
     const rf = blkRef(bi);
     W.foldT = setTimeout(() => autoFold(rf), FOLD_MS.tick);
@@ -998,6 +1049,9 @@ export function doneChanged(bi: number, si: number, f: 'w' | 'r'): boolean {
   const b = d && d.ex[bi];
   const s = b && b.sets[si];
   if (!d || !b || !s || !s.done) return false;
+  // The PR the set stood for as its field was focused: the number typed is in the set already.
+  const said = saidAtFocus && saidAtFocus.s === s ? saidAtFocus.msg : prSaid(bi, si);
+  saidAtFocus = null;
   if (W.foldT && W.foldWait.has(b)) {
     clearTimeout(W.foldT);
     const rf = blkRef(bi);
@@ -1009,7 +1063,41 @@ export function doneChanged(bi: number, si: number, f: 'w' | 'r'): boolean {
     return true;
   }
   act(() => assessSet(bi, si), { inProgress: true });
+  prRetell(said, bi, si);
   return false;
+}
+
+/* A ticked set's PR as it stood when one of its fields was focused, so a number typed into it is told against what it
+   was (doneChanged): the set holds the number as it is typed. */
+let saidAtFocus: { s: DraftSet; msg: string | null } | null = null;
+/** Notes the PR message row si of lift bi stands for as one of its fields is focused (above). */
+export function notePrAtFocus(bi: number, si: number): void {
+  const d = state.draft;
+  const s = d && d.ex[bi] && d.ex[bi].sets[si];
+  saidAtFocus = s && s.done ? { s, msg: prSaid(bi, si) } : null;
+}
+
+/** The PR message row si of lift bi of the workout open raises as it stands, or null when it is no PR. */
+export function prSaid(bi: number, si: number): string | null {
+  const d = state.draft;
+  const b = d && d.ex[bi];
+  const s = b && b.sets[si];
+  if (!d || !b || !s || !s.done) return null;
+  const pr = rowPR(b, si, d);
+  if (!pr) return null;
+  const ex = EX(b.exId);
+  return `${pr === 'Best' ? (isCompound(ex) ? 'New best estimate' : 'PR') : pr}: ${exName(b.exId)}, ${setShort(ex, +(s.w ?? 0) || 0, s.r)}${prBeat(b.exId, s, d, pr)}`;
+}
+
+/* A ticked set changed after its PR was said (its effort rated, its load or reps typed again) is told again as it now
+   stands, so a message never keeps a number no screen shows: the one said is taken back, and the one it is now, if
+   any, said. */
+/** After a ticked set changes: takes back the PR message `said` before the change when it no longer holds, and says the one row si raises now. */
+export function prRetell(said: string | null, bi: number, si: number): void {
+  const now = prSaid(bi, si);
+  if (now === said) return;
+  if (said) toastTakeBack(said);
+  if (now) toast(now, false, PR_TOAST_MS, 'pr');
 }
 
 /* The lift the screen brings up after lift i: the next one below it not done, else the first not yet started (a lift
@@ -1130,6 +1218,24 @@ function ssNext(b: DraftBlock): void {
   });
 }
 
+/* The set to do next, after a tick, is lifted clear of the bars along the bottom when it sits under them, as the
+   effort strip is: the rest timer rises with the tick, and the row it names would be under it, to be scrolled to before
+   it can be read or tapped. Only the view moves, and only when the row is covered. */
+function nextSetClear(bi: number): void {
+  const b = state.draft && state.draft.ex[bi];
+  const si = b ? b.sets.findIndex(y => !y.done && !y.warm) : -1;
+  if (si < 0) return;
+  requestAnimationFrame(() => {
+    const row = document.querySelector(`[data-act="sDone"][data-b="${bi}"][data-s="${si}"]`);
+    const el = row && row.closest('.sg');
+    if (!el) return;
+    const lim = bottomBarsTop();
+    const r = el.getBoundingClientRect();
+    if (r.bottom > lim - BAR_ROOM_PX.edge)
+      window.scrollBy({ top: r.bottom - lim + BAR_ROOM_PX.gap, behavior: 'smooth' });
+  });
+}
+
 /* Typed reps, then a tap on the same row's RIR box: auto-mark waits
    until the RIR strip closes, picked or not. Ticking at once started the
    rest timer, whose bar rose under the finger near the bottom of the
@@ -1161,8 +1267,8 @@ export function rirShowStrip(bi: number, si: number): void {
     if (!st) return;
     const lim = bottomBarsTop();
     const r = st.getBoundingClientRect();
-    if (r.bottom > lim - STRIP_ROOM_PX.edge)
-      window.scrollBy({ top: r.bottom - lim + STRIP_ROOM_PX.gap, behavior: 'smooth' });
+    if (r.bottom > lim - BAR_ROOM_PX.edge)
+      window.scrollBy({ top: r.bottom - lim + BAR_ROOM_PX.gap, behavior: 'smooth' });
   });
 }
 
@@ -1184,10 +1290,12 @@ export function mixCheck(bi: number, si: number): void {
   const s = b && b.sets[si];
   if (!d || !b || !s || s.warm || s.drop || !(+(s.w ?? 0) > 0)) return;
   const ex = EX(b.exId);
-  const st = IDX().exStats[b.exId];
-  const last = st && st.last ? st.last.topW : 0;
+  // Last time on the machine (or gym) in use, as the target reads it: one just added has none, so nothing is far off.
+  const prev = liftRead(b.exId, d.date).filter(x => x.sid !== d.editingId && x.date <= d.date);
+  const lastX = prev[prev.length - 1];
+  const last = lastX ? lastX.topW : 0;
   // After a long break the lift starts fresh: a load far under one from years ago is no mix-up.
-  if (!(last > 0) || (st && longBreak(st.last, d.date))) return;
+  if (!(last > 0) || longBreak(lastX, d.date)) return;
   const r = +(s.w ?? 0) / last;
   if (r >= MIX_RANGE[0] && r <= MIX_RANGE[1]) return;
   const key = d.id + ':' + bi;

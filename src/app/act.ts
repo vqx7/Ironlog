@@ -1,7 +1,8 @@
 /* The one way to change the log (ARCHITECTURE.md). An action on a moved screen hands its change to `act`,
    which does every step a change needs, always in this order: the check,
    the Undo step, the change, the caches dropped, the save on this device and
-   the edit noted for the sync (the save does both, saveNow). A change that
+   the edit noted for the sync (the save does both, saveNow), and the sessions the
+   change would move to another machine named where they were (keepMachines). A change that
    fails halfway is put back whole, with no save and no Undo step. Placed by hand in
    each action, one left out would be found only when it lost something;
    tests/hygiene.js refuses a write to the log in a screen outside `act`, and
@@ -13,7 +14,7 @@ import { canon, mergeDraft } from './merge';
 import { chunksOf, emptyChunk } from './chunks';
 import type { Rec } from './records';
 import { invalidate } from './live';
-import { normalize, plainTemplate } from './normalize';
+import { keepMachines, machineReadings, normalize, plainTemplate } from './normalize';
 import { begunIn, clockStart } from './session';
 import { TRASH_BYTES, TRASH_DAYS, TRASH_MAX, parseJson, rec } from './records';
 import type { Trashed } from './records';
@@ -29,6 +30,9 @@ interface ActOpts {
   undo?: boolean | (() => boolean) | undefined;
   /** Saves once the typing pauses (400 ms, saveSoon), for a change made on every keystroke; the caches are still dropped at once. */
   soon?: boolean | undefined;
+  /** The change puts another log in place of this one (a backup restored, Erase everything): it is taken as it is, no
+      session named to stay where this log had it. */
+  whole?: boolean | undefined;
   /** The change touches only the session in progress, which nothing cached reads (the index, the bests, the pace are built from saved sessions): the caches stay, through every keystroke and tick. */
   inProgress?: boolean | undefined;
 }
@@ -78,6 +82,9 @@ export function act(change: () => void, opts: ActOpts = {}): boolean {
      the toast goes; a change that keeps a step shows its own after this.
      Settings' Undo last delete or reset still takes back the steps kept. */
   fx.undoToastHide();
+  // Where the sessions that name no machine read before the change, so the change moves none of them (keepMachines).
+  const readings = opts.inProgress || opts.whole ? null : machineReadings(state);
+  let named = false;
   const top0 = undoStack[undoStack.length - 1];
   if (opts.undo) snapshot(typeof opts.undo === 'function' ? opts.undo : null);
   // The step this change keeps: a new entry on top, none when the snapshot could not be taken.
@@ -101,6 +108,10 @@ export function act(change: () => void, opts: ActOpts = {}): boolean {
   outerBegun = begunBefore();
   try {
     change();
+    /* A session the change would move to another machine stays where it was (normalize.ts keepMachines); for a change
+       to the workout that changed the whole log inside it, against the log it found. */
+    const was = readings || (logBefore && !opts.whole ? machineReadings(logBefore) : null);
+    if (was) named = keepMachines(state, was);
     // The workout's clock starts with the change that begins it, whichever tap began it (session.ts).
     clockAfter(outerBegun);
     followsAfter(outerBegun);
@@ -124,7 +135,7 @@ export function act(change: () => void, opts: ActOpts = {}): boolean {
     dropInside = false;
     logBefore = null;
   }
-  if (!opts.inProgress || inside) invalidate();
+  if (!opts.inProgress || inside || named) invalidate();
   if (opts.soon) saveSoon();
   else saveNow();
   return true;
@@ -218,13 +229,30 @@ export function undoNext(): string | null {
   return e ? e.said || '' : null;
 }
 
-/** Takes back the newest Undo step: 'none' when there is none, 'failed' when it could not be read, 'unchanged' when nothing it changed is left to undo, else what it took back, in the words of the message that reported the change ('' for a step kept unnamed). */
-export function undoStep(): 'none' | 'failed' | 'unchanged' | { said: string } {
+/* A step that took a workout away (one open before it, none after: a Discard) cannot put it back while another workout
+   is open: two are never open at once, and the merge would keep the open one and read the step as taken. It waits, kept,
+   until that workout is finished or discarded. A step whose state after it was never saved is read as before. */
+/** Whether the newest step would bring back a workout while another is open (above). */
+function waitsForWorkout(e: { pre: string; post: string | null }): boolean {
+  const d = state.draft;
+  if (!d || e.post == null) return false;
+  const was = rec(rec(parseJson(e.pre))?.['draft']);
+  const after = rec(rec(parseJson(e.post))?.['draft']);
+  return !!was && typeof was['id'] === 'string' && was['id'] !== d.id && !after;
+}
+
+/** Takes back the newest Undo step: 'none' when there is none, 'open' when it waits for the workout open now (waitsForWorkout), 'failed' when it could not be read, 'unchanged' when nothing it changed is left to undo, else what it took back, in the words of the message that reported the change ('' for a step kept unnamed). */
+export function undoStep(): 'none' | 'open' | 'failed' | 'unchanged' | { said: string } {
+  const top = undoStack[undoStack.length - 1];
+  if (top && waitsForWorkout(top)) return 'open';
   const e = undoStack.pop();
   if (!e) return 'none';
   lastStep = undefined;
   undoPersist();
-  const before = canon(state);
+  /* The log as it is stored: read as every build reads it, in its documents' order, so an Undo that only wrote a session
+     in normalize's form or put it in date order took back nothing. */
+  const read = (): string => canon(chunksOf(normalize(parseJson(JSON.stringify(state)))));
+  const before = read();
   let done = false;
   if (e.inv) {
     try {
@@ -273,7 +301,7 @@ export function undoStep(): 'none' | 'failed' | 'unchanged' | { said: string } {
   // before the step just undone, not what this undo is about to save.
   const below = undoStack[undoStack.length - 1];
   if (below && below.post == null) below.post = e.pre;
-  if (canon(state) === before) return 'unchanged';
+  if (read() === before) return 'unchanged';
   invalidate();
   saveNow();
   return { said: e.said || '' };

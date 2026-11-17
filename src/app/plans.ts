@@ -6,7 +6,7 @@
 
 import type { Plan, Routine } from './types';
 import type { Model } from './model';
-import { EXIn, exNameIn } from './model';
+import { EXIn, exNameIn, freeModeIn } from './model';
 import { andList, isDate } from './util';
 import { offTarget } from './formulas';
 import { IDXIn } from './analytics';
@@ -14,7 +14,9 @@ import { dayWorkout, defPlanIn, profRuleIn, routinePlanIn, DEFAULT_PLAN } from '
 
 /* An exercise added mid-session borrows its settings from wherever it
    already sits in the routine (the active one unless given), the day being
-   trained first, instead of a generic 3 x 8-12. A lift on no day of it
+   trained first, instead of a generic 3 x 8-12. In freestyle mode no routine
+   is followed, so a workout of no routine day borrows nothing from the one in
+   use: its lifts read their own sessions, as Do again does. A lift on no day of it
    starts from its own last full session (V 2026-10-18: "tied at
    exercise level"), read as the analytics read it, by V's one rule:
    the newest of its sessions up to the date being logged (`before`, a past
@@ -36,7 +38,8 @@ export function planForIn(
   before?: string | null,
   part?: 1 | 2
 ): Plan {
-  const inR = routinePlanIn(M, exId, R, dayId, part);
+  // A freestyler follows no routine (freeModeIn), so on a workout of no routine day the one in use gives nothing.
+  const inR = R == null && !dayId && freeModeIn(M) ? null : routinePlanIn(M, exId, R, dayId, part);
   if (inR) return inR;
   const base = defPlanIn(M, exId, plain);
   if (plain) return base;

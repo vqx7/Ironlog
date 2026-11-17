@@ -1,4 +1,4 @@
-// Targets and progression, checked against their written rules (CA-1; the spec "Targets and progression", P-1 to P-44,
+// Targets and progression, checked against their written rules (CA-1; the spec "Targets and progression", P-1 to P-45,
 // in the project's claude/ironlog-spec-progression-draft1.md, built from the code, V's rulings deciding). A feature
 // suite: each section is one rule, a lifter's log seeded and the session started from Today's card, and what the
 // session screen shows (the grey load, the grey reps, the target) compared with what the rule gives, worked out here
@@ -1184,6 +1184,42 @@ const barLoads = (plates, most = 600) => { let set = new Set([0]); for (const p 
     await startOn(P, 0);
     s = await shows(P, 'legPress');
     ok(s.tgt && s.tgt.total === 31 && s.rows.every(x => x.w === 205) && /below usual/.test(s.hint), 'P-44 back on machine A after weeks on B, the lift trained throughout: a clearly weaker 205 x 8, 7, 6 reads below its usual and the target repeats, beat 31', s);
+    await P.ctx.close(); await P.browser.close();
+  }
+
+  if (run('P-45')) {
+    /* NEW-163: a Lighter day, a deload and the way back after a break from a load typed in the other unit ask the rule's
+       load, about 90% of it, put on the lift's loads once: the heaviest at or under it. Whole steps counted from the
+       converted load are no load of the unit, and rounded down again they landed well under 90%. 185 x 8 x 3 typed in
+       lb, the app in kg: 90% of 83.9 kg is 75.5, so 75 kg on each (2.68: 72.5). 45 lb DB bench in kg, 90% of 20.4 is
+       18.4: 17.5 kg (2.68: 15). 100 kg typed on a bench, the app in lb: 90% of 220.5 lb is 198.4: 195 lb (2.68: 190). */
+    const B185 = [[185, 8, 2], [185, 8, 2], [185, 8, 2]];
+    for (const how of ['a Lighter day', 'a deload week', 'back after 7 weeks']) {
+      const log = how === 'back after 7 weeks' ? weeks('A', B185).map(([x, k, e]) => [addD(x, -42), k, e]) : weeks('A', B185);
+      const P = await lifter(DAY_BENCH, log, { unit: 'kg', logUnit: 'lb' });
+      if (how === 'a deload week') await P.page.evaluate(() => { const L = window.__ironlog; L.state.deloadWeek = L.weekStart(L.today()); L.saveNow(); L.invalidate(); L.render(); });
+      if (how === 'a Lighter day') await startLighter(P); else await startOn(P, 0);
+      const s = await shows(P, 'bench');
+      ok(s.rows.length > 0 && s.rows.every(r => r.w === 75), `P-45 ${how} after 185 x 8 x 3 typed in lb, the app in kg: 75 kg, the heaviest kg load at or under 90% (never 72.5)`, s.rows);
+      await P.ctx.close(); await P.browser.close();
+    }
+    const DAY_DB = [{ id: 'A', name: 'Push', items: [['dbBench', 3, 8, 12, 1]] }];
+    const db = sets => Array.from({ length: 3 }, (_, k) => [addD(DAY, -7 * (3 - k)), 'A', [['dbBench', sets]]]);
+    let P = await lifter(DAY_DB, db([[45, 10, 1], [45, 10, 1], [45, 9, 1]]), { unit: 'kg', logUnit: 'lb' });
+    await startLighter(P);
+    let s = await shows(P, 'dbBench');
+    ok(s.rows.length > 0 && s.rows.every(r => r.w === 17.5), 'P-45 a Lighter day after 45 lb dumbbells, the app in kg: 17.5 kg each (never 15)', s.rows);
+    await P.ctx.close(); await P.browser.close();
+    P = await lifter(DAY_BENCH, weeks('A', [[100, 8, 2], [100, 8, 2], [100, 8, 2]]), { logUnit: 'kg' });
+    await startLighter(P);
+    s = await shows(P, 'bench');
+    ok(s.rows.length > 0 && s.rows.every(r => r.w === 195), 'P-45 a Lighter day after 100 kg typed, the app in lb: 195 lb (never 190)', s.rows);
+    await P.ctx.close(); await P.browser.close();
+    // A guard: in its own unit a Lighter day is whole steps down, as P-36 says: 185 lb to 165.
+    P = await lifter(DAY_BENCH, weeks('A', B185));
+    await startLighter(P);
+    s = await shows(P, 'bench');
+    ok(s.rows.length > 0 && s.rows.every(r => r.w === 165), 'P-45 a guard: 185 lb in lb, a Lighter day of 165 lb, whole steps as before', s.rows);
     await P.ctx.close(); await P.browser.close();
   }
 

@@ -44,6 +44,7 @@ import {
   dateIndex,
   dayMinutes,
   defPlan,
+  draftMachine,
   EX,
   IDX,
   isRestWeek,
@@ -57,9 +58,11 @@ import {
   toDBody,
   toDOf,
   listLabel,
+  liftMachines,
   weeksAvg
 } from './live';
 import { state, ui } from './store';
+import { NEW_MACHINE } from './analytics';
 import type { ExPoint, Exposure, ExerciseLike, Pr } from './model';
 import type { Day, Exercise, LoggedSet, Measurement, PlanItem, Routine, Session } from './types';
 
@@ -239,9 +242,9 @@ export function bestSet(exId: string): { v: number; w: number; r: number; date: 
 
 /* An isolation lift's best-estimate PR is shown as the set that set it, not
    as a 1RM: the strongest set of that lift in that session. */
-/** The set with the best estimate in a lift's session on a date, or null. */
-export function prSet(exId: string, date: string): { v: number; w: number; r: number } | null {
-  const x = (IDX().byEx[exId] || []).find(q => q.date === date);
+/** The set with the best estimate in a lift's session (by the session's id: two on one day are two sessions), or null. */
+export function prSet(exId: string, sid: string): { v: number; w: number; r: number } | null {
+  const x = (IDX().byEx[exId] || []).find(q => q.sid === sid);
   if (!x) return null;
   let b: { v: number; w: number; r: number } | null = null;
   for (const p of x.pts) {
@@ -461,8 +464,17 @@ export function bestLine(exId: string, upTo?: string): string {
 export function bestSetLine(exId: string): string {
   const r = allTimeBests(exId);
   if (!r) return '';
-  if (r.est && isCompound(r.ex))
-    return `Best ${setShort(r.ex, r.est.p.w, r.est.p.r)}${loadNote(r.ex)}, ${fmtDate(r.est.date)}`;
+  if (r.est && isCompound(r.ex)) {
+    /* A set at the estimate's load or heavier for as many reps or more is stronger than the set the estimate comes from
+       (120 x 12 at 1 in reserve, past the reps an estimate reads, beside 120 x 11 to failure): that set is the best,
+       the heaviest such. */
+    const e = r.est;
+    const over = r.front
+      .filter(f => f.p.pl >= e.p.pl - EPS_SAME && f.p.r >= e.p.r && (f.p.pl > e.p.pl + EPS_SAME || f.p.r > e.p.r))
+      .sort((a, b) => b.p.pl - a.p.pl || b.p.r - a.p.r)[0];
+    const best = over || e;
+    return `Best ${setShort(r.ex, best.p.w, best.p.r)}${loadNote(r.ex)}, ${fmtDate(best.date)}`;
+  }
   return r.heavy
     ? `Heaviest ${setShort(r.ex, r.heavy.p.w, r.heavy.p.r)}${loadNote(r.ex)}, ${fmtDate(r.heavy.date)}`
     : '';
@@ -811,4 +823,81 @@ export function planAhead(to: string): Record<string, PlannedDay> {
     if (di != null && day) out[d] = { di, day };
   }
   return out;
+}
+
+/* A lift's machines by name (V, 2026-11-15: "a list of all my frequently used machines ... The dates will get confusing
+   for people cuz u basically have to remember what machine u used"). A name the lifter gave a machine is how every screen
+   says it; a machine with none is said by its last session ("Nov 7 · 140 lb × 10"). A machine marked new in the session
+   in progress gets the session's own id as its key once saved (machineKeys), so a name given before then is kept under
+   that id. */
+/** The key the session in progress gives a machine it marks new (an edit's, the session's own); null with none open. */
+export function newMachineKey(): string | null {
+  const d = state.draft;
+  return d ? d.editingId || d.id || null : null;
+}
+
+/* A lift's machine added in the session in progress and not saved yet: a workout marks the lift new (NEW_MACHINE); an
+   edit puts the session on its own key, which is new while no session of the lift is on it. Its name is kept under the
+   key it will have (newMachineKey). */
+/** Whether the session in progress has lift `exId` on a machine added in it and not saved yet (above). */
+export function pendingMachine(exId: string): boolean {
+  const d = state.draft;
+  const k = d ? draftMachine(exId) : null;
+  if (k === NEW_MACHINE) return true;
+  return !!d && !!d.editingId && k === d.editingId && !liftMachines(exId).some(x => x.key === k);
+}
+
+/* A machine is added only beside another the lift was done on, and only as one it has not got: a lift never done, or
+   the edit of its only session, has one machine, the one in use, named by its pencil; while one added is not saved,
+   there is no second; and in an edit a machine added takes the session's own key, so where that key is a machine of
+   the lift already (the session began it) one added would be that machine again. */
+/** Whether the Machine sheet offers to add a machine for lift `exId` in the session in progress (above). */
+export function canAddMachine(exId: string): boolean {
+  const d = state.draft;
+  if (!d || pendingMachine(exId)) return false;
+  const ed = d.editingId;
+  if (!(IDX().byEx[exId] || []).some(x => x.sid !== ed)) return false;
+  return !ed || !liftMachines(exId).some(x => x.key === ed);
+}
+
+/** The names of a lift's machines it has: those it was done on, and the one the session in progress marks new (a name
+    kept from a workout discarded is no machine's, so it is never offered or said). */
+function machineNamesOf(e: Exercise): Record<string, string> {
+  if (!e.machines) return {};
+  const has = new Set(liftMachines(e.id).map(x => x.key));
+  const pend = newMachineKey();
+  if (pend) has.add(pend);
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(e.machines || {})) if (has.has(k)) out[k] = v;
+  return out;
+}
+
+/** The name the lifter gave one of a lift's machines (NEW_MACHINE: the one the session in progress marks new), or null. */
+export function machineName(exId: string, key: string): string | null {
+  const e = state.exercises.find(x => x.id === exId);
+  const k = key === NEW_MACHINE ? newMachineKey() : key;
+  return (k && e && e.machines && e.machines[k]) || null;
+}
+
+/** The quick picks offered when a machine is named. */
+const MACHINE_CHOICES = 6;
+/** Names given to machines on other lifts, the most used first and then in order, without those this lift has (so a
+    brand typed once, Hammer Strength, is one tap on the next lift); MACHINE_CHOICES at most. */
+export function machineNameChoices(exId: string): string[] {
+  const e0 = state.exercises.find(x => x.id === exId);
+  const here = new Set(Object.values(e0 ? machineNamesOf(e0) : {}).map(n => n.toLowerCase()));
+  const count = new Map<string, { name: string; n: number }>();
+  for (const e of state.exercises)
+    if (e.id !== exId)
+      for (const name of Object.values(machineNamesOf(e))) {
+        const k = name.toLowerCase();
+        if (here.has(k)) continue;
+        const c = count.get(k);
+        if (c) c.n++;
+        else count.set(k, { name, n: 1 });
+      }
+  return [...count.values()]
+    .sort((a, b) => b.n - a.n || a.name.localeCompare(b.name))
+    .slice(0, MACHINE_CHOICES)
+    .map(c => c.name);
 }

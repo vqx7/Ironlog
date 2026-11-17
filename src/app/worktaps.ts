@@ -6,7 +6,7 @@
    lift's history and muscles, Pick for me, and the recap. */
 
 import { act } from './act';
-import { unpark } from './park';
+import { parkedHere, unpark } from './park';
 import { CARDIOL } from './library';
 import { fixSupersets, linkToggle } from './routines';
 import { isMissed, isWork, DROP_START, WARM_RAMP, LIGHT_SHARE } from './formulas';
@@ -56,11 +56,15 @@ import {
   adjRows,
   adjSync,
   assessSet,
+  prRetell,
+  prSaid,
   autoFold,
   carryLoad,
   draftEntered,
   fillLoads,
   greyR,
+  keepLiftMachine,
+  takeBackMachine,
   lastRFor,
   mixCheck,
   moveBlock,
@@ -201,17 +205,25 @@ function blockRemove(t: Tap): void {
       return;
     }
     const prevBlk = bi > 0 ? dd.ex[bi - 1] : null;
-    act(() => keepOpen(() => dd.ex.splice(bi, 1)), {
-      inProgress: true,
-      undo: () => {
-        const d3 = state.draft;
-        if (!d3 || d3.id !== did) return false;
-        const k = prevBlk ? d3.ex.indexOf(prevBlk) : -1;
-        d3.ex.splice(prevBlk == null ? 0 : k >= 0 ? k + 1 : Math.min(bi, d3.ex.length), 0, blk);
-        fixSupersets(d3.ex.map(x => x.plan));
-        return true;
+    let handed: DraftBlock[] = [];
+    act(
+      () => {
+        handed = keepLiftMachine(dd, [blk]);
+        keepOpen(() => dd.ex.splice(bi, 1));
+      },
+      {
+        inProgress: true,
+        undo: () => {
+          const d3 = state.draft;
+          if (!d3 || d3.id !== did) return false;
+          const k = prevBlk ? d3.ex.indexOf(prevBlk) : -1;
+          d3.ex.splice(prevBlk == null ? 0 : k >= 0 ? k + 1 : Math.min(bi, d3.ex.length), 0, blk);
+          takeBackMachine(d3, handed);
+          fixSupersets(d3.ex.map(x => x.plan));
+          return true;
+        }
       }
-    });
+    );
     rerenderKeepScroll();
     toast('Exercise removed', true);
   };
@@ -659,6 +671,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const s = b && b.sets[si];
     if (!d || !b || !s) return;
     const n = numIn(t.dataset.v || '');
+    const said = prSaid(bi, si);
     act(
       () => {
         s.rir = n == null ? null : Math.min(Math.max(n, 0), EFFORT_TOP);
@@ -668,6 +681,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     );
     rirClose();
     redraw();
+    prRetell(said, bi, si);
     const btn = document.querySelector<HTMLElement>(`.rirb[data-b="${bi}"][data-s="${si}"]`);
     if (btn)
       try {
@@ -895,12 +909,16 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   discard() {
     const d = state.draft;
     if (!d) return;
-    const out = (): void => {
+    /* What was entered in a workout and then discarded comes back with Undo. Not while a workout set aside waits to
+       come back in its place: a step taken before it would put this one back over it, and its copy is let go once it
+       is saved. Nor for an edit: its saved session stays as it was, and a step would bring the old edit back after a
+       newer edit of the session is saved, and write over it, as a set-aside edit would (park.ts). */
+    const out = (keep = false): void => {
       act(
         () => {
           state.draft = null;
         },
-        { inProgress: true }
+        { inProgress: true, undo: keep }
       );
       stopTimer();
       wakeOff();
@@ -925,7 +943,12 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         ? 'Your edits will be lost. The saved session stays as it was.'
         : 'Sets and cardio logged in this session will not be saved.',
       'Discard',
-      out,
+      () => {
+        // A workout set aside comes back in its place and says so (out), which is then the one message.
+        const parked = parkedHere();
+        out(!parked && !d.editingId);
+        if (!parked) toast(d.editingId ? 'Edits discarded' : 'Session discarded', !d.editingId);
+      },
       true
     );
   },

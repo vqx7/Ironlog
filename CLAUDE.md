@@ -3,7 +3,7 @@
 A hypertrophy and strength tracker for one lifter, V, used on a phone at the gym. It ships as a standalone
 installable web app: built from `src/` into one page, served by GitHub Pages at https://ironapp.org, working
 offline, with the log on the phone and an optional account that syncs it. Every pull request also publishes a
-preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r114, version 2.68, state schema v5.
+preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r117, version 2.71, state schema v5.
 
 The Claude artifact version was retired by V on 2026-09-27 (`OWNER.md` Done): never work on it or republish it.
 `cloudProvider()` still takes Claude's db when `window.claude` exists, because the sync suites use it as their
@@ -74,7 +74,8 @@ stand-in cloud.
   reads as today, the caches) as its first parameter and its name ends in `In` (`suggestIn`, `IDXIn`, `coachIn`).
   `live.ts` holds the one model the app runs on (`LIVE`) and the adapters through which the screens call
   those functions by their old names (`export const suggest = live(suggestIn);`). Storage and sync are typed since
-  r56: `normalize.ts` (the log as every build reads it), `storage.ts` (the keys, where the save stands (`device`),
+  r56: `normalize.ts` (the log as every build reads it), `machines.ts` (the one writer of a machine's name, and how
+  two copies read one the app kept), `storage.ts` (the keys, where the save stands (`device`),
   the error log (`log`), Undo's steps, a log kept aside for another account, in IndexedDB as Undo's copies are) and
   `sync.ts` (every write of the log, the account's documents, the sync notes, another tab, one workout open on two
   phones, the account question); they reach the screens only through `fx` in `store.ts`, which `main.ts`
@@ -150,18 +151,29 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   its usual load and reps for the sets it is held to: its plan's, saved with the session, once it has done them, else
   its usual, never more than the plan (`setsHeldTo` in usual.ts; each case a row of `tests/usual.js`, the history in
   docs/ARCHIVE.md, CL-2); with fewer sets or a
-  clearly weaker reading the target repeats and the session still counts for the trend, stalls and PRs; done
+  clearly weaker reading the target repeats and the session still counts for the trend and PRs, and for stalls
+  unless its sets were skipped (V, 2026-11-15, NEW-165, `stallLeftOut`); done
   lighter it sets no target or trend, and done in full on a
   lighter or deload day it is a full session (a day's label never overrides what a lift did). A break of more than
   four weeks restarts a lift's readings, and the weeks counted (averages and adherence) start after it. More than
   six months off, a lift starts fresh: nothing from before the break is asked of it, while its records and PRs read
   every session and All-time bests shows the best since you came back beside an older best ever (V, 2026-11-10,
-  NEW-110, `sinceLongBreak`). A session
+  NEW-110, `sinceLongBreak`). Stalled, rising and a muscle's trend read only a lift being trained now, which one
+  taken out of the routine is not, outside Freestyle (V, 2026-11-15, NEW-166, `ExStat.current`). A session
   marked New machine or gym restarts them too, its PRs, bests and dumbbell steps with them, and keeps every session
   shown (`liftReadIn`, r61). A machine, cable or Smith lift is read per machine (V, 2026-11-14, 390 C): its ⋯ Machine
-  sheet lists the machines it was done on, by date and weight; its target, PRs, bests and readings come from the machine
+  sheet lists the machines it was done on, by the names the lifter gives them (one with none by its last session's
+  date and weight; V, 2026-11-15, NEW-168), the name of the one in use on its card; its target, PRs, bests and readings come from the machine
   it is on, the one last done on unless another is picked; its sets and volume count as one exercise; the app never
-  guesses a machine (`machineKeys`). A ticked set
+  guesses a machine. A machine lift's session names the machine it was done on (`mc`) when it is saved or a machine is
+  picked for it; one that names none (a log saved before, an import, an older build's) is read on the machine of the
+  last session before it that began one. A change that would move a session it does not touch to another machine names
+  that session where it was, as part of the change, and a session the change puts in Recently deleted keeps the
+  machine it was on (`keepMachines`, act.ts; V 2026-11-15, REV22; 2026-11-16): a session moves to another machine only
+  by a pick, never by another deleted, moved, restored or logged before it. Nothing is named as a log is read. A name
+  the app keeps is marked kept and is no one's edit: every comparison of two copies (sync, Undo, a first sign-in,
+  Recently deleted, duplicates) reads it as absent and keeps it where the copy kept names none, so it never beats a
+  lifter's correction or pick, and only `machines.ts` writes a machine's name (V, 2026-11-16, REV26; `tests/hygiene.js`). A ticked set
   of 0 reps is a missed set: kept and shown, counted toward no volume, PR, estimate or trend, read by the next target
   as a set short of the range and as 0 reps, so its session reads below its usual and the target repeats (V, 2026-11-04,
   387-B3), and sets missed never earn a step up (r56.2), and asked about first when its load is well
@@ -171,7 +183,9 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   A PR is a set stronger than every earlier one, the same PR on every screen; a heavier set that is not one is
   Heaviest yet (r58). A muscle has a weekly target by default only when lifters train it directly for size
   (`TARGETED`); any other is tracked only until the lifter gives it one, which then counts everywhere (`hasTargetIn`, r58).
-- **V's rulings on screen:** the Volume radar is drawn from what was logged, never the routine's plan, and always
+- **V's rulings on screen:** Stats opens with the week's word, Progressing, Stalled or Regressing, and the coach's one
+  change, the lines it rests on folded under it; lifts in none of its groups are never shown (V, 2026-11-15, NEW-156,
+  `verdictIn`); the Volume radar is drawn from what was logged, never the routine's plan, and always
   draws; no Planned chip on Stats; the plan's usual-range note is a quiet line on Plan, never a flag and never on
   Stats; no other app is named on screen; no wording about shared phones, someone else or another person; no
   Comeback (former bests); no restyle without V's direction; "on target", the 1RM display and mid-workout

@@ -19,6 +19,9 @@
 //      other unit; weigh-ins, the latest and the Body card then read in it; back to the app's unit, the setting goes.
 //   9  REV17-1: a weigh-in typed, the unit tapped, then Undo: the number typed comes back in its unit and is saved so;
 //      tapped there and back it does not drift.
+//  12  UAT-3: Log a workout now, a freestyler with no bodyweight lift: Today's card never asks, since no routine is
+//      followed (freestyle mode), the starter's pull-ups included; once he does a bodyweight lift it asks, as it does
+//      for anyone; a lifter on the starter's days is asked from the first day, as section 1.
 // BODYWEIGHT_ONLY=1,2 runs some sections.
 const { open } = require('./h');
 const fails = [];
@@ -286,6 +289,35 @@ async function pickPullups(P, mode) {
     ok(!P.errors.length, '11. no page errors', P.errors);
     await P.ctx.close(); await P.browser.close();
   }
+  if (run(12)) {
+    const card = P => P.page.evaluate(() => !!document.getElementById('bwDue'));
+    const P = await phone();
+    // The first page's Log a workout now, the bench added, one set ticked, Finish: what the UAT's freestyler did.
+    await P.page.evaluate(() => window.__ironlog.ACT.obFree({ dataset: {} })); await wait(300);
+    await P.page.evaluate(() => { const L = window.__ironlog; L.openModal({ kind: 'picker', mode: 'addBlock', day: 0, title: 'Add', q: '', m: '' }); }); await wait(200);
+    await P.page.click('#modal [data-act="pickDo"][data-ex="bench"]'); await wait(300);
+    await P.page.fill('#view input[data-f="w"][data-b="0"][data-s="0"]', '135'); await P.page.fill('#view input[data-f="r"][data-b="0"][data-s="0"]', '10');
+    await P.page.click('#view [data-act="sDone"][data-b="0"][data-s="0"]'); await wait(250);
+    await P.page.click('#view [data-act="finish"]'); await wait(300);
+    for (let k = 0; k < 4 && await P.page.evaluate(() => !!window.__ironlog.ui.modal); k++) { await P.page.click('#modal [data-act="mOk"], #modal [data-act="mClose"], #modal .x').catch(() => {}); await wait(250); }
+    const saved = await P.page.evaluate(() => window.__ironlog.state.sessions.length);
+    await P.page.evaluate(() => { const L = window.__ironlog; L.closeModal && L.closeModal(); L.ui.tab = 'today'; L.render(); }); await wait(200);
+    const free = await P.page.evaluate(() => window.__ironlog.state.settings.todayStart);
+    ok(saved === 1 && free === 'free' && !(await card(P)), '12. a freestyler with no bodyweight lift is not asked his bodyweight on Today, the starter\'s pull-ups being no plan he follows', { saved, free, card: await card(P) });
+    // He does pull-ups: from then on the card asks, as it does for anyone who did a bodyweight lift.
+    await P.page.evaluate(() => { const L = window.__ironlog; const S = L.state;
+      S.sessions.push({ id: 'pu', date: '2026-11-09', dayIdx: 0, dayId: null, dayName: 'Freestyle', routineId: '', free: true, notes: '', deload: false, light: false, ex: [{ exId: 'pullup', sets: [{ w: 0, r: 8, done: true }] }] });
+      L.state = L.normalize(S); L.invalidate(); L.saveNow(); L.render(); }); await wait(150);
+    ok(await card(P), '12. once he has done a bodyweight lift, the card asks', await card(P));
+    ok(!P.errors.length, '12. no page errors', P.errors);
+    await P.ctx.close(); await P.browser.close();
+    // A lifter on the starter's days (not freestyle) is asked from the first day, before anything is logged.
+    const Q = await phone({ onboarded: true });
+    await Q.page.evaluate(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); }); await wait(150);
+    ok(await card(Q), '12. (guard) a lifter following the starter routine, with its pull-ups, is asked from the first day', await card(Q));
+    await Q.ctx.close(); await Q.browser.close();
+  }
+
   console.log(fails.length ? `\n${fails.length} FAILED` : '\nALL PASS');
   process.exit(fails.length ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(1); });

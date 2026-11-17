@@ -160,8 +160,8 @@ function setsHeldTo(usualSets: number, plan: number | null, saved: number | null
 }
 
 /* V's one rule for every session: a lift's session sets its next target only when it did its usual load and
-   reps for the sets it is held to (setsHeldTo); a session short of either still counts for the trend, stalls and PRs,
-   and the target repeats. Short by its sets: fewer near its working load (setsAt) than it is held to. Short by its
+   reps for the sets it is held to (setsHeldTo); a session short of either still counts for the trend and PRs, and the
+   target repeats, and one short by its reading counts for stalls too (one with its sets skipped is left out, stallLeftOut). Short by its sets: fewer near its working load (setsAt) than it is held to. Short by its
    reading: at a working load no heavier than the sessions before it, its strength reading (else its reps a set) over
    those sets is more than USUAL_SHARE under the usual (readingOf), so a set beyond them never counts against it. The
    usual is the middle of it and the two sessions before it in the range not done lighter, so one session under it

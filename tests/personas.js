@@ -656,15 +656,18 @@ async function finish() {
     const lp = b0.ex.findIndex(b => b.exId === 'legPress'), sq = b0.ex.findIndex(b => b.exId === 'backSquat');
     const sqGrey = (await H.row(sq, 0)).w;
     ok(Number((await H.row(lp, 0)).w) >= 390 && Number(sqGrey) >= 240, '9. at the new gym, before marking: both lifts suggest from the old gym (leg press 390 or more, squat 240 or more)', { lp: await H.row(lp, 0), sq: sqGrey });
-    // The leg press's menu, as a thumb opens it: a machine, so Machine, and in its sheet New machine (390 C).
+    // The leg press's menu, as a thumb opens it: a machine, so Machine, and in its sheet Add a machine (390 C).
     await H.page.click(`#view [data-act="bMenu"][data-b="${lp}"]`); await wait(100);
     if (!ok(!!(await H.page.$('#modal [data-op="machineOpen"]')) && !(await H.page.$('#modal [data-op="bNew"]')), '9. the leg press\'s menu offers Machine')) { await H.P.ctx.close(); return finish(); }
     await H.page.click('#modal [data-op="machineOpen"]'); await wait(150);
-    await H.page.click('#modal [data-act="machinePick"][data-k="new"]'); await wait(200);
+    // Add a machine, its name typed as the lifter reads it off the machine, then Add.
+    await H.page.click('#modal [data-act="machineNaming"][data-k="new"]'); await wait(150);
+    await H.page.fill('#mcName', 'Newtech'); await H.page.click('#modal [data-act="machineNameSave"]'); await wait(200);
     const b1 = await H.draft();
     const lpRow = await H.row(lp, 0);
-    ok(b1.ex[lp].nw === true && b1.ex[lp].sw == null && !/^\d/.test(lpRow.w || '') && /New machine: pick a load/.test(await H.text()) && (await H.row(sq, 0)).w === sqGrey,
-      '9. New machine picked: the leg press has no grey load and reads as a first session there; the squat is as it was', { lpRow, nw: b1.ex[lp].nw });
+    const lpTag = () => H.ev(lp => { const t = document.querySelector(`#blk-${lp} .mctag`); return t ? t.textContent.trim() : null; }, lp);
+    ok(b1.ex[lp].nw === true && b1.ex[lp].sw == null && !/^\d/.test(lpRow.w || '') && /New machine: pick a load/.test(await H.text()) && (await H.row(sq, 0)).w === sqGrey && await lpTag() === 'Newtech',
+      '9. Newtech added: the leg press has no grey load and reads as a first session there, its card naming Newtech; the squat is as it was', { lpRow, nw: b1.ex[lp].nw, tag: await lpTag() });
     // The new gym's leg press reads heavier: 500 x 10 at 2 in reserve. The squat at its grey load, 6 reps at 2 in reserve.
     for (const s of [0, 1, 2]) { await H.type('w', lp, s, 500); await H.type('r', lp, s, 10); await H.effort(lp, s, 2); await H.quiet(); await H.tick(lp, s); }
     for (const s of [0, 1, 2]) { await H.type('r', sq, s, 6); await H.effort(sq, s, 2); await H.quiet(); await H.tick(sq, s); }
@@ -680,7 +683,13 @@ async function finish() {
     const lp2 = b2.ex.findIndex(b => b.exId === 'legPress');
     const g2 = Number((await H.row(lp2, 0)).w);
     const saved = await H.ev(() => { const L = window.__ironlog; return { n: L.state.sessions.filter(x => x.ex.some(b => b.exId === 'legPress')).length, nw: L.state.sessions.filter(x => x.ex.some(b => b.exId === 'legPress' && b.nw)).length }; });
-    ok(g2 >= 500 && !b2.ex[lp2].nw, '9. the week after: the leg press asks from the new gym\'s 500 x 10, unmarked', { grey: g2, tgt: b2.ex[lp2].tgt });
+    const tag2 = await H.ev(lp => { const t = document.querySelector(`#blk-${lp} .mctag`); return t ? t.textContent.trim() : null; }, lp2);
+    ok(g2 >= 500 && !b2.ex[lp2].nw && tag2 === 'Newtech', '9. the week after: the leg press is on Newtech by name and asks from its 500 x 10, unmarked', { grey: g2, tgt: b2.ex[lp2].tgt, tag2 });
+    // The old gym's leg press, by its last session in the sheet the card's name opens, named as the lifter names it.
+    await H.page.click(`#blk-${lp2} .mctag`); await wait(150);
+    const listed = await H.ev(() => document.querySelector('#modal .sheet').innerText.replace(/\s+/g, ' '));
+    ok(/Newtech\s*\S+ \d+ · 500 lb × 10\s*✎\s*\S+ \d+ · 390 lb × 10\s*✎\s*Add a machine/.test(listed), '9. the name on the card opens the Machine sheet: Newtech first, the old gym\'s leg press by its last session', listed);
+    await H.ev(() => window.__ironlog.ACT.mClose()); await wait(120);
     ok(saved.n === 5 && saved.nw === 1, '9. History keeps all five leg press sessions, the new gym\'s marked', saved);
     ok(!H.P.errors.length, '9. no page errors', H.P.errors);
     await H.P.ctx.close();
@@ -788,6 +797,9 @@ async function finish() {
     const all = S.flatMap(s => s.ex);
     const LIKE = [/bench/i, /incline/i, /squat/i, /leg press/i];
     ok(all.every(b => !b.custom) && S.every(s => s.ex.every((b, j) => LIKE[(s.date === '2026-09-24' || s.date === '2026-10-01' ? 0 : 2) + j].test(b.name))), '11. each lift is matched to the library\'s, none made new', all.map(b => b.name));
+    // An imported machine lift's sessions read on the machine their dates give, the lift's first here.
+    const legs = await ev(() => { const L = window.__ironlog; return L.state.sessions.flatMap(s => s.ex.filter(b => b.exId === 'legPress').map(b => [s.id, b.mc || null, ((L.IDX().byEx.legPress || []).find(x => x.sid === s.id) || {}).mk])); });
+    ok(legs.length === 2 && legs.every(([, , mk]) => mk === '0'), '11. each imported leg press session reads on the lift\'s first machine', legs);
     const R = after.routine;
     const trained = R ? R.days.filter(d => !d.rest && d.items.length) : [];
     ok(after.onboarded && trained.length === 2 && trained.every(d => d.items.length === 2) && trained.map(d => d.name).sort().join() === 'Legs,Push', '11. a routine is made from the days that repeat, Push and Legs, and the app opens on it', R && R.days.map(d => [d.name, d.items.map(i => i.exId)]));
@@ -1245,6 +1257,58 @@ async function finish() {
     const hint2 = await H.ev(b => window.__ironlog.state.draft.ex[b].hint || '', db2), bhint = await H.ev(b => window.__ironlog.state.draft.ex[b].hint || '', bb2);
     ok(h2[db2] === 'kg EACH' && h2[bb2] === 'lb TOTAL' && new RegExp(`Last \\(Nov 16\\): ${w}×`).test(hint2) && !/ lb/.test(hint2) && /185|lb/.test(bhint), '19. the week after: the dumbbells read last time in kg, nothing in lb; the bench in lb', { h2, hint2, bhint });
     ok(!H.P.errors.length, '19. no page errors', H.P.errors);
+    await H.P.ctx.close();
+  }
+
+  // ---- 20. The week's word (2.70, NEW-156 and NEW-166): a lifter whose bench and press go up a step a week while the
+  // row and the leg press stay flat logs today's session, reads Stats, opens Why, takes the leg press out of the routine
+  // and reads Stats again. Every step a tap or typing.
+  if (run(20)) {
+    const T0 = '2026-11-16';
+    const H = await phone(T0);
+    const lifts = [['bench', 185, 8, 5], ['ohp', 95, 8, 5], ['bbRow', 135, 8, 0], ['legPress', 270, 10, 0]];
+    await seed(H, { unit: 'lb', days: [{ id: 'P', name: 'Full', items: lifts.map(([id, , r]) => [id, 3, r === 10 ? 8 : 6, r === 10 ? 12 : 10, 2, 120]) }],
+      sessions: [35, 28, 21, 14, 7].map((n, i) => ({ day: 'P', date: addD(T0, -n), ex: lifts.map(([id, w, r, up]) => [id, [0, 1, 2].map(() => [w + up * i, r, 2])]) })) });
+    // Today's session as the lifter does it: each set's load and reps typed, its effort, ticked; then Finish, which
+    // saves each lift with the sets its plan gave it.
+    await H.start();
+    const d0 = await H.draft();
+    for (const [id, w, r, up] of lifts) { const b = d0.ex.findIndex(x => x.exId === id); for (const s of [0, 1, 2]) { await H.type('w', b, s, w + up * 5); await H.type('r', b, s, r); await H.effort(b, s, 2); await H.quiet(); await H.tick(b, s); } }
+    await H.finish();
+    const stats = () => H.ev(() => {
+      const t = e => e.innerText.replace(/\s+/g, ' ').trim();
+      const line = document.querySelector('#dashSummary .vline'), why = document.querySelector('#dashSummary details');
+      // A row shown: one under a closed fold has no text drawn.
+      const rows = [...document.querySelectorAll('#dashSummary .srow')].map(t).filter(Boolean);
+      return { line: line ? t(line) : '', whyOpen: !!(why && why.open), rows, first: (document.querySelector('#view .card, #view .kpis') || {}).id || '' };
+    });
+    await H.page.click('#tabs [data-tab="dash"]'); await wait(200);
+    let s = await stats();
+    ok(s.first === 'dashSummary' && /^Stalled\. \S/.test(s.line) && !s.whyOpen && !s.rows.length, '20. two lifts rising and two flat: Stats opens with "Stalled." and the coach\'s one change, the lines behind it folded', s);
+    // A build before 2.70 has no fold to tap: each check below then fails rather than the run stopping.
+    if (await H.page.$('#dashSummary details > summary')) { await H.page.click('#dashSummary details > summary'); await wait(150); }
+    s = await stats();
+    ok(s.whyOpen && s.rows.some(x => /^Moving/i.test(x) && /Bench Press/.test(x) && /Overhead Press/.test(x)) && s.rows.some(x => /^Stuck/i.test(x) && /Barbell Row/.test(x) && /Leg Press/.test(x)) && !s.rows.some(x => /^Falling/i.test(x)),
+      '20. Why opens on a tap: Moving names the bench and the press, Stuck the row and the leg press', s.rows);
+    // The leg press taken out of the routine on Plan: its row opened, then Remove.
+    await H.page.click('#tabs [data-tab="program"]'); await wait(200);
+    const item = '#view .it button.imain[data-act="toggleItem"]';
+    const lp = await H.ev(q => { const b = [...document.querySelectorAll(q)].find(x => /Leg Press/.test(x.textContent)); return b ? b.dataset.uid : null; }, item);
+    // Each fold the leg press sits in, tapped open from the outside in, as the lifter opens Days to reach it.
+    for (let k = 0; k < 4; k++) {
+      const fold = await H.ev(q => { let d = document.querySelector(q), out = null; while (d && (d = d.parentElement && d.parentElement.closest('details'))) if (!d.open) out = d.dataset.sk; return out; }, `${item}[data-uid="${lp}"]`);
+      if (!fold) break;
+      await H.page.click(`#view details[data-sk="${fold}"] > summary`); await wait(150);
+    }
+    await H.page.click(`${item}[data-uid="${lp}"]`); await wait(150);
+    await H.page.click('#view [data-act="iDel"]'); await wait(150);
+    const gone = await H.ev(() => !window.__ironlog.activeRoutine().days.some(d => d.items.some(i => i.exId === 'legPress')));
+    await H.quiet();
+    await H.page.click('#tabs [data-tab="dash"]'); await wait(200);
+    s = await stats();
+    ok(gone && /^Progressing\. \S/.test(s.line) && s.rows.some(x => /^Stuck/i.test(x) && /Barbell Row/.test(x) && !/Leg Press/.test(x)) && !s.rows.some(x => /Leg Press/.test(x)),
+      '20. with the leg press taken out of the routine, it is read no more: Progressing, and Stuck names only the row', { gone, s });
+    ok(!H.P.errors.length, '20. no page errors', H.P.errors);
     await H.P.ctx.close();
   }
 

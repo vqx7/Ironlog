@@ -18,6 +18,7 @@ import {
   sortedSessionsIn
 } from './model';
 import { IDXIn, stallWordsIn } from './analytics';
+import { trendScope, trendW } from './trend';
 import { ON_PLAN_TIP, actualAvg4In, avgWaitIn, muscleStatusIn, recentLighterIn, AVG_WEEKS } from './weeks';
 import { GROW_PCT, atLoad, isWork, lighter, STALL, LIGHT_SHARE, DELOAD_GAP_DAYS, TREND_WEEKS } from './formulas';
 import { MK, ML, isCompound, noE1 } from './library';
@@ -53,12 +54,13 @@ export const SIZE_MAP: readonly (readonly [string, readonly string[]])[] = [
   ['neck', ['neck']]
 ];
 
-/* The lifts moving up, fastest first, with the weeks their trend covers.
+/* The lifts moving up, fastest first, with the weeks their trend covers:
+   those being trained now (ExStat.current), as a stall is read.
    Every entry of IDX's exStats is a lift's stats (it holds no empty ones),
    and a moving lift has a change, as the ! say. */
 export function moversIn(M: Model): { id: string; pct: number | null; wk: number }[] {
   return Object.entries(IDXIn(M).exStats)
-    .filter(([, x]) => x!.moving && !x!.stalled && x!.fresh)
+    .filter(([, x]) => x!.moving && !x!.stalled && x!.current)
     .sort((a, b) => b[1]!.pct! - a[1]!.pct!)
     .map(([id, x]) => ({ id, pct: x!.pct, wk: x!.spanW || 2 }));
 }
@@ -85,7 +87,14 @@ export function liftsMovingIn(M: Model): Mover[] {
   return moversIn(M).map(({ id, wk }) => {
     const all = I.byEx[id] || [];
     const st = I.exStats[id];
-    const line = st ? st.trendTv.slice() : [];
+    /* A lift moving by its load step reads a lower estimate than where its window began (trend.ts): its line is its
+       loads then, which rose, so a line beside "rising" never falls. */
+    const line =
+      st && st.pct != null && st.pct < 0
+        ? trendW(trendScope(all, I.anchor)).map(x => x.topW)
+        : st
+          ? st.trendTv.slice()
+          : [];
     const last = all[all.length - 1];
     let top: Mover['top'] = null;
     for (const p of last ? last.pts : [])
@@ -104,6 +113,16 @@ export function stalledIdsIn(M: Model): string[] {
 
 /** Main lifts stalled at once that suggest a deload week, and the names the line lists. */
 export const FATIGUE_STALLS = 3;
+
+/* Whether the main lifts stalled point to fatigue: FATIGUE_STALLS or more at
+   once, while progress has stopped broadly. In a week whose word is
+   Progressing most lifts trained are rising, so the stalled ones are each the
+   lift's own to change, not a reason for a deload (verdictIn). One test for
+   the coach's deload and for Stats, which says it in red. */
+/** Whether the main lifts stalled at once point to fatigue (above). */
+export function fatigueCallIn(M: Model): boolean {
+  return fatigueStallsIn(M, stalledIdsIn(M)).length >= FATIGUE_STALLS && verdictIn(M).word !== 'Progressing';
+}
 /** The muscles the on-plan line names before "and N more". */
 const ON_PLAN_SHOWN = 4;
 /** Weeks of the last AVG_WEEKS with no training at which the Coach says so first, before any set count (a convention). */
@@ -248,7 +267,7 @@ function shortfallLineIn(
   return null;
 }
 
-/** The coach with no shortfall and no stall (coachIn): a muscle whose strength falls, the wait for a first average, every muscle on plan, or every muscle at target. */
+/** The coach with no shortfall and no stall (coachIn): a muscle whose strength falls, a lift that falls, the wait for a first average, every muscle on plan, or every muscle at target. */
 function lastWordIn(
   M: Model,
   I: ReturnType<typeof IDXIn>,
@@ -267,6 +286,20 @@ function lastWordIn(
       act: { label: `See ${ML[x.m]}`, sec: 'rank', m: x.m }
     };
   }
+  /* A lift falling while no muscle reads so (another of its muscle's lifts rising, say) is said by the lift, the
+     steepest first, so the week's word is never beside "nothing stalled": the lifts stalled are said before this. */
+  const down = verdictIn(M)
+    .falling.flatMap(id => {
+      const st = I.exStats[id];
+      return st && st.pct != null ? [{ id, pct: st.pct, wk: st.spanW }] : [];
+    })
+    .sort((a, b) => a.pct - b.pct)[0];
+  if (down)
+    return {
+      tone: 'yellow',
+      text: `${exNameIn(M, down.id)} is falling over ${down.wk || TREND_WEEKS} weeks. Check sleep and recovery before adding sets.`,
+      act: { label: 'See the lift', sec: 'exercise', ex: down.id }
+    };
   // Someone back from a break (nothing since before the last 4 weeks) has
   // history but no recent weeks; "first full week" was wrong for them.
   /* The averages start the week after the log's first (avgFirstWeekIn),
@@ -311,7 +344,7 @@ export function coachIn(M: Model): CoachLine {
      (recentLighterIn). */
   const rl = recentLighterIn(M, DELOAD_GAP_DAYS);
   const big = fatigueStallsIn(M, stalled);
-  if (big.length >= FATIGUE_STALLS && !rl)
+  if (fatigueCallIn(M) && !rl)
     return {
       tone: 'red',
       text: `${big.length} main lifts stalled at once: ${andList(
@@ -418,6 +451,55 @@ export function coachIn(M: Model): CoachLine {
     };
   }
   return lastWordIn(M, I, avg, mst, inj);
+}
+
+/** The weekly verdict's three words (V, 2026-11-15). */
+type VerdictWord = 'Progressing' | 'Stalled' | 'Regressing';
+/** Each word's colour: the dots and pills of the screens that show it. */
+const VERDICT_TONE: Readonly<Record<VerdictWord, string>> = {
+  Progressing: 'green',
+  Stalled: 'yellow',
+  Regressing: 'red'
+};
+
+/** The weekly verdict: its word, none in a quiet week or with no lift read, its colour, and the lifts in each group it is read from. */
+interface Verdict {
+  word: VerdictWord | null;
+  tone: string;
+  rising: string[];
+  stalled: string[];
+  falling: string[];
+}
+
+/* One word for what the lifts being trained are doing (ExStat.current), said
+   before the coach's one change, so every reading feeds one line (V,
+   2026-11-14). Each such lift is in one group: falling, clearly down over its
+   trend's weeks, whether or not the stall test flags it too; stalled, by the
+   stall test; or rising, as Lifts moving reads it (moversIn). Any other lift,
+   skipped, on a break, taken out of the routine, too new for a trend or inside
+   day-to-day noise, is in none, is never shown and never counts (V,
+   2026-11-15). Progressing while the rising lifts outnumber the stalled and
+   falling together, Regressing while the falling outnumber the rising, and
+   Stalled otherwise: a majority, so one stalled lift among many rising is
+   not the week's word. No word in a rest or deload week, which is not for
+   progress, or with no lift in a group. */
+export function verdictIn(M: Model): Verdict {
+  const falling = Object.entries(IDXIn(M).exStats).flatMap(([id, x]) => (x && x.falling && x.current ? [id] : []));
+  const stalled = stalledIdsIn(M).filter(id => !falling.includes(id));
+  // A lift rising is never falling (trend.ts), so the groups do not overlap.
+  const rising = moversIn(M).map(x => x.id);
+  const up = rising.length,
+    flat = stalled.length,
+    down = falling.length;
+  const word: VerdictWord | null =
+    quietWeekIn(M) || up + flat + down === 0
+      ? null
+      : up > flat + down
+        ? 'Progressing'
+        : down > up
+          ? 'Regressing'
+          : 'Stalled';
+  return { word, tone: word ? VERDICT_TONE[word] : 'blue', rising, stalled, falling };
 }
 
 /* A muscle's strength trend in words: unclear when none of its lifts

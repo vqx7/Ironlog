@@ -779,6 +779,12 @@ export function lighterLoadIn(
     const c = Ls.floor(to);
     return c == null ? (Ls.first ?? dn) : Math.min(dn, c);
   }
+  /* A load typed in the other unit is none of this unit's loads, so whole steps from it are none either: counted from
+     it and then put on this unit's loads again, 135 lb on a bench now in kg (61.2) gave a Lighter day of 51.2, then 50,
+     82% where the rule asks 90%. The rule's load is put on this unit's loads once instead: the heaviest at or under
+     it (55 kg). A load in hand (minus and plus, a drop set, the next sets) counts from its nearest load (loadsForIn). */
+  const once = !inHand && typedOtherIn(M, from) ? unitFloorIn(M, ex, plan, Math.min(to, from)) : null;
+  if (once != null) return once < from - EPS_SAME ? once : Math.max(0, from);
   // Whole steps from `from`: at least one, as many as reach `to`; with no step, rounded down to the unit's.
   const dn = Ls.below(from);
   let w: number;
@@ -793,6 +799,26 @@ export function lighterLoadIn(
   const gr = rackGridIn(M, ex, plan, from);
   if (gr && w < gridStep(M, gr, 0, 1) - EPS_SAME) w = Math.min(gridStep(M, gr, 0, 1), from);
   return Math.max(0, w);
+}
+
+/* The heaviest of a lift's loads in its unit at or under `w`, as unitGridIn counts them: on the spacing of the loads
+   that exist (loadGridIn), from the bar on a full-bar lift typed as the total, else from 0, and never under one step on
+   a loaded lift (nor under the bar). Null where those loads are not a spacing in its unit: a rack, Your gym's plates, a
+   timed hold, or a spacing set in the other unit, whose loads are shown converted. */
+/** The heaviest load on the lift's own spacing in its unit at or under `w` (kg), or null where it has no such spacing. */
+function unitFloorIn(
+  M: Model,
+  ex: ExerciseLike,
+  plan: Pick<Plan, 'inc' | 'jump'> | null | undefined,
+  w: number
+): number | null {
+  if (ex.timed || gymRackIn(M, ex, plan) || plateGridIn(M, ex, plan)) return null;
+  const st = inUnitIn(M, loadGridIn(M, ex, plan));
+  if (!(st > 0) || !onStep(st, TYPED_STEP)) return null;
+  const o = inUnitIn(M, loadFloorIn(M, ex));
+  const fl = Math.max(o, !ex.bw && !ex.assist ? st : 0);
+  const d = o + Math.floor((inUnitIn(M, w) - o) / st + EPS) * st;
+  return kgOfIn(M, Math.max(d, fl));
 }
 
 /* A load above `from` and not past `to`, or null when the next one is past

@@ -308,7 +308,7 @@ export function accountStart(): void {
      foreground: a sign-in that could not refresh offline starts syncing then. */
   window.addEventListener('online', () => {
     if (AUTH() && !cloud.on) cloudInit();
-    // Back from a dead zone: sync now, where the sync waits for the network (r64, F5) or for its retry.
+    // Back from a dead zone: sync now, where the sync waits for the network or for its retry.
     else if (cloud.on && cloud.status === 'offline') resume();
   });
   document.addEventListener('visibilitychange', () => {
@@ -747,10 +747,13 @@ export const ACCOUNT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       }
       // The phone's copy goes with the sign-out: an empty log, saved, and no Undo back into the account's (undoForget).
       if (remove)
-        act(() => {
-          undoForget();
-          setState(normalize(null));
-        });
+        act(
+          () => {
+            undoForget();
+            setState(normalize(null));
+          },
+          { whole: true }
+        );
       if (!mid) {
         ui.tab = 'today';
         window.scrollTo(0, 0);

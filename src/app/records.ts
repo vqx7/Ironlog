@@ -88,7 +88,9 @@ export const LIMITS = {
   /** Help on an assisted lift, in kilograms (stored below 0). */
   assistKg: 300,
   /** The heaviest load, in pounds. */
-  loadLb: 20000
+  loadLb: 20000,
+  /** The machines one lift keeps a name for. */
+  machineNames: 20
 } as const;
 /** Text as typed, kept within `max` characters. A name or a note saved longer before its limit existed
     is edited, never cut: it may get shorter, and a change that would make it longer still is not taken (the field's
@@ -208,10 +210,10 @@ export const okExtraKey = (k: string): boolean => /^[A-Za-z][\w]{0,39}$/.test(k)
 export const KNOWN_ITEM: ReadonlySet<string> = new Set(['jump', 'pm']),
   KNOWN_CARDIO: ReadonlySet<string> = new Set(['dist']),
   KNOWN_MEAS: ReadonlySet<string> = new Set(MEAS.map(x => x[0])),
-  // A saved session's exercise: the injury it was held for, the sets its plan gave it, a new machine or gym, the machine it was done on, and its note's pictures.
-  KNOWN_SEX: ReadonlySet<string> = new Set(['inj', 'ps', 'nw', 'mc', 'pics']),
-  // An exercise of a workout in progress, and one an edit saves over: a new machine or gym, true or absent, the machine picked, and its note's pictures.
-  KNOWN_BLOCK: ReadonlySet<string> = new Set(['nw', 'mc', 'pics']),
+  // A saved session's exercise: the injury it was held for, the sets its plan gave it, a new machine or gym, the machine it was done on and whether the app kept that name, and its note's pictures.
+  KNOWN_SEX: ReadonlySet<string> = new Set(['inj', 'ps', 'nw', 'mc', 'kp', 'pics']),
+  // An exercise of a workout in progress, and one an edit saves over: a new machine or gym, true or absent, the machine picked and whether the app kept that name, and its note's pictures.
+  KNOWN_BLOCK: ReadonlySet<string> = new Set(['nw', 'mc', 'kp', 'pics']),
   // A saved session, and one an edit saves over: its notes' pictures and its part of the day, absent when none.
   KNOWN_SESS: ReadonlySet<string> = new Set(['pics', 'part']),
   // A routine's day: the name of its second workout, absent when none.

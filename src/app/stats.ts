@@ -51,7 +51,7 @@ import { estInLoad, loadNote } from './loads';
 import { prName, BAND_RANGES } from './prs';
 import { sessionWord } from './analytics';
 import { BACK_WEEK_WHY, FIRST_WEEK_WHY, LIGHTER_WEEK_TIP, ON_PLAN_TIP, avgWeeksTxt, AVG_WEEKS } from './weeks';
-import { FALL_WHY, STALL_WHY, chkWord, musTrend, FATIGUE_STALLS, READINESS_MIN } from './coach';
+import { FALL_WHY, STALL_WHY, chkWord, musTrend, READINESS_MIN } from './coach';
 import { whyTarget } from './session';
 import { ENV, REGION_KEY, prefSet } from './storage';
 import {
@@ -86,6 +86,7 @@ import {
   easierText,
   EX,
   exName,
+  fatigueCall,
   fatigueStalls,
   firstFullWeek,
   freeMode,
@@ -111,6 +112,7 @@ import {
   stalledIds,
   stallWords,
   suggest,
+  verdict,
   weekNeed,
   weekSessions,
   weekStats,
@@ -435,11 +437,16 @@ function extraKpis(): Part {
   return html`<div class="kpi"><div class="v">${sd.avg}<span class="small"> min</span></div><div class="l">Average session, last ${RECENT_DAYS / WEEK_DAYS} weeks (${sd.n} timed)${sd.plan && pace() === 1 ? `, planned ${estMin(sd.plan)}` : ''}</div></div>`;
 }
 
-/* Up to four lines, each landing on the section that holds the detail. */
+/* What Stats opens with: the weekly verdict and the coach's one change on one
+   line (verdictIn, coachIn), as Today's Coach says them, so every reading below
+   feeds it rather than competing with it (V, 2026-11-14). The lines it is read
+   from fold under it, Why, each landing on the section that holds the detail:
+   the lifts rising, stalled and falling, and volume against the targets. */
 function dashSummary(): TemplateResult {
   const mvAll = movers(),
     mv = mvAll.slice(0, 2);
   const stalled = stalledIds();
+  const v = verdict();
   const avg = actualAvg4();
   const inj = injuredSet();
   // Each muscle's status as every screen reads it (muscleStatus): a muscle on plan is not below target.
@@ -457,8 +464,12 @@ function dashSummary(): TemplateResult {
   ): TemplateResult =>
     html`<button class="srow" data-act="goDash" data-sec=${attrs.sec} data-ex=${attrs.ex ?? nothing}><i class=${`dot ${tone}`}></i><span class="sl">${label}</span><span class="st">${text}</span><span class="chev2" aria-hidden="true">›</span></button>`;
   /* The reason given is the true one: with enough sessions the changes
-     are inside day-to-day noise; "needs 3 sessions" was said to someone with 6. */
-  const nTr = Object.values(IDX().exStats).filter(x => x && x.pct != null && x.fresh).length;
+     are inside day-to-day noise; "needs 3 sessions" was said to someone with 6. Within the noise are the lifts with a
+     trend in none of the word's groups, never one stalled or falling, which the lines below name. */
+  const grouped = new Set([...v.rising, ...stalled, ...v.falling]);
+  const nTr = Object.entries(IDX().exStats).filter(
+    ([id, x]) => x && x.pct != null && x.current && !grouped.has(id)
+  ).length;
   /* Each lift's change is over the weeks its trend covers (not "+7.5%
      over 6 weeks" on a log 19 days old). One span is
      said once when the two share it. Names, not percentages: "Incline
@@ -474,12 +485,12 @@ function dashSummary(): TemplateResult {
       ) + (one ? `, over ${m0.wk} weeks` : '')
     : nTr
       ? `No lift clearly rising yet: ${nTr} with a trend, each within day-to-day noise.`
-      : `A trend needs ${TREND_MIN.sessions} sessions of a lift over ${TREND_MIN.days / WEEK_DAYS} weeks or more, within ${TREND_WEEKS} weeks.`;
-  // When the coach's one change is the volume shortfall, the Volume line says it with the action and Change is not repeated;
-  // so too when the coach says why no average shows yet, so the two say the same weeks, which the Volume line says otherwise.
-  const cm = c.act && c.act.sec === 'volume' ? c.act.m : null;
-  const same = !!(cm && under && under.some(m => m === cm)) || !!c.wait;
-  const w = under == null ? avgWait() : null;
+      : grouped.size
+        ? 'No lift rising.'
+        : `A trend needs ${TREND_MIN.sessions} sessions of a lift over ${TREND_MIN.days / WEEK_DAYS} weeks or more, within ${TREND_WEEKS} weeks.`;
+  /* The line says the coach's change, so the Volume line under it never says it
+     again: with no average yet the line says when one comes, and the Volume line
+     is left out; otherwise it names the muscles below target, or none. */
   const above =
     over && over.length
       ? ` Above: ${andList(
@@ -488,11 +499,9 @@ function dashSummary(): TemplateResult {
         )}.`
       : '';
   const vt =
-    (same
-      ? c.text
-      : w
-        ? `${w.lead}A volume read comes${w.kind === 'back' ? ' back' : ''} after ${w.after}.`
-        : under && under.length
+    under == null
+      ? null
+      : (under.length
           ? `Below target: ${andList(
               under.map(m => ML[m] || m),
               NAMES_SHOWN
@@ -500,12 +509,23 @@ function dashSummary(): TemplateResult {
           : onPlan.length
             ? 'Every muscle on plan.'
             : 'Every muscle at or above target.') + above;
-  return html`<div class="card summary" id="dashSummary">${row(mv.length ? 'green' : '', 'Moving', moving, { sec: 'exercise', ex: m0 ? m0.id : undefined })}${row(
-    stalled.length ? (fatigueStalls(stalled).length >= FATIGUE_STALLS ? 'red' : 'yellow') : 'green',
+  // With no average yet, what brings one, when the coach's change is something else.
+  const w = under == null && !c.wait ? avgWait() : null;
+  const volText =
+    vt ?? (w ? `${w.lead}A volume read comes${w.kind === 'back' ? ' back' : ''} after ${w.after}.` : null);
+  // A lift falling is named under Falling, and one also stalled under Stuck too, as Stalls lists it.
+  const f0 = v.falling[0];
+  const why = html`${row(mv.length ? 'green' : '', 'Moving', moving, { sec: 'exercise', ex: m0 ? m0.id : undefined })}${row(
+    stalled.length ? (fatigueCall() ? 'red' : 'yellow') : 'green',
     'Stuck',
     stalled.length ? andList(stalled.map(exName), NAMES_SHOWN) : 'Nothing stalled',
     { sec: 'stalls' }
-  )}${row(under == null ? '' : under.length ? 'yellow' : 'green', 'Volume', vt, { sec: 'volume' })}${same ? nothing : html`<div class="srow static"><i class=${`dot ${c.tone}`}></i><span class="sl">Change</span><span class="st">${c.text}</span></div>`}</div>`;
+  )}${f0 ? row('red', 'Falling', andList(v.falling.map(exName), NAMES_SHOWN), { sec: 'exercise', ex: f0 }) : nothing}${
+    volText == null
+      ? nothing
+      : row(under == null ? '' : under.length ? 'yellow' : 'green', 'Volume', volText, { sec: 'volume' })
+  }`;
+  return html`<div class="card summary" id="dashSummary"><p class="vline"><i class=${`dot ${v.word ? v.tone : c.tone}`}></i><span>${v.word ? html`<b>${v.word}.</b> ` : nothing}${c.text}</span></p>${subsection('dash:why', 'Why', why)}</div>`;
 }
 
 /* ---------- Volume ---------- */
@@ -984,7 +1004,7 @@ function dashHead(nS: number): TemplateResult {
     .map(([k, l]) => html`<button class="chip" data-act="dashJump" data-sec=${k}>${l}</button>`)}</nav>`;
 }
 
-/** Stats' tiles and summary. */
+/** Stats' verdict and tiles. */
 function dashKpis(R4: ReturnType<typeof recent4w>, nS: number): TemplateResult {
   /* The tiles count what was done (V, 2026-10-13: less anchoring on the
      plan): sessions and PRs in the last 28 days, with the 28 before when the
@@ -993,9 +1013,10 @@ function dashKpis(R4: ReturnType<typeof recent4w>, nS: number): TemplateResult {
      This week. PRs are the ones Recent PRs lists (big). */
   const prs4 = R4.prs.length;
   const was = (n: number): string => (R4.back ? ` (${n} in the ${RECENT_WEEKS} weeks before)` : '');
-  return html`<div class="kpis"><div class="kpi"><div class="v">${nz(R4.sess)}</div><div class="l">Sessions, last ${RECENT_WEEKS} weeks${was(R4.sessP)}</div></div>
+  // The verdict opens Stats; the tiles follow it.
+  return html`${nS ? dashSummary() : nothing}<div class="kpis"><div class="kpi"><div class="v">${nz(R4.sess)}</div><div class="l">Sessions, last ${RECENT_WEEKS} weeks${was(R4.sessP)}</div></div>
   <div class="kpi"><div class="v">${nz(prs4)}</div><div class="l">PRs, last ${RECENT_WEEKS} weeks${was(R4.prsP)}</div></div>
-${extraKpis()}</div>${nS ? dashSummary() : nothing}`;
+${extraKpis()}</div>`;
 }
 
 /** Volume: five ways to read the same hard-set counts, plus tonnage (below). */
@@ -1091,12 +1112,14 @@ function weakPoints(
   return { body, n: wp.length };
 }
 
-/** Lifts' Stalls: the stalled lifts, a word when several main lifts stall at once, and the last lighter week; and how many main lifts are stalled. */
+/** Lifts' Stalls: the stalled lifts, a word when the main lifts stalled at once point to fatigue, and the last lighter week; and whether they do. */
 function stallsBody(stalled: readonly (readonly [string, ExStat])[]): {
   stl: TemplateResult;
-  bigN: number;
+  tired: boolean;
 } {
   // stalls (folded inside Lifts, after Recent PRs and All-time bests)
+  // Said in red only when the main lifts stalled point to fatigue, as the coach reads it (fatigueCall).
+  const tired = fatigueCall();
   const bigN = stalled.length ? fatigueStalls(stalled.map(([id]) => id)).length : 0;
   const lw = lastLighterWeek();
   const stl = html`${
@@ -1104,19 +1127,19 @@ function stallsBody(stalled: readonly (readonly [string, ExStat])[]): {
       ? html`${stalled.map(
           ([id, s]) =>
             html`<div class="row spread u-p6-0_bb1-solid-line"><span><span class="plate yellow u-h14_van2"></span> ${exName(id)}</span><span class="muted small">last ${fmtDate(s.last.date)}</span></div>`
-        )}${bigN >= FATIGUE_STALLS ? html`<p class="small hastip u-cred_mt8" data-tip="Several main lifts flat together often points to fatigue. Check sleep, food, and stress; Deload week is under More options on Today (half the sets, about 90% loads, kept out of your trends). Isolation and core lifts are not counted here.">${bigN} main lifts stalled at once: likely fatigue</p>` : nothing}`
+        )}${tired ? html`<p class="small hastip u-cred_mt8" data-tip="Several main lifts flat together often points to fatigue. Check sleep, food, and stress; Deload week is under More options on Today (half the sets, about 90% loads, kept out of your trends). Isolation and core lifts are not counted here.">${bigN} main lifts stalled at once: likely fatigue</p>` : nothing}`
       : html`<p class="muted">No stalls detected.</p>`
   }${
     lw
       ? html`<p class="small muted u-mt8">${lw.weeks == null ? 'No lighter week in the last 12.' : `Last lighter week: ${lw.weeks} week${lw.weeks === 1 ? '' : 's'} ago${lw.kind === 'rest' ? ' (a rest week)' : lw.kind === 'off' ? ' (a week off)' : ''}.`} ${tipButton(LIGHTER_WEEK_TIP, 'Lighter week')}</p>`
       : nothing
   }`;
-  return { stl, bigN };
+  return { stl, tired };
 }
 
 /** Lifts: the chosen lift's card (the one logged most often to start), Recent PRs, All-time bests and Stalls. */
 function liftsSec(I: Idx, stalled: readonly (readonly [string, ExStat])[], prs4: number): TemplateResult {
-  const { stl, bigN } = stallsBody(stalled);
+  const { stl, tired } = stallsBody(stalled);
   // exercise trend
   const withData = Object.keys(I.byEx)
     .filter(id => (I.byEx[id] || []).length)
@@ -1136,7 +1159,7 @@ function liftsSec(I: Idx, stalled: readonly (readonly [string, ExStat])[], prs4:
     ? html`${bigPR.slice(0, PRS_SHOWN).map(p => {
         const ex = EX(p.exId);
         const iso = p.type === 'e1RM' && !isCompound(ex);
-        const ps = iso ? prSet(p.exId, p.date) : null;
+        const ps = iso ? prSet(p.exId, p.sid) : null;
         const tag = ex.timed && p.type === 'Rep PR' ? 'Time PR' : p.type === 'e1RM' ? (iso ? 'PR' : prName(p)) : p.type;
         const val =
           p.type === 'e1RM'
@@ -1160,7 +1183,7 @@ function liftsSec(I: Idx, stalled: readonly (readonly [string, ExStat])[], prs4:
       'All-time bests',
       bests.html,
       bests.n ? `${bests.n} lift${bests.n === 1 ? '' : 's'}` : 'none yet'
-    )}${dashSub('stalls', 'Stalls', stl, stalled.length ? html`<span class=${`pill ${bigN >= FATIGUE_STALLS ? 'red' : 'yellow'}`}>${stalled.length} stalled</span>` : 'none')}`,
+    )}${dashSub('stalls', 'Stalls', stl, stalled.length ? html`<span class=${`pill ${tired ? 'red' : 'yellow'}`}>${stalled.length} stalled</span>` : 'none')}`,
     noLog() ? 'Nothing logged yet' : `${nLifts} lift${nLifts === 1 ? '' : 's'} tracked`
   );
 }

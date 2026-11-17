@@ -311,7 +311,8 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
     const P = await open(FILE, { browser, clock: '2026-10-15T10:00:00' });
     const ev = (f, a) => P.page.evaluate(f, a);
     const wait = ms => new Promise(r => setTimeout(r, ms));
-    // Leg press at the old gym: six weekly sessions of 3 x 10, 200 to 225 kg, on a routine's one day, saved as Finish saves them.
+    // Leg press at the old gym: six weekly sessions of 3 x 10, 200 to 225 kg, on a routine's one day, saved as Finish saves
+    // them, each naming its machine.
     await ev(() => {
       const L = window.__ironlog; const s = L.state; s.settings.onboarded = true; s.settings.unit = 'kg'; s.settings.autoDone = false;
       const R = { id: 'R61', name: 'R61', schedule: 'cycle', days: [{ id: 'D61', name: 'Legs', rest: false, items: [{ uid: 'i61', exId: 'legPress', sets: 3, repMin: 8, repMax: 12, rir: 2, rest: 120, inc: 5, ss: null }] }] };
@@ -327,8 +328,8 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
       return { target: b.target, hint: b.hint, sw: b.sw, w: b.sets.map(x => x.w), nw: b.nw === true, tag: !!el && !!el.querySelector('.bh') && /New machine/.test(el.querySelector('.bh').innerText), prs: el ? el.querySelectorAll('[data-pr], .bf-pr').length : -1 };
     });
     /* The menu as a lifter opens it: the ⋯ on the exercise, then the option by its words. The leg press is a machine, so
-       since 2.67 (390 C) its menu has Machine, whose sheet has New machine and the machines it was done on (the first,
-       "0"): tapped, it puts the lift on the other one, as New machine or gym marked and took off the mark before. It
+       since 2.67 (390 C) its menu has Machine, whose sheet has the machines it was done on (the first, "0") and Add a
+       machine: tapped, it puts the lift on the other one, as New machine or gym marked and took off the mark before. It
        answers the option's words and the machine the sheet marked. */
     const menu = async (words, to) => {
       await P.page.click('#blk-0 [data-act="bMenu"]'); await wait(100);
@@ -336,7 +337,10 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
       if (!label) { await ev(() => window.__ironlog.ACT.mClose()); return { label, on: null }; }
       await P.page.click('#modal [data-op="machineOpen"]'); await wait(150);
       const on = await ev(() => { const b = document.querySelector('#modal [data-act="machinePick"][aria-pressed="true"]'); return b ? b.dataset.k : null; });
-      if (words) { await P.page.click(`#modal [data-act="machinePick"][data-k="${to || (on === 'new' ? '0' : 'new')}"]`); await wait(150); }
+      const k = to || (on === 'new' ? '0' : 'new');
+      // A new machine is added from Add a machine, here with no name (2.70); one listed is tapped.
+      if (words && k === 'new') { await P.page.click('#modal [data-act="machineNaming"][data-k="new"]'); await wait(120); await P.page.click('#modal [data-act="machineNameSave"]'); await wait(150); }
+      else if (words) { await P.page.click(`#modal [data-act="machinePick"][data-k="${k}"]`); await wait(150); }
       else await ev(() => window.__ironlog.ACT.mClose());
       return { label, on };
     };
@@ -361,10 +365,10 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
       const sv = L.state.sessions.find(x => x.date === '2026-10-15'); const I = L.IDX(); const st = I.exStats.legPress;
       const sg = L.suggest('legPress', { sets: 3, repMin: 8, repMax: 12, rir: 2, rest: 120, inc: 5 }, {});
       const bests = L.allTimeBests('legPress');
-      return { keys: sv ? Object.keys(sv.ex[0]) : null, nw: sv && sv.ex[0].nw, prs: I.prs.filter(p => p.exId === 'legPress' && p.sid === (sv && sv.id)).length, oldPrs: I.prs.filter(p => p.exId === 'legPress').length,
+      return { keys: sv ? Object.keys(sv.ex[0]) : null, nw: sv && sv.ex[0].nw, mc: sv && sv.ex[0].mc, sid: sv && sv.id, prs: I.prs.filter(p => p.exId === 'legPress' && p.sid === (sv && sv.id)).length, oldPrs: I.prs.filter(p => p.exId === 'legPress').length,
         n: st.n, best: st.bestAll, pct: st.pct, stalled: st.stalled, line: L.liftTrend('legPress'), bestDate: bests && bests.est && bests.est.date, heavy: L.bestLine('legPress'), target: sg.target, w: sg.w, exps: I.byEx.legPress.length, hist: L.state.sessions.length };
     });
-    ok(fin.nw === true && fin.keys && fin.keys.slice(-2).join() === 'ps,nw', '5. Finish saves the mark on the exercise, last, after the sets its plan gave it', fin);
+    ok(fin.nw === true && fin.mc === fin.sid && fin.keys && fin.keys.slice(-3).join() === 'ps,nw,mc', '5. Finish saves the mark on the exercise, after the sets its plan gave it, and last the machine it began, named by the session (2.70: every machine lift\'s session names its machine)', fin);
     ok(fin.prs === 0 && fin.bestDate === '2026-10-15' && /280/.test(fin.heavy) && fin.n === 7 && fin.exps === 7 && fin.hist === 7,
       '5. saved: no PR, its bests are the new machine\'s (the best estimate and heaviest set from today), and its seven sessions are all kept and counted', fin);
     ok(fin.line === '', '5. the lift\'s history sheet shows no trend line from the old gym\'s sessions: one session at the new machine is none yet (the independent review of r61)', fin.line);

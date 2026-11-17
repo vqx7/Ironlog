@@ -70,9 +70,12 @@ export function menuSheet(m: { first?: true | undefined }): TemplateResult {
     : A
       ? html`<p class="u-m0"><b>Not signed in.</b> Your log is on this phone only.</p><div class="row u-mt10"><button class="btn primary" data-act="acctOpen" data-mode="signin">Sign in</button><button class="btn" data-act="acctOpen" data-mode="signup">Create account</button></div>`
       : html`<p class="small u-m0">${dot}${st.txt}</p>`;
-  const due = backupDue()
-    ? html`<div class="callout yellow row spread u-m10-0-0"><span class="small"><b>Backup due.</b></span><button class="btn sm" data-act="export">Export backup</button></div>`
-    : nothing;
+  // Not saving says to export a backup, so the button is here, beside the dot that says it, as when a backup is due.
+  const notSaving = st.cls === 'bad';
+  const due =
+    notSaving || backupDue()
+      ? html`<div class="callout yellow row spread u-m10-0-0"><span class="small"><b>${notSaving ? 'Not saving.' : 'Backup due.'}</b></span><button class="btn sm" data-act="export">Export backup</button></div>`
+      : nothing;
   const item = (act: string, label: string, cat?: string) =>
     html`<button type="button" class="mnu" data-act=${act} data-cat=${cat || nothing}><span>${label}</span><span aria-hidden="true">›</span></button>`;
   return html`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="menuH"><div class="sheet-h">${photoHead()}<h3 id="menuH" class="u-f1">${ENV === 'preview' ? PREVIEW_NAME : APP_NAME}</h3>${

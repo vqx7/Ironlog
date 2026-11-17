@@ -25,8 +25,9 @@ import { toast, toastQuiet } from './toast';
 import { stopTimer, wakeOff, wakeOn } from './timer';
 import { editFp0 } from './workstate';
 import type { Tap } from './workstate';
-import { draftEntered, newBlock, rowBlank, shortPlan } from './worksets';
+import { draftEntered, keepLiftMachine, newBlock, rowBlank, shortPlan, takeBackMachine } from './worksets';
 import { swapPlan } from './actspick';
+import { named } from './machines';
 
 /** The most sets a lift done again in a deload records as its full count. */
 const MAX_FULL = 30;
@@ -99,9 +100,6 @@ function pastDraft(date: string, di: number | null, part: 1 | 2 = 1): DraftLike 
     ex: day.items.map(it => newBlock(it.exId, it, { before: date }))
   };
 }
-
-/** What is said when the workout open is set aside for an edit or a past workout. */
-const PARKED_SAID = 'Your workout in progress is set aside. It comes back when you save or discard this one.';
 
 /* A start with a workout already open opens that one instead: Today
    offers starts while the lifter has stepped away from a workout, and a start
@@ -302,6 +300,7 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const removed = new Map<DraftBlock, DraftBlock['sets']>(),
       order = d.ex.slice(),
       did = d.id;
+    let handed: DraftBlock[] = [];
     act(
       () => {
         for (const x of pl.bl) {
@@ -324,6 +323,10 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
           }
           removed.set(b, gone);
         }
+        handed = keepLiftMachine(
+          d,
+          d.ex.filter((_b, bi) => drop.has(bi))
+        );
         d.ex = d.ex.filter((_b, bi) => !drop.has(bi));
         fixSupersets(d.ex.map(b => b.plan));
       },
@@ -340,6 +343,7 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
           order.forEach((b, i) => {
             if (drop.has(i) && !dd.ex.includes(b)) dd.ex.splice(Math.min(i, dd.ex.length), 0, b);
           });
+          takeBackMachine(dd, handed);
           fixSupersets(dd.ex.map(b => b.plan));
           return true;
         }
@@ -565,10 +569,8 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     closeModal();
     const d = state.draft;
     // The workout open is set aside and comes back when this one is saved or discarded; else asked, as before.
-    if (d && parkDraft()) {
-      go();
-      toast(PARKED_SAID);
-    } else if (d && (d.editingId || draftEntered(d)))
+    if (d && parkDraft()) go();
+    else if (d && (d.editingId || draftEntered(d)))
       confirmBox(
         'Replace the session in progress?',
         d.editingId
@@ -633,7 +635,8 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
               })
             ),
             ...(b.nw ? { nw: true as const } : {}),
-            ...(b.mc ? { mc: b.mc } : {}),
+            // The machine it was saved on, the lifter's in the edit (machines.ts), saved as theirs.
+            ...named(b.mc),
             ...(b.pics && b.pics.length ? { pics: [...b.pics] } : {})
           };
         })
@@ -643,10 +646,8 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       begin(d, false);
     };
     // The workout open is set aside and comes back when the edit is saved or cancelled; else asked, as before.
-    if (state.draft && parkDraft()) {
-      go();
-      toast(PARKED_SAID);
-    } else if (state.draft)
+    if (state.draft && parkDraft()) go();
+    else if (state.draft)
       confirmBox(
         'Replace the session in progress?',
         state.draft.editingId

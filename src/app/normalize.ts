@@ -28,6 +28,9 @@ import type {
   Settings
 } from './types';
 import type { DraftLike } from './session';
+import { sameExOnce } from './session';
+import { isWork } from './formulas';
+import { machineKeys } from './model';
 import type { State } from './store';
 import { clampN, hashStr, isDate, isNum, numOr, today, r1, r3, HUNDREDTHS, WEEK_DAYS, SUNDAY } from './util';
 import { LB } from './units';
@@ -44,7 +47,8 @@ import {
   TRACK_ONLY,
   LIB_NAMES_BEFORE,
   LIB_NOTES_BEFORE,
-  libExercises
+  libExercises,
+  onMachines
 } from './library';
 import {
   DAYS,
@@ -89,12 +93,14 @@ import {
   LIMITS,
   EFFORT_TOP,
   V_PER_SIDE,
-  V_NEW_MUSCLES
+  V_NEW_MUSCLES,
+  sessCmp
 } from './records';
 import type { Rec, Trashed } from './records';
 import { gymClean } from './gym';
 import { profClean } from './profile';
-import { canon } from './merge';
+import { canon, oneSession, sameRecord } from './merge';
+import { cleanName, keptName, named } from './machines';
 import {
   DEFAULT_HIDDEN,
   DSEC_FOLDED,
@@ -360,8 +366,8 @@ export function cleanSess(raw: unknown, si: number): Session {
                   : {}),
                 // Done at a new machine or gym, last, as Finish writes it; absent unless marked, so older records keep their hash.
                 ...(b.nw === true ? { nw: true as const } : {}),
-                // The machine it was done on, after it, as Finish writes it; absent unless named, so older records keep their hash.
-                ...(typeof b.mc === 'string' && b.mc ? { mc: fixId(b.mc) } : {}),
+                // The machine it was done on, after it, as Finish writes it, and whether the app kept that name; absent unless named, so older records keep their hash.
+                ...cleanName(b),
                 // The pictures on its note, by id, last; absent unless there are any, so older records keep their hash.
                 ...picsField(b.pics)
               },
@@ -439,6 +445,99 @@ export function plainTemplate(r: unknown): boolean {
     // Not a routine at all, so not a ready-made one.
     return false;
   }
+}
+
+/* A machine, cable or Smith lift's session names its machine (mc) when it is saved and when the lifter picks one; one
+   that names none (saved before, imported, or by an older build) is read on the machine of the last session before it
+   that began one (machineKeys). The log keeps only what the lifter did. So a change that would move a session it does
+   not touch to another machine (deleting, moving or taking the lift out of the session that began one, restoring one,
+   a past workout dated before it) names that session where it was, as part of the change (act.ts): a session moves to
+   another machine only by a pick. The name is one the app kept (machines.ts), no one's edit: a merge or an Undo reads it
+   as absent and never takes it off, so it never beats a lifter's edit made elsewhere and stays as long as the session
+   reads there. Read as the index reads (sameExOnce, working sets only). */
+/** Where each machine lift's sessions that name no machine read, in log `st`: by session, lift and kind (light or not), the machine's key and the exercises it names. */
+export function machineReadings(st: State): Map<string, { key: string; ss: Session; at: number[] }> {
+  const onM = new Set(st.exercises.filter(onMachines).map(e => e.id));
+  const out = new Map<string, { key: string; ss: Session; at: number[] }>();
+  if (!st.sessions.some(ss => ss.ex.some(b => !b.mc && onM.has(b.exId) && b.sets.some(isWork)))) return out;
+  const byEx = new Map<
+    string,
+    { sid: string; nw?: true; named?: string; mk: string; k: string; ss: Session; at: number[] }[]
+  >();
+  for (const ss of [...st.sessions].sort(sessCmp))
+    for (const m of sameExOnce(ss.ex)) {
+      if (!onM.has(m.exId) || !m.sets.some(isWork)) continue;
+      const xs = byEx.get(m.exId) || [];
+      byEx.set(m.exId, xs);
+      xs.push({
+        sid: ss.id,
+        ...(m.nw ? { nw: true as const } : {}),
+        ...(m.mc ? { named: m.mc } : {}),
+        mk: '',
+        k: `${ss.id}|${m.exId}|${m.light ? 1 : 0}`,
+        ss,
+        at: ss.ex.flatMap((b, i) => (b.exId === m.exId && !!b.light === !!m.light && !b.mc ? [i] : []))
+      });
+    }
+  for (const xs of byEx.values()) {
+    machineKeys(xs);
+    for (const x of xs) if (x.at.length) out.set(x.k, { key: x.mk, ss: x.ss, at: x.at });
+  }
+  return out;
+}
+/** Names in place, in log `st` after a change, each session that names no machine and now reads on another than it did
+    before the change (`before`, machineReadings of the log then) with the machine it was on, and each the change put in
+    Recently deleted with the one it was on there, so it comes back to it (above); true when it named one. */
+export function keepMachines(
+  st: State,
+  before: ReadonlyMap<string, { key: string; ss: Session; at: number[] }>
+): boolean {
+  if (!before.size) return false;
+  const named = new Map<Session, Map<number, string>>();
+  for (const [k, now] of machineReadings(st)) {
+    const was = before.get(k);
+    if (!was || was.key === now.key) continue;
+    const at = named.get(now.ss) || new Map<number, string>();
+    for (const i of now.at) at.set(i, was.key);
+    named.set(now.ss, at);
+  }
+  nameSessions(st, named);
+  const here = new Set(st.sessions.map(q => q.id));
+  let gone = false;
+  for (const t of st.trash) {
+    if (t.kind !== 'session' || here.has(t.id)) continue;
+    const ex = arr(t.data.ex);
+    if (!ex) continue;
+    const put = ex.map(b => {
+      const B = rec(b);
+      const was =
+        B && typeof B.exId === 'string' && !B.mc ? before.get(`${t.id}|${B.exId}|${B.light ? 1 : 0}`) : undefined;
+      return was && B ? { ...B, ...keptName(was.key) } : b;
+    });
+    if (put.some((b, i) => b !== ex[i])) {
+      t.data = { ...t.data, ex: put };
+      gone = true;
+    }
+  }
+  return named.size > 0 || gone;
+}
+/** Names in place, as names the app kept, the exercises of log `st` given in `named` (a session, then each exercise's place and its machine's key). */
+export function nameSessions(st: State, named: ReadonlyMap<Session, ReadonlyMap<number, string>>): void {
+  // Each session named read again as any session is, so the name sits where cleanSess writes it.
+  st.sessions.forEach((ss, k) => {
+    const at = named.get(ss);
+    if (at)
+      st.sessions[k] = cleanSess(
+        {
+          ...ss,
+          ex: ss.ex.map((b, i) => {
+            const key = at.get(i);
+            return key === undefined ? b : { ...b, ...keptName(key) };
+          })
+        },
+        k
+      );
+  });
 }
 
 /* ---------- the whole log ---------- */
@@ -735,8 +834,31 @@ function cleanExercise(e0: unknown, e: Rec, name: string): Exercise {
     /* The unit the lift's equipment is marked in, set by a tap on the unit beside its load: kg or lb. Absent when unset,
        so the lift follows the app's unit and a record saved before this existed hashes as before; a build without it
        keeps it among the fields it does not know (keepExtra). */
-    unit: e.unit === 'kg' || e.unit === 'lb' ? e.unit : undefined
+    unit: e.unit === 'kg' || e.unit === 'lb' ? e.unit : undefined,
+    /* The names given to the machines the lift was done on, by each machine's key: absent until one is named, so a
+       record saved before names existed hashes as before, and a build without them keeps them (keepExtra). */
+    machines: machineNames(e.machines)
   });
+}
+
+/** What a machine's key looks like: the first machine's or a session's id (machineKeys). */
+const MACHINE_KEY = /^[A-Za-z0-9_-]{1,40}$/;
+
+/** A lift's machine names as stored: each a name in one line within LIMITS.name, under a key a machine can have, in the
+    order they came, at most LIMITS.machineNames of them; undefined when none is left. */
+function machineNames(v: unknown): Record<string, string> | undefined {
+  const r = rec(v);
+  if (!r || Array.isArray(v)) return undefined;
+  const out: Record<string, string> = {};
+  let n = 0;
+  for (const [k, x] of Object.entries(r)) {
+    if (n >= LIMITS.machineNames) break;
+    const name = typeof x === 'string' ? x.replace(/\s+/g, ' ').trim().slice(0, LIMITS.name) : '';
+    if (!MACHINE_KEY.test(k) || !name) continue;
+    out[k] = name;
+    n++;
+  }
+  return n ? out : undefined;
 }
 
 /* A routine, cleaned: called only on one whose days are a list (the reader
@@ -942,8 +1064,8 @@ function cleanDraftBlock(b0: unknown): DraftBlock[] {
         sets: (arr(b.sets) || []).flatMap(cleanDraftSet),
         // Done at a new machine or gym, last, where the menu adds it; absent unless marked.
         ...(b.nw === true ? { nw: true as const } : {}),
-        // The machine picked for it, after it; absent until one is picked.
-        ...(typeof b.mc === 'string' && b.mc ? { mc: fixId(b.mc) } : {}),
+        // The machine picked for it, after it, the lifter's; absent until one is picked.
+        ...named(typeof b.mc === 'string' && b.mc ? fixId(b.mc) : null),
         // The pictures on its note, by id, last; absent unless there are any.
         ...picsField(b.pics)
       } satisfies DraftBlock,
@@ -1115,7 +1237,8 @@ function reviveEdited(
      that was open while it was deleted), the edit is newer than the delete:
      keep it and retire the tombstone, because keeping data is the mistake
      that can be undone. Sessions are compared in their cleaned form, so
-     field order and defaults added by newer builds do not count as edits. */
+     field order, defaults added by newer builds and the machine names the app
+     kept (machines.ts) do not count as edits. */
   const tS = new Map<string, Trashed>(),
     tC = new Map<string, Trashed>();
   for (const t of trash) {
@@ -1125,7 +1248,7 @@ function reviveEdited(
   const revived = new Set<string>();
   const same = (cur: unknown, data: Rec, clean: (x: unknown, i: number) => unknown, ok: (x: unknown) => boolean) => {
     try {
-      return !ok(data) || canon(clean(data, 0)) === canon(cur);
+      return !ok(data) || sameRecord(clean(data, 0), cur);
     } catch (e) {
       // A copy that cannot be cleaned is read as the same record, so the deletion stands.
       return true;
@@ -1178,12 +1301,14 @@ function reviveEdited(
    half-month on one device while it was edited on another. Both kept, they
    would be counted twice. Keep the copy with more logged sets (then the
    later date) and put the other in Recently deleted under its own id, so
-   nothing is lost. Every device resolves it the same way. */
+   nothing is lost. Two copies that differ only in the machine names the app
+   kept are one (oneSession). Every device resolves it the same way. */
 function dedupe<T extends { id: string; date: string }>(
   list0: T[],
   kind: 'session' | 'cardio',
   size: (x: T) => number,
-  trash: Trashed[]
+  trash: Trashed[],
+  one: (a: T, b: T) => T = a => a
 ): T[] {
   const byId = new Map<string, T>(),
     extra: T[] = [];
@@ -1193,29 +1318,33 @@ function dedupe<T extends { id: string; date: string }>(
       byId.set(x.id, x);
       continue;
     }
-    if (canon(o) === canon(x)) continue;
+    if (sameRecord(o, x)) {
+      byId.set(x.id, one(o, x));
+      continue;
+    }
     const keepNew =
       size(x) > size(o) || (size(x) === size(o) && (x.date > o.date || (x.date === o.date && canon(x) > canon(o))));
     byId.set(x.id, keepNew ? x : o);
     extra.push(keepNew ? o : x);
   }
   if (!extra.length) return list0;
-  for (const x of extra) {
-    const id = fixId(x.id + '-dup' + hashStr(canon(x)).slice(0, DUP_HASH));
-    /* Dated by the copy's own date, not the phone's: every phone puts the same entry in Recently deleted, so one log
-       reads the same on each and the two copies never clash (by its own date, a phone in Los Angeles and one in
-       Tokyo would date it a day apart). Marked as a copy put aside (`clash`), which Recently deleted keeps until the
-       lifter restores or deletes it: by its own date alone, a session from weeks back would be hidden at once and
-       dropped by the next deletion, its edit with it. Put where Recently deleted's order puts it, newest first, after
-       the entries of its date, and the list held to its limits, so reading the log again gives the same list
-       (cleanTrash). */
-    if (trash.some(t => t.id === id)) continue;
-    const at = trash.findIndex(t => t.date < x.date);
-    trash.splice(at < 0 ? trash.length : at, 0, { id, kind, date: x.date, data: { ...rec(x), id }, clash: true });
-  }
+  for (const x of extra) putAside(trash, x, kind);
+  return [...byId.values()];
+}
+/* A copy put aside is dated by its own date, not the phone's: every phone puts the same entry in Recently deleted, so
+   one log reads the same on each and the two copies never clash (by its own date, a phone in Los Angeles and one in
+   Tokyo would date it a day apart). Marked as a copy put aside (`clash`), which Recently deleted keeps until the lifter
+   restores or deletes it: by its own date alone, a session from weeks back would be hidden at once and dropped by the
+   next deletion, its edit with it. Put where Recently deleted's order puts it, newest first, after the entries of its
+   date, and the list held to its limits, so reading the log again gives the same list (cleanTrash). */
+/** Puts copy `x` of a session or cardio entry in Recently deleted as a copy put aside, beside the one the log keeps (above). */
+export function putAside(trash: Trashed[], x: { id: string; date: string }, kind: 'session' | 'cardio'): void {
+  const id = fixId(x.id + '-dup' + hashStr(canon(x)).slice(0, DUP_HASH));
+  if (trash.some(t => t.id === id)) return;
+  const at = trash.findIndex(t => t.date < x.date);
+  trash.splice(at < 0 ? trash.length : at, 0, { id, kind, date: x.date, data: { ...rec(x), id }, clash: true });
   trash.splice(TRASH_MAX);
   while (trash.length > 1 && JSON.stringify(trash).length > TRASH_BYTES) trash.pop();
-  return [...byId.values()];
 }
 
 /** The weigh-ins a save holds, each checked. */
@@ -1348,7 +1477,7 @@ export function normalize(input: unknown): State {
   drop(before - sessions.length);
   let cardio: CardioEntry[];
   ({ sessions, cardio, trash } = reviveEdited(sessions, list('cardio'), trash));
-  sessions = dedupe(sessions, 'session', x => x.ex.reduce((a, b) => a + b.sets.length, 0), trash);
+  sessions = dedupe(sessions, 'session', x => x.ex.reduce((a, b) => a + b.sets.length, 0), trash, oneSession);
   cardio = dedupe(cardio, 'cardio', x => x.min, trash);
 
   const bBefore = list('bodyweights').length;
