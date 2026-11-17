@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-S8FAbJynVyMJIEwZhds89JF25agb/leVUlpcisPzucM=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-B1DqsCFxa5UVdegHsGpbZ3sIWFX2mL9y1Ho/HM53q+o=' 'sha256-pwltkfWC8L3LQa1gx4cqcI1QHOgciz+ME9dpOfHt31A='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-S8FAbJynVyMJIEwZhds89JF25agb/leVUlpcisPzucM=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-zRr/b3P8HvSwY+p8S5gOcIqBSk94fIyBtvz2GCZo4rw=' 'sha256-huPMTGr6cVObgHsnurSzS3VFHnVgOZK23rNVnZ1rNYI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.14-r114">
+<meta name="app-build" content="2026.11.16-r117">
 <title>Ironlog</title>
 <script>window.IRONLOG_APP=true;window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
@@ -682,6 +682,14 @@ body.blkdrag .block .bh h3{font-size:17px;white-space:nowrap;overflow:hidden;tex
 .mcrow.on{border-color:var(--ink)}
 .mcdot{flex:none;width:18px;height:18px;border-radius:50%;border:1.6px solid var(--muted)}
 .mcrow.on .mcdot{border-color:var(--ink);background:radial-gradient(circle,var(--ink) 0 4px,transparent 5px)}
+/* A machine's row with its pencil, which names it; a named machine's last session under its name. */
+.mcitem{display:flex;align-items:center;gap:8px}
+.mcitem .mcrow{flex:1;min-width:0}
+.mcl{display:flex;flex-direction:column;min-width:0}
+.mcsub{font-size:12.5px;color:var(--muted)}
+.mcpen{width:44px;height:44px}
+/* The machine on an exercise's card: a tag that opens its Machine sheet. */
+.mctag{position:relative;border:0;font-family:inherit;cursor:pointer;color:var(--ink)}
 /* "Per side" is "Side" under 360 px, so the load column's heading is one line at every width. */
 @media (max-width:359px){.lhn{display:none}}
 .sg .n{font:700 15px var(--font);font-variant-numeric:tabular-nums;color:var(--muted);text-align:center}
@@ -1120,6 +1128,12 @@ table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .mvline polyline{fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
 .mvset{text-align:right;font-weight:750;font-size:17px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .srow:last-child{border-bottom:0}
+/* Stats' opening line: the week's word and the coach's one change, with the lines it rests on folded under it (Why). */
+.vline{display:grid;grid-template-columns:8px minmax(0,1fr);gap:10px;align-items:start;margin:0;padding:13px 16px;font-size:15px;line-height:1.45}
+#dashSummary>.subsec{margin:0;padding:0;background:none;border-top:1px solid var(--line-soft);border-radius:0}
+#dashSummary>.subsec>summary{min-height:44px;padding:0 16px}
+#dashSummary>.subsec .subsec-t{font:600 11px var(--font);text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+#dashSummary>.subsec>.sec-b{padding:0}
 .srow.static{cursor:default;grid-template-columns:8px 64px minmax(0,1fr)}
 .srow .sl{font:600 11px var(--font);text-transform:uppercase;letter-spacing:.1em;color:var(--muted);padding-top:3px}
 .srow .st{font-size:14px;line-height:1.45}
@@ -1180,7 +1194,7 @@ button[data-tip]{-webkit-user-select:none;user-select:none}
 /* Small controls keep their look but get a touch area of at least 44 px from
    an invisible pseudo-element, so a thumb at the gym does not miss them. */
 .tipi,.hb,.ssb,.ib.sm,.ir .ib,.chip,.wkbar .w,button.n{position:relative}
-.tipi::before,.hb::before,.ssb::before,.ib.sm::before,.ir .ib::before,.chip::before,.wkbar .w::before,button.n::before,.bmus::before{content:"";position:absolute;left:50%;top:50%;width:max(100%,44px);height:max(100%,44px);transform:translate(-50%,-50%)}
+.tipi::before,.hb::before,.ssb::before,.ib.sm::before,.ir .ib::before,.chip::before,.wkbar .w::before,button.n::before,.bmus::before,.mctag::before{content:"";position:absolute;left:50%;top:50%;width:max(100%,44px);height:max(100%,44px);transform:translate(-50%,-50%)}
 /* A session card's muscle (r70, 172 b) sits beside the exercise's drag handle: its tap area grows to the right and up and down, not left over the handle, and the handle's 44 px sit above it (NEW-57). */
 .bmus::before{left:0;transform:translateY(-50%)}
 .bh .bgrip{z-index:1}
@@ -2103,7 +2117,9 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     /** Help on an assisted lift, in kilograms (stored below 0). */
     assistKg: 300,
     /** The heaviest load, in pounds. */
-    loadLb: 2e4
+    loadLb: 2e4,
+    /** The machines one lift keeps a name for. */
+    machineNames: 20
   };
   function within(next2, was, max) {
     if (was.length <= max) return next2.slice(0, max);
@@ -2132,7 +2148,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var safeKey = (k2) => typeof k2 === "string" && !/["'<>&`]/.test(k2);
   var EXTRA_MAX = 2e3, EXTRA_KEYS = 20;
   var okExtraKey = (k2) => /^[A-Za-z][\w]{0,39}$/.test(k2) && !(k2 in Object.prototype);
-  var KNOWN_ITEM = /* @__PURE__ */ new Set(["jump", "pm"]), KNOWN_CARDIO = /* @__PURE__ */ new Set(["dist"]), KNOWN_MEAS = new Set(MEAS.map((x2) => x2[0])), KNOWN_SEX = /* @__PURE__ */ new Set(["inj", "ps", "nw", "mc", "pics"]), KNOWN_BLOCK = /* @__PURE__ */ new Set(["nw", "mc", "pics"]), KNOWN_SESS = /* @__PURE__ */ new Set(["pics", "part"]), KNOWN_DAY = /* @__PURE__ */ new Set(["pmName"]);
+  var KNOWN_ITEM = /* @__PURE__ */ new Set(["jump", "pm"]), KNOWN_CARDIO = /* @__PURE__ */ new Set(["dist"]), KNOWN_MEAS = new Set(MEAS.map((x2) => x2[0])), KNOWN_SEX = /* @__PURE__ */ new Set(["inj", "ps", "nw", "mc", "kp", "pics"]), KNOWN_BLOCK = /* @__PURE__ */ new Set(["nw", "mc", "kp", "pics"]), KNOWN_SESS = /* @__PURE__ */ new Set(["pics", "part"]), KNOWN_DAY = /* @__PURE__ */ new Set(["pmName"]);
   function cleanCal(c4) {
     if (!c4 || typeof c4 !== "object") return null;
     const at2 = numOr(c4.at, NaN), pred = numOr(c4.pred, NaN);
@@ -2184,8 +2200,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.68";
-  var APP_VERSION = "2026.11.14-r114";
+  var DISPLAY_VERSION = "2.71";
+  var APP_VERSION = "2026.11.16-r117";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -2283,7 +2299,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     let stretch = FIRST_MACHINE;
     for (const x2 of xs) {
       if (x2.nw) stretch = x2.sid;
-      x2.mk = x2.mc || stretch;
+      x2.mk = x2.named || stretch;
     }
   }
   function onMachine(xs, key) {
@@ -2689,6 +2705,463 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var SESSION_CAP = 11;
   var SHORT_MIN_SETS = 2;
   var JUMP_TIP = `When every set reaches the top of the rep range, the load goes up by about this share, in whole load steps and at least one step. Blank: ${pct1(JUMP_COMPOUND)}% on compound lifts, ${pct1(JUMP_ISOLATION)}% on isolation lifts, a rule of thumb. 0: one step every time. Until then the target is to beat last time's total reps at the same load. When the step is large for the load, a few more reps come first, so the new load starts inside the range.`;
+
+  // src/app/format.ts
+  var fmtDateRow = (s3) => parse(s3).toLocaleDateString(void 0, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    ...yearOf(s3) === yearOf(today()) ? {} : { year: "numeric" }
+  });
+  function todayEye() {
+    const d3 = /* @__PURE__ */ new Date();
+    return d3.toLocaleDateString(void 0, { weekday: "short" }) + " " + d3.toLocaleDateString(void 0, { month: "short", day: "numeric" });
+  }
+  function sessTm(x2) {
+    try {
+      return x2.t ? new Date(x2.t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "";
+    } catch (e5) {
+      return "";
+    }
+  }
+  function agoTxt(k2) {
+    return k2 === 0 ? "today" : k2 === 1 ? "yesterday" : `${k2} days ago`;
+  }
+  var WD2 = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+  var MONTHS = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December"
+  ];
+  var MIN_STEP = 5, MIN_STEP_FROM = 10;
+  var min5 = (m3) => m3 >= MIN_STEP_FROM ? Math.round(m3 / MIN_STEP) * MIN_STEP : Math.max(1, Math.round(m3));
+  var estMin = (n3) => `~${n3} min`;
+  var STAMP_FROM = 5, STAMP_TO = 16;
+  var stampShort = (t4) => t4.slice(STAMP_FROM, STAMP_TO).replace("T", " ");
+  var NIL = "–";
+  var missedTag = (s3) => isMissed(s3) ? " missed" : "";
+  var DIRTY_SAID = "Save or cancel first. Your changes are still here.";
+  var MISSED_SAID = "Logged as missed.";
+  var fmtG = (v3) => String(r3(v3));
+  var repSpan = (lo, hi, sep = " to ") => +lo === +hi ? `${+lo}` : `${+lo}${sep}${+hi}`;
+  var YEAR_DAYS = 365.25;
+  var YEAR_MONTHS = 12;
+  var AWAY_MONTHS_MAX = 24;
+  function awayWords(days) {
+    const months = Math.round(days * YEAR_MONTHS / YEAR_DAYS);
+    if (months < AWAY_MONTHS_MAX) return `${months} month${months === 1 ? "" : "s"}`;
+    return `${Math.floor(months / YEAR_MONTHS)} years`;
+  }
+  var rangeWords = (p3) => +p3.repMin === +p3.repMax ? `target of ${+p3.repMin}` : `${+p3.repMin}-${+p3.repMax} range`;
+  var DTF = {};
+  var dtf = (k2, o3) => DTF[k2] || (DTF[k2] = new Intl.DateTimeFormat(void 0, o3));
+  var fmtWith = (k2, o3, s3) => {
+    const d3 = parse(s3);
+    return isNaN(+d3) ? "" : dtf(k2, o3).format(d3);
+  };
+  var fmtDay = (s3) => fmtWith("d", { month: "short", day: "numeric" }, s3);
+  var fmtDateFrom = (s3, now2) => yearOf(s3) === yearOf(now2) ? fmtDay(s3) : fmtWith("dy", { month: "short", day: "numeric", year: "numeric" }, s3);
+  var fmtDate = (s3) => fmtDateFrom(s3, today());
+  function effScale(v3) {
+    return v3 === "half" || v3 === "rpe" ? v3 : "whole";
+  }
+  function effAt(scale, rir) {
+    return scale === "rpe" ? String(r1(EFFORT_TOP - rir)) : String(r1(rir));
+  }
+  var LIGHT_RIR = 3;
+  var effLeast = (scale, rir) => scale === "rpe" ? `RPE ${effAt(scale, rir)} or less` : `${effAt(scale, rir)} or more reps in reserve`;
+  var effLeastShort = (scale, rir) => scale === "rpe" ? `RPE ${effAt(scale, rir)} or less` : `${effAt(scale, rir)}+ RIR`;
+
+  // src/app/machines.ts
+  function named(key) {
+    return key ? { mc: key } : {};
+  }
+  function keptName(key) {
+    return { mc: key, kp: true };
+  }
+  function pickName(b2, key) {
+    b2.mc = key;
+    delete b2.kp;
+  }
+  function unname(b2) {
+    delete b2.mc;
+    delete b2.kp;
+  }
+  function copyName(to, from) {
+    if (!from.mc) return;
+    to.mc = from.mc;
+    if (from.kp) to.kp = true;
+    else delete to.kp;
+  }
+  function cleanName(b2) {
+    return typeof b2.mc === "string" && b2.mc ? { mc: fixId(b2.mc), ...b2.kp === true ? { kp: true } : {} } : {};
+  }
+  function blocksOf(x2) {
+    const R2 = rec(x2);
+    if (!R2) return null;
+    const ex = arr(R2.ex);
+    if (ex) return { R: R2, inData: false, ex };
+    const D2 = rec(R2.data);
+    const dx = D2 && arr(D2.ex);
+    return dx ? { R: R2, inData: true, ex: dx } : null;
+  }
+  function withBlocks(R2, inData, ex) {
+    return inData ? { ...R2, data: { ...rec(R2.data), ex } } : { ...R2, ex };
+  }
+  var liftOf = (exId, light) => typeof exId === "string" ? `${exId}|${light ? 1 : 0}` : null;
+  function unkept(x2) {
+    const at2 = blocksOf(x2);
+    if (!at2 || !at2.ex.some((b2) => rec(b2)?.kp === true)) return x2;
+    return withBlocks(
+      at2.R,
+      at2.inData,
+      at2.ex.map((b2) => {
+        const B5 = rec(b2);
+        if (!B5 || B5.kp !== true) return b2;
+        const o3 = {};
+        for (const k2 of Object.keys(B5)) if (k2 !== "mc" && k2 !== "kp") o3[k2] = B5[k2];
+        return o3;
+      })
+    );
+  }
+  function keptOf(q) {
+    const kept = /* @__PURE__ */ new Map();
+    for (const b2 of blocksOf(q)?.ex || []) {
+      const B5 = rec(b2);
+      const k2 = B5 && B5.kp === true && typeof B5.mc === "string" ? liftOf(B5.exId, B5.light) : null;
+      if (B5 && k2 && typeof B5.mc === "string" && !kept.has(k2)) kept.set(k2, B5.mc);
+    }
+    return kept;
+  }
+  function keptOn(p3, q) {
+    const P2 = blocksOf(p3), kept = keptOf(q);
+    if (!P2 || !kept.size) return p3;
+    let put = false;
+    const ex = P2.ex.map((b2) => {
+      const B5 = rec(b2);
+      const k2 = B5 && !B5.mc ? liftOf(B5.exId, B5.light) : null;
+      const key = k2 ? kept.get(k2) : void 0;
+      if (!B5 || key === void 0) return b2;
+      put = true;
+      return { ...B5, ...keptName(key) };
+    });
+    return put ? withBlocks(P2.R, P2.inData, ex) : p3;
+  }
+  function keptOnSession(p3, q) {
+    const kept = keptOf(q);
+    let put = false;
+    const ex = p3.ex.map((b2) => {
+      const k2 = b2.mc ? null : liftOf(b2.exId, b2.light);
+      const key = k2 ? kept.get(k2) : void 0;
+      if (key === void 0) return b2;
+      put = true;
+      return { ...b2, ...keptName(key) };
+    });
+    return put ? { ...p3, ex } : p3;
+  }
+
+  // src/app/session.ts
+  function greyW(b2, si) {
+    const s3 = b2 && b2.sets[si];
+    if (!s3 || s3.warm || s3.drop) return null;
+    for (let i5 = si - 1; i5 >= 0; i5--) {
+      const x2 = b2.sets[i5];
+      if (!x2.warm && !x2.drop && x2.w != null && !isMissed(x2)) return b2.adj && b2.adj.at === i5 ? b2.adj.w : x2.w;
+    }
+    return b2.sw == null ? null : b2.sw;
+  }
+  function effW(b2, si) {
+    const s3 = b2 && b2.sets[si];
+    if (!s3) return null;
+    return s3.w != null ? s3.w : greyW(b2, si);
+  }
+  function effTarget(b2) {
+    const t4 = b2.tgt;
+    if (!t4 || t4.kind !== "reps") return t4;
+    const nw = b2.sets.filter((x2) => !x2.warm && !x2.drop).length;
+    if (!Array.isArray(t4.rs) || !(nw > 0) || nw >= Number(t4.n)) return t4;
+    return { ...t4, n: nw, total: t4.rs.slice(0, nw).reduce((a2, v3) => a2 + v3, 0) };
+  }
+  function whyTarget(b2) {
+    if (!b2) return "";
+    const h3 = (b2.hint || b2.text || "").trim(), l4 = (b2.last || "").trim();
+    const reason = l4 && h3.startsWith(l4) ? h3.slice(l4.length).trim() : h3;
+    const basis = b2.basis ? ` The target comes from your last full session, ${fmtDate(b2.basis)}; one with fewer sets or reps than usual, or done lighter, does not set one.` : "";
+    return (reason + basis).trim();
+  }
+  function targetText(b2) {
+    const t4 = b2.tgt, e5 = effTarget(b2);
+    if (!t4 || t4 === e5 || !b2.target) return b2.target;
+    const m3 = b2.target.match(
+      /^(\d+)(s?)\+ (reps )?(?:in one set|over (?:your first )?\d+ sets|in one hold|over (?:your first )?\d+ holds)( at .*)$/
+    );
+    if (!m3) return b2.target;
+    const [, , s3, reps, at2] = m3;
+    const hold = s3 === "s";
+    const over = e5.n === 1 ? hold ? "in one hold" : "in one set" : `over ${e5.n} ${hold ? "holds" : "sets"}`;
+    return `${Number(e5.total) + 1}${s3}+ ${reps || ""}${over}${at2}`;
+  }
+  function overSets(n3, plan, kind) {
+    const w2 = kind === "hold" ? "hold" : "set";
+    if (n3 === 1) return `in one ${w2}`;
+    return Number(plan && plan.sets) > n3 ? `over your first ${n3} ${w2}s` : `over ${n3} ${w2}s`;
+  }
+  function blockDone(b2) {
+    const w2 = b2.sets.filter((x2) => !x2.warm);
+    return w2.length > 0 && w2.every((x2) => x2.done);
+  }
+  function sessProgress(d3) {
+    let n3 = 0, k2 = 0;
+    for (const b2 of d3.ex)
+      for (const x2 of b2.sets)
+        if (!x2.warm) {
+          n3++;
+          if (x2.done) k2++;
+        }
+    return { n: n3, k: k2, pct: n3 ? k2 / n3 * PERCENT : 0 };
+  }
+  function lastDup(d3, bi) {
+    const b2 = d3.ex[bi];
+    return !!b2 && d3.ex.slice(0, bi).some((x2) => x2.exId === b2.exId && !!x2.light === !!b2.light);
+  }
+  function lastCell(b2, i5, dup) {
+    return !dup && Array.isArray(b2.prev) && i5 >= 0 && i5 < b2.prev.length ? b2.prev[i5] : "";
+  }
+  function lastHead(b2, dup) {
+    const t4 = b2.last || "";
+    if (dup || !Array.isArray(b2.prev) || !b2.prev.length || b2.prevOff) return t4;
+    const k2 = t4.indexOf("):");
+    return k2 > 0 ? t4.slice(0, k2 + 1) : t4;
+  }
+  function joinable(a2, b2) {
+    return !!a2 && !!b2 && a2.exId === b2.exId && !a2.light === !b2.light;
+  }
+  function joinRows(into, from) {
+    const rows2 = from.sets.filter((x2) => !x2.warm && !x2.drop && !x2.done);
+    into.sets.push(...rows2);
+    into.plan = { ...into.plan, sets: into.sets.filter((x2) => !x2.warm && !x2.drop).length };
+    return rows2;
+  }
+  function savedEx(b2) {
+    const rr = b2.keepRR !== void 0 ? b2.keepRR : b2.plan && Number(b2.plan.repMin) > 0 && Number(b2.plan.repMax) > 0 ? [Number(b2.plan.repMin), Number(b2.plan.repMax)] : null;
+    return {
+      exId: b2.exId,
+      note: b2.note || "",
+      rr,
+      light: b2.light ? true : void 0,
+      ...b2.inj ? { inj: b2.inj } : {},
+      sets: b2.sets.filter((s3) => s3.done).map((s3) => ({
+        w: s3.w == null ? 0 : s3.w,
+        r: Number(s3.r),
+        rir: s3.rir == null || s3.rir === "" ? null : Number(s3.rir),
+        warm: !!s3.warm,
+        drop: !!s3.drop && !s3.warm,
+        cal: s3.cal && !s3.warm ? s3.cal : void 0,
+        // The row's own id, last, where a build before it keeps the unknown field.
+        ...typeof s3.rid === "string" ? { rid: s3.rid } : {},
+        // What the app asked of it as it was ticked (391), after the id, as normalize writes it.
+        ...s3.sg && !s3.warm && !s3.drop && !s3.cal ? { sg: [...s3.sg] } : {}
+      })),
+      // The note's pictures; put last by picsLast once the plan's sets and a new-machine mark are on.
+      ...b2.pics && b2.pics.length ? { pics: [...b2.pics] } : {}
+    };
+  }
+  function picsLast(ex) {
+    return ex.map((b2) => {
+      const { pics, ...rest } = b2;
+      return pics ? { ...rest, pics } : b2;
+    });
+  }
+  function typedMin(d3) {
+    if (!d3.editingId && !d3.past) return null;
+    const t4 = Number(d3.durMin);
+    return Number.isInteger(t4) && t4 >= 1 && t4 <= LIMITS.minutes ? t4 : null;
+  }
+  function draftSession(d3, empty) {
+    if (d3.editingId) return null;
+    const picked = (exId) => d3.ex.find((b2) => b2.exId === exId && b2.mc)?.mc ?? null;
+    const ex = picsLast(withNew(joinAdjacent(d3.ex.map(savedEx).filter((b2) => b2.sets.length)), d3, picked));
+    if (!ex.length && !empty) return null;
+    const chk = cleanChk(d3.chk);
+    return {
+      id: d3.id,
+      date: d3.date,
+      dayIdx: d3.dayIdx,
+      dayId: d3.dayId || null,
+      dayName: (d3.dayName || "").trim() || "Session",
+      routineId: d3.routineId,
+      ex,
+      notes: d3.notes || "",
+      durMin: typedMin(d3),
+      deload: !!d3.deload,
+      light: !!d3.light,
+      free: d3.free ? true : void 0,
+      demo: false,
+      ...chk ? { chk } : {},
+      ...(d3.begunAt || d3.startedAt || 0) > 0 ? { t: d3.begunAt || d3.startedAt || 0 } : {},
+      ...d3.pics && d3.pics.length ? { pics: [...d3.pics] } : {},
+      // The day's second workout, last, as normalize writes it.
+      ...d3.part === 2 ? { part: 2 } : {}
+    };
+  }
+  function draftCardio(d3) {
+    return (d3.cardio || []).filter((c4) => (c4.min || 0) > 0).map((c4) => ({ ...c4, date: d3.date }));
+  }
+  function joinAdjacent(ex) {
+    const out = [];
+    for (const b2 of ex) {
+      const a2 = out[out.length - 1];
+      if (a2 && a2.exId === b2.exId && !a2.light === !b2.light) {
+        a2.sets = [...a2.sets, ...b2.sets];
+        if (b2.note && b2.note.trim()) a2.note = [a2.note, b2.note].filter((x2) => x2 && x2.trim()).join(" ");
+        if (b2.pics && b2.pics.length) a2.pics = picIds([...a2.pics || [], ...b2.pics]);
+        if (!a2.rr && b2.rr) a2.rr = b2.rr;
+        continue;
+      }
+      out.push({ ...b2, sets: [...b2.sets] });
+    }
+    return out;
+  }
+  function sameExOnce(ex) {
+    const by = /* @__PURE__ */ new Map();
+    const out = [];
+    for (const b2 of ex) {
+      const k2 = b2.exId + (b2.light ? "|l" : "");
+      const a2 = by.get(k2);
+      if (!a2) {
+        const c4 = { ...b2, sets: [...b2.sets] };
+        by.set(k2, c4);
+        out.push(c4);
+        continue;
+      }
+      const wa = a2.sets.filter(isWork).length, wb = b2.sets.filter(isWork).length;
+      a2.sets.push(...b2.sets);
+      if (b2.nw) a2.nw = true;
+      if (!a2.mc) copyName(a2, b2);
+      if (wb > wa && b2.rr) a2.rr = b2.rr;
+      else if (!a2.rr && b2.rr) a2.rr = b2.rr;
+    }
+    return out;
+  }
+  function markedNew(d3, exId) {
+    return d3.ex.some((b2) => b2.exId === exId && !!b2.nw);
+  }
+  function withNew(ex, d3, mcOf) {
+    return ex.map((b2) => {
+      const mc = mcOf(b2.exId);
+      const nw = markedNew(d3, b2.exId) ? { nw: true } : {};
+      return mc || markedNew(d3, b2.exId) ? { ...b2, ...nw, ...named(mc) } : b2;
+    });
+  }
+  function newRow(over) {
+    return {
+      w: null,
+      r: null,
+      rir: null,
+      warm: false,
+      drop: false,
+      done: false,
+      ...over,
+      rid: over && typeof over.rid === "string" ? over.rid : uid()
+    };
+  }
+  function freeDraft(name, ex) {
+    return {
+      id: uid(),
+      startedAt: Date.now(),
+      date: today(),
+      dayIdx: 0,
+      dayId: null,
+      dayName: name,
+      routineId: "",
+      free: true,
+      deload: false,
+      light: false,
+      cardio: [],
+      notes: "",
+      editingId: null,
+      ex: ex || []
+    };
+  }
+  function begunIn(d3) {
+    return d3.ex.some((b2) => b2.sets.some((s3) => s3.done || s3.r != null)) || (d3.cardio || []).some((c4) => !!c4.min && c4.min > 0);
+  }
+  function clockStart(d3, wasBegun) {
+    if (!d3 || d3.past || d3.editingId) return;
+    const begun = begunIn(d3);
+    if (begun && !wasBegun && !d3.begunAt) {
+      d3.begunAt = Date.now();
+      const day = today();
+      if (d3.startedAt && d3.date === iso(new Date(d3.startedAt)) && d3.date < day) {
+        d3.date = day;
+        if (readAgain) readAgain(d3);
+      }
+    } else if (!begun && d3.begunAt !== void 0) delete d3.begunAt;
+  }
+  var readAgain = null;
+  function onDayMoved(f3) {
+    readAgain = f3;
+  }
+  function editFp(d3) {
+    return JSON.stringify({
+      date: d3.date,
+      notes: (d3.notes || "").trim(),
+      pics: (d3.pics || []).join(),
+      ex: d3.ex.map((b2) => [
+        b2.exId,
+        (b2.note || "").trim(),
+        // A new machine or gym marked or taken off is an edit too, and so is another machine picked.
+        !!b2.nw,
+        b2.mc || "",
+        // So is a picture added or taken off.
+        (b2.pics || []).join(),
+        b2.sets.map((x2) => [
+          x2.w == null ? null : +x2.w,
+          x2.r == null || x2.r === "" ? null : +x2.r,
+          x2.rir == null || x2.rir === "" ? null : +x2.rir,
+          !!x2.done,
+          !!x2.warm,
+          !!x2.drop
+        ])
+      ]),
+      c: (d3.cardio || []).map((c4) => [c4.kind, c4.min, c4.hr, c4.dist || null])
+    });
+  }
+  var DELOAD_NOTE = `Deload: ${shareWords(LIGHTER_SET_SHARE)} sets, about ${pctOf(LIGHT_SHARE)}% loads, ${LIGHT_RIR}+ RIR.`;
+  var LIGHTER_NOTE = `Lighter session: ${shareWords(LIGHTER_SET_SHARE)} sets, about ${pctOf(LIGHT_SHARE)}% loads, ${LIGHT_RIR}+ RIR.`;
+  var RIR_OPTS = Array.from({ length: RIR_CALL_TOP + 1 }, (_2, i5) => String(i5));
+  var RIR_HALF_OPTS = Array.from({ length: 2 * RIR_CALL_TOP + 1 }, (_2, i5) => String(i5 / 2));
+  var HINT_ONCE = [
+    "Half the usual sets, nothing to beat.",
+    "Next time's load is worked out from this.",
+    "If the first set is off, change the load.",
+    "Next time picks up from here."
+  ];
+  function hintOnce(t4, again, kind, seen) {
+    if (!t4) return "";
+    if (again) {
+      const key = "first:" + kind;
+      if (seen.has(key)) return again;
+      seen.add(key);
+      return t4;
+    }
+    let out = t4;
+    for (const x2 of HINT_ONCE)
+      if (out.includes(x2)) {
+        if (seen.has(x2)) out = out.replace(" " + x2, "").replace(x2, "");
+        else seen.add(x2);
+      }
+    return out.trim();
+  }
 
   // src/app/routines.ts
   var DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -3484,7 +3957,14 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const f3 = rec(x2) || {};
     return "{" + Object.keys(f3).filter((k2) => f3[k2] !== void 0).sort().map((k2) => JSON.stringify(k2) + ":" + canon(f3[k2])).join(",") + "}";
   }
-  var Hx = (x2) => hashStr(canon(x2));
+  var Hx = (x2) => hashStr(canon(unkept(x2)));
+  var sameRecord = (a2, b2) => canon(unkept(a2)) === canon(unkept(b2));
+  function oneCopy(a2, b2) {
+    return canon(a2) <= canon(b2) ? keptOn(a2, b2) : keptOn(b2, a2);
+  }
+  function oneSession(a2, b2) {
+    return canon(a2) <= canon(b2) ? keptOnSession(a2, b2) : keptOnSession(b2, a2);
+  }
   function merge3List(base, l4, r4, remoteWins, stat) {
     const known = !!base;
     base = base || {};
@@ -3501,8 +3981,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     for (const id of [...L2.keys(), ...[...Rm.keys()].filter((k2) => !L2.has(k2))]) {
       const a2 = L2.get(id), b2 = Rm.get(id), bh = known ? base[id] : "?";
       const ah = a2 ? Hx(a2) : void 0, rh = b2 ? Hx(b2) : void 0;
-      if (ah === rh) {
-        out.push(a2);
+      if (a2 && b2 && ah === rh) {
+        out.push(oneCopy(a2, b2));
         continue;
       }
       if (!a2 || !b2) {
@@ -3512,15 +3992,15 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         continue;
       }
       if (ah === bh) {
-        out.push(b2);
+        out.push(keptOn(b2, a2));
         continue;
       }
       if (rh === bh) {
-        out.push(a2);
+        out.push(keptOn(a2, b2));
         continue;
       }
       stat.conflicts++;
-      out.push(remoteWins ? b2 : a2);
+      out.push(remoteWins ? keptOn(b2, a2) : keptOn(a2, b2));
     }
     return out;
   }
@@ -4033,8 +4513,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
                 ...typeof b2.ps === "number" && Number.isInteger(b2.ps) && b2.ps >= 1 && b2.ps <= LIMITS.sets ? { ps: b2.ps } : {},
                 // Done at a new machine or gym, last, as Finish writes it; absent unless marked, so older records keep their hash.
                 ...b2.nw === true ? { nw: true } : {},
-                // The machine it was done on, after it, as Finish writes it; absent unless named, so older records keep their hash.
-                ...typeof b2.mc === "string" && b2.mc ? { mc: fixId(b2.mc) } : {},
+                // The machine it was done on, after it, as Finish writes it, and whether the app kept that name; absent unless named, so older records keep their hash.
+                ...cleanName(b2),
                 // The pictures on its note, by id, last; absent unless there are any, so older records keep their hash.
                 ...picsField(b2.pics)
               },
@@ -4081,6 +4561,77 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     } catch (e5) {
       return false;
     }
+  }
+  function machineReadings(st) {
+    const onM = new Set(st.exercises.filter(onMachines).map((e5) => e5.id));
+    const out = /* @__PURE__ */ new Map();
+    if (!st.sessions.some((ss) => ss.ex.some((b2) => !b2.mc && onM.has(b2.exId) && b2.sets.some(isWork)))) return out;
+    const byEx = /* @__PURE__ */ new Map();
+    for (const ss of [...st.sessions].sort(sessCmp))
+      for (const m3 of sameExOnce(ss.ex)) {
+        if (!onM.has(m3.exId) || !m3.sets.some(isWork)) continue;
+        const xs = byEx.get(m3.exId) || [];
+        byEx.set(m3.exId, xs);
+        xs.push({
+          sid: ss.id,
+          ...m3.nw ? { nw: true } : {},
+          ...m3.mc ? { named: m3.mc } : {},
+          mk: "",
+          k: `${ss.id}|${m3.exId}|${m3.light ? 1 : 0}`,
+          ss,
+          at: ss.ex.flatMap((b2, i5) => b2.exId === m3.exId && !!b2.light === !!m3.light && !b2.mc ? [i5] : [])
+        });
+      }
+    for (const xs of byEx.values()) {
+      machineKeys(xs);
+      for (const x2 of xs) if (x2.at.length) out.set(x2.k, { key: x2.mk, ss: x2.ss, at: x2.at });
+    }
+    return out;
+  }
+  function keepMachines(st, before2) {
+    if (!before2.size) return false;
+    const named3 = /* @__PURE__ */ new Map();
+    for (const [k2, now2] of machineReadings(st)) {
+      const was = before2.get(k2);
+      if (!was || was.key === now2.key) continue;
+      const at2 = named3.get(now2.ss) || /* @__PURE__ */ new Map();
+      for (const i5 of now2.at) at2.set(i5, was.key);
+      named3.set(now2.ss, at2);
+    }
+    nameSessions(st, named3);
+    const here = new Set(st.sessions.map((q) => q.id));
+    let gone2 = false;
+    for (const t4 of st.trash) {
+      if (t4.kind !== "session" || here.has(t4.id)) continue;
+      const ex = arr(t4.data.ex);
+      if (!ex) continue;
+      const put = ex.map((b2) => {
+        const B5 = rec(b2);
+        const was = B5 && typeof B5.exId === "string" && !B5.mc ? before2.get(`${t4.id}|${B5.exId}|${B5.light ? 1 : 0}`) : void 0;
+        return was && B5 ? { ...B5, ...keptName(was.key) } : b2;
+      });
+      if (put.some((b2, i5) => b2 !== ex[i5])) {
+        t4.data = { ...t4.data, ex: put };
+        gone2 = true;
+      }
+    }
+    return named3.size > 0 || gone2;
+  }
+  function nameSessions(st, named3) {
+    st.sessions.forEach((ss, k2) => {
+      const at2 = named3.get(ss);
+      if (at2)
+        st.sessions[k2] = cleanSess(
+          {
+            ...ss,
+            ex: ss.ex.map((b2, i5) => {
+              const key = at2.get(i5);
+              return key === void 0 ? b2 : { ...b2, ...keptName(key) };
+            })
+          },
+          k2
+        );
+    });
   }
   function freshState() {
     const r4 = starterRoutine();
@@ -4308,8 +4859,26 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       /* The unit the lift's equipment is marked in, set by a tap on the unit beside its load: kg or lb. Absent when unset,
          so the lift follows the app's unit and a record saved before this existed hashes as before; a build without it
          keeps it among the fields it does not know (keepExtra). */
-      unit: e5.unit === "kg" || e5.unit === "lb" ? e5.unit : void 0
+      unit: e5.unit === "kg" || e5.unit === "lb" ? e5.unit : void 0,
+      /* The names given to the machines the lift was done on, by each machine's key: absent until one is named, so a
+         record saved before names existed hashes as before, and a build without them keeps them (keepExtra). */
+      machines: machineNames(e5.machines)
     });
+  }
+  var MACHINE_KEY = /^[A-Za-z0-9_-]{1,40}$/;
+  function machineNames(v3) {
+    const r4 = rec(v3);
+    if (!r4 || Array.isArray(v3)) return void 0;
+    const out = {};
+    let n3 = 0;
+    for (const [k2, x2] of Object.entries(r4)) {
+      if (n3 >= LIMITS.machineNames) break;
+      const name = typeof x2 === "string" ? x2.replace(/\s+/g, " ").trim().slice(0, LIMITS.name) : "";
+      if (!MACHINE_KEY.test(k2) || !name) continue;
+      out[k2] = name;
+      n3++;
+    }
+    return n3 ? out : void 0;
   }
   function cleanRoutine(r0, ri) {
     const r4 = rec(r0) || {};
@@ -4467,8 +5036,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
           sets: (arr(b2.sets) || []).flatMap(cleanDraftSet),
           // Done at a new machine or gym, last, where the menu adds it; absent unless marked.
           ...b2.nw === true ? { nw: true } : {},
-          // The machine picked for it, after it; absent until one is picked.
-          ...typeof b2.mc === "string" && b2.mc ? { mc: fixId(b2.mc) } : {},
+          // The machine picked for it, after it, the lifter's; absent until one is picked.
+          ...named(typeof b2.mc === "string" && b2.mc ? fixId(b2.mc) : null),
           // The pictures on its note, by id, last; absent unless there are any.
           ...picsField(b2.pics)
         },
@@ -4590,7 +5159,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const revived = /* @__PURE__ */ new Set();
     const same = (cur2, data, clean, ok) => {
       try {
-        return !ok(data) || canon(clean(data, 0)) === canon(cur2);
+        return !ok(data) || sameRecord(clean(data, 0), cur2);
       } catch (e5) {
         return true;
       }
@@ -4630,7 +5199,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       trash: revived.size ? trash.filter((t4) => t4.kind === "routine" || !revived.has(t4.id)) : trash
     };
   }
-  function dedupe(list0, kind, size, trash) {
+  function dedupe(list0, kind, size, trash, one = (a2) => a2) {
     const byId = /* @__PURE__ */ new Map(), extra = [];
     for (const x2 of list0) {
       const o3 = byId.get(x2.id);
@@ -4638,21 +5207,25 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         byId.set(x2.id, x2);
         continue;
       }
-      if (canon(o3) === canon(x2)) continue;
+      if (sameRecord(o3, x2)) {
+        byId.set(x2.id, one(o3, x2));
+        continue;
+      }
       const keepNew = size(x2) > size(o3) || size(x2) === size(o3) && (x2.date > o3.date || x2.date === o3.date && canon(x2) > canon(o3));
       byId.set(x2.id, keepNew ? x2 : o3);
       extra.push(keepNew ? o3 : x2);
     }
     if (!extra.length) return list0;
-    for (const x2 of extra) {
-      const id = fixId(x2.id + "-dup" + hashStr(canon(x2)).slice(0, DUP_HASH));
-      if (trash.some((t4) => t4.id === id)) continue;
-      const at2 = trash.findIndex((t4) => t4.date < x2.date);
-      trash.splice(at2 < 0 ? trash.length : at2, 0, { id, kind, date: x2.date, data: { ...rec(x2), id }, clash: true });
-    }
+    for (const x2 of extra) putAside(trash, x2, kind);
+    return [...byId.values()];
+  }
+  function putAside(trash, x2, kind) {
+    const id = fixId(x2.id + "-dup" + hashStr(canon(x2)).slice(0, DUP_HASH));
+    if (trash.some((t4) => t4.id === id)) return;
+    const at2 = trash.findIndex((t4) => t4.date < x2.date);
+    trash.splice(at2 < 0 ? trash.length : at2, 0, { id, kind, date: x2.date, data: { ...rec(x2), id }, clash: true });
     trash.splice(TRASH_MAX);
     while (trash.length > 1 && JSON.stringify(trash).length > TRASH_BYTES) trash.pop();
-    return [...byId.values()];
   }
   function cleanBodyweights(listed) {
     return listed.filter((b0) => {
@@ -4731,7 +5304,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     drop3(before2 - sessions.length);
     let cardio;
     ({ sessions, cardio, trash } = reviveEdited(sessions, list("cardio"), trash));
-    sessions = dedupe(sessions, "session", (x2) => x2.ex.reduce((a2, b2) => a2 + b2.sets.length, 0), trash);
+    sessions = dedupe(sessions, "session", (x2) => x2.ex.reduce((a2, b2) => a2 + b2.sets.length, 0), trash, oneSession);
     cardio = dedupe(cardio, "cardio", (x2) => x2.min, trash);
     const bBefore = list("bodyweights").length;
     const bodyweights = cleanBodyweights(list("bodyweights"));
@@ -4883,6 +5456,16 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var DEMOSET_KEY = KEY + ".demoSettings";
   var ASIDE_KEY = KEY + ".aside.";
   var device = { ok: true, boot: true, hadLocal: false, hadLog: false, lastSaved: null };
+  var keepAsked = false;
+  function keepStorage() {
+    if (keepAsked) return;
+    keepAsked = true;
+    const s3 = navigator.storage;
+    if (!s3 || typeof s3.persist !== "function" || typeof s3.persisted !== "function") return;
+    s3.persisted().then((kept) => kept || s3.persist()).catch((e5) => {
+      log("storage-persist", e5);
+    });
+  }
   var clearTimer = (t4) => {
     if (t4 != null) clearTimeout(t4);
   };
@@ -5329,6 +5912,11 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     if (asideIdx.length && ui.tab === "settings" && !ui.modal) fx.rerenderKeepScroll();
   }
   var BACKUP_DAYS = 7;
+  var LOG_CAP_CHARS = 25e5;
+  var LOG_NEAR_SHARE = 0.6;
+  function logNearFull() {
+    return (device.lastSaved || "").length >= LOG_CAP_CHARS * LOG_NEAR_SHARE;
+  }
   function backupDue() {
     if (!state.sessions.some((s3) => !s3.demo)) return false;
     const synced = cloud.on && cloud.last && Date.now() - cloud.last < BACKUP_DAYS * DAY_MS;
@@ -5546,6 +6134,33 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       return null;
     }
   }
+  var READ_PX = 16e6;
+  var RGBA = 4;
+  function areaShrink(src, out) {
+    const sw = src.width, sh = src.height, w2 = out.width, h3 = out.height, s3 = src.data, o3 = out.data;
+    const fx2 = sw / w2, fy = sh / h3, per = 1 / (fx2 * fy);
+    const row = new Float32Array(sw * RGBA);
+    const px = new Float32Array(RGBA);
+    for (let y2 = 0; y2 < h3; y2++) {
+      row.fill(0);
+      const y0 = y2 * fy, y1 = y0 + fy;
+      for (let sy = Math.floor(y0); sy < Math.min(sh, Math.ceil(y1)); sy++) {
+        const wy = Math.min(y1, sy + 1) - Math.max(y0, sy);
+        const at2 = sy * sw * RGBA;
+        for (let i5 = 0; i5 < sw * RGBA; i5++) row[i5] += s3[at2 + i5] * wy;
+      }
+      for (let x2 = 0; x2 < w2; x2++) {
+        const x0 = x2 * fx2, x1 = x0 + fx2, k2 = (y2 * w2 + x2) * RGBA;
+        px.fill(0);
+        for (let sx = Math.floor(x0); sx < Math.min(sw, Math.ceil(x1)); sx++) {
+          const wx = Math.min(x1, sx + 1) - Math.max(x0, sx);
+          for (let c4 = 0; c4 < RGBA; c4++) px[c4] += row[sx * RGBA + c4] * wx;
+        }
+        for (let c4 = 0; c4 < RGBA; c4++) o3[k2 + c4] = px[c4] * per;
+      }
+    }
+    return out;
+  }
   async function jpegOf(f3, edge, quality, square = false) {
     const no = picRefusal(f3);
     if (no) return { why: no };
@@ -5555,16 +6170,26 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const sw = square ? side : d3.w, sh = square ? side : d3.h;
     const k2 = Math.min(1, edge / Math.max(sw, sh));
     const w2 = Math.max(1, Math.round(sw * k2)), h3 = Math.max(1, Math.round(sh * k2));
+    const r4 = Math.min(1, Math.sqrt(READ_PX / (sw * sh)));
+    const rw = Math.max(w2, Math.round(sw * r4)), rh = Math.max(h3, Math.round(sh * r4));
+    const rc = document.createElement("canvas");
+    rc.width = rw;
+    rc.height = rh;
+    const rx = rc.getContext("2d", { willReadFrequently: true });
     const cv = document.createElement("canvas");
     cv.width = w2;
     cv.height = h3;
     const cx = cv.getContext("2d");
-    if (!cx) {
+    if (!rx || !cx) {
       d3.done();
       return { why: "This phone could not prepare the photo." };
     }
-    cx.drawImage(d3.img, (d3.w - sw) / 2, (d3.h - sh) / 2, sw, sh, 0, 0, w2, h3);
+    rx.imageSmoothingEnabled = true;
+    rx.imageSmoothingQuality = "high";
+    rx.drawImage(d3.img, (d3.w - sw) / 2, (d3.h - sh) / 2, sw, sh, 0, 0, rw, rh);
     d3.done();
+    cx.putImageData(areaShrink(rx.getImageData(0, 0, rw, rh), cx.createImageData(w2, h3)), 0, 0);
+    rc.width = rc.height = 0;
     const blob = await new Promise((res) => cv.toBlob(res, "image/jpeg", quality));
     if (!blob) return { why: "This phone could not prepare the photo." };
     return { blob, w: w2, h: h3 };
@@ -5587,7 +6212,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     await picsRefresh();
     return { id: row.id };
   }
-  function named() {
+  function named2() {
     const out = /* @__PURE__ */ new Set();
     const add = (v3) => {
       for (const x2 of arr(v3) || []) if (typeof x2 === "string" && isPicId(x2)) out.add(x2);
@@ -5605,7 +6230,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   }
   async function picsTidy(now2 = Date.now()) {
     if (!ready) return;
-    const live2 = named();
+    const live2 = named2();
     const me = owner();
     const seen = [], gone2 = [];
     for (const r4 of rows.values()) {
@@ -5915,375 +6540,6 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     }
   });
 
-  // src/app/format.ts
-  var fmtDateRow = (s3) => parse(s3).toLocaleDateString(void 0, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    ...yearOf(s3) === yearOf(today()) ? {} : { year: "numeric" }
-  });
-  function todayEye() {
-    const d3 = /* @__PURE__ */ new Date();
-    return d3.toLocaleDateString(void 0, { weekday: "short" }) + " " + d3.toLocaleDateString(void 0, { month: "short", day: "numeric" });
-  }
-  function sessTm(x2) {
-    try {
-      return x2.t ? new Date(x2.t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "";
-    } catch (e5) {
-      return "";
-    }
-  }
-  function agoTxt(k2) {
-    return k2 === 0 ? "today" : k2 === 1 ? "yesterday" : `${k2} days ago`;
-  }
-  var WD2 = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
-  var MONTHS = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December"
-  ];
-  var MIN_STEP = 5, MIN_STEP_FROM = 10;
-  var min5 = (m3) => m3 >= MIN_STEP_FROM ? Math.round(m3 / MIN_STEP) * MIN_STEP : Math.max(1, Math.round(m3));
-  var estMin = (n3) => `~${n3} min`;
-  var STAMP_FROM = 5, STAMP_TO = 16;
-  var stampShort = (t4) => t4.slice(STAMP_FROM, STAMP_TO).replace("T", " ");
-  var NIL = "–";
-  var missedTag = (s3) => isMissed(s3) ? " missed" : "";
-  var DIRTY_SAID = "Save or cancel first. Your changes are still here.";
-  var MISSED_SAID = "Logged as missed.";
-  var fmtG = (v3) => String(r3(v3));
-  var repSpan = (lo, hi, sep = " to ") => +lo === +hi ? `${+lo}` : `${+lo}${sep}${+hi}`;
-  var YEAR_DAYS = 365.25;
-  var YEAR_MONTHS = 12;
-  var AWAY_MONTHS_MAX = 24;
-  function awayWords(days) {
-    const months = Math.round(days * YEAR_MONTHS / YEAR_DAYS);
-    if (months < AWAY_MONTHS_MAX) return `${months} month${months === 1 ? "" : "s"}`;
-    return `${Math.floor(months / YEAR_MONTHS)} years`;
-  }
-  var rangeWords = (p3) => +p3.repMin === +p3.repMax ? `target of ${+p3.repMin}` : `${+p3.repMin}-${+p3.repMax} range`;
-  var DTF = {};
-  var dtf = (k2, o3) => DTF[k2] || (DTF[k2] = new Intl.DateTimeFormat(void 0, o3));
-  var fmtWith = (k2, o3, s3) => {
-    const d3 = parse(s3);
-    return isNaN(+d3) ? "" : dtf(k2, o3).format(d3);
-  };
-  var fmtDay = (s3) => fmtWith("d", { month: "short", day: "numeric" }, s3);
-  var fmtDateFrom = (s3, now2) => yearOf(s3) === yearOf(now2) ? fmtDay(s3) : fmtWith("dy", { month: "short", day: "numeric", year: "numeric" }, s3);
-  var fmtDate = (s3) => fmtDateFrom(s3, today());
-  function effScale(v3) {
-    return v3 === "half" || v3 === "rpe" ? v3 : "whole";
-  }
-  function effAt(scale, rir) {
-    return scale === "rpe" ? String(r1(EFFORT_TOP - rir)) : String(r1(rir));
-  }
-  var LIGHT_RIR = 3;
-  var effLeast = (scale, rir) => scale === "rpe" ? `RPE ${effAt(scale, rir)} or less` : `${effAt(scale, rir)} or more reps in reserve`;
-  var effLeastShort = (scale, rir) => scale === "rpe" ? `RPE ${effAt(scale, rir)} or less` : `${effAt(scale, rir)}+ RIR`;
-
-  // src/app/session.ts
-  function greyW(b2, si) {
-    const s3 = b2 && b2.sets[si];
-    if (!s3 || s3.warm || s3.drop) return null;
-    for (let i5 = si - 1; i5 >= 0; i5--) {
-      const x2 = b2.sets[i5];
-      if (!x2.warm && !x2.drop && x2.w != null && !isMissed(x2)) return b2.adj && b2.adj.at === i5 ? b2.adj.w : x2.w;
-    }
-    return b2.sw == null ? null : b2.sw;
-  }
-  function effW(b2, si) {
-    const s3 = b2 && b2.sets[si];
-    if (!s3) return null;
-    return s3.w != null ? s3.w : greyW(b2, si);
-  }
-  function effTarget(b2) {
-    const t4 = b2.tgt;
-    if (!t4 || t4.kind !== "reps") return t4;
-    const nw = b2.sets.filter((x2) => !x2.warm && !x2.drop).length;
-    if (!Array.isArray(t4.rs) || !(nw > 0) || nw >= Number(t4.n)) return t4;
-    return { ...t4, n: nw, total: t4.rs.slice(0, nw).reduce((a2, v3) => a2 + v3, 0) };
-  }
-  function whyTarget(b2) {
-    if (!b2) return "";
-    const h3 = (b2.hint || b2.text || "").trim(), l4 = (b2.last || "").trim();
-    const reason = l4 && h3.startsWith(l4) ? h3.slice(l4.length).trim() : h3;
-    const basis = b2.basis ? ` The target comes from your last full session, ${fmtDate(b2.basis)}; one with fewer sets or reps than usual, or done lighter, does not set one.` : "";
-    return (reason + basis).trim();
-  }
-  function targetText(b2) {
-    const t4 = b2.tgt, e5 = effTarget(b2);
-    if (!t4 || t4 === e5 || !b2.target) return b2.target;
-    const m3 = b2.target.match(
-      /^(\d+)(s?)\+ (reps )?(?:in one set|over (?:your first )?\d+ sets|in one hold|over (?:your first )?\d+ holds)( at .*)$/
-    );
-    if (!m3) return b2.target;
-    const [, , s3, reps, at2] = m3;
-    const hold = s3 === "s";
-    const over = e5.n === 1 ? hold ? "in one hold" : "in one set" : `over ${e5.n} ${hold ? "holds" : "sets"}`;
-    return `${Number(e5.total) + 1}${s3}+ ${reps || ""}${over}${at2}`;
-  }
-  function overSets(n3, plan, kind) {
-    const w2 = kind === "hold" ? "hold" : "set";
-    if (n3 === 1) return `in one ${w2}`;
-    return Number(plan && plan.sets) > n3 ? `over your first ${n3} ${w2}s` : `over ${n3} ${w2}s`;
-  }
-  function blockDone(b2) {
-    const w2 = b2.sets.filter((x2) => !x2.warm);
-    return w2.length > 0 && w2.every((x2) => x2.done);
-  }
-  function sessProgress(d3) {
-    let n3 = 0, k2 = 0;
-    for (const b2 of d3.ex)
-      for (const x2 of b2.sets)
-        if (!x2.warm) {
-          n3++;
-          if (x2.done) k2++;
-        }
-    return { n: n3, k: k2, pct: n3 ? k2 / n3 * PERCENT : 0 };
-  }
-  function lastDup(d3, bi) {
-    const b2 = d3.ex[bi];
-    return !!b2 && d3.ex.slice(0, bi).some((x2) => x2.exId === b2.exId && !!x2.light === !!b2.light);
-  }
-  function lastCell(b2, i5, dup) {
-    return !dup && Array.isArray(b2.prev) && i5 >= 0 && i5 < b2.prev.length ? b2.prev[i5] : "";
-  }
-  function lastHead(b2, dup) {
-    const t4 = b2.last || "";
-    if (dup || !Array.isArray(b2.prev) || !b2.prev.length || b2.prevOff) return t4;
-    const k2 = t4.indexOf("):");
-    return k2 > 0 ? t4.slice(0, k2 + 1) : t4;
-  }
-  function joinable(a2, b2) {
-    return !!a2 && !!b2 && a2.exId === b2.exId && !a2.light === !b2.light;
-  }
-  function joinRows(into, from) {
-    const rows2 = from.sets.filter((x2) => !x2.warm && !x2.drop && !x2.done);
-    into.sets.push(...rows2);
-    into.plan = { ...into.plan, sets: into.sets.filter((x2) => !x2.warm && !x2.drop).length };
-    return rows2;
-  }
-  function savedEx(b2) {
-    const rr = b2.keepRR !== void 0 ? b2.keepRR : b2.plan && Number(b2.plan.repMin) > 0 && Number(b2.plan.repMax) > 0 ? [Number(b2.plan.repMin), Number(b2.plan.repMax)] : null;
-    return {
-      exId: b2.exId,
-      note: b2.note || "",
-      rr,
-      light: b2.light ? true : void 0,
-      ...b2.inj ? { inj: b2.inj } : {},
-      sets: b2.sets.filter((s3) => s3.done).map((s3) => ({
-        w: s3.w == null ? 0 : s3.w,
-        r: Number(s3.r),
-        rir: s3.rir == null || s3.rir === "" ? null : Number(s3.rir),
-        warm: !!s3.warm,
-        drop: !!s3.drop && !s3.warm,
-        cal: s3.cal && !s3.warm ? s3.cal : void 0,
-        // The row's own id, last, where a build before it keeps the unknown field.
-        ...typeof s3.rid === "string" ? { rid: s3.rid } : {},
-        // What the app asked of it as it was ticked (391), after the id, as normalize writes it.
-        ...s3.sg && !s3.warm && !s3.drop && !s3.cal ? { sg: [...s3.sg] } : {}
-      })),
-      // The note's pictures; put last by picsLast once the plan's sets and a new-machine mark are on.
-      ...b2.pics && b2.pics.length ? { pics: [...b2.pics] } : {}
-    };
-  }
-  function picsLast(ex) {
-    return ex.map((b2) => {
-      const { pics, ...rest } = b2;
-      return pics ? { ...rest, pics } : b2;
-    });
-  }
-  function typedMin(d3) {
-    if (!d3.editingId && !d3.past) return null;
-    const t4 = Number(d3.durMin);
-    return Number.isInteger(t4) && t4 >= 1 && t4 <= LIMITS.minutes ? t4 : null;
-  }
-  function draftSession(d3, empty) {
-    if (d3.editingId) return null;
-    const picked = (exId) => d3.ex.find((b2) => b2.exId === exId && b2.mc)?.mc ?? null;
-    const ex = picsLast(withNew(joinAdjacent(d3.ex.map(savedEx).filter((b2) => b2.sets.length)), d3, picked));
-    if (!ex.length && !empty) return null;
-    const chk = cleanChk(d3.chk);
-    return {
-      id: d3.id,
-      date: d3.date,
-      dayIdx: d3.dayIdx,
-      dayId: d3.dayId || null,
-      dayName: (d3.dayName || "").trim() || "Session",
-      routineId: d3.routineId,
-      ex,
-      notes: d3.notes || "",
-      durMin: typedMin(d3),
-      deload: !!d3.deload,
-      light: !!d3.light,
-      free: d3.free ? true : void 0,
-      demo: false,
-      ...chk ? { chk } : {},
-      ...(d3.begunAt || d3.startedAt || 0) > 0 ? { t: d3.begunAt || d3.startedAt || 0 } : {},
-      ...d3.pics && d3.pics.length ? { pics: [...d3.pics] } : {},
-      // The day's second workout, last, as normalize writes it.
-      ...d3.part === 2 ? { part: 2 } : {}
-    };
-  }
-  function draftCardio(d3) {
-    return (d3.cardio || []).filter((c4) => (c4.min || 0) > 0).map((c4) => ({ ...c4, date: d3.date }));
-  }
-  function joinAdjacent(ex) {
-    const out = [];
-    for (const b2 of ex) {
-      const a2 = out[out.length - 1];
-      if (a2 && a2.exId === b2.exId && !a2.light === !b2.light) {
-        a2.sets = [...a2.sets, ...b2.sets];
-        if (b2.note && b2.note.trim()) a2.note = [a2.note, b2.note].filter((x2) => x2 && x2.trim()).join(" ");
-        if (b2.pics && b2.pics.length) a2.pics = picIds([...a2.pics || [], ...b2.pics]);
-        if (!a2.rr && b2.rr) a2.rr = b2.rr;
-        continue;
-      }
-      out.push({ ...b2, sets: [...b2.sets] });
-    }
-    return out;
-  }
-  function sameExOnce(ex) {
-    const by = /* @__PURE__ */ new Map();
-    const out = [];
-    for (const b2 of ex) {
-      const k2 = b2.exId + (b2.light ? "|l" : "");
-      const a2 = by.get(k2);
-      if (!a2) {
-        const c4 = { ...b2, sets: [...b2.sets] };
-        by.set(k2, c4);
-        out.push(c4);
-        continue;
-      }
-      const wa = a2.sets.filter(isWork).length, wb = b2.sets.filter(isWork).length;
-      a2.sets.push(...b2.sets);
-      if (b2.nw) a2.nw = true;
-      if (b2.mc && !a2.mc) a2.mc = b2.mc;
-      if (wb > wa && b2.rr) a2.rr = b2.rr;
-      else if (!a2.rr && b2.rr) a2.rr = b2.rr;
-    }
-    return out;
-  }
-  function markedNew(d3, exId) {
-    return d3.ex.some((b2) => b2.exId === exId && !!b2.nw);
-  }
-  function withNew(ex, d3, mcOf) {
-    return ex.map((b2) => {
-      const mc = mcOf(b2.exId);
-      const nw = markedNew(d3, b2.exId) ? { nw: true } : {};
-      return mc || markedNew(d3, b2.exId) ? { ...b2, ...nw, ...mc ? { mc } : {} } : b2;
-    });
-  }
-  function newRow(over) {
-    return {
-      w: null,
-      r: null,
-      rir: null,
-      warm: false,
-      drop: false,
-      done: false,
-      ...over,
-      rid: over && typeof over.rid === "string" ? over.rid : uid()
-    };
-  }
-  function freeDraft(name, ex) {
-    return {
-      id: uid(),
-      startedAt: Date.now(),
-      date: today(),
-      dayIdx: 0,
-      dayId: null,
-      dayName: name,
-      routineId: "",
-      free: true,
-      deload: false,
-      light: false,
-      cardio: [],
-      notes: "",
-      editingId: null,
-      ex: ex || []
-    };
-  }
-  function begunIn(d3) {
-    return d3.ex.some((b2) => b2.sets.some((s3) => s3.done || s3.r != null)) || (d3.cardio || []).some((c4) => !!c4.min && c4.min > 0);
-  }
-  function clockStart(d3, wasBegun) {
-    if (!d3 || d3.past || d3.editingId) return;
-    const begun = begunIn(d3);
-    if (begun && !wasBegun && !d3.begunAt) {
-      d3.begunAt = Date.now();
-      const day = today();
-      if (d3.startedAt && d3.date === iso(new Date(d3.startedAt)) && d3.date < day) {
-        d3.date = day;
-        if (readAgain) readAgain(d3);
-      }
-    } else if (!begun && d3.begunAt !== void 0) delete d3.begunAt;
-  }
-  var readAgain = null;
-  function onDayMoved(f3) {
-    readAgain = f3;
-  }
-  function editFp(d3) {
-    return JSON.stringify({
-      date: d3.date,
-      notes: (d3.notes || "").trim(),
-      pics: (d3.pics || []).join(),
-      ex: d3.ex.map((b2) => [
-        b2.exId,
-        (b2.note || "").trim(),
-        // A new machine or gym marked or taken off is an edit too, and so is another machine picked.
-        !!b2.nw,
-        b2.mc || "",
-        // So is a picture added or taken off.
-        (b2.pics || []).join(),
-        b2.sets.map((x2) => [
-          x2.w == null ? null : +x2.w,
-          x2.r == null || x2.r === "" ? null : +x2.r,
-          x2.rir == null || x2.rir === "" ? null : +x2.rir,
-          !!x2.done,
-          !!x2.warm,
-          !!x2.drop
-        ])
-      ]),
-      c: (d3.cardio || []).map((c4) => [c4.kind, c4.min, c4.hr, c4.dist || null])
-    });
-  }
-  var DELOAD_NOTE = `Deload: ${shareWords(LIGHTER_SET_SHARE)} sets, about ${pctOf(LIGHT_SHARE)}% loads, ${LIGHT_RIR}+ RIR.`;
-  var LIGHTER_NOTE = `Lighter session: ${shareWords(LIGHTER_SET_SHARE)} sets, about ${pctOf(LIGHT_SHARE)}% loads, ${LIGHT_RIR}+ RIR.`;
-  var RIR_OPTS = Array.from({ length: RIR_CALL_TOP + 1 }, (_2, i5) => String(i5));
-  var RIR_HALF_OPTS = Array.from({ length: 2 * RIR_CALL_TOP + 1 }, (_2, i5) => String(i5 / 2));
-  var HINT_ONCE = [
-    "Half the usual sets, nothing to beat.",
-    "Next time's load is worked out from this.",
-    "If the first set is off, change the load.",
-    "Next time picks up from here."
-  ];
-  function hintOnce(t4, again, kind, seen) {
-    if (!t4) return "";
-    if (again) {
-      const key = "first:" + kind;
-      if (seen.has(key)) return again;
-      seen.add(key);
-      return t4;
-    }
-    let out = t4;
-    for (const x2 of HINT_ONCE)
-      if (out.includes(x2)) {
-        if (seen.has(x2)) out = out.replace(" " + x2, "").replace(x2, "");
-        else seen.add(x2);
-      }
-    return out.trim();
-  }
-
   // src/app/setread.ts
   function bwKnownAtIn(M3, date) {
     let best = null;
@@ -6524,7 +6780,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const l4 = wE.slice(i0);
     return daysBetween(l4[0].date, lastE) >= STALL.days ? l4 : null;
   }
-  var stallReads = (inR) => inR.filter((x2) => !x2.held && x2.tv != null);
+  var stallLeftOut = (x2) => x2.held || x2.short === "sets";
+  var stallReads = (inR) => inR.filter((x2) => !stallLeftOut(x2) && x2.tv != null);
   function stallScopesIn(M3, id, sc) {
     const out = [{ rr: sc.curRR, inR: sc.inRange }];
     const last = sc.lastReal;
@@ -6581,13 +6838,19 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       }
       const z2 = w2[w2.length - 1], a0 = w2[0];
       const zr = z2.pts.filter((p3) => Math.abs(p3.w - z2.topW) < EPS_SAME).map((p3) => p3.r);
-      if (z2.topW > a0.topW + EPS_SAME && zr.length && Math.min(...zr) >= (z2.rr ? +z2.rr[0] : 1) && pct < 0) {
+      const stepped = z2.topW > a0.topW + EPS_SAME && zr.length > 0 && Math.min(...zr) >= (z2.rr ? +z2.rr[0] : 1);
+      if (stepped && pct < 0) {
         loadUp = true;
         falling = false;
         if (pHi != null && pHi < 0) {
           pLo = null;
           pHi = null;
         }
+      }
+      if (stepped && !moving) {
+        const k2 = w2.findIndex((x2) => x2.topW >= z2.topW - EPS_SAME);
+        const atLoad2 = w2[k2], before2 = k2 > 0 ? w2[k2 - 1] : void 0;
+        if (atLoad2 && before2 && atLoad2.tv < before2.tv && (z2 === atLoad2 || z2.tv > atLoad2.tv + EPS_SAME)) moving = true;
       }
     }
     return { pct, slope, slopeSe, moving, falling, pLo, pHi, spanW, loadUp };
@@ -6740,7 +7003,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     }
     return { pb, pbb };
   }
-  function prJudge(ex, h3, x2) {
+  function prJudge(ex, h3, x2, heaviestHere = -Infinity) {
     if (h3.none) return { pr: null, progress: false };
     let repPR = null;
     const judged = x2.pts.map((p3) => {
@@ -6767,7 +7030,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     }
     const pb = (bandJ != null ? h3.byBand[bandJ] : void 0) ?? h3.maxPb;
     const e1PR = pbJ != null && pb != null && pbJ > pb + EPS_SAME;
-    const wJ = !ex.timed ? pts.filter((p3) => p3.r > 0 && p3.w > h3.prevMaxW + EPS_SAME).sort((a2, b2) => b2.w - a2.w || prScore(b2) - prScore(a2) || b2.r - a2.r)[0] : null;
+    const wJ = !ex.timed ? pts.filter((p3) => p3.r > 0 && p3.w > h3.prevMaxW + EPS_SAME && p3.w + EPS_SAME >= heaviestHere).sort((a2, b2) => b2.w - a2.w || prScore(b2) - prScore(a2) || b2.r - a2.r)[0] : null;
     const wPR = wJ ? asLogged(wJ) : null;
     const progress = !!repPR || e1PR || !!wPR;
     const big = noE1(ex) || !!ex.timed || !!ex.bw && !pts.some((q) => q.pl > 0) || pts.some((q) => prScore(q) > h3.topSc + EPS || prScore(q) >= h3.topSc - EPS && !prDominated(h3, q));
@@ -6806,8 +7069,10 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const ORDER2 = ["Rep PR", "e1RM", "Weight PR"];
     const rank = (t4) => ORDER2.indexOf(t4);
     let top = null;
+    let before2 = -Infinity;
     for (const p3 of x2.pts) {
-      const { pr } = prJudge(ex, h3, { pts: [p3], ...prBestOf(ex, [p3], noBody2) });
+      const { pr } = prJudge(ex, h3, { pts: [p3], ...prBestOf(ex, [p3], noBody2) }, before2);
+      if (p3.r > 0) before2 = Math.max(before2, p3.w);
       if (!pr || !pr.big) continue;
       const key = pr.type === "Weight PR" ? pr.w : pr.type === "e1RM" ? pr.value ?? 0 : prScore(p3);
       if (!top || rank(pr.type) > rank(top.pr.type) || rank(pr.type) === rank(top.pr.type) && key > top.key + EPS_SAME)
@@ -6925,10 +7190,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const d3 = M3.s.draft;
     if (!d3) return null;
     const key = draftMachineIn(M3, exId);
-    if (key == null || key === NEW_MACHINE) return null;
-    if (d3.editingId && d3.ex.some((b2) => b2.exId === exId && b2.nw)) return key === d3.editingId ? null : key;
-    const others = (IDXIn(M3).byEx[exId] || []).filter((x2) => x2.sid !== d3.editingId);
-    return new Set(others.map((x2) => x2.mk)).add(key).size > 1 ? key : null;
+    return key === NEW_MACHINE ? d3.editingId || d3.id || null : key;
   }
   function liftMachinesIn(M3, exId) {
     return machinesOf(IDXIn(M3).byEx[exId] || []).map((g2) => {
@@ -7078,7 +7340,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
           rr: b2.rr || null,
           ...b2.ps ? { ps: b2.ps } : {},
           ...b2.nw ? { nw: true } : {},
-          ...b2.mc ? { mc: b2.mc } : {},
+          ...b2.mc ? { named: b2.mc } : {},
           // Its machine, given by machineKeys once the lift's sessions are all in.
           mk: FIRST_MACHINE,
           // Read from its drop sets alone: neither the PR list nor the bests board reads it, as no drop set feeds a PR.
@@ -7237,7 +7499,10 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     return useAdj;
   }
   function stillTrainedIn(M3, id, exI, lastReal, winStart) {
-    return !!lastReal && lastReal.date >= winStart && !afterBreak(lastReal, M3.today()) && !exI.archived && M3.s.exercises.some((e5) => e5.id === id) && !exInjuryIn(M3, exI);
+    return !!lastReal && lastReal.date >= winStart && !afterBreak(lastReal, M3.today()) && !exI.archived && M3.s.exercises.some((e5) => e5.id === id) && !exInjuryIn(M3, exI) && !takenOutIn(M3, id, lastReal);
+  }
+  function takenOutIn(M3, id, lastReal) {
+    return !freeModeIn(M3) && lastReal.ps != null && !activeRoutineIn(M3).days.some((d3) => d3.items.some((it) => it.exId === id));
   }
   function stretchMoved(l4, offSince, listed) {
     const z2 = l4[l4.length - 1], a0 = l4[0];
@@ -7268,9 +7533,9 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const current = stillTrainedIn(M3, id, exI, lastReal, winStart);
     const listed = (x2) => prs.some((p3) => p3.big && p3.sid === x2.sid && p3.exId === id);
     const stalledIn = (rr, all) => {
-      const inR = all.filter((x2) => !x2.held);
+      const inR = all.filter((x2) => !stallLeftOut(x2));
       const withE1 = stallReads(all);
-      const offSince = (from) => cur2.filter((x2) => (lighter(x2) || x2.held) && sameRR(x2.rr, rr) && x2.date >= from);
+      const offSince = (from) => cur2.filter((x2) => (lighter(x2) || stallLeftOut(x2)) && sameRR(x2.rr, rr) && x2.date >= from);
       const l4 = stallStretch(withE1);
       if (l4) {
         const moved = stretchMoved(l4, offSince, listed);
@@ -7323,6 +7588,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     return {
       n: exps.length,
       stalled,
+      current,
       pct,
       slope,
       slopeSe,
@@ -7358,11 +7624,11 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         stallP[ex.primary] = true;
         for (const m3 of ex.secondary) stallS[m3] = true;
       }
-      if (st.pct == null || !st.fresh) continue;
+      if (st.pct == null || !st.current) continue;
       if (st.wN < MUSCLE_TREND_MIN.sessions || st.wSpan < MUSCLE_TREND_MIN.days) continue;
       seenP[ex.primary] = (seenP[ex.primary] || 0) + 1;
       for (const m3 of ex.secondary) seenS[m3] = (seenS[m3] || 0) + 1;
-      if (!(st.moving || st.falling)) continue;
+      if (!(st.moving && st.pct > 0 || st.falling)) continue;
       (byMuscle[ex.primary] || (byMuscle[ex.primary] = [])).push(st.pct);
       for (const m3 of ex.secondary) (bySecondary[m3] || (bySecondary[m3] = [])).push(st.pct);
       spanP[ex.primary] = Math.max(spanP[ex.primary] || 0, st.spanW || 0);
@@ -7436,7 +7702,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
 
   // src/app/plans.ts
   function planForIn(M3, exId, R2, dayId, plain, before2, part) {
-    const inR = routinePlanIn(M3, exId, R2, dayId, part);
+    const inR = R2 == null && !dayId && freeModeIn(M3) ? null : routinePlanIn(M3, exId, R2, dayId, part);
     if (inR) return inR;
     const base = defPlanIn(M3, exId, plain);
     if (plain) return base;
@@ -7564,11 +7830,11 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const num3 = ex.bw ? kg2 > 0 ? `BW+${n3(kg2)}` : `BW−${n3(-kg2)}` : n3(kg2);
     return `${num3} ${u4}`;
   }
-  function listLabelIn(M3, ex, kg2, named2) {
+  function listLabelIn(M3, ex, kg2, named3) {
     const lift = liftUIn(M3, ex), u4 = typedUnit(kg2) ?? lift;
     const label = loadLabelIn(M3, { bw: ex.bw, unit: u4 }, kg2);
     if (ex.bw && kg2 === 0) return label;
-    return named2 || u4 !== UIn(M3) || u4 !== lift || u4 !== appUIn(M3) ? `${label} ${u4}` : label;
+    return named3 || u4 !== UIn(M3) || u4 !== lift || u4 !== appUIn(M3) ? `${label} ${u4}` : label;
   }
   function swapWIn(M3, ex, res, nw) {
     M3 = liftModelIn(M3, ex);
@@ -8044,6 +8310,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       const c4 = Ls.floor(to);
       return c4 == null ? Ls.first ?? dn2 : Math.min(dn2, c4);
     }
+    const once = !inHand && typedOtherIn(M3, from) ? unitFloorIn(M3, ex, plan, Math.min(to, from)) : null;
+    if (once != null) return once < from - EPS_SAME ? once : Math.max(0, from);
     const dn = Ls.below(from);
     let w2;
     if (dn != null) w2 = Math.min(dn, Ls.floor(to) ?? dn);
@@ -8053,6 +8321,15 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const gr = rackGridIn(M3, ex, plan, from);
     if (gr && w2 < gridStep(M3, gr, 0, 1) - EPS_SAME) w2 = Math.min(gridStep(M3, gr, 0, 1), from);
     return Math.max(0, w2);
+  }
+  function unitFloorIn(M3, ex, plan, w2) {
+    if (ex.timed || gymRackIn(M3, ex, plan) || plateGridIn(M3, ex, plan)) return null;
+    const st = inUnitIn(M3, loadGridIn(M3, ex, plan));
+    if (!(st > 0) || !onStep(st, TYPED_STEP)) return null;
+    const o3 = inUnitIn(M3, loadFloorIn(M3, ex));
+    const fl = Math.max(o3, !ex.bw && !ex.assist ? st : 0);
+    const d3 = o3 + Math.floor((inUnitIn(M3, w2) - o3) / st + EPS) * st;
+    return kgOfIn(M3, Math.max(d3, fl));
   }
   function heavierLoadIn(M3, ex, plan, from, to, inHand = false) {
     M3 = liftModelIn(M3, ex);
@@ -9948,14 +10225,14 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     ["neck", ["neck"]]
   ];
   function moversIn(M3) {
-    return Object.entries(IDXIn(M3).exStats).filter(([, x2]) => x2.moving && !x2.stalled && x2.fresh).sort((a2, b2) => b2[1].pct - a2[1].pct).map(([id, x2]) => ({ id, pct: x2.pct, wk: x2.spanW || 2 }));
+    return Object.entries(IDXIn(M3).exStats).filter(([, x2]) => x2.moving && !x2.stalled && x2.current).sort((a2, b2) => b2[1].pct - a2[1].pct).map(([id, x2]) => ({ id, pct: x2.pct, wk: x2.spanW || 2 }));
   }
   function liftsMovingIn(M3) {
     const I2 = IDXIn(M3);
     return moversIn(M3).map(({ id, wk }) => {
       const all = I2.byEx[id] || [];
       const st = I2.exStats[id];
-      const line = st ? st.trendTv.slice() : [];
+      const line = st && st.pct != null && st.pct < 0 ? trendW(trendScope(all, I2.anchor)).map((x2) => x2.topW) : st ? st.trendTv.slice() : [];
       const last = all[all.length - 1];
       let top = null;
       for (const p3 of last ? last.pts : [])
@@ -9967,6 +10244,9 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     return Object.entries(IDXIn(M3).exStats).filter(([, x2]) => x2.stalled).map(([id]) => id);
   }
   var FATIGUE_STALLS = 3;
+  function fatigueCallIn(M3) {
+    return fatigueStallsIn(M3, stalledIdsIn(M3)).length >= FATIGUE_STALLS && verdictIn(M3).word !== "Progressing";
+  }
   var ON_PLAN_SHOWN = 4;
   var MISSED_WEEKS_SAID = 2;
   function dropOnlyLiftIn(M3, id) {
@@ -10061,6 +10341,16 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         act: { label: `See ${ML[x2.m]}`, sec: "rank", m: x2.m }
       };
     }
+    const down = verdictIn(M3).falling.flatMap((id) => {
+      const st = I2.exStats[id];
+      return st && st.pct != null ? [{ id, pct: st.pct, wk: st.spanW }] : [];
+    }).sort((a2, b2) => a2.pct - b2.pct)[0];
+    if (down)
+      return {
+        tone: "yellow",
+        text: `${exNameIn(M3, down.id)} is falling over ${down.wk || TREND_WEEKS} weeks. Check sleep and recovery before adding sets.`,
+        act: { label: "See the lift", sec: "exercise", ex: down.id }
+      };
     if (!avg) {
       const w2 = avgWaitIn(M3);
       const text = `${w2.lead}Volume advice ${w2.kind === "back" ? "comes back" : "appears here"} after ${w2.after}.`;
@@ -10087,7 +10377,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const stalled = stalledIdsIn(M3);
     const rl = recentLighterIn(M3, DELOAD_GAP_DAYS);
     const big = fatigueStallsIn(M3, stalled);
-    if (big.length >= FATIGUE_STALLS && !rl)
+    if (fatigueCallIn(M3) && !rl)
       return {
         tone: "red",
         text: `${big.length} main lifts stalled at once: ${andList(
@@ -10160,6 +10450,19 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       };
     }
     return lastWordIn(M3, I2, avg, mst, inj);
+  }
+  var VERDICT_TONE = {
+    Progressing: "green",
+    Stalled: "yellow",
+    Regressing: "red"
+  };
+  function verdictIn(M3) {
+    const falling = Object.entries(IDXIn(M3).exStats).flatMap(([id, x2]) => x2 && x2.falling && x2.current ? [id] : []);
+    const stalled = stalledIdsIn(M3).filter((id) => !falling.includes(id));
+    const rising = moversIn(M3).map((x2) => x2.id);
+    const up = rising.length, flat = stalled.length, down = falling.length;
+    const word = quietWeekIn(M3) || up + flat + down === 0 ? null : up > flat + down ? "Progressing" : down > up ? "Regressing" : "Stalled";
+    return { word, tone: word ? VERDICT_TONE[word] : "blue", rising, stalled, falling };
   }
   function musTrend(sc) {
     if (!sc.clear)
@@ -10510,10 +10813,12 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var coach = live(coachIn);
   var dropOnlyLift = live(dropOnlyLiftIn);
   var fatigueStalls = live(fatigueStallsIn);
+  var fatigueCall = live(fatigueCallIn);
   var movers = live(moversIn);
   var liftsMoving = live(liftsMovingIn);
   var readiness = live(readinessIn);
   var stalledIds = live(stalledIdsIn);
+  var verdict = live(verdictIn);
   var daysOff = live(daysOffIn);
   var easierText = live(easierTextIn);
   var incOf = live(incOfIn);
@@ -10573,7 +10878,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var FB = () => window.ironlogFeedback && typeof window.ironlogFeedback.send === "function" ? window.ironlogFeedback : null;
 
   // src/app/photo.ts
-  var PHOTO_EDGE = 512;
+  var PHOTO_EDGE = 1024;
   var PHOTO_QUALITY = 0.85;
   var PHOTO_SHAPE = /^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/;
   function photoOf(v3) {
@@ -10678,6 +10983,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   function writeLocal(j3) {
     localStorage.setItem(KEY, j3);
     device.lastSaved = j3;
+    keepStorage();
     for (const f3 of savedHooks)
       try {
         f3();
@@ -11199,6 +11505,13 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       kept === "joined" || kept === "cardioJoined" ? `The workout in progress was saved ${where}. What was done here since was added to it.` : kept === "saved" || kept === "cardio" ? `The workout in progress was ${state.draft ? "replaced by the one" : "closed"} ${where}. Its ${kept === "saved" ? "ticked sets are" : "cardio is"} saved in History.` : state.draft ? saved ? `The workout in progress was replaced by the one ${where}. Its ticked sets are in History.` : `The workout in progress was replaced by the one ${where}.` : saved ? `The workout in progress was saved ${where}.` : `The workout in progress was closed ${where}.`
     );
   }
+  function loggedSince(d3, agreed) {
+    if (!d3) return false;
+    const was = agreed && agreed.id === d3.id ? agreed : null;
+    const rows2 = new Set(was ? was.ex.flatMap((b2) => b2.sets.filter((x2) => x2.done).map((x2) => canon(x2))) : []);
+    const cards = new Set(was ? (was.cardio || []).map((c4) => canon(c4)) : []);
+    return d3.ex.some((b2) => b2.sets.some((x2) => x2.done && !rows2.has(canon(x2)))) || (d3.cardio || []).some((c4) => !!c4.min && !cards.has(canon(c4)));
+  }
   function keepLost(lost, now2, agreed, remoteWins, tabs = false) {
     if (!lost || lost.editingId || now2 && now2.id === lost.id) return null;
     const kept = draftSession(lost), cardio = draftCardio(lost);
@@ -11461,8 +11774,9 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
               took = { h: hashStr(b2.json), at: Number(b2.at), b: baseOf(x2.id, rd) };
               if (x2.id === "draft" && dn) {
                 const remoteDraft = draftOf(rec(rd));
-                dn.kept = keepLost(prev, mergedDraft, agreed, remoteWins) || dn.kept;
-                dn.lost = keepLost(remoteDraft, mergedDraft, agreed, remoteWins) || dn.lost;
+                if (loggedSince(prev, agreed)) dn.kept = keepLost(prev, mergedDraft, agreed, remoteWins) || dn.kept;
+                if (loggedSince(remoteDraft, agreed))
+                  dn.lost = keepLost(remoteDraft, mergedDraft, agreed, remoteWins) || dn.lost;
                 if (dn.kept || dn.lost || canon(state.sessions) !== canon(dn.sessions0)) again = true;
               }
               if (x2.id === "core" && absorbLegacy(legacyBody(rec(rd)))) moreBody2 = true;
@@ -11557,24 +11871,88 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     }
     return remote;
   }
+  function firstUnnamed(ss, other) {
+    const there = new Set(other.map((q) => q.id)), lifts = new Set(other.flatMap((q) => q.ex.map((b2) => b2.exId)));
+    const shared = /* @__PURE__ */ new Set(), seen = /* @__PURE__ */ new Set();
+    for (const q of [...ss].sort(sessCmp))
+      for (const b2 of q.ex)
+        if (!seen.has(b2.exId)) {
+          seen.add(b2.exId);
+          if (there.has(q.id)) shared.add(b2.exId);
+        }
+    const strip = (b2) => b2.mc === FIRST_MACHINE && lifts.has(b2.exId) && !shared.has(b2.exId);
+    const unnamed = /* @__PURE__ */ new Map();
+    const sessions = ss.map((q) => {
+      if (there.has(q.id) || !q.ex.some(strip)) return q;
+      return {
+        ...q,
+        ex: q.ex.map((b2) => {
+          if (!strip(b2)) return b2;
+          const ids = unnamed.get(b2.exId) || /* @__PURE__ */ new Set();
+          unnamed.set(b2.exId, ids.add(q.id));
+          const c4 = { ...b2 };
+          unname(c4);
+          return c4;
+        })
+      };
+    });
+    return { sessions, unnamed, own: new Set(ss.filter((q) => !there.has(q.id)).map((q) => q.id)) };
+  }
+  function nameJoined(st, unnamed, own2) {
+    const rd = machineReadings(st);
+    const named3 = /* @__PURE__ */ new Map();
+    for (const [exId, ids] of unnamed)
+      for (const light of [0, 1]) {
+        let to;
+        for (const q of [...st.sessions].sort(sessCmp)) {
+          const r4 = ids.has(q.id) ? rd.get(`${q.id}|${exId}|${light}`) : void 0;
+          if (!r4) continue;
+          if (to === void 0) to = r4.key;
+          else if (own2.has(r4.key) && !own2.has(to)) {
+            const at2 = named3.get(q) || /* @__PURE__ */ new Map();
+            for (const i5 of r4.at) at2.set(i5, to);
+            named3.set(q, at2);
+          }
+        }
+      }
+    nameSessions(st, named3);
+  }
   function mergeFirstLink(mine, rState, rids, remote) {
     const base = realCount(mine) > realCount(rState) ? mine : rState, other = base === mine ? rState : mine;
     const aside = state.draft && rState.draft && rState.draft.id !== state.draft.id ? rState.draft : null;
     const kept = aside ? draftSession(aside) : null;
     const keptDraft = !!kept && ![...mine.sessions, ...rState.sessions].some((x2) => x2.id === kept.id);
-    setState(
-      normalize({
-        ...base,
-        exercises: unionById(base.exercises, other.exercises),
-        routines: unionById(base.routines, other.routines),
-        sessions: unionById(mine.sessions, keptDraft && kept ? [...rState.sessions, kept] : rState.sessions),
-        bodyweights: unionById(mine.bodyweights, rState.bodyweights),
-        measurements: unionById(mine.measurements, rState.measurements),
-        cardio: unionById(mine.cardio, aside ? [...rState.cardio, ...draftCardio(aside)] : rState.cardio),
-        trash: unionById(arr(state.trash) || [], arr(rState.trash) || []),
-        draft: state.draft || rState.draft
-      })
-    );
+    const own2 = firstUnnamed(mine.sessions, rState.sessions);
+    const trash = unionById(state.trash, rState.trash);
+    const acct2 = (list, phone, kind, keep) => {
+      const by = new Map(phone.map((x2) => [x2.id, x2]));
+      return list.map((y2) => {
+        const x2 = y2.id ? by.get(y2.id) : void 0;
+        if (!x2 || !x2.id) return y2;
+        if (sameRecord(y2, x2)) return keep(y2, x2);
+        putAside(trash, { ...x2, id: x2.id }, kind);
+        return y2;
+      });
+    };
+    const acctSessions = acct2(
+      keptDraft && kept ? [...rState.sessions, kept] : rState.sessions,
+      own2.sessions,
+      "session",
+      keptOnSession
+    ), acctCardio = acct2(aside ? [...rState.cardio, ...draftCardio(aside)] : rState.cardio, mine.cardio, "cardio", (y2) => y2);
+    const joined2 = normalize({
+      ...base,
+      exercises: unionById(base.exercises, other.exercises),
+      routines: unionById(base.routines, other.routines),
+      sessions: unionById(acctSessions, own2.sessions),
+      bodyweights: unionById(mine.bodyweights, rState.bodyweights),
+      measurements: unionById(mine.measurements, rState.measurements),
+      cardio: unionById(acctCardio, mine.cardio),
+      trash,
+      draft: state.draft || rState.draft
+    });
+    nameJoined(joined2, own2.unnamed, own2.own);
+    setState(joined2);
     for (const id of rids) {
       cloud.meta[id] = { h: remote[id].h, at: remote[id].at, b: baseOf(id, remote[id].data) };
       cloud.editAt[id] = Date.now();
@@ -11690,8 +12068,9 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       absorbLegacy(leg);
       if (draftMerged) {
         const remoteDraft = remote.draft ? draftOf(rec(remote.draft.data)) : null;
-        kept = keepLost(dr0, state.draft, agreedDraft, draftRemoteWins);
-        lost = keepLost(remoteDraft, state.draft, agreedDraft, draftRemoteWins);
+        if (loggedSince(dr0, agreedDraft)) kept = keepLost(dr0, state.draft, agreedDraft, draftRemoteWins);
+        if (loggedSince(remoteDraft, agreedDraft))
+          lost = keepLost(remoteDraft, state.draft, agreedDraft, draftRemoteWins);
       }
     }
     if (parts || merged) {
@@ -11818,17 +12197,20 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   function joinLogs(base, here) {
     const away = base.draft && here.draft && here.draft.id !== base.draft.id ? base.draft : null;
     const kept = away ? draftSession(away) : null;
-    return normalize({
+    const own2 = firstUnnamed(kept ? [...here.sessions, kept] : here.sessions, base.sessions);
+    const joined2 = normalize({
       ...base,
       exercises: unionById(base.exercises, here.exercises),
       routines: unionById(base.routines, here.routines),
-      sessions: unionById(base.sessions, kept ? [...here.sessions, kept] : here.sessions),
+      sessions: unionById(base.sessions, own2.sessions),
       bodyweights: unionById(base.bodyweights, here.bodyweights),
       measurements: unionById(base.measurements, here.measurements),
       cardio: unionById(base.cardio, away ? [...here.cardio, ...draftCardio(away)] : here.cardio),
       trash: unionById(arr(base.trash) || [], arr(here.trash) || []),
       draft: here.draft || base.draft
     });
+    nameJoined(joined2, own2.unnamed, own2.own);
+    return joined2;
   }
   async function keepHere(from) {
     const notes = { meta: cloud.meta, editAt: cloud.editAt, last: cloud.last };
@@ -12061,15 +12443,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         );
       setState(assemble(parts));
       const agreed = base.draft;
-      const loggedNew = (d3) => {
-        if (!d3) return false;
-        const was = agreed && agreed.id === d3.id ? agreed : null;
-        const rows2 = new Set(was ? was.ex.flatMap((b2) => b2.sets.filter((x2) => x2.done).map((x2) => canon(x2))) : []);
-        const cards = new Set(was ? (was.cardio || []).map((c4) => canon(c4)) : []);
-        return d3.ex.some((b2) => b2.sets.some((x2) => x2.done && !rows2.has(canon(x2)))) || (d3.cardio || []).some((c4) => !!c4.min && !cards.has(canon(c4)));
-      };
-      if (loggedNew(dr0)) kept = keepLost(dr0, state.draft, agreed, true, true);
-      if (loggedNew(incoming.draft)) keepLost(incoming.draft, state.draft, agreed, true, true);
+      if (loggedSince(dr0, agreed)) kept = keepLost(dr0, state.draft, agreed, true, true);
+      if (loggedSince(incoming.draft, agreed)) keepLost(incoming.draft, state.draft, agreed, true, true);
     }
     device.lastSaved = text;
     clearTimer(saveT);
@@ -12148,6 +12523,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       return true;
     }
     fx.undoToastHide();
+    const readings = opts.inProgress || opts.whole ? null : machineReadings(state);
+    let named3 = false;
     const top0 = undoStack[undoStack.length - 1];
     if (opts.undo) snapshot(typeof opts.undo === "function" ? opts.undo : null);
     const top = undoStack[undoStack.length - 1];
@@ -12166,6 +12543,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     outerBegun = begunBefore();
     try {
       change();
+      const was = readings || (logBefore && !opts.whole ? machineReadings(logBefore) : null);
+      if (was) named3 = keepMachines(state, was);
       clockAfter(outerBegun);
       followsAfter(outerBegun);
     } catch (e5) {
@@ -12186,7 +12565,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       dropInside = false;
       logBefore = null;
     }
-    if (!opts.inProgress || inside) invalidate();
+    if (!opts.inProgress || inside || named3) invalidate();
     if (opts.soon) saveSoon();
     else saveNow();
     return true;
@@ -12241,12 +12620,22 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const e5 = undoStack[undoStack.length - 1];
     return e5 ? e5.said || "" : null;
   }
+  function waitsForWorkout(e5) {
+    const d3 = state.draft;
+    if (!d3 || e5.post == null) return false;
+    const was = rec(rec(parseJson(e5.pre))?.["draft"]);
+    const after2 = rec(rec(parseJson(e5.post))?.["draft"]);
+    return !!was && typeof was["id"] === "string" && was["id"] !== d3.id && !after2;
+  }
   function undoStep() {
+    const top = undoStack[undoStack.length - 1];
+    if (top && waitsForWorkout(top)) return "open";
     const e5 = undoStack.pop();
     if (!e5) return "none";
     lastStep = void 0;
     undoPersist();
-    const before2 = canon(state);
+    const read = () => canon(chunksOf(normalize(parseJson(JSON.stringify(state)))));
+    const before2 = read();
     let done = false;
     if (e5.inv) {
       try {
@@ -12283,7 +12672,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       }
     const below = undoStack[undoStack.length - 1];
     if (below && below.post == null) below.post = e5.pre;
-    if (canon(state) === before2) return "unchanged";
+    if (read() === before2) return "unchanged";
     invalidate();
     saveNow();
     return { said: e5.said || "" };
@@ -12322,8 +12711,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   }
   var distU = () => appU() === "kg" ? "km" : "mi";
   var distShow = (km) => Math.round((appU() === "kg" ? km : km / KM_MI) * HUNDREDTHS) / HUNDREDTHS;
-  function setShort(ex, w2, r4, named2) {
-    const l4 = listLabel(ex, +(w2 ?? 0) || 0, named2);
+  function setShort(ex, w2, r4, named3) {
+    const l4 = listLabel(ex, +(w2 ?? 0) || 0, named3);
     return ex.timed ? `${l4} for ${r4}s` : `${l4}×${r4}`;
   }
   function setStr(ex, x2) {
@@ -12390,8 +12779,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       }
     return b2;
   }
-  function prSet(exId, date) {
-    const x2 = (IDX().byEx[exId] || []).find((q) => q.date === date);
+  function prSet(exId, sid) {
+    const x2 = (IDX().byEx[exId] || []).find((q) => q.sid === sid);
     if (!x2) return null;
     let b2 = null;
     for (const p3 of x2.pts) {
@@ -12527,8 +12916,12 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   function bestSetLine(exId) {
     const r4 = allTimeBests(exId);
     if (!r4) return "";
-    if (r4.est && isCompound(r4.ex))
-      return `Best ${setShort(r4.ex, r4.est.p.w, r4.est.p.r)}${loadNote(r4.ex)}, ${fmtDate(r4.est.date)}`;
+    if (r4.est && isCompound(r4.ex)) {
+      const e5 = r4.est;
+      const over = r4.front.filter((f3) => f3.p.pl >= e5.p.pl - EPS_SAME && f3.p.r >= e5.p.r && (f3.p.pl > e5.p.pl + EPS_SAME || f3.p.r > e5.p.r)).sort((a2, b2) => b2.p.pl - a2.p.pl || b2.p.r - a2.p.r)[0];
+      const best = over || e5;
+      return `Best ${setShort(r4.ex, best.p.w, best.p.r)}${loadNote(r4.ex)}, ${fmtDate(best.date)}`;
+    }
     return r4.heavy ? `Heaviest ${setShort(r4.ex, r4.heavy.p.w, r4.heavy.p.r)}${loadNote(r4.ex)}, ${fmtDate(r4.heavy.date)}` : "";
   }
   function goalState(exId) {
@@ -12732,6 +13125,53 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       if (di != null && day) out[d3] = { di, day };
     }
     return out;
+  }
+  function newMachineKey() {
+    const d3 = state.draft;
+    return d3 ? d3.editingId || d3.id || null : null;
+  }
+  function pendingMachine(exId) {
+    const d3 = state.draft;
+    const k2 = d3 ? draftMachine(exId) : null;
+    if (k2 === NEW_MACHINE) return true;
+    return !!d3 && !!d3.editingId && k2 === d3.editingId && !liftMachines(exId).some((x2) => x2.key === k2);
+  }
+  function canAddMachine(exId) {
+    const d3 = state.draft;
+    if (!d3 || pendingMachine(exId)) return false;
+    const ed = d3.editingId;
+    if (!(IDX().byEx[exId] || []).some((x2) => x2.sid !== ed)) return false;
+    return !ed || !liftMachines(exId).some((x2) => x2.key === ed);
+  }
+  function machineNamesOf(e5) {
+    if (!e5.machines) return {};
+    const has = new Set(liftMachines(e5.id).map((x2) => x2.key));
+    const pend = newMachineKey();
+    if (pend) has.add(pend);
+    const out = {};
+    for (const [k2, v3] of Object.entries(e5.machines || {})) if (has.has(k2)) out[k2] = v3;
+    return out;
+  }
+  function machineName(exId, key) {
+    const e5 = state.exercises.find((x2) => x2.id === exId);
+    const k2 = key === NEW_MACHINE ? newMachineKey() : key;
+    return k2 && e5 && e5.machines && e5.machines[k2] || null;
+  }
+  var MACHINE_CHOICES = 6;
+  function machineNameChoices(exId) {
+    const e0 = state.exercises.find((x2) => x2.id === exId);
+    const here = new Set(Object.values(e0 ? machineNamesOf(e0) : {}).map((n3) => n3.toLowerCase()));
+    const count = /* @__PURE__ */ new Map();
+    for (const e5 of state.exercises)
+      if (e5.id !== exId)
+        for (const name of Object.values(machineNamesOf(e5))) {
+          const k2 = name.toLowerCase();
+          if (here.has(k2)) continue;
+          const c4 = count.get(k2);
+          if (c4) c4.n++;
+          else count.set(k2, { name, n: 1 });
+        }
+    return [...count.values()].sort((a2, b2) => b2.n - a2.n || a2.name.localeCompare(b2.name)).slice(0, MACHINE_CHOICES).map((c4) => c4.name);
   }
 
   // src/app/sheetsmisc.ts
@@ -13147,6 +13587,15 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       clearTimeout(toastT);
       gone(el);
     }
+  }
+  function toastTakeBack(msg) {
+    const el = box();
+    if (!el || el.hidden || !cur || !cur.parts.includes(msg)) return;
+    cur.parts = cur.parts.filter((p3) => p3 !== msg);
+    if (!cur.parts.length) {
+      clearTimeout(toastT);
+      gone(el);
+    } else draw(el);
   }
   function toastHide() {
     const el = box();
@@ -13847,10 +14296,14 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     );
   }
   var saveShown = "";
+  var notSavingSaid = false;
   function setSaveState() {
     const el = document.getElementById("saveState");
     if (!el) return;
     const { cls, txt } = saveStateNow();
+    const notSaving = cls === "bad";
+    if (notSaving && !notSavingSaid) toast(txt, null, null, "notice");
+    notSavingSaid = notSaving;
     const ph = photoUrl();
     el.className = "ssb" + (ph ? " ph" : "") + (cls ? " " + cls : "");
     D(
@@ -15621,8 +16074,8 @@ ${more}`;
         it = { name: ex, sets: [], note: "", ...cell("ss") ? { ss: cell("ss") } : {} };
         ss.items.set(ex, it);
       }
-      const mc = at2(r4, cMachine);
-      if (mc && !it.mc) it.mc = mc;
+      const machine = at2(r4, cMachine);
+      if (machine && !it.machine) it.machine = machine;
       const en = String(cell("note") || "").trim();
       if (en && !it.note.split("; ").includes(en)) it.note = (it.note ? it.note + "; " + en : en).slice(0, LIMITS.note);
       const n3 = Math.min(Math.max(Math.round(num(cell("sets")) || 1), 1), ROW_SETS);
@@ -15764,7 +16217,7 @@ ${more}`;
     const lines = String(text).split(/\r?\n/);
     const S4 = [];
     let cur2 = null, ex = null, pend = null, hint = null;
-    const named2 = { kg: false, lb: false };
+    const named3 = { kg: false, lb: false };
     const unread = [];
     const day = (date, name, line) => {
       if (pend) unread.push(pend.raw);
@@ -15789,10 +16242,10 @@ ${more}`;
       const under = li > 0 && !!(lines[li - 1] || "").trim();
       if (/\bkgs?\b|\dkg/i.test(L2)) {
         hint = hint || "kg";
-        named2.kg = true;
+        named3.kg = true;
       } else if (/\blbs?\b|\dlb|#/i.test(L2)) {
         hint = hint || "lb";
-        named2.lb = true;
+        named3.lb = true;
       }
       const words = L2.split(/\s+/);
       let dt = impDate(L2);
@@ -15870,8 +16323,8 @@ ${more}`;
     }
     return {
       sessions: S4.filter((x2) => x2.items.length).map((x2) => ({ date: x2.date, name: x2.name, items: x2.items })),
-      unit: named2.kg && named2.lb ? null : hint,
-      ...named2.kg && named2.lb ? { mixed: true } : {},
+      unit: named3.kg && named3.lb ? null : hint,
+      ...named3.kg && named3.lb ? { mixed: true } : {},
       skipped: 0,
       cardio: 0,
       unread: unread.slice(0, UNREAD_SHOWN),
@@ -16018,7 +16471,7 @@ ${more}`;
   var CAL_OFFER = { sessions: 3, weeks: 3 };
   var ODD_REPS = 30, ODD_REPS_TIMES = 2;
   var PR_TOAST_MS = 4200, PR_BUZZ = [30, 50, 30];
-  var STRIP_ROOM_PX = { edge: 8, gap: 16 };
+  var BAR_ROOM_PX = { edge: 8, gap: 16 };
   var MIX_RANGE = [0.6, 1.4];
   var MIX_TOAST_MS = 7e3;
   var ORDER_MS = { soon: 900, again: 1500 };
@@ -16158,17 +16611,31 @@ ${more}`;
     };
     const me = scq(s3), myLoad = prLoad(ex, s3, date), myR = +(s3.r ?? 0);
     const asStrong = (x2) => scq(x2) > me + EPS || scq(x2) >= me - EPS && prLoad(ex, x2, date) >= myLoad - EPS && +(x2.r ?? 0) >= myR;
-    return b2.sets.some(
+    if (b2.sets.some(
       (x2, i5) => i5 < si && x2.done && !x2.warm && !x2.drop && +(x2.r ?? 0) > 0 && asStrong(x2) && livePR(b2.exId, x2, at2)
-    ) ? null : pr;
+    ))
+      return null;
+    if (pr === "Weight PR" && earlierSets(b2, si).some((x2) => prLoad(ex, x2, date) >= myLoad - EPS)) {
+      const m3 = liveMade(b2.exId, s3, at2);
+      return m3 && m3.pr && m3.pr.type === "Weight PR" && m3.pr.value != null ? "Best" : ex.timed ? "Time PR" : "Rep PR";
+    }
+    return pr;
   }
+  var earlierSets = (b2, si) => {
+    const ex = state.draft ? state.draft.ex : [];
+    const at2 = ex.indexOf(b2);
+    const cards = at2 > 0 ? ex.slice(0, at2).filter((x2) => x2.exId === b2.exId && !!x2.light === !!b2.light) : [];
+    return [...cards.flatMap((x2) => x2.sets), ...b2.sets.slice(0, si)].filter(
+      (x2) => x2.done && !x2.warm && !x2.drop && +(x2.r ?? 0) > 0
+    );
+  };
   function prBeat(exId, s3, at2, pr) {
     const m3 = liveMade(exId, s3, at2);
     const j3 = m3 && m3.pr;
     if (!m3 || !j3) return "";
     const { ex } = m3;
     const bandW = j3.type !== "Rep PR" && j3.bb != null && BAND_WORDS[j3.bb] || "";
-    if (pr === "Best" && j3.type === "e1RM") {
+    if (pr === "Best" && (j3.type === "e1RM" || j3.type === "Weight PR")) {
       if (j3.value == null) return "";
       if (!isCompound(ex)) return ` (your best for ${bandW})`;
       const all = j3.prevAll;
@@ -16255,7 +16722,8 @@ ${more}`;
   }
   function calDueIdx(d3) {
     if (state.settings.rirMode === "off") return -1;
-    if (state.sessions.filter((s3) => !s3.demo).length < CAL_OFFER.sessions) return -1;
+    if (state.sessions.filter((s3) => !s3.demo && s3.ex.some((b2) => b2.sets.some((x2) => x2.rir != null && !x2.warm))).length < CAL_OFFER.sessions)
+      return -1;
     const cut = addDays(today(), -WEEK_DAYS * CAL_OFFER.weeks);
     if (state.settings.calSnooze && state.settings.calSnooze > cut) return -1;
     const c4 = calStats();
@@ -16301,6 +16769,27 @@ ${more}`;
       sw: sg.w == null ? null : sg.w,
       sets: Array.from({ length: +plan.sets || DEFAULT_PLAN.sets }, () => newRow({ w: fillLoads() ? sg.w : null }))
     };
+  }
+  function keepLiftMachine(d3, gone2) {
+    const handed = [];
+    for (const g2 of gone2) {
+      if (!g2.mc && !g2.nw) continue;
+      for (const b2 of d3.ex)
+        if (b2.exId === g2.exId && !gone2.includes(b2) && !b2.mc && !b2.nw) {
+          if (g2.mc) copyName(b2, g2);
+          else b2.nw = true;
+          handed.push(b2);
+        }
+    }
+    return handed;
+  }
+  function takeBackMachine(d3, cards) {
+    for (const c4 of cards) {
+      const b2 = c4.bid && d3.ex.find((x2) => x2.bid === c4.bid) || (d3.ex.includes(c4) ? c4 : null);
+      if (!b2) continue;
+      unname(b2);
+      delete b2.nw;
+    }
   }
   function refreshBlock(b2) {
     const d3 = state.draft;
@@ -16534,15 +17023,9 @@ ${more}`;
     if (val && isMissed(s3) && !s3.warm && !s3.drop) toast(MISSED_SAID);
     if (val && !d3.editingId && blockDone(b2) && !blkIsOpen(bi, b2)) W.foldWait.add(b2);
     onLiftDraw(bi, redraw);
-    const pr = rowPR(b2, si, d3);
-    if (pr && !wasPR) {
-      const ex = EX(b2.exId);
-      toast(
-        `${pr === "Best" ? isCompound(ex) ? "New best estimate" : "PR" : pr}: ${exName(b2.exId)}, ${setShort(ex, +(s3.w ?? 0) || 0, s3.r)}${prBeat(b2.exId, s3, d3, pr)}`,
-        false,
-        PR_TOAST_MS,
-        "pr"
-      );
+    const said2 = prSaid(bi, si);
+    if (said2 && !wasPR) {
+      toast(said2, false, PR_TOAST_MS, "pr");
       const btn = document.querySelector(`[data-act="sDone"][data-b="${bi}"][data-s="${si}"]`);
       const row = btn && btn.closest(".sg");
       if (row instanceof HTMLElement) {
@@ -16571,6 +17054,7 @@ ${more}`;
     if (askRir) rirShowStrip(bi, si);
     else if (!val) rirClose();
     if (val && !again && !askRir && !d3.editingId && b2.plan.ss && !(nx && nx.drop && !nx.done)) ssNext(b2);
+    else if (val && !again && !askRir && !d3.editingId && !b2.plan.ss && !blockDone(b2)) nextSetClear(bi);
     if (val && !askRir && !d3.editingId && blockDone(b2)) {
       const rf = blkRef(bi);
       W.foldT = setTimeout(() => autoFold(rf), FOLD_MS.tick);
@@ -16582,6 +17066,8 @@ ${more}`;
     const b2 = d3 && d3.ex[bi];
     const s3 = b2 && b2.sets[si];
     if (!d3 || !b2 || !s3 || !s3.done) return false;
+    const said2 = saidAtFocus && saidAtFocus.s === s3 ? saidAtFocus.msg : prSaid(bi, si);
+    saidAtFocus = null;
     if (W.foldT && W.foldWait.has(b2)) {
       clearTimeout(W.foldT);
       const rf = blkRef(bi);
@@ -16593,7 +17079,30 @@ ${more}`;
       return true;
     }
     act(() => assessSet(bi, si), { inProgress: true });
+    prRetell(said2, bi, si);
     return false;
+  }
+  var saidAtFocus = null;
+  function notePrAtFocus(bi, si) {
+    const d3 = state.draft;
+    const s3 = d3 && d3.ex[bi] && d3.ex[bi].sets[si];
+    saidAtFocus = s3 && s3.done ? { s: s3, msg: prSaid(bi, si) } : null;
+  }
+  function prSaid(bi, si) {
+    const d3 = state.draft;
+    const b2 = d3 && d3.ex[bi];
+    const s3 = b2 && b2.sets[si];
+    if (!d3 || !b2 || !s3 || !s3.done) return null;
+    const pr = rowPR(b2, si, d3);
+    if (!pr) return null;
+    const ex = EX(b2.exId);
+    return `${pr === "Best" ? isCompound(ex) ? "New best estimate" : "PR" : pr}: ${exName(b2.exId)}, ${setShort(ex, +(s3.w ?? 0) || 0, s3.r)}${prBeat(b2.exId, s3, d3, pr)}`;
+  }
+  function prRetell(said2, bi, si) {
+    const now2 = prSaid(bi, si);
+    if (now2 === said2) return;
+    if (said2) toastTakeBack(said2);
+    if (now2) toast(now2, false, PR_TOAST_MS, "pr");
   }
   function nextLift(d3, i5) {
     const open = (x2, j3) => !blkIsShut(j3, x2);
@@ -16665,6 +17174,20 @@ ${more}`;
         }
     });
   }
+  function nextSetClear(bi) {
+    const b2 = state.draft && state.draft.ex[bi];
+    const si = b2 ? b2.sets.findIndex((y2) => !y2.done && !y2.warm) : -1;
+    if (si < 0) return;
+    requestAnimationFrame(() => {
+      const row = document.querySelector(`[data-act="sDone"][data-b="${bi}"][data-s="${si}"]`);
+      const el = row && row.closest(".sg");
+      if (!el) return;
+      const lim = bottomBarsTop();
+      const r4 = el.getBoundingClientRect();
+      if (r4.bottom > lim - BAR_ROOM_PX.edge)
+        window.scrollBy({ top: r4.bottom - lim + BAR_ROOM_PX.gap, behavior: "smooth" });
+    });
+  }
   function autoPending() {
     const p3 = W.pendAuto;
     W.pendAuto = null;
@@ -16689,8 +17212,8 @@ ${more}`;
       if (!st) return;
       const lim = bottomBarsTop();
       const r4 = st.getBoundingClientRect();
-      if (r4.bottom > lim - STRIP_ROOM_PX.edge)
-        window.scrollBy({ top: r4.bottom - lim + STRIP_ROOM_PX.gap, behavior: "smooth" });
+      if (r4.bottom > lim - BAR_ROOM_PX.edge)
+        window.scrollBy({ top: r4.bottom - lim + BAR_ROOM_PX.gap, behavior: "smooth" });
     });
   }
   function rirClose() {
@@ -16705,9 +17228,10 @@ ${more}`;
     const s3 = b2 && b2.sets[si];
     if (!d3 || !b2 || !s3 || s3.warm || s3.drop || !(+(s3.w ?? 0) > 0)) return;
     const ex = EX(b2.exId);
-    const st = IDX().exStats[b2.exId];
-    const last = st && st.last ? st.last.topW : 0;
-    if (!(last > 0) || st && longBreak(st.last, d3.date)) return;
+    const prev = liftRead(b2.exId, d3.date).filter((x2) => x2.sid !== d3.editingId && x2.date <= d3.date);
+    const lastX = prev[prev.length - 1];
+    const last = lastX ? lastX.topW : 0;
+    if (!(last > 0) || longBreak(lastX, d3.date)) return;
     const r4 = +(s3.w ?? 0) / last;
     if (r4 >= MIX_RANGE[0] && r4 <= MIX_RANGE[1]) return;
     const key = d3.id + ":" + bi;
@@ -17365,6 +17889,7 @@ ${stuck}${typeof A2.deleteAccount === "function" ? b`<button type="button" class
 <p class="small u-m0_f1n1n180"><b>Test version.</b> It keeps a separate log. Copy yours in to try it; your log in ${APP_NAME} stays as it is.</p>
 <button class="btn sm primary" data-act="previewCopy">Copy my log in</button></div>
 ` : A}${asideLine()}${privacyLine()}${safetyLine()}${backupDue() ? b`<p class="callout yellow u-m10-0-0"><b>Backup due.</b> ${s3.lastExport ? `Last backup file ${fmtDate(s3.lastExport)}.` : "No backup file yet."}${cloud.on ? " Your account has not synced this week. Export one below." : ""}</p>
+` : A}${logNearFull() ? b`<p class="callout yellow u-m10-0-0" id="logNearFull"><b>Your log is near this browser's storage limit.</b> ${cloud.on ? "Your account keeps it. Export a backup too." : "Sign in or export a backup, so nothing is lost when it fills."}</p>
 ` : A}${device.ok ? A : b`<p class="small u-cred">This browser blocks storage: nothing is kept after a reload unless you sync.</p>
 `}${unreadableRaw() ? b`<div class="panel u-mt8" id="unreadPanel">
 <p class="small u-m0-0-6"><b>A save on this device could not be read</b> by this build, and was kept aside. Restore tries it again, which a later build may read; Show its text to copy it out.</p>
@@ -17953,7 +18478,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
               if (!cloud.on) cloudStop(true);
               asideClear();
             },
-            { undo: true }
+            { undo: true, whole: true }
           );
           picsClear().catch((e5) => {
             log("pics-clear", e5);
@@ -19104,6 +19629,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
   function dashSummary() {
     const mvAll = movers(), mv = mvAll.slice(0, 2);
     const stalled = stalledIds();
+    const v3 = verdict();
     const avg = actualAvg4();
     const inj = injuredSet();
     const st = avg ? muscleStatus(avg) : null;
@@ -19112,29 +19638,33 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     const onPlan = st ? MK.filter((m3) => !inj.has(m3) && stOf(m3) === "plan") : [];
     const c4 = coach();
     const row = (tone, label, text, attrs) => b`<button class="srow" data-act="goDash" data-sec=${attrs.sec} data-ex=${attrs.ex ?? A}><i class=${`dot ${tone}`}></i><span class="sl">${label}</span><span class="st">${text}</span><span class="chev2" aria-hidden="true">›</span></button>`;
-    const nTr = Object.values(IDX().exStats).filter((x2) => x2 && x2.pct != null && x2.fresh).length;
+    const grouped = /* @__PURE__ */ new Set([...v3.rising, ...stalled, ...v3.falling]);
+    const nTr = Object.entries(IDX().exStats).filter(
+      ([id, x2]) => x2 && x2.pct != null && x2.current && !grouped.has(id)
+    ).length;
     const m0 = mv[0];
     const one = !!m0 && mv.every((x2) => x2.wk === m0.wk);
     const moving = m0 ? andList(
       mv.map((x2) => `${exName(x2.id)}${one ? "" : ` over ${x2.wk} weeks`}`).concat(mvAll.length > 2 ? [`${mvAll.length - 2} more`] : [])
-    ) + (one ? `, over ${m0.wk} weeks` : "") : nTr ? `No lift clearly rising yet: ${nTr} with a trend, each within day-to-day noise.` : `A trend needs ${TREND_MIN.sessions} sessions of a lift over ${TREND_MIN.days / WEEK_DAYS} weeks or more, within ${TREND_WEEKS} weeks.`;
-    const cm = c4.act && c4.act.sec === "volume" ? c4.act.m : null;
-    const same = !!(cm && under && under.some((m3) => m3 === cm)) || !!c4.wait;
-    const w2 = under == null ? avgWait() : null;
+    ) + (one ? `, over ${m0.wk} weeks` : "") : nTr ? `No lift clearly rising yet: ${nTr} with a trend, each within day-to-day noise.` : grouped.size ? "No lift rising." : `A trend needs ${TREND_MIN.sessions} sessions of a lift over ${TREND_MIN.days / WEEK_DAYS} weeks or more, within ${TREND_WEEKS} weeks.`;
     const above = over && over.length ? ` Above: ${andList(
       over.map((m3) => ML[m3] || m3),
       2
     )}.` : "";
-    const vt = (same ? c4.text : w2 ? `${w2.lead}A volume read comes${w2.kind === "back" ? " back" : ""} after ${w2.after}.` : under && under.length ? `Below target: ${andList(
+    const vt = under == null ? null : (under.length ? `Below target: ${andList(
       under.map((m3) => ML[m3] || m3),
       NAMES_SHOWN
     )}.` : onPlan.length ? "Every muscle on plan." : "Every muscle at or above target.") + above;
-    return b`<div class="card summary" id="dashSummary">${row(mv.length ? "green" : "", "Moving", moving, { sec: "exercise", ex: m0 ? m0.id : void 0 })}${row(
-      stalled.length ? fatigueStalls(stalled).length >= FATIGUE_STALLS ? "red" : "yellow" : "green",
+    const w2 = under == null && !c4.wait ? avgWait() : null;
+    const volText = vt ?? (w2 ? `${w2.lead}A volume read comes${w2.kind === "back" ? " back" : ""} after ${w2.after}.` : null);
+    const f0 = v3.falling[0];
+    const why = b`${row(mv.length ? "green" : "", "Moving", moving, { sec: "exercise", ex: m0 ? m0.id : void 0 })}${row(
+      stalled.length ? fatigueCall() ? "red" : "yellow" : "green",
       "Stuck",
       stalled.length ? andList(stalled.map(exName), NAMES_SHOWN) : "Nothing stalled",
       { sec: "stalls" }
-    )}${row(under == null ? "" : under.length ? "yellow" : "green", "Volume", vt, { sec: "volume" })}${same ? A : b`<div class="srow static"><i class=${`dot ${c4.tone}`}></i><span class="sl">Change</span><span class="st">${c4.text}</span></div>`}</div>`;
+    )}${f0 ? row("red", "Falling", andList(v3.falling.map(exName), NAMES_SHOWN), { sec: "exercise", ex: f0 }) : A}${volText == null ? A : row(under == null ? "" : under.length ? "yellow" : "green", "Volume", volText, { sec: "volume" })}`;
+    return b`<div class="card summary" id="dashSummary"><p class="vline"><i class=${`dot ${v3.word ? v3.tone : c4.tone}`}></i><span>${v3.word ? b`<b>${v3.word}.</b> ` : A}${c4.text}</span></p>${subsection("dash:why", "Why", why)}</div>`;
   }
   function regionBody() {
     const rs = regionSrc();
@@ -19421,9 +19951,9 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
   function dashKpis(R4, nS) {
     const prs4 = R4.prs.length;
     const was = (n3) => R4.back ? ` (${n3} in the ${RECENT_WEEKS} weeks before)` : "";
-    return b`<div class="kpis"><div class="kpi"><div class="v">${nz(R4.sess)}</div><div class="l">Sessions, last ${RECENT_WEEKS} weeks${was(R4.sessP)}</div></div>
+    return b`${nS ? dashSummary() : A}<div class="kpis"><div class="kpi"><div class="v">${nz(R4.sess)}</div><div class="l">Sessions, last ${RECENT_WEEKS} weeks${was(R4.sessP)}</div></div>
   <div class="kpi"><div class="v">${nz(prs4)}</div><div class="l">PRs, last ${RECENT_WEEKS} weeks${was(R4.prsP)}</div></div>
-${extraKpis()}</div>${nS ? dashSummary() : A}`;
+${extraKpis()}</div>`;
   }
   function volumeSec(cov, thisWeek, thisWeekConf, wkHard, avg, nS, confOff) {
     const volCard = () => {
@@ -19478,15 +20008,16 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
     return { body, n: wp.length };
   }
   function stallsBody(stalled) {
+    const tired = fatigueCall();
     const bigN = stalled.length ? fatigueStalls(stalled.map(([id]) => id)).length : 0;
     const lw = lastLighterWeek();
     const stl = b`${stalled.length ? b`${stalled.map(
       ([id, s3]) => b`<div class="row spread u-p6-0_bb1-solid-line"><span><span class="plate yellow u-h14_van2"></span> ${exName(id)}</span><span class="muted small">last ${fmtDate(s3.last.date)}</span></div>`
-    )}${bigN >= FATIGUE_STALLS ? b`<p class="small hastip u-cred_mt8" data-tip="Several main lifts flat together often points to fatigue. Check sleep, food, and stress; Deload week is under More options on Today (half the sets, about 90% loads, kept out of your trends). Isolation and core lifts are not counted here.">${bigN} main lifts stalled at once: likely fatigue</p>` : A}` : b`<p class="muted">No stalls detected.</p>`}${lw ? b`<p class="small muted u-mt8">${lw.weeks == null ? "No lighter week in the last 12." : `Last lighter week: ${lw.weeks} week${lw.weeks === 1 ? "" : "s"} ago${lw.kind === "rest" ? " (a rest week)" : lw.kind === "off" ? " (a week off)" : ""}.`} ${tipButton(LIGHTER_WEEK_TIP, "Lighter week")}</p>` : A}`;
-    return { stl, bigN };
+    )}${tired ? b`<p class="small hastip u-cred_mt8" data-tip="Several main lifts flat together often points to fatigue. Check sleep, food, and stress; Deload week is under More options on Today (half the sets, about 90% loads, kept out of your trends). Isolation and core lifts are not counted here.">${bigN} main lifts stalled at once: likely fatigue</p>` : A}` : b`<p class="muted">No stalls detected.</p>`}${lw ? b`<p class="small muted u-mt8">${lw.weeks == null ? "No lighter week in the last 12." : `Last lighter week: ${lw.weeks} week${lw.weeks === 1 ? "" : "s"} ago${lw.kind === "rest" ? " (a rest week)" : lw.kind === "off" ? " (a week off)" : ""}.`} ${tipButton(LIGHTER_WEEK_TIP, "Lighter week")}</p>` : A}`;
+    return { stl, tired };
   }
   function liftsSec(I2, stalled, prs4) {
-    const { stl, bigN } = stallsBody(stalled);
+    const { stl, tired } = stallsBody(stalled);
     const withData = Object.keys(I2.byEx).filter((id) => (I2.byEx[id] || []).length).sort((a2, b2) => exName(a2).localeCompare(exName(b2)));
     const nOf = (id) => (I2.byEx[id] || []).length;
     if (!ui.dashEx || typeof ui.dashEx !== "string" || !I2.byEx[ui.dashEx])
@@ -19498,7 +20029,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
     const prBody = bigPR.length ? b`${bigPR.slice(0, PRS_SHOWN).map((p3) => {
       const ex = EX(p3.exId);
       const iso2 = p3.type === "e1RM" && !isCompound(ex);
-      const ps = iso2 ? prSet(p3.exId, p3.date) : null;
+      const ps = iso2 ? prSet(p3.exId, p3.sid) : null;
       const tag = ex.timed && p3.type === "Rep PR" ? "Time PR" : p3.type === "e1RM" ? iso2 ? "PR" : prName(p3) : p3.type;
       const val = p3.type === "e1RM" ? iso2 ? ps ? setShort(ex, ps.w, ps.r) : "" : fmtE(ex, p3.value) + " " + liftU(ex) : setShort(ex, p3.w, p3.r);
       return b`<div class="row spread u-p6-0_bb1-solid-line"><span>${ex.name} <span class=${`tag ${p3.type === "Rep PR" ? "blue" : "green"}`}>${tag}</span></span><span class="num">${val} <span class="muted small">${fmtDate(p3.date)}</span></span></div>`;
@@ -19514,7 +20045,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
         "All-time bests",
         bests.html,
         bests.n ? `${bests.n} lift${bests.n === 1 ? "" : "s"}` : "none yet"
-      )}${dashSub("stalls", "Stalls", stl, stalled.length ? b`<span class=${`pill ${bigN >= FATIGUE_STALLS ? "red" : "yellow"}`}>${stalled.length} stalled</span>` : "none")}`,
+      )}${dashSub("stalls", "Stalls", stl, stalled.length ? b`<span class=${`pill ${tired ? "red" : "yellow"}`}>${stalled.length} stalled</span>` : "none")}`,
       noLog() ? "Nothing logged yet" : `${nLifts} lift${nLifts === 1 ? "" : "s"} tracked`
     );
   }
@@ -21010,7 +21541,7 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
     const n3 = bwEvery();
     let last = null;
     for (const x2 of state.bodyweights) if (!last || x2.date > last.date) last = x2;
-    const planned = !last && activeRoutine().days.some((d3) => d3.items.some((i5) => !!EX(i5.exId).bw));
+    const planned = !last && !freeMode() && activeRoutine().days.some((d3) => d3.items.some((i5) => !!EX(i5.exId).bw));
     if (!n3 || noLog() && !planned) return A;
     const t4 = today();
     const ago = last ? daysBetween(last.date, t4) : null;
@@ -21321,12 +21852,12 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       body: homeTiles()
     });
     const c4 = coach();
-    const toneWord = TONE_WORDS[c4.tone] || "Note";
+    const v3 = verdict();
     const coachSec = section({
       sk: "today:coach",
       key: "coach",
       title: "Coach",
-      sub: b`<span class=${`pill ${c4.tone}`}>${toneWord}</span>`,
+      sub: v3.word ? b`<span class=${`pill ${v3.tone}`}>${v3.word}</span>` : b`<span class=${`pill ${c4.tone}`}>${TONE_WORDS[c4.tone] || "Note"}</span>`,
       body: b`<p class="u-m0">${c4.text}${c4.why ? b` ${tipButton(c4.why, "Why")}` : A}</p>${coachButton(c4)}`
     });
     const inj = injuryCard();
@@ -21676,6 +22207,17 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
 
   // src/app/workout.ts
   var NEW_TIP = "A new machine or gym: its targets, trend, stalls, PRs and bests start over from this session. Earlier sessions stay in History. Use it only when the loads there don't compare; take it off in the ⋯ menu.";
+  function machineTag(d3, exId, bi) {
+    if (!onMachines(EX(exId)))
+      return markedNew(d3, exId) ? b` · <span class="tag" data-tip=${NEW_TIP}>New machine</span>` : "";
+    const k2 = draftMachine(exId);
+    const name = k2 ? machineName(exId, k2) : null;
+    const said2 = name || (k2 === NEW_MACHINE ? "New machine" : null);
+    return said2 ? (
+      // The dot before it goes with it when the line wraps.
+      b` <span class="u-wsnw">· <button type="button" class="tag mctag" data-act="machineOpen" data-b=${String(bi)} aria-label=${`Machine: ${said2}. Change`}>${said2}</button></span>`
+    ) : "";
+  }
   var CARDIO_ADD_GAP_PX = 10;
   var visitKeys = /* @__PURE__ */ new WeakMap();
   function repeatKeyed(xs, id, part) {
@@ -21857,9 +22399,9 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     const bl = b2.target ? bestLine(b2.exId, d3.past ? d3.date : "") : "";
     const work = b2.sets.filter((x2) => !x2.warm && !x2.drop).length;
     const canFill = !!b2.lastR && b2.lastR.some((r4) => r4 != null) && b2.sets.some((s3, i5) => !s3.done && !s3.warm && !s3.drop && s3.r == null && lastRFor(b2, i5) != null);
-    return b`<section class=${"block" + ssCls} id=${`blk-${bi}`} data-bi=${bi}>${ss && gk === 0 ? b`<p class="ssh">Superset ${ss}</p>` : ""}<div class="bh">${bgrip(bi, ex.name)}<div class="bh-m"><h3 aria-labelledby=${ex.note ? `bhn-${bi}` : A}><span id=${`bhn-${bi}`}>${ex.name}</span>${ex.note ? b` ${tipButton(ex.note, "About " + ex.name)}` : ""}</h3><p class="small muted">${ssLbl}<button type="button" class="linkbtn bmus" data-act="bMus" data-b=${String(bi)} aria-label=${`${ML[ex.primary]}: show the muscles worked on the body`}>${ML[ex.primary]}</button> · <span class="u-wsnw">${work || p3.sets}×${repSpan(p3.repMin, p3.repMax, "-")}${ex.timed ? "s" : ""}${ex.perSide ? "/side" : ""}</span>${nr ? "" : b` <span class="u-wsnw">@${b2.inj || (d3.light || d3.deload || b2.light) && b2.last ? effLeastShort(rirScale(), LIGHT_RIR) : effTgt(p3.rir)}</span>`} · ${p3.rest}s${b2.inj ? b` · <span class="tag red">Injury: ${injLabel(b2.inj)}</span>` : ""}${markedNew(d3, b2.exId) ? b` · <span class="tag" data-tip=${NEW_TIP}>New machine</span>` : ""}</p></div>
+    return b`<section class=${"block" + ssCls} id=${`blk-${bi}`} data-bi=${bi}>${ss && gk === 0 ? b`<p class="ssh">Superset ${ss}</p>` : ""}<div class="bh">${bgrip(bi, ex.name)}<div class="bh-m"><h3 aria-labelledby=${ex.note ? `bhn-${bi}` : A}><span id=${`bhn-${bi}`}>${ex.name}</span>${ex.note ? b` ${tipButton(ex.note, "About " + ex.name)}` : ""}</h3><p class="small muted">${ssLbl}<button type="button" class="linkbtn bmus" data-act="bMus" data-b=${String(bi)} aria-label=${`${ML[ex.primary]}: show the muscles worked on the body`}>${ML[ex.primary]}</button> · <span class="u-wsnw">${work || p3.sets}×${repSpan(p3.repMin, p3.repMax, "-")}${ex.timed ? "s" : ""}${ex.perSide ? "/side" : ""}</span>${nr ? "" : b` <span class="u-wsnw">@${b2.inj || (d3.light || d3.deload || b2.light) && b2.last ? effLeastShort(rirScale(), LIGHT_RIR) : effTgt(p3.rir)}</span>`} · ${p3.rest}s${b2.inj ? b` · <span class="tag red">Injury: ${injLabel(b2.inj)}</span>` : ""}${machineTag(d3, b2.exId, bi)}</p></div>
       <div class="bh-acts"><div class="bh-btns"><button class="ib" aria-label=${`Fold ${ex.name}`} data-act="bFold" data-b=${bi}>▴</button><button class=${"ib" + (b2.note || b2.pics && b2.pics.length ? " noted" : "")} aria-label=${b2.note || b2.pics && b2.pics.length ? `Note on ${ex.name}: edit` : `Add a note to ${ex.name}`} data-act="bNote" data-b=${bi} data-tip="A note or a picture: a cue, a seat setting, a niggle">✎</button><button class="ib" aria-label="Exercise options" data-act="bMenu" data-b=${bi}>⋯</button></div><button type="button" class="ubadge" data-act="unitOpen" data-b=${bi} aria-label=${`${ex.name}: weights in ${liftU(ex)}. Change`}>${liftU(ex)}</button></div></div>
-      ${b2.target ? b`<p class="hint"><b>Today: ${targetText(b2)}</b>${why ? b` ${tipButton(why, "Why this target")}` : ""}<span class="tp muted u-dblock">${lastHead(b2, dupB)}</span>${bl ? b`<span class="tp muted u-dblock">${bl}</span>` : ""}${b2.easier ? b`<span class="tp ez">${b2.easier}</span>` : ""}${progressLine(b2, bi)}</p>` : b`<p class="hint">${hintOnce(b2.hint || "", b2.hintAgain, ex.assist ? "assisted" : ex.bw ? "bodyweight" : "loaded", hintSeen)}</p>`}${bi === bwAt2 ? bwWarn(b2.exId, d3.date) : ""}${bi === calIdx ? b`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b=${bi}>Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>` : ""}
+      ${b2.target ? b`<p class="hint"><b>${d3.date === today() ? "Today" : "Target"}: ${targetText(b2)}</b>${why ? b` ${tipButton(why, "Why this target")}` : ""}<span class="tp muted u-dblock">${lastHead(b2, dupB)}</span>${bl ? b`<span class="tp muted u-dblock">${bl}</span>` : ""}${b2.easier ? b`<span class="tp ez">${b2.easier}</span>` : ""}${progressLine(b2, bi)}</p>` : b`<p class="hint">${hintOnce(b2.hint || "", b2.hintAgain, ex.assist ? "assisted" : ex.bw ? "bodyweight" : "loaded", hintSeen)}</p>`}${bi === bwAt2 ? bwWarn(b2.exId, d3.date) : ""}${bi === calIdx ? b`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b=${bi}>Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>` : ""}
       ${ss && partner && gk === 0 ? b`<p class="small muted u-m2-0-0">Superset with ${partner}; rest after the ${grp.length === 2 ? "pair" : "group"}.</p>` : ""}
       ${b2.lastNote && !b2.note ? b`<p class="small lnote">Your note, ${fmtDate(b2.lastNote.date)}: ${b2.lastNote.text} <button class="linkbtn" data-act="noteReuse" data-b=${bi}>Use again</button></p>` : ""}
       ${b2.note ? b`<p class="small bnote" id=${`bn-${bi}`}>${b2.note}</p>` : b`<p class="small bnote" id=${`bn-${bi}`} hidden></p>`}${picStrip(bi, false)}
@@ -22157,7 +22699,10 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
   function workoutFocus(e5) {
     const t4 = e5.target;
     if (!(t4 instanceof HTMLInputElement)) return;
-    if (t4.matches(".sg input[data-f]")) onSetFocus(t4);
+    if (t4.matches(".sg input[data-f]")) {
+      notePrAtFocus(Number(t4.dataset.b), Number(t4.dataset.s));
+      onSetFocus(t4);
+    }
     if (!t4.matches('.sg input[data-f="w"]')) return;
     if (W.lastDown.el !== t4 || Date.now() - W.lastDown.t > TOUCH_MS) return;
     armLoad(t4);
@@ -23320,10 +23865,13 @@ ${JSON.stringify(ctx, null, 1)}`;
           prefDel(OB_ACCT);
         }
         if (remove)
-          act(() => {
-            undoForget();
-            setState(normalize(null));
-          });
+          act(
+            () => {
+              undoForget();
+              setState(normalize(null));
+            },
+            { whole: true }
+          );
         if (!mid2) {
           ui.tab = "today";
           window.scrollTo(0, 0);
@@ -23685,7 +24233,7 @@ ${JSON.stringify(ctx, null, 1)}`;
             note: it.note || "",
             rr: null,
             sets,
-            ...it.mc && onMachines(exo) ? { mc: fixId(it.mc) } : {}
+            ...named(it.machine && onMachines(exo) ? fixId(it.machine) : null)
           });
         if (it.ss) grp[exo.id] = it.ss;
       }
@@ -23768,10 +24316,10 @@ ${JSON.stringify(ctx, null, 1)}`;
       }
     return (x2) => x2.deload || x2.light || (tot[x2.id] || 0) > 0 && (off[x2.id] || 0) * 2 >= (tot[x2.id] || 0);
   }
-  function groupSessions(rec2, named2, offS) {
+  function groupSessions(rec2, named3, offS) {
     const groups = [];
     let pop;
-    if (named2) {
+    if (named3) {
       pop = rec2;
       const by = /* @__PURE__ */ new Map();
       for (const x2 of rec2) {
@@ -23881,9 +24429,9 @@ ${JSON.stringify(ctx, null, 1)}`;
     });
     return cyc;
   }
-  function dayFinder(named2, days) {
+  function dayFinder(named3, days) {
     return (x2) => {
-      if (named2) {
+      if (named3) {
         const k2 = nameOf(x2).slice(0, FROM_LOG.name).toLowerCase();
         const d3 = days.find((q) => q.g.name.toLowerCase() === k2);
         return d3 ? d3.day : null;
@@ -23907,8 +24455,8 @@ ${JSON.stringify(ctx, null, 1)}`;
     const newest = all.reduce((m3, x2) => x2.date > m3 ? x2.date : m3, first.date);
     const rec2 = all.filter((x2) => x2.date >= addDays(newest, 1 - IMPORT_DAYS)).sort(byDate2);
     const offS = offSessions();
-    const named2 = !rec2.some((x2) => GENERIC_WORKOUT.test(nameOf(x2)));
-    const grouped = groupSessions(rec2, named2, offS);
+    const named3 = !rec2.some((x2) => GENERIC_WORKOUT.test(nameOf(x2)));
+    const grouped = groupSessions(rec2, named3, offS);
     let groups = grouped.groups;
     const pop = grouped.pop;
     groups = groups.filter((g2) => g2.list.length >= IMPORT_REPEATS);
@@ -23916,7 +24464,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       return null;
     const lastOf2 = (g2) => g2.list[g2.list.length - 1] || first;
     groups.sort((a2, b2) => byDate2(lastOf2(a2), lastOf2(b2)));
-    if (!named2)
+    if (!named3)
       groups.forEach((g2, i5) => {
         g2.name = "Day " + String.fromCharCode(LETTER_A + i5);
       });
@@ -23929,7 +24477,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     return {
       routine: { id: uid(), name: "From your log", schedule: "cycle", days: cyc },
       perWeek,
-      dayFor: dayFinder(named2, days)
+      dayFor: dayFinder(named3, days)
     };
   }
   async function liveLogFetch() {
@@ -24007,7 +24555,7 @@ ${JSON.stringify(ctx, null, 1)}`;
             setState(clean);
             if (!cloud.on) cloudStop(true);
           },
-          { undo: true }
+          { undo: true, whole: true }
         );
         closeModal();
         ui.tab = "today";
@@ -24160,7 +24708,7 @@ ${JSON.stringify(ctx, null, 1)}`;
             setState(st);
             if (!cloud.on) cloudStop(true);
           },
-          { undo: true }
+          { undo: true, whole: true }
         );
         closeModal();
         ui.tab = "today";
@@ -24951,10 +25499,12 @@ ${JSON.stringify(ctx, null, 1)}`;
     undo() {
       const r4 = undoStep();
       if (r4 === "none") toast("Nothing left to undo");
+      else if (r4 === "open") toast("Finish or discard the open workout first, then Undo brings this one back.");
       else if (r4 === "failed") toast("Could not undo that");
       else if (r4 === "unchanged") toast("Nothing to undo: that change was already reversed or edited since.");
       else {
         toastHide();
+        if (state.draft) act(() => draftBack(), { inProgress: true });
         render();
         toast(r4.said ? `Undone: ${r4.said}` : "Undone");
       }
@@ -25351,13 +25901,17 @@ ${JSON.stringify(ctx, null, 1)}`;
     const { d: d3, bi, b: b2, nb, orig, did: did2, done, id } = sw;
     const plan = { ...y2.plan };
     let added = [];
+    let handed = [];
     act(
       () => {
         added = joinRows(y2, nb);
         if (done.length) {
           b2.sets = done;
           b2.plan = { ...b2.plan, sets: done.filter((x2) => !x2.warm && !x2.drop).length || 1 };
-        } else keepOpen(() => d3.ex.splice(bi, 1));
+        } else {
+          handed = keepLiftMachine(d3, [b2]);
+          keepOpen(() => d3.ex.splice(bi, 1));
+        }
         fixSupersets(d3.ex.map((x2) => x2.plan));
       },
       {
@@ -25374,6 +25928,7 @@ ${JSON.stringify(ctx, null, 1)}`;
             if (i5 < 0) return false;
             dd.ex[i5] = orig;
           } else dd.ex.splice(dd.ex.indexOf(yy) + (ni < bi ? 1 : 0), 0, orig);
+          takeBackMachine(dd, handed);
           return true;
         }
       }
@@ -25387,13 +25942,17 @@ ${JSON.stringify(ctx, null, 1)}`;
   }
   function swapInPlace(sw) {
     const { d: d3, bi, b: b2, nb, orig, did: did2, done, left, id } = sw;
+    let handed = [];
     act(
       () => {
         if (done.length) {
           b2.sets = done;
           b2.plan = { ...b2.plan, sets: done.filter((x2) => !x2.warm && !x2.drop).length || 1 };
           keepOpen(() => d3.ex.splice(bi + 1, 0, nb));
-        } else d3.ex[bi] = nb;
+        } else {
+          handed = keepLiftMachine(d3, [b2]);
+          d3.ex[bi] = nb;
+        }
         fixSupersets(d3.ex.map((x2) => x2.plan));
       },
       {
@@ -25409,6 +25968,7 @@ ${JSON.stringify(ctx, null, 1)}`;
             if (i5 >= 0) dd.ex[i5] = orig;
             else return false;
           } else dd.ex[at2] = orig;
+          takeBackMachine(dd, handed);
           return true;
         }
       }
@@ -25758,7 +26318,6 @@ ${JSON.stringify(ctx, null, 1)}`;
       ex: day.items.map((it) => newBlock(it.exId, it, { before: date }))
     };
   }
-  var PARKED_SAID = "Your workout in progress is set aside. It comes back when you save or discard this one.";
   function resumeOpen() {
     if (!state.draft) return false;
     ui.away = null;
@@ -25933,6 +26492,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       }
       const drop3 = /* @__PURE__ */ new Set();
       const removed = /* @__PURE__ */ new Map(), order = d3.ex.slice(), did2 = d3.id;
+      let handed = [];
       act(
         () => {
           for (const x2 of pl.bl) {
@@ -25954,6 +26514,10 @@ ${JSON.stringify(ctx, null, 1)}`;
             }
             removed.set(b2, gone2);
           }
+          handed = keepLiftMachine(
+            d3,
+            d3.ex.filter((_b, bi) => drop3.has(bi))
+          );
           d3.ex = d3.ex.filter((_b, bi) => !drop3.has(bi));
           fixSupersets(d3.ex.map((b2) => b2.plan));
         },
@@ -25970,6 +26534,7 @@ ${JSON.stringify(ctx, null, 1)}`;
             order.forEach((b2, i5) => {
               if (drop3.has(i5) && !dd.ex.includes(b2)) dd.ex.splice(Math.min(i5, dd.ex.length), 0, b2);
             });
+            takeBackMachine(dd, handed);
             fixSupersets(dd.ex.map((b2) => b2.plan));
             return true;
           }
@@ -26181,10 +26746,8 @@ ${JSON.stringify(ctx, null, 1)}`;
       };
       closeModal();
       const d3 = state.draft;
-      if (d3 && parkDraft()) {
-        go();
-        toast(PARKED_SAID);
-      } else if (d3 && (d3.editingId || draftEntered(d3)))
+      if (d3 && parkDraft()) go();
+      else if (d3 && (d3.editingId || draftEntered(d3)))
         confirmBox(
           "Replace the session in progress?",
           d3.editingId ? "Editing a saved session. The edits will be lost." : "An unsaved session is open. Starting this one discards it.",
@@ -26247,7 +26810,8 @@ ${JSON.stringify(ctx, null, 1)}`;
                 })
               ),
               ...b2.nw ? { nw: true } : {},
-              ...b2.mc ? { mc: b2.mc } : {},
+              // The machine it was saved on, the lifter's in the edit (machines.ts), saved as theirs.
+              ...named(b2.mc),
               ...b2.pics && b2.pics.length ? { pics: [...b2.pics] } : {}
             };
           })
@@ -26256,10 +26820,8 @@ ${JSON.stringify(ctx, null, 1)}`;
         ui.tab = "today";
         begin(d3, false);
       };
-      if (state.draft && parkDraft()) {
-        go();
-        toast(PARKED_SAID);
-      } else if (state.draft)
+      if (state.draft && parkDraft()) go();
+      else if (state.draft)
         confirmBox(
           "Replace the session in progress?",
           state.draft.editingId ? "Editing a saved session. The edits will be lost." : "An unsaved session is open. Editing this one discards it.",
@@ -26281,6 +26843,56 @@ ${JSON.stringify(ctx, null, 1)}`;
     return el instanceof HTMLInputElement || el instanceof HTMLSelectElement || el instanceof HTMLTextAreaElement ? el.value : "";
   }
   var kg = (ex, n3) => fromDOf(ex, n3) ?? 0;
+  function pickMachine(bi, k2, name) {
+    const d3 = state.draft;
+    const b0 = d3 && d3.ex[bi];
+    const e5 = b0 && state.exercises.find((x2) => x2.id === b0.exId);
+    if (!d3 || !b0 || !e5 || !k2 || k2 === draftMachine(b0.exId)) return;
+    const was = k2 === NEW_MACHINE ? null : liftMachines(b0.exId).find((x2) => x2.key === k2);
+    if (k2 !== NEW_MACHINE && !was) return;
+    const ed = d3.editingId;
+    if (ed && k2 === NEW_MACHINE && draftMachine(b0.exId) === ed) return;
+    const u4 = was && !ed ? typedUnit(was.w) : null;
+    const key = k2 === NEW_MACHINE ? newMachineKey() : k2;
+    act(
+      () => {
+        if (u4) {
+          if (u4 === appU()) delete e5.unit;
+          else e5.unit = u4;
+        }
+        for (const b2 of d3.ex)
+          if (b2.exId === b0.exId) {
+            if (ed) pickName(b2, k2 === NEW_MACHINE ? ed : k2);
+            else if (k2 === NEW_MACHINE) {
+              b2.nw = true;
+              unname(b2);
+            } else {
+              pickName(b2, k2);
+              delete b2.nw;
+            }
+          }
+        if (k2 === NEW_MACHINE && key) nameMachine(e5, key, name);
+        if (!ed) {
+          for (const b2 of d3.ex) if (b2.exId === b0.exId) refreshBlock(b2);
+        }
+      },
+      { undo: true }
+    );
+    rerenderKeepScroll();
+    const named3 = k2 === NEW_MACHINE ? name : machineName(e5.id, k2);
+    toast(
+      // The machine's label is one thing to read, so it is kept on one line (no-break spaces) when the message wraps.
+      named3 ? `${e5.name}: ${named3.replace(/ /g, " ")}` : was ? `${e5.name}: ${`${fmtDate(was.date)} · ${listLabel(e5, was.w, true)} × ${was.r}`.replace(/ /g, " ")}` : `${e5.name}: new machine`,
+      true
+    );
+  }
+  function nameMachine(e5, key, name) {
+    const next2 = { ...e5.machines || {} };
+    if (name) next2[key] = name;
+    else delete next2[key];
+    if (Object.keys(next2).length) e5.machines = next2;
+    else delete e5.machines;
+  }
   var LIFT_ACTS = {
     /* The choice applies to the session in progress too: rows still on the
        suggestion switch between grey and filled, typed loads stay as typed. */
@@ -26309,63 +26921,59 @@ ${JSON.stringify(ctx, null, 1)}`;
       rerenderKeepScroll();
       toast(fill ? "Loads filled in" : "Loads in grey");
     },
-    /* The unit beside a lift's loads, tapped: the lift's equipment is marked in the other unit. Kept on the lift (back in
-       the app's unit it follows the app again, as one never switched does), so every screen and the next session read it;
-       the lift's blocks in the workout read their targets again in it, and a load already typed is converted, never read
-       as a number of the new unit. */
+    // A machine lift's Machine sheet, from its card or its ⋯ menu.
     machineOpen(t4) {
       const b2 = Number(t4.dataset.b);
       if (state.draft && state.draft.ex[b2]) openModal({ kind: "machine", b: b2 });
     },
-    /* A machine picked for a lift in a session (390 C): every block of it is on that machine, read from that machine's
-       sessions alone. In a workout its target is read again, the sets done kept (a target from another machine is no
-       target here), and a machine done on before brings its own kg or lb (as its weights were typed); New machine marks
-       the lift's session new (nw), so it starts there. In an edit from History the pick names this session's machine
-       and nothing else, never the sessions after it or the lift's unit: a machine done on before by its key, a new one by the session's own; its mark,
-       which later sessions may follow, and the lift's unit stay as they are, and the readings follow once it is saved.
-       One Undo step. */
+    // A machine in the Machine sheet, tapped: the lift on it (pickMachine).
     machinePick(t4) {
-      const d3 = state.draft;
-      const b0 = d3 && d3.ex[Number(t4.dataset.b)];
-      const e5 = b0 && state.exercises.find((x2) => x2.id === b0.exId);
       if (ui.modal && ui.modal.kind === "machine") closeModal();
-      const k2 = t4.dataset.k;
-      if (!d3 || !b0 || !e5 || !k2 || k2 === draftMachine(b0.exId)) return;
-      const was = k2 === NEW_MACHINE ? null : liftMachines(b0.exId).find((x2) => x2.key === k2);
-      if (k2 !== NEW_MACHINE && !was) return;
-      const ed = d3.editingId;
-      if (ed && k2 === NEW_MACHINE && draftMachine(b0.exId) === ed) return;
-      const u4 = was && !ed ? typedUnit(was.w) : null;
-      act(
-        () => {
-          if (u4) {
-            if (u4 === appU()) delete e5.unit;
-            else e5.unit = u4;
-          }
-          for (const b2 of d3.ex)
-            if (b2.exId === b0.exId) {
-              if (ed) b2.mc = k2 === NEW_MACHINE ? ed : k2;
-              else if (k2 === NEW_MACHINE) {
-                b2.nw = true;
-                delete b2.mc;
-              } else {
-                b2.mc = k2;
-                delete b2.nw;
-              }
-            }
-          if (!ed) {
-            for (const b2 of d3.ex) if (b2.exId === b0.exId) refreshBlock(b2);
-          }
-        },
-        { undo: true }
-      );
-      rerenderKeepScroll();
-      toast(
-        // The machine's label is one thing to read, so it is kept on one line (no-break spaces) when the message wraps.
-        was ? `${e5.name}: ${`${fmtDate(was.date)} · ${listLabel(e5, was.w, true)} × ${was.r}`.replace(/ /g, " ")}` : `${e5.name}: new machine`,
-        true
-      );
+      pickMachine(Number(t4.dataset.b), t4.dataset.k, "");
     },
+    // A machine's pencil, or Add a machine: its name to type, in the same sheet.
+    machineNaming(t4) {
+      const b2 = Number(t4.dataset.b);
+      if (state.draft && state.draft.ex[b2] && t4.dataset.k) openModal({ kind: "machine", b: b2, naming: t4.dataset.k });
+    },
+    // A name given on another lift, tapped: typed into the field, to add or change before saving.
+    machineChip(t4) {
+      const f3 = document.getElementById("mcName");
+      if (f3 instanceof HTMLInputElement && t4.dataset.v) {
+        f3.value = t4.dataset.v;
+        f3.focus();
+      }
+    },
+    /* A machine's name saved. Adding, a new machine is picked under it, as Add a machine's sheet says, in one Undo step;
+       a machine already listed, or the new one already picked, is named and the list shown again. */
+    machineNameSave(t4) {
+      const d3 = state.draft;
+      const b2 = Number(t4.dataset.b);
+      const b0 = d3 && d3.ex[b2];
+      const e5 = b0 && state.exercises.find((x2) => x2.id === b0.exId);
+      const k2 = t4.dataset.k;
+      const f3 = document.getElementById("mcName");
+      if (!d3 || !b0 || !e5 || !k2) return;
+      const name = f3 instanceof HTMLInputElement ? f3.value.replace(/\s+/g, " ").trim().slice(0, LIMITS.name) : "";
+      if (k2 === NEW_MACHINE && !pendingMachine(b0.exId)) {
+        closeModal();
+        pickMachine(b2, k2, name);
+        return;
+      }
+      const key = k2 === NEW_MACHINE ? newMachineKey() : k2;
+      if (!key || (machineName(e5.id, key) || "") === name) {
+        openModal({ kind: "machine", b: b2 });
+        return;
+      }
+      act(() => nameMachine(e5, key, name), { undo: true });
+      openModal({ kind: "machine", b: b2 });
+      rerenderKeepScroll();
+      toast(name ? `Named ${name}` : "Machine name taken off", true);
+    },
+    /* The unit beside a lift's loads, tapped: the lift's equipment is marked in the other unit. Kept on the lift (back in
+       the app's unit it follows the app again, as one never switched does), so every screen and the next session read it;
+       the lift's blocks in the workout read their targets again in it, and a load already typed is converted, never read
+       as a number of the new unit. */
     unitOpen(t4) {
       const b2 = Number(t4.dataset.b);
       if (state.draft && state.draft.ex[b2]) openModal({ kind: "unit", b: b2 });
@@ -26728,33 +27336,87 @@ ${JSON.stringify(ctx, null, 1)}`;
     return out;
   }
   var HEAVIEST_SHOWN = 4;
+  var typedNotDone = (s3) => !s3.done && (+(s3.r ?? 0) > 0 || isMissed(s3));
+  function uncheckedIn(d3) {
+    const out = [];
+    for (const b2 of d3.ex) {
+      const n3 = b2.sets.filter(typedNotDone).length;
+      if (n3) out.push({ n: n3, name: EX(b2.exId).name });
+    }
+    return out;
+  }
+  function markAll() {
+    const dd = state.draft;
+    if (!dd) return;
+    for (const [bi, b2] of dd.ex.entries())
+      for (const [si, s3] of b2.sets.entries())
+        if (typedNotDone(s3)) {
+          if (oddReps(b2, s3) || oddLoad(b2, si, dd.date) || lightZero(b2, si, dd.date)) {
+            setDone(bi, si, true, false, markAll);
+            if (!s3.done) return;
+          } else
+            act(
+              () => {
+                settleLoad(b2, si);
+                noteAsked(dd, b2, si);
+                s3.done = true;
+              },
+              { inProgress: true }
+            );
+        }
+    saveAfterRamps();
+  }
   function askSetsLeft(d3) {
-    let n3 = 0, left = 0;
+    let n3 = 0, left = 0, typedWork = 0, any = false;
     for (const b2 of d3.ex)
       for (const x2 of b2.sets) {
         if (x2.warm) continue;
         n3++;
-        if (!x2.done && rowBlank(b2, x2)) left++;
+        if (x2.done) any = true;
+        else if (rowBlank(b2, x2)) left++;
+        else if (typedNotDone(x2)) typedWork++;
       }
-    const any = d3.ex.some((b2) => b2.sets.some((x2) => x2.done && !x2.warm));
-    if (any && left > 0) {
+    if (!any || left === 0) return false;
+    const asked = () => {
+      const dd = state.draft;
+      if (dd) dd._leftAsked = true;
+    };
+    const fewer = "An exercise with fewer sets than usual does not set your next target, and still counts toward its trend.";
+    const typed = uncheckedIn(d3);
+    if (typed.length) {
+      const total = typed.reduce((a2, u4) => a2 + u4.n, 0);
       confirmBox(
-        `${left} of ${n3} sets not done`,
-        `Finish now and they are left out. An exercise with fewer sets than usual does not set your next target, and still counts toward its trend.`,
-        "Finish now",
+        `${left + typedWork} of ${n3} sets not done`,
+        `${andList(typed.map((u4) => `${u4.name} (${u4.n} set${u4.n > 1 ? "s" : ""})`))} ${typed.length > 1 ? "have" : "has"} reps and no checkmark. ${left > 1 ? `The other ${left} are empty and left out.` : "The other set is empty and left out."} ${fewer}`,
+        `Mark ${total > 1 ? "them" : "it"} done and save`,
         () => {
-          const dd = state.draft;
-          if (!dd) return;
-          dd._leftAsked = true;
-          finish();
+          asked();
+          markAll();
         },
         false,
-        { label: "Keep going", fn: () => {
-        } }
+        {
+          label: "Save without them",
+          fn: () => {
+            asked();
+            saveAfterRamps();
+          }
+        }
       );
       return true;
     }
-    return false;
+    confirmBox(
+      `${left} of ${n3} sets not done`,
+      `Finish now and they are left out. ${fewer}`,
+      "Finish now",
+      () => {
+        asked();
+        finish();
+      },
+      false,
+      { label: "Keep going", fn: () => {
+      } }
+    );
+    return true;
   }
   function askRamps(d3) {
     const ramps = [];
@@ -26799,7 +27461,7 @@ ${JSON.stringify(ctx, null, 1)}`;
           },
           { inProgress: true }
         );
-        finish();
+        saveAfterRamps();
       };
       confirmBox(
         "These look like ramp-up sets",
@@ -26835,55 +27497,32 @@ ${JSON.stringify(ctx, null, 1)}`;
     return false;
   }
   function askUnchecked(d3) {
-    const unchecked = [];
-    for (const b2 of d3.ex) {
-      const n3 = b2.sets.filter((s3) => !s3.done && (+(s3.r ?? 0) > 0 || isMissed(s3))).length;
-      if (n3) unchecked.push({ n: n3, name: EX(b2.exId).name });
-    }
-    if (unchecked.length) {
-      const list = unchecked.map((u4) => `${u4.name} (${u4.n} set${u4.n > 1 ? "s" : ""})`).join(", ");
-      const total = unchecked.reduce((a2, u4) => a2 + u4.n, 0);
-      confirmBox(
-        "Some sets are not marked done",
-        `${total} set${total > 1 ? "s have" : " has"} reps entered but no checkmark, so ${total > 1 ? "they" : "it"} will not be saved: ${list}.`,
-        `Mark ${total > 1 ? "them" : "it"} done and save`,
-        /* Each set is ticked in turn; one far off asks first, and once it is logged the rest are ticked and the
-           session saved, with no second tap on Finish. Fix it leaves the workout open there. */
-        function markAll() {
-          const dd = state.draft;
-          if (!dd) return;
-          for (const [bi, b2] of dd.ex.entries())
-            for (const [si, s3] of b2.sets.entries())
-              if (!s3.done && (+(s3.r ?? 0) > 0 || isMissed(s3))) {
-                if (oddReps(b2, s3) || oddLoad(b2, si, dd.date) || lightZero(b2, si, dd.date)) {
-                  setDone(bi, si, true, false, markAll);
-                  if (!s3.done) return;
-                } else
-                  act(
-                    () => {
-                      settleLoad(b2, si);
-                      noteAsked(dd, b2, si);
-                      s3.done = true;
-                    },
-                    { inProgress: true }
-                  );
-              }
-          finishNow();
-        },
-        false,
-        { label: "Save without them", fn: () => finishNow() }
-      );
-      return true;
-    }
-    return false;
+    const unchecked = uncheckedIn(d3);
+    if (!unchecked.length) return false;
+    const list = unchecked.map((u4) => `${u4.name} (${u4.n} set${u4.n > 1 ? "s" : ""})`).join(", ");
+    const total = unchecked.reduce((a2, u4) => a2 + u4.n, 0);
+    confirmBox(
+      "Some sets are not marked done",
+      `${total} set${total > 1 ? "s have" : " has"} reps entered but no checkmark, so ${total > 1 ? "they" : "it"} will not be saved: ${list}.`,
+      `Mark ${total > 1 ? "them" : "it"} done and save`,
+      markAll,
+      false,
+      { label: "Save without them", fn: saveAfterRamps }
+    );
+    return true;
+  }
+  function saveAfterRamps() {
+    const d3 = state.draft;
+    if (!d3) return;
+    if (!d3._rampAsked && askRamps(d3)) return;
+    finishNow();
   }
   function finish() {
     const d3 = state.draft;
     if (!d3) return;
     if (!d3._leftAsked && !d3.editingId && !d3.past && askSetsLeft(d3)) return;
-    if (!d3._rampAsked && askRamps(d3)) return;
     if (askUnchecked(d3)) return;
-    finishNow();
+    saveAfterRamps();
   }
   function finishNow() {
     const d3 = state.draft;
@@ -26977,13 +27616,16 @@ ${JSON.stringify(ctx, null, 1)}`;
   }
   function recapPr(pr) {
     const e5 = EX(pr.exId);
-    if (pr.type === "Weight PR")
+    if (pr.type === "Weight PR") {
+      const top = prSet(pr.exId, pr.sid);
+      const own2 = pr.value != null && isCompound(e5) && !(top && top.v > pr.value + EPS_SAME);
       return {
         name: e5.name,
-        what: `Weight PR, ${setShort(e5, pr.w, pr.r)}${pr.value != null && isCompound(e5) ? `, best estimate ${fmtE(e5, pr.value)} ${liftU(e5)}${loadNote(e5)}` : ""}`,
+        what: `Weight PR, ${setShort(e5, pr.w, pr.r)}${own2 && pr.value != null ? `, best estimate ${fmtE(e5, pr.value)} ${liftU(e5)}${loadNote(e5)}` : ""}`,
         was: e5.assist ? "less help than ever" : isFinite(pr.prevW ?? NaN) ? `heaviest before ${listLabel(e5, pr.prevW ?? 0, !e5.bw)}` : ""
       };
-    const ps = pr.type === "e1RM" && !isCompound(e5) ? prSet(pr.exId, pr.date) : null;
+    }
+    const ps = pr.type === "e1RM" && !isCompound(e5) ? prSet(pr.exId, pr.sid) : null;
     if (ps) return { name: e5.name, what: `PR, ${setShort(e5, ps.w, ps.r)}`, was: "your best for that number of reps" };
     return pr.type === "e1RM" ? {
       name: e5.name,
@@ -27110,9 +27752,10 @@ ${JSON.stringify(ctx, null, 1)}`;
     const prList = prs.map(recapPr);
     if (cardio.length) lines.push(`Cardio and mobility: ${cardio.reduce((a2, c4) => a2 + c4.min, 0)} min`);
     if (demoGone) lines.push("Demo data removed, so your stats show only your own sessions");
+    if (!device.ok) lines.unshift("Export a backup from the menu.");
     openModal({
       kind: "recap",
-      title: "Session saved",
+      title: device.ok ? "Session saved" : "Not saved on this phone",
       lines,
       prs: prList,
       note: prs.length ? "" : state.sessions.filter((x2) => !x2.demo).length <= 1 ? "Your first session: these are your starting numbers." : "No PRs this time.",
@@ -27213,17 +27856,25 @@ ${JSON.stringify(ctx, null, 1)}`;
         return;
       }
       const prevBlk = bi > 0 ? dd.ex[bi - 1] : null;
-      act(() => keepOpen(() => dd.ex.splice(bi, 1)), {
-        inProgress: true,
-        undo: () => {
-          const d32 = state.draft;
-          if (!d32 || d32.id !== did2) return false;
-          const k2 = prevBlk ? d32.ex.indexOf(prevBlk) : -1;
-          d32.ex.splice(prevBlk == null ? 0 : k2 >= 0 ? k2 + 1 : Math.min(bi, d32.ex.length), 0, blk);
-          fixSupersets(d32.ex.map((x2) => x2.plan));
-          return true;
+      let handed = [];
+      act(
+        () => {
+          handed = keepLiftMachine(dd, [blk]);
+          keepOpen(() => dd.ex.splice(bi, 1));
+        },
+        {
+          inProgress: true,
+          undo: () => {
+            const d32 = state.draft;
+            if (!d32 || d32.id !== did2) return false;
+            const k2 = prevBlk ? d32.ex.indexOf(prevBlk) : -1;
+            d32.ex.splice(prevBlk == null ? 0 : k2 >= 0 ? k2 + 1 : Math.min(bi, d32.ex.length), 0, blk);
+            takeBackMachine(d32, handed);
+            fixSupersets(d32.ex.map((x2) => x2.plan));
+            return true;
+          }
         }
-      });
+      );
       rerenderKeepScroll();
       toast("Exercise removed", true);
     };
@@ -27629,6 +28280,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       const s3 = b2 && b2.sets[si];
       if (!d3 || !b2 || !s3) return;
       const n3 = numIn(t4.dataset.v || "");
+      const said2 = prSaid(bi, si);
       act(
         () => {
           s3.rir = n3 == null ? null : Math.min(Math.max(n3, 0), EFFORT_TOP);
@@ -27638,6 +28290,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       );
       rirClose();
       redraw();
+      prRetell(said2, bi, si);
       const btn = document.querySelector(`.rirb[data-b="${bi}"][data-s="${si}"]`);
       if (btn)
         try {
@@ -27857,12 +28510,12 @@ ${JSON.stringify(ctx, null, 1)}`;
     discard() {
       const d3 = state.draft;
       if (!d3) return;
-      const out = () => {
+      const out = (keep = false) => {
         act(
           () => {
             state.draft = null;
           },
-          { inProgress: true }
+          { inProgress: true, undo: keep }
         );
         stopTimer();
         wakeOff();
@@ -27884,7 +28537,11 @@ ${JSON.stringify(ctx, null, 1)}`;
         "Discard this session?",
         d3.editingId ? "Your edits will be lost. The saved session stays as it was." : "Sets and cardio logged in this session will not be saved.",
         "Discard",
-        out,
+        () => {
+          const parked = parkedHere();
+          out(!parked && !d3.editingId);
+          if (!parked) toast(d3.editingId ? "Edits discarded" : "Session discarded", !d3.editingId);
+        },
         true
       );
     },
@@ -28292,7 +28949,8 @@ ${JSON.stringify(ctx, null, 1)}`;
     const dot = st.cls ? b`<span class=${"mdot " + st.cls} aria-hidden="true"></span>` : A;
     const acc = u4 ? b`<div class="row spread u-fwrnw_g10"><div class="u-minw0"><p class="small muted u-m0">Signed in as</p><p class="u-m2-0-0_owany"><b>${u4.email}</b></p></div><button class="btn sm" data-act="acctSignOut">Sign out</button></div>
     <p class="small u-m8-0-0">${dot}${cloud.on ? st.txt : "Not syncing right now."}${cloud.on ? A : b` <button class="linkbtn" data-act="acctRetry">Try again</button>`}</p>` : A2 ? b`<p class="u-m0"><b>Not signed in.</b> Your log is on this phone only.</p><div class="row u-mt10"><button class="btn primary" data-act="acctOpen" data-mode="signin">Sign in</button><button class="btn" data-act="acctOpen" data-mode="signup">Create account</button></div>` : b`<p class="small u-m0">${dot}${st.txt}</p>`;
-    const due = backupDue() ? b`<div class="callout yellow row spread u-m10-0-0"><span class="small"><b>Backup due.</b></span><button class="btn sm" data-act="export">Export backup</button></div>` : A;
+    const notSaving = st.cls === "bad";
+    const due = notSaving || backupDue() ? b`<div class="callout yellow row spread u-m10-0-0"><span class="small"><b>${notSaving ? "Not saving." : "Backup due."}</b></span><button class="btn sm" data-act="export">Export backup</button></div>` : A;
     const item = (act2, label, cat) => b`<button type="button" class="mnu" data-act=${act2} data-cat=${cat || A}><span>${label}</span><span aria-hidden="true">›</span></button>`;
     return b`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="menuH"><div class="sheet-h">${photoHead()}<h3 id="menuH" class="u-f1">${ENV === "preview" ? PREVIEW_NAME : APP_NAME}</h3>${photoUrl() ? b`<button type="button" class="linkbtn u-minh44" data-act="photoDel">Remove photo</button>` : A}${closeX()}</div>
   <div class="panel" id="menuAcct">${acc}</div>${due}
@@ -28413,7 +29071,7 @@ ${JSON.stringify(ctx, null, 1)}`;
    <p><b>A missed set</b>: type 0 reps and tick it (auto-mark ticks it too). It is kept and shown as missed, and counts toward no volume, PR, or estimate. The next target reads it as a set short of the range, so it never earns a step up, and as 0 reps, so the last target repeats. The next set's grey numbers come from the last set you completed.</p>
    <p><b>A number far off</b> asks before the set is logged, Log it or Fix it: reps over ${ODD_REPS} and more than ${timesWord(ODD_REPS_TIMES)} the top of your range or your most ever, whichever is more, or a load more than ${timesWord(ODD_SESSION)}, or under ${shareWords(1 / ODD_SESSION)} of, the heaviest set you ticked today, or more than ${timesWord(ODD_BEST)} the heaviest you have logged on the exercise (rules of thumb, to catch a slipped digit or the other unit). On a bodyweight lift, so does added load of ${pctOf(ODD_ADDED_BW)}% or more of your bodyweight, or more than ${timesWord(ODD_ADDED_BEST)} the most you have added (rules of thumb too). So does a load under the empty bar, on any set of a lift on the full bar typed as the total (the bar in Settings, or the exercise's own).</p>
    <p><b>RIR</b>, reps in reserve: how many more reps you could have done. Tap a set's RIR box for 0 to ${RIR_CALL_TOP} (Settings can switch it to half reps or RPE; RPE ${effAt("rpe", 2)} is RIR 2). ${off ? "RIR is off in Settings, so every working set counts as hard." : `It is optional: a blank reads as your usual RIR on that lift once you have rated ${RIR_USUAL_MIN} of its sets in ${CAL_WEEKS} weeks, and until then as hard.`}</p>
-   <p><b>RIR check</b>: once you have ${CAL_OFFER.sessions} sessions, one machine or cable exercise may ask for one set to failure, to see how far your RIR calls are off. Not now, or finishing without it, waits ${CAL_OFFER.weeks} weeks.</p>
+   <p><b>RIR check</b>: once you have rated your sets in ${CAL_OFFER.sessions} sessions, one machine or cable exercise may ask for one set to failure, to see how far your RIR calls are off. Not now, or finishing without it, waits ${CAL_OFFER.weeks} weeks.</p>
    <p><b>Last</b>, beside each set, is what you did on that set last time at your working weight, from the session named above the sets; a top single or lighter sets stay in that line. <b>W and D</b>: tap a set's number once for a warm-up (kept, never analysed), twice for a drop set (counts ${shareWords(DROP_CREDIT)} a set of volume, never as a PR or target). <b>+ Drop</b> beside + Set adds one at about ${pctOf(DROP_START)}% once a set is done; warm-ups are in the exercise's ⋯ menu.</p>
    <p><b>Supersets</b>: an exercise's ⋯ menu, Superset with the next one (Finish then offers to keep it in your plan), or Plan's Superset with next. The rest timer waits until the partners are done, and session minutes leave out the rest between them.</p>
    <p><b>The next sets adjust</b> after a set that was clearly off plan, on the sets whose load is still the app's (never one you typed). Up: ${CLEARLY_OFF} or more reps in reserve over your target with the reps in your range, or ${CLEARLY_OFF} or more reps past the top; on a first session back after a break, any set in your range that shows more strength. Down: ${CLEARLY_OFF} or more reps under both the range and what today asked for, without reserve to spare. The new load is what that set says you can do in the middle of the range (up) or at its bottom (down), with ${numWord(FATIGUE_RIR)} more rep in reserve, in real steps, at most ${CAP}% up past the loads you have done since a break (${CAP_LIGHT}% on light isolation lifts), and at least one step when a set was rated ${RIR_CALL_TOP} or more in reserve. On a first session back they aim for the bottom of the range with ${BACK_RIR} or more in reserve, never past the load from before the break. When no heavier load fits, the same load for more reps. A blank effort reads as your usual (on a first session back, as ${BACK_RIR} in reserve). Keep stays on your load. Not on a lighter day, a deload, a past workout, an injured area, an assisted lift, or a bodyweight lift never done with added load. Settings, Rest timer and logging turns it off.</p>
@@ -28448,7 +29106,7 @@ ${JSON.stringify(ctx, null, 1)}`;
    <p><b>Back after more than ${BACK_DAYS / WEEK_DAYS} weeks off a lift</b>, up to ${awayWords(LONG_BREAK_DAYS)}: about ${pctOf(LIGHT_SHARE)}% of its last working weight, with ${BACK_RIR} or more reps in reserve (rule of thumb). The ${BACK_DAYS / WEEK_DAYS} weeks is a rule of thumb for where a break begins: strength falls the longer a lift is left. That first session back is the lift's new start: its trend and stall test start again from it, never drawn across the break. Until the lift is back at its load from before the break, each full session sets the next load: what its sets say fits your usual reps, never lower than the load you did and never past that load (rule of thumb). Back at it in fewer than your planned sets, the next session asks every set at it, for the fewest reps you did there. Then the usual rules. A Lighter day or a deload as the first session back sets no target, so the session after it is still back. A timed hold comes back the same way, at its load, holding about ${pctOf(LIGHT_SHARE)}% as long.</p>
    <p><b>Back after more than ${awayWords(LONG_BREAK_DAYS)} off a lift</b>, it starts fresh, as a lift never done: pick a load for your first session back and the next is worked out from it, so nothing from before the break is asked of you (rule of thumb: after that long, the strength left varies too much to guess). Your records stay. All-time bests keeps the best you ever did and, beside it, your best since you came back; a set is a PR only when it beats every set you ever did, and the recap says when you beat your best since you came back.</p>
    <p><b>Your gym</b> (Settings): the dumbbells, kettlebells, plates, and stack steps you have. Suggestions stay on them, and a weight you type for a dumbbell counts as the nearest one.</p>
-   <p><b>Machine</b> (in a machine, cable or Smith machine lift's ⋯ menu during a session): the machines the lift was done on, each by the weight last done on it, and New machine. Each machine keeps its own targets, PRs, bests, trend, and kg or lb, so a harder machine never reads as a lighter day and an easier one never makes a PR; pick one you used before and its numbers pick up where they were. A lift stays on the machine it was last done on until you pick another. Its sets and volume count as one exercise either way. Picked the wrong one? Edit the session in History and pick the right one there.</p>
+   <p><b>Machine</b> (in a machine, cable or Smith machine lift's ⋯ menu during a session, or tap the machine's name on the card): the machines the lift was done on, by the names you give them, and Add a machine; a lift's first workout lists the one you are on. ✎ names one; a name you gave on another lift is one tap. A machine with no name shows the weight last done on it. Each machine keeps its own targets, PRs, bests, trend, and kg or lb, so a harder machine never reads as a lighter day and an easier one never makes a PR; pick one you used before and its numbers pick up where they were. A lift stays on the machine it was last done on until you pick another. Its sets and volume count as one exercise either way. Picked the wrong one? Edit the session in History and pick the right one there.</p>
    <p><b>New machine or gym</b> (in a free weight's ⋯ menu): the lift starts over from that session, as from a first one, so its loads there give no target, PR, or best. Earlier sessions stay in History and its chart. Tap it again before Finish to take it off. Use it only when the loads there don't compare: plates and dumbbells weigh the same at every gym.</p>
    <p><b>One rule for every session.</b> A session sets the lift's next target only at its usual load and reps for its usual sets. Its usual is the middle of that session and the ${numWord(USUAL_BEFORE)} before it in the range (not counting ones done lighter); its usual sets are never more than the plan asks, and in a session on a day of your routine they are the sets the plan gave the lift that day, once a session has done that many, so fewer sets than planned never become the usual there; a blank session saves, with each lift your routine plans, the sets of its day nearest to what you did, among the days that plan it in that session's rep range (the fewer on a tie), and is held to them the same way; in Freestyle (Today opens blank) it saves none, and your own sets lead. Each session keeps the plan it was done to, so a plan changed later never rereads the sessions before it; sessions saved before version 2.12 read their own sets. A set counts toward them when its load is within ${shareWords(1 - LIGHTER_LOAD)} of the session's working weight, or at the usual load (rule of thumb): a last set tried a step up, or sets lowered after a hard first one, still count, and a back-off set ${shareWords(1 - LIGHTER_LOAD)} or more lighter does not. Sets past the usual count are left out when a session is compared with its usual. With fewer sets, or reps clearly under the usual at no heavier load (more than ${pctOf(1 - USUAL_SHARE)}% by strength, a rule of thumb), the target repeats, and the session still counts for its trend and PRs; two such sessions in a row are the new usual, and the app follows, except that fewer sets than the plan asks stay short. A heavier load than the ${numWord(USUAL_BEFORE)} before is a step up, never short of the usual by its reps. A session done lighter sets no target and no trend. The same holds on a lighter day or in a deload: a lift done there at its usual load and reps is read as on any day, and its own sets were cut by the day, so they never become its usual.</p>
    <p><b>Last</b> is the most recent session of the lift in that day's rep range (the most recent of all when the range is new), labelled fewer sets, below usual, lighter, or deload when it was. When it did not set the target, the next target comes from the last full session, and the i beside the target names its date; grey reps come from that session too after one below usual or done lighter.</p>
@@ -28473,7 +29131,8 @@ ${JSON.stringify(ctx, null, 1)}`;
    <p><b>A lift on Stats</b> says its change in what was lifted: the change in its estimated 1RM on a compound lift you load as a total (a barbell, a plate-loaded machine), the top set at each end on anything else. A number shows only when it points the same way as the trend. The percentages are behind its i. <b>Next session</b> is the target its next workout will show; there are no predictions of where a lift will be.</p>
    <p><b>Goals</b>: on Stats, Lifts, set a goal for a lift as a load for a number of reps (100 x 5). It is reached when a working set matches it, that load or more for those reps or more. Until then it shows how close your best estimate from the last ${BEST_WEEKS} weeks is to what the goal takes done to failure, and, on a compound lift you load as a total, about how much load is left for those reps. It gives no date: your session targets are the steps toward it. On a bodyweight lift the load is the added load.</p>
    <p><b>PRs</b>: a <b>weight PR</b> is more weight than any earlier set of the lift (less help on an assisted one); a <b>best estimate</b> beats every earlier estimate of the lift; a <b>best for its reps</b> beats the earlier best in the same band of reps to failure (${BAND_RANGES.join(", ")}); a <b>rep PR</b> is more reps at a load than ever before, counted only when the set is at least ${pctOf(REP_PR_SHARE)}% as strong as your strongest before it (a rule of thumb: 40 x 10 after 95 x 5 is not a PR). A set that is more than one shows the first of these. A load in the other unit, after a change of units or gyms, is read as the earlier load it stands for when it is the nearest load over it on its own spacing (a rule of thumb: 155 lb after 70 kg, which is 154.3 lb, is not a weight PR; 157.5 lb is). PRs count on any day, a lighter day, a deload, and an exercise made lighter included, and are announced as you log the set. Only a set stronger than every earlier one is announced and counted: a higher estimate, or, past ${E1_MAX_REPS} reps to failure where the estimate stops, more reps at a load (on a lift with no estimate, or a bodyweight lift before any weigh-in, any of them). A heavier set that is not stronger is named in the recap as heaviest yet. Counting them all made each load step a PR. On a bodyweight lift, PRs, estimates, trends, and charts are all read at your latest weigh-in for every session, so progress is more reps or more added load, never a change on the scale. Weight lifted uses each day's weigh-in, the work actually done. With no weigh-in they count only the weight you add. Estimates and trends wait for one.</p>
-   <p><b>Moving</b>: up ${GROW_PCT}% or more with a trend clearly above zero. <b>Falling</b>: down ${GROW_PCT}% or more with a trend clearly below zero, in each rep range you train it in; a lift on a heavy day and a light day falls only when it falls in both, and its line says which range is down. <b>Stalled</b>: flat or falling over the last ${STALL.sessions} sessions (by the middle of the changes between every pair of them, so one good or bad day does not decide it) in each rep range you train it in, or ${STALL.days / WEEK_DAYS} weeks if that covers more (at least ${STALL.min} sessions); a lift on a heavy day and a light day is stalled only when it is stalled in both. With no PR in the last ${STALL.noProgress} of them, nor, in a session of that range done lighter since the third-last, a set stronger than any before it, the load no heavier than at the start of that stretch, and no more reps at that load than any session before it in the stretch, and only while you still train the lift and no injury it loads is flagged (the app holds its load then). Adding load and dropping reps for a while, or adding reps to later sets, as double progression does, is not a stall. A deload is suggested when ${FATIGUE_STALLS} or more main lifts (compound lifts with an estimate) stall together, and not within ${DELOAD_GAP_DAYS / WEEK_DAYS} weeks of a lighter week (more than half its sessions done lighter, counted once it ends or from the second, or a deload begun mid-week, once its last two or more deload sessions were done lighter), a rest week, or a week with nothing trained in it, a week marked as a deload included; isolation and core lifts are listed but not counted for it.</p>
+   <p><b>Moving</b>: up ${GROW_PCT}% or more with a trend clearly above zero. <b>Falling</b>: down ${GROW_PCT}% or more with a trend clearly below zero, in each rep range you train it in; a lift on a heavy day and a light day falls only when it falls in both, and its line says which range is down. <b>Stalled</b>: flat or falling over the last ${STALL.sessions} sessions (by the middle of the changes between every pair of them, so one good or bad day does not decide it) in each rep range you train it in, or ${STALL.days / WEEK_DAYS} weeks if that covers more (at least ${STALL.min} sessions); a lift on a heavy day and a light day is stalled only when it is stalled in both. With no PR in the last ${STALL.noProgress} of them, nor, in a session of that range done lighter since the third-last, a set stronger than any before it, the load no heavier than at the start of that stretch, and no more reps at that load than any session before it in the stretch, and only while you still train the lift (outside Freestyle, one taken out of your routine is no longer read) and no injury it loads is flagged (the app holds its load then). A session with sets skipped is left out, since its target repeated. Adding load and dropping reps for a while, or adding reps to later sets, as double progression does, is not a stall. A deload is suggested when ${FATIGUE_STALLS} or more main lifts (compound lifts with an estimate) stall together in a week that is not Progressing, and not within ${DELOAD_GAP_DAYS / WEEK_DAYS} weeks of a lighter week (more than half its sessions done lighter, counted once it ends or from the second, or a deload begun mid-week, once its last two or more deload sessions were done lighter), a rest week, or a week with nothing trained in it, a week marked as a deload included; isolation and core lifts are listed but not counted for it.</p>
+   <p><b>The week's word</b> opens Stats and heads Today's Coach: <b>Progressing</b> while the lifts rising outnumber those stalled and falling together, <b>Regressing</b> while more are falling than rising, and <b>Stalled</b> otherwise. Only the lifts you train now count; one skipped, on a break, taken out of your routine, or too new for a trend counts for none. No word in a rest or deload week.</p>
    <p><b>Weekly averages</b> use the weeks you trained of the last ${AVG_WEEKS}, starting the week after your first, or after your first back from over ${BACK_DAYS / WEEK_DAYS} weeks off (${FIRST_WEEK_REASON}). Weeks before that break are not counted as missed. A lighter week (${LIGHTER_WEEK_WORDS}) or a rest week is swapped for an earlier one. A week with no training is left out rather than counted as zero, and when ${MISSED_WEEKS_SAID} or more of the ${AVG_WEEKS} were missed the Coach says so first.</p>
    <p><b>Consistency</b>: weeks with at least as many sessions as the routine you trained that week planned (one session, when Today starts with a blank session). Each session records what its routine planned then, so changing or deleting the routine later does not rescore its weeks; sessions from before that record began read the routine as it is now. A cycle that is not a week long plans the whole number of sessions under its rate: every other day is 3.5 a week, so 3, for the streak, adherence, and This week alike. Rest weeks are skipped.</p>
    <p><b>Bodyweight</b> trends use ${WEEK_DAYS}-day averages. <b>Waist to height</b>: ${whtrBands(String)}.</p>`
@@ -28685,15 +29344,23 @@ ${JSON.stringify(ctx, null, 1)}`;
     const b2 = blockAt(m3.b);
     if (!b2) return null;
     const ex = EX(b2.exId);
-    const d3 = state.draft;
     const ms = liftMachines(b2.exId);
+    if (m3.naming != null) return machineNameSheet(m3.b, b2.exId, m3.naming);
     const k02 = draftMachine(b2.exId);
-    const now2 = d3 && k02 === d3.editingId && !ms.some((x2) => x2.key === k02) ? NEW_MACHINE : k02;
-    const row = (k2, label) => b`<button class=${"mcrow" + (k2 === now2 ? " on" : "")} data-act="machinePick" data-b=${m3.b} data-k=${k2} aria-pressed=${String(k2 === now2)}><span class="mcdot"></span><span>${label}</span></button>`;
+    const now2 = pendingMachine(b2.exId) ? NEW_MACHINE : k02;
+    const row = (k2, name, last) => b`<div class="mcitem"><button class=${"mcrow" + (k2 === now2 ? " on" : "")} data-act="machinePick" data-b=${m3.b} data-k=${k2} aria-pressed=${String(k2 === now2)}><span class="mcdot"></span><span class="mcl">${name ? b`<b>${name}</b>${last ? b`<span class="mcsub">${last}</span>` : A}` : last ?? "New machine"}</span></button><button type="button" class="ib mcpen" data-act="machineNaming" data-b=${m3.b} data-k=${k2} aria-label=${`Name ${name || last || "the new machine"}`}>✎</button></div>`;
+    const lastOf2 = (x2) => `${fmtDate(x2.date)} · ${listLabel(ex, x2.w, true)} × ${x2.r}`;
+    const unlisted = now2 && !ms.some((x2) => x2.key === now2) ? row(now2, machineName(b2.exId, now2), null) : A;
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${ex.name}</h3>${closeX()}</div>
-    <p class="mc-h">Machine</p><div class="mclist">${ms.map(
-      (x2) => row(x2.key, `${fmtDate(x2.date)} · ${listLabel(ex, x2.w, true)} × ${x2.r}`)
-    )}${row(NEW_MACHINE, "New machine")}</div></div>`;
+    <p class="mc-h">Machine</p><div class="mclist">${ms.map((x2) => row(x2.key, machineName(b2.exId, x2.key), lastOf2(x2)))}${unlisted}${canAddMachine(b2.exId) ? b`<button type="button" class="btn fullw" data-act="machineNaming" data-b=${m3.b} data-k=${NEW_MACHINE}>Add a machine</button>` : A}</div></div>`;
+  }
+  function machineNameSheet(b2, exId, key) {
+    const adding = key === NEW_MACHINE && !pendingMachine(exId);
+    const picks = machineNameChoices(exId);
+    return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${adding ? "Add a machine" : "Name this machine"}</h3>${closeX()}</div>
+    <input type="text" id="mcName" aria-label="Machine name" maxlength=${LIMITS.name} autocomplete="off" placeholder="Machine name" .value=${machineName(exId, key) || ""} enterkeyhint="done">
+    ${picks.length ? b`<div class="chips u-mt8">${picks.map((n3) => b`<button type="button" class="chip" data-act="machineChip" data-v=${n3}>${n3}</button>`)}</div>` : A}
+    <div class="row u-mt10"><button class="btn primary" data-act="machineNameSave" data-b=${b2} data-k=${key}>${adding ? "Add" : "Save"}</button><button class="btn" data-act="machineOpen" data-b=${b2}>Back</button></div></div>`;
   }
   function noteSheet(m3) {
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${m3.title}</h3>${closeX()}</div>
@@ -28802,7 +29469,9 @@ ${JSON.stringify(ctx, null, 1)}`;
     if (exps.length < 2) return "";
     const ow = st && st.spanW ? ` over ${st.spanW} weeks${st.rrIn ? ` in the ${repSpan(st.rrIn[0], st.rrIn[1])} range` : ""}` : "";
     const dir = st && st.fresh && st.pct != null ? st.moving ? `up${ow}` : st.falling ? `down${ow}` : st.holdRR && (st.holdRR.length || st.quietRR.length) ? `down${ow}` : st.pLo != null && st.pLo > 0 ? `slowly up${ow}` : st.pHi != null && st.pHi < 0 ? `slowly down${ow}` : `no clear change over ${st.spanW || 2} weeks` : "";
-    if (isCompound(ex) && exps.every((x2) => x2.best != null)) {
+    const e0 = exps[0].best, e12 = exps[exps.length - 1].best;
+    const agrees = e0 == null || e12 == null || (/up/.test(dir) ? e12 > e0 : /down/.test(dir) ? e12 < e0 : true);
+    if (isCompound(ex) && agrees && exps.every((x2) => x2.best != null)) {
       const v3 = exps.map((x2) => fmtE(ex, x2.best));
       return b`<p class="small muted u-m2-0">Est. 1RM <span class="trend">${v3.join(" → ")} ${liftU(ex)}</span>${dir ? " · " + dir : ""}${st && !st.useAdj ? b` ${tipButton("Read from loads and reps alone: RIR is rated on too few of its sets to compare sessions fairly.", "About this trend")}` : ""}</p>`;
     }
@@ -29498,6 +30167,7 @@ ${JSON.stringify(ctx, null, 1)}`;
   function exposeForTests() {
     window.__ironlog = {
       act,
+      undoNext,
       liftRead,
       draftMachine,
       liftMachines,
@@ -29748,6 +30418,8 @@ ${JSON.stringify(ctx, null, 1)}`;
       livePR,
       movers,
       stalledIds,
+      verdict,
+      fatigueCall,
       muscleStatus,
       actualAvg4,
       plannedPerWeek,
@@ -29903,8 +30575,8 @@ ${JSON.stringify(ctx, null, 1)}`;
     });
     picsStart().then(
       () => {
-        const named2 = (x2) => !!(x2.pics && x2.pics.length) || x2.ex.some((b2) => !!(b2.pics && b2.pics.length));
-        if (state.draft && named2(state.draft) || state.sessions.some(named2)) rerenderKeepScroll();
+        const named3 = (x2) => !!(x2.pics && x2.pics.length) || x2.ex.some((b2) => !!(b2.pics && b2.pics.length));
+        if (state.draft && named3(state.draft) || state.sessions.some(named3)) rerenderKeepScroll();
       },
       (e5) => {
         log("pics-read", e5);
@@ -29972,7 +30644,6 @@ if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostnam
     document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')reg.update().catch(()=>{/* Offline or the site not answering: expected, and the check runs again when the app comes back. */});});
   }).catch(e=>{if(window.ironlogLog)window.ironlogLog('sw-register',e);});});
 }
-try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persisted().then(p=>p||navigator.storage.persist()).catch(e=>{if(window.ironlogLog)window.ironlogLog('storage-persist',e);});}catch(e){if(window.ironlogLog)window.ironlogLog('storage-persist',e);}
 </script>
 </body>
 </html>
