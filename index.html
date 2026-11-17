@@ -5448,7 +5448,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const s3 = navigator.storage;
     if (!s3 || typeof s3.persist !== "function" || typeof s3.persisted !== "function") return;
     s3.persisted().then((kept) => kept || s3.persist()).catch((e5) => {
-      log("storage", e5);
+      log("storage-persist", e5);
     });
   }
   var clearTimer = (t4) => {
@@ -7015,7 +7015,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     const pb = (bandJ != null ? h3.byBand[bandJ] : void 0) ?? h3.maxPb;
     const e1PR = pbJ != null && pb != null && pbJ > pb + EPS_SAME;
-    const wJ = !ex.timed ? pts.filter((p3) => p3.r > 0 && p3.w > Math.max(h3.prevMaxW, heaviestHere) + EPS_SAME).sort((a2, b2) => b2.w - a2.w || prScore(b2) - prScore(a2) || b2.r - a2.r)[0] : null;
+    const wJ = !ex.timed ? pts.filter((p3) => p3.r > 0 && p3.w > h3.prevMaxW + EPS_SAME && p3.w + EPS_SAME >= heaviestHere).sort((a2, b2) => b2.w - a2.w || prScore(b2) - prScore(a2) || b2.r - a2.r)[0] : null;
     const wPR = wJ ? asLogged(wJ) : null;
     const progress = !!repPR || e1PR || !!wPR;
     const big = noE1(ex) || !!ex.timed || !!ex.bw && !pts.some((q) => q.pl > 0) || pts.some((q) => prScore(q) > h3.topSc + EPS || prScore(q) >= h3.topSc - EPS && !prDominated(h3, q));

@@ -62,6 +62,8 @@ const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/cs
     const page = await ctx.newPage();
     const errors = []; page.on('pageerror', e => errors.push(e.message));
     await page.goto(base); await page.waitForFunction(() => window.__ironlog, null, { timeout: 15000 });
+    // The app asks to keep its storage at its first save of the visit (storage.ts keepStorage), so the log is written once.
+    await page.evaluate(() => window.__ironlog.saveNow());
     // Until both are logged (a wait that times out is left to the checks below).
     await page.waitForFunction(() => ['sw-register', 'storage-persist'].every(a => window.__ironlog.logBuf.some(e => e.a === a)), null, { timeout: 8000 }).catch(() => {});
     const logged = await page.evaluate(() => window.__ironlog.logBuf.map(e => [e.a, e.m]));

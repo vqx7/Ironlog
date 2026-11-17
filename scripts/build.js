@@ -163,9 +163,8 @@ if (cloudCfg) html = replaceOnce(html, '</head>', `<script>window.IRONLOG_SUPABA
 <script src="vendor/supabase.js"></script>
 <script src="cloud.js"></script>
 </head>`, 'closing head tag');
-// Offline: register the service worker, and ask the browser to keep this
-// site's storage (an installed app's data is then not evicted under
-// storage pressure).
+// Offline: register the service worker. The app itself asks the browser to keep
+// the site's storage, in every build, once a visit at its first save (storage.ts).
 //
 // Updates: a new version downloads in the background and then waits. The page
 // is told (ironlogUpdateReady) and shows "Update ready"; tapping Update
@@ -196,7 +195,6 @@ if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostnam
     document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')reg.update().catch(()=>{/* Offline or the site not answering: expected, and the check runs again when the app comes back. */});});
   }).catch(e=>{if(window.ironlogLog)window.ironlogLog('sw-register',e);});});
 }
-try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persisted().then(p=>p||navigator.storage.persist()).catch(e=>{if(window.ironlogLog)window.ironlogLog('storage-persist',e);});}catch(e){if(window.ironlogLog)window.ironlogLog('storage-persist',e);}
 </script>
 `;
 html = replaceOnce(html, '</body>', boot + '</body>', 'closing body tag');

@@ -104,7 +104,7 @@ export function keepStorage(): void {
   s.persisted()
     .then(kept => kept || s.persist())
     .catch((e: unknown) => {
-      log('storage', e);
+      log('storage-persist', e);
     });
 }
 
