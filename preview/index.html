@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-QKKNJQooQ7ry//DjPJ7iTuMdma2FevTQygQbC2iTzIQ=' 'sha256-pwltkfWC8L3LQa1gx4cqcI1QHOgciz+ME9dpOfHt31A='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-zRr/b3P8HvSwY+p8S5gOcIqBSk94fIyBtvz2GCZo4rw=' 'sha256-huPMTGr6cVObgHsnurSzS3VFHnVgOZK23rNVnZ1rNYI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.15-r116">
+<meta name="app-build" content="2026.11.16-r117">
 <title>Ironlog Preview</title>
 <script>window.IRONLOG_APP=true;window.IRONLOG_ENV='preview';window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
@@ -2200,8 +2200,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.70";
-  var APP_VERSION = "2026.11.15-r116";
+  var DISPLAY_VERSION = "2.71";
+  var APP_VERSION = "2026.11.16-r117";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -5456,6 +5456,16 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var DEMOSET_KEY = KEY + ".demoSettings";
   var ASIDE_KEY = KEY + ".aside.";
   var device = { ok: true, boot: true, hadLocal: false, hadLog: false, lastSaved: null };
+  var keepAsked = false;
+  function keepStorage() {
+    if (keepAsked) return;
+    keepAsked = true;
+    const s3 = navigator.storage;
+    if (!s3 || typeof s3.persist !== "function" || typeof s3.persisted !== "function") return;
+    s3.persisted().then((kept) => kept || s3.persist()).catch((e5) => {
+      log("storage-persist", e5);
+    });
+  }
   var clearTimer = (t4) => {
     if (t4 != null) clearTimeout(t4);
   };
@@ -5902,6 +5912,11 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     if (asideIdx.length && ui.tab === "settings" && !ui.modal) fx.rerenderKeepScroll();
   }
   var BACKUP_DAYS = 7;
+  var LOG_CAP_CHARS = 25e5;
+  var LOG_NEAR_SHARE = 0.6;
+  function logNearFull() {
+    return (device.lastSaved || "").length >= LOG_CAP_CHARS * LOG_NEAR_SHARE;
+  }
   function backupDue() {
     if (!state.sessions.some((s3) => !s3.demo)) return false;
     const synced = cloud.on && cloud.last && Date.now() - cloud.last < BACKUP_DAYS * DAY_MS;
@@ -6988,7 +7003,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     }
     return { pb, pbb };
   }
-  function prJudge(ex, h3, x2) {
+  function prJudge(ex, h3, x2, heaviestHere = -Infinity) {
     if (h3.none) return { pr: null, progress: false };
     let repPR = null;
     const judged = x2.pts.map((p3) => {
@@ -7015,7 +7030,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     }
     const pb = (bandJ != null ? h3.byBand[bandJ] : void 0) ?? h3.maxPb;
     const e1PR = pbJ != null && pb != null && pbJ > pb + EPS_SAME;
-    const wJ = !ex.timed ? pts.filter((p3) => p3.r > 0 && p3.w > h3.prevMaxW + EPS_SAME).sort((a2, b2) => b2.w - a2.w || prScore(b2) - prScore(a2) || b2.r - a2.r)[0] : null;
+    const wJ = !ex.timed ? pts.filter((p3) => p3.r > 0 && p3.w > h3.prevMaxW + EPS_SAME && p3.w + EPS_SAME >= heaviestHere).sort((a2, b2) => b2.w - a2.w || prScore(b2) - prScore(a2) || b2.r - a2.r)[0] : null;
     const wPR = wJ ? asLogged(wJ) : null;
     const progress = !!repPR || e1PR || !!wPR;
     const big = noE1(ex) || !!ex.timed || !!ex.bw && !pts.some((q) => q.pl > 0) || pts.some((q) => prScore(q) > h3.topSc + EPS || prScore(q) >= h3.topSc - EPS && !prDominated(h3, q));
@@ -7054,8 +7069,10 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const ORDER2 = ["Rep PR", "e1RM", "Weight PR"];
     const rank = (t4) => ORDER2.indexOf(t4);
     let top = null;
+    let before2 = -Infinity;
     for (const p3 of x2.pts) {
-      const { pr } = prJudge(ex, h3, { pts: [p3], ...prBestOf(ex, [p3], noBody2) });
+      const { pr } = prJudge(ex, h3, { pts: [p3], ...prBestOf(ex, [p3], noBody2) }, before2);
+      if (p3.r > 0) before2 = Math.max(before2, p3.w);
       if (!pr || !pr.big) continue;
       const key = pr.type === "Weight PR" ? pr.w : pr.type === "e1RM" ? pr.value ?? 0 : prScore(p3);
       if (!top || rank(pr.type) > rank(top.pr.type) || rank(pr.type) === rank(top.pr.type) && key > top.key + EPS_SAME)
@@ -10966,6 +10983,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   function writeLocal(j3) {
     localStorage.setItem(KEY, j3);
     device.lastSaved = j3;
+    keepStorage();
     for (const f3 of savedHooks)
       try {
         f3();
@@ -12761,8 +12779,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       }
     return b2;
   }
-  function prSet(exId, date) {
-    const x2 = (IDX().byEx[exId] || []).find((q) => q.date === date);
+  function prSet(exId, sid) {
+    const x2 = (IDX().byEx[exId] || []).find((q) => q.sid === sid);
     if (!x2) return null;
     let b2 = null;
     for (const p3 of x2.pts) {
@@ -12898,8 +12916,12 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   function bestSetLine(exId) {
     const r4 = allTimeBests(exId);
     if (!r4) return "";
-    if (r4.est && isCompound(r4.ex))
-      return `Best ${setShort(r4.ex, r4.est.p.w, r4.est.p.r)}${loadNote(r4.ex)}, ${fmtDate(r4.est.date)}`;
+    if (r4.est && isCompound(r4.ex)) {
+      const e5 = r4.est;
+      const over = r4.front.filter((f3) => f3.p.pl >= e5.p.pl - EPS_SAME && f3.p.r >= e5.p.r && (f3.p.pl > e5.p.pl + EPS_SAME || f3.p.r > e5.p.r)).sort((a2, b2) => b2.p.pl - a2.p.pl || b2.p.r - a2.p.r)[0];
+      const best = over || e5;
+      return `Best ${setShort(r4.ex, best.p.w, best.p.r)}${loadNote(r4.ex)}, ${fmtDate(best.date)}`;
+    }
     return r4.heavy ? `Heaviest ${setShort(r4.ex, r4.heavy.p.w, r4.heavy.p.r)}${loadNote(r4.ex)}, ${fmtDate(r4.heavy.date)}` : "";
   }
   function goalState(exId) {
@@ -13565,6 +13587,15 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       clearTimeout(toastT);
       gone(el);
     }
+  }
+  function toastTakeBack(msg) {
+    const el = box();
+    if (!el || el.hidden || !cur || !cur.parts.includes(msg)) return;
+    cur.parts = cur.parts.filter((p3) => p3 !== msg);
+    if (!cur.parts.length) {
+      clearTimeout(toastT);
+      gone(el);
+    } else draw(el);
   }
   function toastHide() {
     const el = box();
@@ -16580,17 +16611,31 @@ ${more}`;
     };
     const me = scq(s3), myLoad = prLoad(ex, s3, date), myR = +(s3.r ?? 0);
     const asStrong = (x2) => scq(x2) > me + EPS || scq(x2) >= me - EPS && prLoad(ex, x2, date) >= myLoad - EPS && +(x2.r ?? 0) >= myR;
-    return b2.sets.some(
+    if (b2.sets.some(
       (x2, i5) => i5 < si && x2.done && !x2.warm && !x2.drop && +(x2.r ?? 0) > 0 && asStrong(x2) && livePR(b2.exId, x2, at2)
-    ) ? null : pr;
+    ))
+      return null;
+    if (pr === "Weight PR" && earlierSets(b2, si).some((x2) => prLoad(ex, x2, date) >= myLoad - EPS)) {
+      const m3 = liveMade(b2.exId, s3, at2);
+      return m3 && m3.pr && m3.pr.type === "Weight PR" && m3.pr.value != null ? "Best" : ex.timed ? "Time PR" : "Rep PR";
+    }
+    return pr;
   }
+  var earlierSets = (b2, si) => {
+    const ex = state.draft ? state.draft.ex : [];
+    const at2 = ex.indexOf(b2);
+    const cards = at2 > 0 ? ex.slice(0, at2).filter((x2) => x2.exId === b2.exId && !!x2.light === !!b2.light) : [];
+    return [...cards.flatMap((x2) => x2.sets), ...b2.sets.slice(0, si)].filter(
+      (x2) => x2.done && !x2.warm && !x2.drop && +(x2.r ?? 0) > 0
+    );
+  };
   function prBeat(exId, s3, at2, pr) {
     const m3 = liveMade(exId, s3, at2);
     const j3 = m3 && m3.pr;
     if (!m3 || !j3) return "";
     const { ex } = m3;
     const bandW = j3.type !== "Rep PR" && j3.bb != null && BAND_WORDS[j3.bb] || "";
-    if (pr === "Best" && j3.type === "e1RM") {
+    if (pr === "Best" && (j3.type === "e1RM" || j3.type === "Weight PR")) {
       if (j3.value == null) return "";
       if (!isCompound(ex)) return ` (your best for ${bandW})`;
       const all = j3.prevAll;
@@ -16978,15 +17023,9 @@ ${more}`;
     if (val && isMissed(s3) && !s3.warm && !s3.drop) toast(MISSED_SAID);
     if (val && !d3.editingId && blockDone(b2) && !blkIsOpen(bi, b2)) W.foldWait.add(b2);
     onLiftDraw(bi, redraw);
-    const pr = rowPR(b2, si, d3);
-    if (pr && !wasPR) {
-      const ex = EX(b2.exId);
-      toast(
-        `${pr === "Best" ? isCompound(ex) ? "New best estimate" : "PR" : pr}: ${exName(b2.exId)}, ${setShort(ex, +(s3.w ?? 0) || 0, s3.r)}${prBeat(b2.exId, s3, d3, pr)}`,
-        false,
-        PR_TOAST_MS,
-        "pr"
-      );
+    const said2 = prSaid(bi, si);
+    if (said2 && !wasPR) {
+      toast(said2, false, PR_TOAST_MS, "pr");
       const btn = document.querySelector(`[data-act="sDone"][data-b="${bi}"][data-s="${si}"]`);
       const row = btn && btn.closest(".sg");
       if (row instanceof HTMLElement) {
@@ -17027,6 +17066,8 @@ ${more}`;
     const b2 = d3 && d3.ex[bi];
     const s3 = b2 && b2.sets[si];
     if (!d3 || !b2 || !s3 || !s3.done) return false;
+    const said2 = saidAtFocus && saidAtFocus.s === s3 ? saidAtFocus.msg : prSaid(bi, si);
+    saidAtFocus = null;
     if (W.foldT && W.foldWait.has(b2)) {
       clearTimeout(W.foldT);
       const rf = blkRef(bi);
@@ -17038,7 +17079,30 @@ ${more}`;
       return true;
     }
     act(() => assessSet(bi, si), { inProgress: true });
+    prRetell(said2, bi, si);
     return false;
+  }
+  var saidAtFocus = null;
+  function notePrAtFocus(bi, si) {
+    const d3 = state.draft;
+    const s3 = d3 && d3.ex[bi] && d3.ex[bi].sets[si];
+    saidAtFocus = s3 && s3.done ? { s: s3, msg: prSaid(bi, si) } : null;
+  }
+  function prSaid(bi, si) {
+    const d3 = state.draft;
+    const b2 = d3 && d3.ex[bi];
+    const s3 = b2 && b2.sets[si];
+    if (!d3 || !b2 || !s3 || !s3.done) return null;
+    const pr = rowPR(b2, si, d3);
+    if (!pr) return null;
+    const ex = EX(b2.exId);
+    return `${pr === "Best" ? isCompound(ex) ? "New best estimate" : "PR" : pr}: ${exName(b2.exId)}, ${setShort(ex, +(s3.w ?? 0) || 0, s3.r)}${prBeat(b2.exId, s3, d3, pr)}`;
+  }
+  function prRetell(said2, bi, si) {
+    const now2 = prSaid(bi, si);
+    if (now2 === said2) return;
+    if (said2) toastTakeBack(said2);
+    if (now2) toast(now2, false, PR_TOAST_MS, "pr");
   }
   function nextLift(d3, i5) {
     const open = (x2, j3) => !blkIsShut(j3, x2);
@@ -17825,6 +17889,7 @@ ${stuck}${typeof A2.deleteAccount === "function" ? b`<button type="button" class
 <p class="small u-m0_f1n1n180"><b>Test version.</b> It keeps a separate log. Copy yours in to try it; your log in ${APP_NAME} stays as it is.</p>
 <button class="btn sm primary" data-act="previewCopy">Copy my log in</button></div>
 ` : A}${asideLine()}${privacyLine()}${safetyLine()}${backupDue() ? b`<p class="callout yellow u-m10-0-0"><b>Backup due.</b> ${s3.lastExport ? `Last backup file ${fmtDate(s3.lastExport)}.` : "No backup file yet."}${cloud.on ? " Your account has not synced this week. Export one below." : ""}</p>
+` : A}${logNearFull() ? b`<p class="callout yellow u-m10-0-0" id="logNearFull"><b>Your log is near this browser's storage limit.</b> ${cloud.on ? "Your account keeps it. Export a backup too." : "Sign in or export a backup, so nothing is lost when it fills."}</p>
 ` : A}${device.ok ? A : b`<p class="small u-cred">This browser blocks storage: nothing is kept after a reload unless you sync.</p>
 `}${unreadableRaw() ? b`<div class="panel u-mt8" id="unreadPanel">
 <p class="small u-m0-0-6"><b>A save on this device could not be read</b> by this build, and was kept aside. Restore tries it again, which a later build may read; Show its text to copy it out.</p>
@@ -19964,7 +20029,7 @@ ${extraKpis()}</div>`;
     const prBody = bigPR.length ? b`${bigPR.slice(0, PRS_SHOWN).map((p3) => {
       const ex = EX(p3.exId);
       const iso2 = p3.type === "e1RM" && !isCompound(ex);
-      const ps = iso2 ? prSet(p3.exId, p3.date) : null;
+      const ps = iso2 ? prSet(p3.exId, p3.sid) : null;
       const tag = ex.timed && p3.type === "Rep PR" ? "Time PR" : p3.type === "e1RM" ? iso2 ? "PR" : prName(p3) : p3.type;
       const val = p3.type === "e1RM" ? iso2 ? ps ? setShort(ex, ps.w, ps.r) : "" : fmtE(ex, p3.value) + " " + liftU(ex) : setShort(ex, p3.w, p3.r);
       return b`<div class="row spread u-p6-0_bb1-solid-line"><span>${ex.name} <span class=${`tag ${p3.type === "Rep PR" ? "blue" : "green"}`}>${tag}</span></span><span class="num">${val} <span class="muted small">${fmtDate(p3.date)}</span></span></div>`;
@@ -22634,7 +22699,10 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
   function workoutFocus(e5) {
     const t4 = e5.target;
     if (!(t4 instanceof HTMLInputElement)) return;
-    if (t4.matches(".sg input[data-f]")) onSetFocus(t4);
+    if (t4.matches(".sg input[data-f]")) {
+      notePrAtFocus(Number(t4.dataset.b), Number(t4.dataset.s));
+      onSetFocus(t4);
+    }
     if (!t4.matches('.sg input[data-f="w"]')) return;
     if (W.lastDown.el !== t4 || Date.now() - W.lastDown.t > TOUCH_MS) return;
     armLoad(t4);
@@ -26250,7 +26318,6 @@ ${JSON.stringify(ctx, null, 1)}`;
       ex: day.items.map((it) => newBlock(it.exId, it, { before: date }))
     };
   }
-  var PARKED_SAID = "Your workout in progress is set aside. It comes back when you save or discard this one.";
   function resumeOpen() {
     if (!state.draft) return false;
     ui.away = null;
@@ -26679,10 +26746,8 @@ ${JSON.stringify(ctx, null, 1)}`;
       };
       closeModal();
       const d3 = state.draft;
-      if (d3 && parkDraft()) {
-        go();
-        toast(PARKED_SAID);
-      } else if (d3 && (d3.editingId || draftEntered(d3)))
+      if (d3 && parkDraft()) go();
+      else if (d3 && (d3.editingId || draftEntered(d3)))
         confirmBox(
           "Replace the session in progress?",
           d3.editingId ? "Editing a saved session. The edits will be lost." : "An unsaved session is open. Starting this one discards it.",
@@ -26755,10 +26820,8 @@ ${JSON.stringify(ctx, null, 1)}`;
         ui.tab = "today";
         begin(d3, false);
       };
-      if (state.draft && parkDraft()) {
-        go();
-        toast(PARKED_SAID);
-      } else if (state.draft)
+      if (state.draft && parkDraft()) go();
+      else if (state.draft)
         confirmBox(
           "Replace the session in progress?",
           state.draft.editingId ? "Editing a saved session. The edits will be lost." : "An unsaved session is open. Editing this one discards it.",
@@ -27553,13 +27616,16 @@ ${JSON.stringify(ctx, null, 1)}`;
   }
   function recapPr(pr) {
     const e5 = EX(pr.exId);
-    if (pr.type === "Weight PR")
+    if (pr.type === "Weight PR") {
+      const top = prSet(pr.exId, pr.sid);
+      const own2 = pr.value != null && isCompound(e5) && !(top && top.v > pr.value + EPS_SAME);
       return {
         name: e5.name,
-        what: `Weight PR, ${setShort(e5, pr.w, pr.r)}${pr.value != null && isCompound(e5) ? `, best estimate ${fmtE(e5, pr.value)} ${liftU(e5)}${loadNote(e5)}` : ""}`,
+        what: `Weight PR, ${setShort(e5, pr.w, pr.r)}${own2 && pr.value != null ? `, best estimate ${fmtE(e5, pr.value)} ${liftU(e5)}${loadNote(e5)}` : ""}`,
         was: e5.assist ? "less help than ever" : isFinite(pr.prevW ?? NaN) ? `heaviest before ${listLabel(e5, pr.prevW ?? 0, !e5.bw)}` : ""
       };
-    const ps = pr.type === "e1RM" && !isCompound(e5) ? prSet(pr.exId, pr.date) : null;
+    }
+    const ps = pr.type === "e1RM" && !isCompound(e5) ? prSet(pr.exId, pr.sid) : null;
     if (ps) return { name: e5.name, what: `PR, ${setShort(e5, ps.w, ps.r)}`, was: "your best for that number of reps" };
     return pr.type === "e1RM" ? {
       name: e5.name,
@@ -28214,6 +28280,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       const s3 = b2 && b2.sets[si];
       if (!d3 || !b2 || !s3) return;
       const n3 = numIn(t4.dataset.v || "");
+      const said2 = prSaid(bi, si);
       act(
         () => {
           s3.rir = n3 == null ? null : Math.min(Math.max(n3, 0), EFFORT_TOP);
@@ -28223,6 +28290,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       );
       rirClose();
       redraw();
+      prRetell(said2, bi, si);
       const btn = document.querySelector(`.rirb[data-b="${bi}"][data-s="${si}"]`);
       if (btn)
         try {
@@ -30576,7 +30644,6 @@ if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostnam
     document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')reg.update().catch(()=>{/* Offline or the site not answering: expected, and the check runs again when the app comes back. */});});
   }).catch(e=>{if(window.ironlogLog)window.ironlogLog('sw-register',e);});});
 }
-try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persisted().then(p=>p||navigator.storage.persist()).catch(e=>{if(window.ironlogLog)window.ironlogLog('storage-persist',e);});}catch(e){if(window.ironlogLog)window.ironlogLog('storage-persist',e);}
 </script>
 </body>
 </html>
