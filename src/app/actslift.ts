@@ -37,6 +37,7 @@ import { carried } from './workstate';
 import type { Tap } from './workstate';
 import { blockWords, distIn, fillSets, parseSets, refreshBlock, refreshEx } from './worksets';
 import { pickName, unname } from './machines';
+import { stepOnPlans } from './routines';
 
 /** The heaviest load a lift's limit may be, by the unit typed in. */
 const MAX_LOAD = { lb: 4000, kg: 2000 } as const;
@@ -444,8 +445,8 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   incSave() {
     const m = ui.modal;
     const n = numIn(fieldText('incVal'));
-    if (n == null || n <= 0) {
-      toast('Enter a step above 0');
+    if (n == null || n < 0) {
+      toast('Enter a step, or 0 to keep the load');
       return;
     }
     const sheet = m && m.kind === 'inc' ? m : null;
@@ -463,10 +464,12 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     }
     const inc = typedBoundOf(e, n, LIMITS.step);
     closeModal();
-    // Kept as entered, in the lift's unit, which the field shows it in.
+    // Kept as entered, in the lift's unit, which the field shows it in; on every day of its plans (stepOnPlans).
     act(() => {
       e.inc = inc;
-      e.incU = liftU(e);
+      if (inc > 0) e.incU = liftU(e);
+      else delete e.incU;
+      stepOnPlans(state.routines, e.id, inc);
     });
     refreshEx(e.id);
     rerenderKeepScroll();

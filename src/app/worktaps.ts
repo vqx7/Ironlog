@@ -79,7 +79,8 @@ import {
   restNext,
   CAL_OFFER,
   doneChanged,
-  onLiftDraw
+  onLiftDraw,
+  prOfBatch
 } from './worksets';
 import { BACK_SAID, finish, finishNow } from './workfinish';
 import { LIMITS, EFFORT_TOP } from './records';
@@ -600,6 +601,11 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       );
       after();
       toast(`${sets} logged as shown`, true);
+      // Its PR said as a tick says it, joined to the message (prOfBatch).
+      prOfBatch(
+        bi,
+        shown.map(x => x.s)
+      );
     };
     if (blocked)
       confirmBox(

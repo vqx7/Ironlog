@@ -10,13 +10,14 @@ import { act } from './act';
 import { isCompound } from './library';
 import { planItemOf, move, fixSupersets, partOf, DEFAULT_PLAN } from './routines';
 import { min5, rangeWords, MISSED_SAID } from './format';
-import { e1, prSameLoad, BACK_DAYS, isMissed, longBreak, prScoreOf, seeLoads } from './formulas';
+import { e1, prSameLoad, BACK_DAYS, isMissed, longBreak, seeLoads } from './formulas';
 import type { ReadDay } from './setread';
 import { dayOf } from './setread';
 import { KM_MI, unitOnGrid } from './units';
 import { addDays, today, uid, numIn, EPS, EPS_SAME, WEEK_DAYS, r3 } from './util';
 import { loadWords } from './loads';
-import { BAND_WORDS, prAdd, prBestOf, prJudge, prSoFar } from './prs';
+import { BAND_WORDS, prAdd, prOfSet, prSoFar } from './prs';
+import type { PrMade } from './prs';
 import {
   activeRoutine,
   appU,
@@ -272,9 +273,9 @@ export function draftEntered(d: Draft | null | undefined): boolean {
 
 /* ---------- PRs as a set is logged ---------- */
 
-/* The PR a set makes as it is logged: the PR list's own scorer (prJudge),
-   the set judged as a session of one against the
-   lift's sessions before it. Only sets logged up to the session's date count,
+/* The PR a set makes as it is logged: the PR list's own rule (prs.ts prOfSet),
+   the set judged against the lift's sessions before it and this session's
+   sets before it. Only sets logged up to the session's date count,
    so a past session entered late is judged against what came before it, at
    its load as the list judges it (prSameLoad: changing units or gyms is
    not a PR); since a New machine or gym, against the sessions there. Said
@@ -284,12 +285,14 @@ export function draftEntered(d: Draft | null | undefined): boolean {
    every earlier estimate as its band's first), more reps at a load
    (90% or more of the strongest set before it). A blank effort is read
    as every estimate reads it (rirEst). */
-/* The set judged, with its lift: what livePR names and prBeat words. */
+/* The set judged, with its lift, after the session's working sets before it (none for a set judged alone): what livePR
+   and rowPR name and prBeat words, by the list's own rule (prs.ts prOfSet). */
 function liveMade(
   exId: string,
   s: DraftSet | null | undefined,
-  at: ReadDay
-): { ex: ExerciseLike; pr: ReturnType<typeof prJudge>['pr'] } | null {
+  at: ReadDay,
+  before: readonly DraftSet[] = []
+): { ex: ExerciseLike; pr: PrMade | null } | null {
   if (!s || s.warm || s.drop || !(+(s.r ?? 0) > 0)) return null;
   const date = dayOf(at);
   const f = prFrame(exId, s, date);
@@ -298,70 +301,47 @@ function liveMade(
   const h = prSoFar();
   // As the list reads them: a block of drop sets alone feeds no PR.
   for (const x of exps) if (!x.dropOnly) prAdd(h, x);
-  // The set as the index reads a logged one: its load, its PR load, its reps, its load as typed and its effort.
-  const p: ExPoint = {
-    load: ex.bw ? f.own : loadOf(ex, s, date),
-    pl: f.own,
-    r: +(s.r ?? 0),
-    w: Number(s.w) || 0,
-    rir: rirEff(s, ex, at),
-    rq: rirEst(s, ex, at),
-    u: s.u ?? null
+  // A set as the index reads a logged one: its load, its PR load, its reps, its load as typed and its effort.
+  const point = (x: DraftSet): ExPoint => {
+    const own = prLoad(ex, x, date);
+    return {
+      load: ex.bw ? own : loadOf(ex, x, date),
+      pl: own,
+      r: +(x.r ?? 0),
+      w: Number(x.w) || 0,
+      rir: rirEff(x, ex, at),
+      rq: rirEst(x, ex, at),
+      u: x.u ?? null
+    };
   };
-  const { pb, pbb } = prBestOf(ex, [p], noBody(ex));
-  return { ex, pr: prJudge(ex, h, { pts: [p], pb, pbb }).pr };
+  return { ex, pr: prOfSet(ex, h, before.map(point), point(s), noBody(ex)) };
 }
 
-/** The PR a set being logged makes against the log up to its day, or null; read as a row of the workout given, or as a set saved on the date given. */
-export function livePR(exId: string, s: DraftSet | null | undefined, at: ReadDay): string | null {
-  const m = liveMade(exId, s, at);
-  const pr = m && m.pr;
-  if (!m || !pr || !pr.big) return null;
-  if (pr.type === 'Weight PR') return 'Weight PR';
-  if (pr.type === 'e1RM') return 'Best';
-  return m.ex.timed ? 'Time PR' : 'Rep PR';
+/** How a PR is named on its row and in its message: Weight PR, Best (a best estimate), or a Rep PR (Time PR on a timed hold). */
+const prWord = (ex: ExerciseLike, pr: PrMade): string =>
+  pr.type === 'Weight PR' ? 'Weight PR' : pr.type === 'e1RM' ? 'Best' : ex.timed ? 'Time PR' : 'Rep PR';
+
+/** The PR a set being logged makes against the log up to its day, judged alone, or null; read as a row of the workout given, or as a set saved on the date given. */
+export function livePR(
+  exId: string,
+  s: DraftSet | null | undefined,
+  at: ReadDay,
+  before: readonly DraftSet[] = []
+): string | null {
+  const m = liveMade(exId, s, at, before);
+  return m && m.pr ? prWord(m.ex, m.pr) : null;
 }
 
-/* Not a PR when an earlier PR in this session was as strong (100 x 10,
-   then 100 x 9 is not a new best), on any day, as the list counts it. The
-   row and the folded line are read by this one rule every draw, not only
-   when a set is ticked (a redraw by livePR alone marked 100 x 9 a PR again
-   after 100 x 10). Only an earlier set that was itself a PR counts here: the
-   list judges each set against the sessions before, so 145 x 12 after 135 x
-   15 at 3 in reserve, no PR, is still a counted Weight PR, with its label
-   and toast. */
-/** The PR row si of a block shows: livePR, unless an earlier PR of this session was as strong. */
+/* The PR row si of a block shows and says: the set judged after this session's working sets before it, the lift's
+   earlier cards in the workout included, by the list's rule (prOfSet), so the row, its message and the PR the list
+   counts once saved are one judgement. Read every draw, not only when a set is ticked (a redraw judging the set alone
+   marked 100 x 9 a PR again after 100 x 10). */
+/** The PR row si of a block shows, or null. */
 export function rowPR(b: DraftBlock, si: number, at: ReadDay): string | null {
   const s = b.sets[si];
   if (!s || !s.done) return null;
-  const pr = livePR(b.exId, s, at);
-  const date = dayOf(at);
-  if (!pr) return null;
-  const ex = EX(b.exId);
-  const scq = (x: DraftSet): number => {
-    const l = prLoad(ex, x, date);
-    const r = +(x.r ?? 0);
-    return prScoreOf(l, r, rirEst(x, ex, at));
-  };
-  const me = scq(s),
-    myLoad = prLoad(ex, s, date),
-    myR = +(s.r ?? 0);
-  // As strong: a higher score, or the same with as many reps at as much load (prJudge's big).
-  const asStrong = (x: DraftSet): boolean =>
-    scq(x) > me + EPS || (scq(x) >= me - EPS && prLoad(ex, x, date) >= myLoad - EPS && +(x.r ?? 0) >= myR);
-  if (
-    b.sets.some(
-      (x, i) => i < si && x.done && !x.warm && !x.drop && +(x.r ?? 0) > 0 && asStrong(x) && livePR(b.exId, x, at)
-    )
-  )
-    return null;
-  /* Heavier than every session before, it is no Weight PR after a set of this session as heavy or heavier: it is
-     named by its next kind, a best estimate when it set one (145 x 10 after 155 x 7), else more reps. */
-  if (pr === 'Weight PR' && earlierSets(b, si).some(x => prLoad(ex, x, date) >= myLoad - EPS)) {
-    const m = liveMade(b.exId, s, at);
-    return m && m.pr && m.pr.type === 'Weight PR' && m.pr.value != null ? 'Best' : ex.timed ? 'Time PR' : 'Rep PR';
-  }
-  return pr;
+  const m = liveMade(b.exId, s, at, earlierSets(b, si));
+  return m && m.pr ? prWord(m.ex, m.pr) : null;
 }
 
 /** The working sets ticked before row si of a block, with reps, its lift's earlier cards in the workout included (the
@@ -384,9 +364,9 @@ const earlierSets = (b: DraftBlock, si: number): DraftSet[] => {
    best before the set is named, so "was" never names a band's best that
    reads as lower than the bests board. */
 /** The tail of a PR toast: what the set beat. */
-export function prBeat(exId: string, s: DraftSet, at: ReadDay, pr: string): string {
+export function prBeat(exId: string, s: DraftSet, at: ReadDay, pr: string, before: readonly DraftSet[] = []): string {
   // The words come from the same judgement the label does, so a toast never names a number the list does not.
-  const m = liveMade(exId, s, at);
+  const m = liveMade(exId, s, at, before);
   const j = m && m.pr;
   if (!m || !j) return '';
   const { ex } = m;
@@ -466,9 +446,11 @@ export function blockProgress(b: DraftBlock): { text: string; beat: boolean } | 
       heavyBeat = best > t.prevBest + EPS_SAME;
       const iso = !isCompound(ex);
       const setW = bs ? setShort(ex, { w: +(bs.w ?? 0) || 0, r: +(bs.r ?? 0), u: bs.u }) : '';
+      // "Your best yet" only of a set the PR rule names one (rowPR), as its row and message do: the target's best is the current range's alone.
+      const yet = !!bs && !!rowPR(b, b.sets.indexOf(bs), state.draft || today());
       heavyTxt = iso
         ? heavyBeat
-          ? `Beaten by load: ${setW}, your best yet`
+          ? `Beaten by load: ${setW}${yet ? ', your best yet' : ''}`
           : `Heavier than target: ${setW}`
         : heavyBeat
           ? `Beaten by load: ${fmtE(ex, best)} ${liftU(ex)} estimated${wasE(ex, best, t.prevBest) ? `, previous best ${wasE(ex, best, t.prevBest)}` : ''}`
@@ -1000,26 +982,7 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean, t
   if (val && isMissed(s) && !s.warm && !s.drop) toast(MISSED_SAID);
   if (val && !d.editingId && blockDone(b) && !blkIsOpen(bi, b)) W.foldWait.add(b);
   onLiftDraw(bi, redraw);
-  const said = prSaid(bi, si);
-  if (said && !wasPR) {
-    toast(said, false, PR_TOAST_MS, 'pr');
-    /* The PR moment: a short gold pulse on the row, and a buzz where
-       the phone allows it (Android; iPhones give web apps no vibration). */
-    const btn = document.querySelector(`[data-act="sDone"][data-b="${bi}"][data-s="${si}"]`);
-    const row = btn && btn.closest('.sg');
-    // The pulse is the page's effect, not the screen's: lit-html keeps the row between draws, so the mark goes when the pulse ends.
-    if (row instanceof HTMLElement) {
-      row.classList.remove('prflash');
-      void row.offsetWidth;
-      row.classList.add('prflash');
-      row.addEventListener('animationend', () => row.classList.remove('prflash'), { once: true });
-    }
-    try {
-      if (navigator.vibrate) navigator.vibrate(PR_BUZZ);
-    } catch (e) {
-      // Vibration is optional; a browser that refuses it changes nothing.
-    }
-  }
+  if (!wasPR) prMoment(bi, si);
   let autoRest =
     val && !again && !s.warm && !d.editingId && !d.past && +b.plan.rest > 0 && state.settings.timerMode === 'auto';
   if (autoRest && b.plan.ss) {
@@ -1049,6 +1012,45 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean, t
     W.foldT = setTimeout(() => autoFold(rf), FOLD_MS.tick);
   }
   if (val && b.sets.filter(x => x.done).length === 1 && orderAt(b) >= 0) orderSoon(b);
+}
+
+/* The PR moment, as a set is marked done and becomes a PR (a tick, quick entry, Log them as shown: one rule): its
+   message, a short gold pulse on the row, and a buzz where the phone allows it (Android; iPhones give web apps no
+   vibration). Nothing when the set is no PR. */
+/** Says set si of lift bi's PR, if it is one (above). */
+function prMoment(bi: number, si: number): void {
+  const said = prSaid(bi, si);
+  if (!said) return;
+  toast(said, false, PR_TOAST_MS, 'pr');
+  const btn = document.querySelector(`[data-act="sDone"][data-b="${bi}"][data-s="${si}"]`);
+  const row = btn && btn.closest('.sg');
+  // The pulse is the page's effect, not the screen's: lit-html keeps the row between draws, so the mark goes when the pulse ends.
+  if (row instanceof HTMLElement) {
+    row.classList.remove('prflash');
+    void row.offsetWidth;
+    row.classList.add('prflash');
+    row.addEventListener('animationend', () => row.classList.remove('prflash'), { once: true });
+  }
+  try {
+    if (navigator.vibrate) navigator.vibrate(PR_BUZZ);
+  } catch (e) {
+    // Vibration is optional; a browser that refuses it changes nothing.
+  }
+}
+/* Sets marked done together (quick entry, Log them as shown): each is scored as a tick scores it (assessSet, the next
+   sets adjusted), and the last of them that is a PR is said, the one a lifter ticking them in turn would see last. */
+/** After sets `done` of lift bi, none done before, were marked done together, says the last PR among them. */
+export function prOfBatch(bi: number, done: readonly DraftSet[]): void {
+  const d = state.draft;
+  const b = d && d.ex[bi];
+  if (!d || !b) return;
+  for (let k = done.length - 1; k >= 0; k--) {
+    const si = b.sets.indexOf(done[k]);
+    if (si >= 0 && rowPR(b, si, d)) {
+      prMoment(bi, si);
+      return;
+    }
+  }
 }
 
 /* A ticked set's load or reps changed, typed in its field or stepped (one rule for both): a load far off or a
@@ -1098,7 +1100,7 @@ export function prSaid(bi: number, si: number): string | null {
   const pr = rowPR(b, si, d);
   if (!pr) return null;
   const ex = EX(b.exId);
-  return `${pr === 'Best' ? (isCompound(ex) ? 'New best estimate' : 'PR') : pr}: ${exName(b.exId)}, ${setShort(ex, { w: +(s.w ?? 0) || 0, r: s.r, u: s.u })}${prBeat(b.exId, s, d, pr)}`;
+  return `${pr === 'Best' ? (isCompound(ex) ? 'New best estimate' : 'PR') : pr}: ${exName(b.exId)}, ${setShort(ex, { w: +(s.w ?? 0) || 0, r: s.r, u: s.u })}${prBeat(b.exId, s, d, pr, earlierSets(b, si))}`;
 }
 
 /* A ticked set changed after its PR was said (its effort rated, its load or reps typed again) is told again as it now
@@ -1633,6 +1635,7 @@ export function fillSets(bi: number, list: TypedSet[]): number {
   if (!d || !b) return 0;
   if (EX(b.exId).assist) for (const p of list) if (p.w > 0) p.w = -p.w;
   let far = -1;
+  const ticked: DraftSet[] = [];
   act(
     () => {
       let si = b.sets.findIndex(x => !x.done && !x.warm);
@@ -1648,15 +1651,21 @@ export function fillSets(bi: number, list: TypedSet[]): number {
         x.warm = false;
         x.drop = false;
         x.done = !oddLoad(b, si, d.date) && !oddReps(b, x);
-        // Ticked here by the app, it keeps what was asked of it as a set ticked by its button does; one far off is
-        // ticked, and keeps it, when its question is answered (setDone).
-        if (x.done) noteAsked(d, b, si);
+        // Ticked here by the app, it keeps what was asked of it, and is scored, as a set ticked by its button is; one
+        // far off is ticked, and keeps it, when its question is answered (setDone).
+        if (x.done) {
+          noteAsked(d, b, si);
+          assessSet(bi, si);
+          ticked.push(x);
+        }
         if (!x.done && far < 0) far = si;
         si++;
       }
     },
     { inProgress: true }
   );
+  // Its PR said as a tick says it (prOfBatch).
+  prOfBatch(bi, ticked);
   if (far >= 0) {
     rerenderKeepScroll();
     setDone(bi, far, true);

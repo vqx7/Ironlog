@@ -182,6 +182,8 @@ interface PrBase {
   sid: string;
   exId: string;
   big: boolean;
+  /** A set of the session heavier than any before it that is not the PR counted, said in the recap as Heaviest yet. */
+  heavy?: { w: number; u: Unit | null; r: number };
 }
 
 /** A PR (idxPRs): a heavier set than any before, a best estimate, or more
@@ -470,11 +472,12 @@ export function EXIn(M: Model, id: string): ExerciseLike {
     M.c.EXMAP = Object.create(null) as Record<string, Exercise>;
     for (const e of M.s.exercises) M.c.EXMAP[e.id] = e;
   }
+  // A lift the log no longer holds (deleted on a build that removed it, or on another phone) counts to no muscle.
   return (
     M.c.EXMAP[id] || {
       id,
       name: 'Deleted exercise',
-      primary: 'chest',
+      primary: '',
       secondary: [],
       equip: 'other',
       bw: false,

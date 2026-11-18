@@ -245,10 +245,9 @@ export function tick(): void {
     if (l.textContent !== lt) l.textContent = lt;
   }
   el.classList.toggle('done', !left);
-  // The ring (and the compact pill's bar) empties as the rest runs down; -15 shortens it, +15 lengthens it; done, it is full.
+  // The full card's ring empties as the rest runs down; -15 shortens it, +15 lengthens it; done, it is full. The compact pill shows the time alone.
   const tot = Math.max(timer.total || 0, left, 1);
   const tp = Math.max(0, Math.min(1, left / tot));
-  el.style.setProperty('--tp', String(tp));
   const ring = el.querySelector('[data-t="p"]');
   if (ring) ring.setAttribute('stroke-dasharray', `${left ? r1(tp * PERCENT) : PERCENT} ${PERCENT}`);
   if (!left) {

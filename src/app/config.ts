@@ -140,6 +140,11 @@ export const THREE_URLS: readonly string[] =
     placeholder). */
 export const NET_MS = 20000;
 
+/** The display modes only an installed copy of the app opens in, as one line of words: the app's (env.ts isStandalone)
+    and the account script's reading of where it runs (scripts/cloud-supabase.js, through the build's placeholder),
+    so the two never disagree on whether this copy is the installed app. */
+export const INSTALLED_MODES = 'standalone minimal-ui window-controls-overlay';
+
 /** Where a report's ticket lives: the Inbox links a report to its ticket
     only when the address starts here (a report's fields are written by
     whoever sent it, so any other address is not linked; FEEDBACK.md). */

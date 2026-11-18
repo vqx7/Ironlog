@@ -197,8 +197,12 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   under the session's working load (r55.1). With Your gym's plates set, a bar lift's loads are ones the bar and those
   plates make (r55.1). A past week is read against what its routine
   planned then (each session records it, `pw`), never the routine as it is now, and a lift's session by the sets its plan gave it then (`ps`, r58). A PR is a PR on any day, and a change of units or gyms is never one.
-  A PR is a set stronger than every earlier one, the same PR on every screen; a heavier set that is not one is
-  Heaviest yet (r58). A muscle has a weekly target by default only when lifters train it directly for size
+  A PR is a set stronger than every earlier one, this session's earlier sets included, the same PR on every screen
+  and said at the gym as the list counts it (prs.ts `prOfSet`, one rule for the row, its message and the list; V,
+  2026-11-17, decision 1); a heavier set that is not one is Heaviest yet (r58): 102.5 x 8 after 100 x 10 at the same
+  effort. A lift's load step is its own, set by any of its three editors, 0 a fixed load on every day (2.75). An
+  exercise any record still names (a routine, a session, the workout open or set aside, Recently deleted) is hidden
+  from the library, never removed, and a lift the log does not hold counts to no muscle. A muscle has a weekly target by default only when lifters train it directly for size
   (`TARGETED`); any other is tracked only until the lifter gives it one, which then counts everywhere (`hasTargetIn`, r58).
 - **V's rulings on screen:** Stats opens with the week's word, Progressing, Stalled or Regressing, and the coach's one
   change, the lines it rests on folded under it; lifts in none of its groups are never shown (V, 2026-11-15, NEW-156,

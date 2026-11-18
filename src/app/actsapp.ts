@@ -129,8 +129,18 @@ async function exportFile(
   } catch (e) {
     log('export', e);
   }
+  // Shown as text instead, a backup's copy records the backup as its download would (onSaved), and no other text's does.
+  const asText = (): void =>
+    openModal({
+      kind: 'text',
+      title: fallbackTitle,
+      help: fallbackHelp,
+      text: data,
+      readonly: true,
+      ...(onSaved ? { backup: true as const } : {})
+    });
   if (!clicked) {
-    openModal({ kind: 'text', title: fallbackTitle, help: fallbackHelp, text: data, readonly: true });
+    asText();
     return;
   }
   // Only the lifter can see whether the download landed.
@@ -145,7 +155,7 @@ async function exportFile(
     false,
     {
       label: 'Show the text instead',
-      fn: () => openModal({ kind: 'text', title: fallbackTitle, help: fallbackHelp, text: data, readonly: true })
+      fn: asText
     }
   );
 }
@@ -557,19 +567,26 @@ export const APP_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       title: 'Backup text',
       help: 'Select all and copy. Paste it into Import on any device to restore.',
       text: JSON.stringify({ app: STORAGE_ID, exported: new Date().toISOString(), state }),
-      readonly: true
+      readonly: true,
+      backup: true
     });
   },
+  /* Copy on a text sheet. Only the backup's text, copied, is a backup made: Diagnostics, a report, feedback or the CSV
+     copied record nothing, so Backup due stays as it was (the full review's L4-13). */
   copyText() {
     const ta = document.getElementById('mText');
     if (!(ta instanceof HTMLTextAreaElement)) return;
+    const backup = ui.modal && ui.modal.kind === 'text' && ui.modal.backup === true;
+    const made = (): void => {
+      if (backup) markExported();
+    };
     ta.select();
     let ok = false;
     try {
       if (navigator.clipboard) {
         navigator.clipboard.writeText(ta.value).then(
           () => {
-            markExported();
+            made();
             toast('Copied');
           },
           () => {
@@ -583,7 +600,7 @@ export const APP_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     } catch (e) {
       log('copy', e);
     }
-    if (ok) markExported();
+    if (ok) made();
     toast(ok ? 'Copied' : 'Select the text and copy it manually');
   }
 };

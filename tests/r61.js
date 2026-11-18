@@ -125,7 +125,8 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
       const typeIn = async (q, v) => { await ev(([q, v]) => { const e = document.querySelector(q); e.value = v; e.dispatchEvent(new Event('input', { bubbles: true })); e.dispatchEvent(new Event('change', { bubbles: true })); }, [q, String(v)]); await wait(100); };
       const fieldOf = q => ev(q => (document.querySelector(q) || {}).value, q);
       const R = await ev(() => { const L = window.__ironlog; const R = L.state.routines.find(r => r.id === L.state.activeRoutineId); const di = R.days.findIndex(x => !x.rest && x.items.length); return { di, uid: R.days[di].items[0].uid }; });
-      const itemOf = uid => ev(uid => window.__ironlog.state.routines.flatMap(r => r.days).flatMap(d => d.items).find(i => i.uid === uid).inc, uid);
+      // The step Plan's field sets: the lift's own, on every day and routine (since 2.75).
+      const itemOf = uid => ev(uid => { const L = window.__ironlog; const it = L.state.routines.flatMap(r => r.days).flatMap(d => d.items).find(i => i.uid === uid); return L.state.exercises.find(e => e.id === it.exId).inc; }, uid);
       // The bar in Settings: 120 lb or 60 kg typed; a bar is kept up to 50 kg.
       const barQ = '#view input[data-bind="barKg"]';
       await typeIn(barQ, unit === 'lb' ? 120 : 60);
@@ -150,7 +151,7 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
       ok(load.field === want.load && Math.abs(load.kg - 20000 * LB) < 1e-6, `3. ${unit}: a load typed past 20,000 lb shows ${want.load}`, load);
       // Opened again, the log holds what the fields showed.
       await P.page.reload(); await wait(400);
-      const after = await ev(([q, uid]) => { const L = window.__ironlog; const it = L.state.routines.flatMap(r => r.days).flatMap(d => d.items).find(i => i.uid === uid); return { bar: L.state.settings.barKg, step: it.inc, load: L.state.draft.ex[0].sets[0].w, field: (document.querySelector(q) || {}).value }; }, [wQ, R.uid]);
+      const after = await ev(([q, uid]) => { const L = window.__ironlog; const it = L.state.routines.flatMap(r => r.days).flatMap(d => d.items).find(i => i.uid === uid); return { bar: L.state.settings.barKg, step: L.state.exercises.find(e => e.id === it.exId).inc, load: L.state.draft.ex[0].sets[0].w, field: (document.querySelector(q) || {}).value }; }, [wQ, R.uid]);
       ok(Math.abs(after.bar - bar.kg) < 1e-9 && Math.abs(after.step - step.kg) < 1e-9 && Math.abs(after.load - load.kg) < 1e-9 && after.field === load.field, `3. ${unit}: opened again, the bar, the step and the load are what the fields showed`, after);
       ok(!P.errors.length, `3. ${unit}: no page errors`, P.errors);
       await P.ctx.close();
@@ -265,7 +266,10 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
         // The build before's save, as it would sit on the phone; then this build's reading of it.
         const saved = await P.page.evaluate(r => JSON.stringify(window.__ironlog.normalize(JSON.parse(r))), raw);
         const read = await B.page.evaluate(r => JSON.stringify(window.__ironlog.normalize(JSON.parse(r))), saved);
-        walk(JSON.parse(saved), JSON.parse(read), 'log');
+        const was = JSON.parse(saved);
+        // 2.75 reads the library's old equipment on the Preacher Curl (a machine) as the barbell it is filed with now (V's decision 4).
+        if (before === 'r120.html') for (const e of was.exercises || []) if (e && e.id === 'preacher' && e.equip === 'machine') e.equip = 'barbell';
+        walk(was, JSON.parse(read), 'log');
       }
       ok(leaves > N5 * 1000 && !changed.length, `4. a log the build before (${before}) saved keeps every value it wrote, read by this build (${N5} wide histories, ${leaves} values): a migration only adds`, changed);
       await P.ctx.close();

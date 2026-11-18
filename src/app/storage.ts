@@ -63,9 +63,11 @@ export const PHOTO_KEY = KEY + '.photo',
   PHOTO_SYNC = KEY + '.photoSync',
   PHOTO_ASKED = KEY + '.photoAsked',
   PHOTO_TIP = KEY + '.photoTip';
+/** The set-aside workout's record as kept (park.ts reads its fields; pics.ts keeps the pictures its notes name), or null. */
+export const parkedRec = (): Rec | null => rec(parseJson(prefGet(PARKED_KEY) || 'null'));
 /** Moves a set-aside workout from the log of account `from` ('' for none) to `to`, when a sign-in takes the phone's log into that account (takeAccount): it goes where the log goes. */
 export function parkedRetag(from: string, to: string): void {
-  const r = rec(parseJson(prefGet(PARKED_KEY) || 'null'));
+  const r = parkedRec();
   if (r && r['uid'] === from) prefSet(PARKED_KEY, JSON.stringify({ ...r, uid: to }));
 }
 /** The settings kept aside while the demo is loaded (demoKeep). */

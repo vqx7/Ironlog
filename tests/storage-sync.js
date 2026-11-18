@@ -539,6 +539,15 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
     ok((await T.ev(() => (window.__copied || '').includes('"sessions"'))), 'S-5: (setup) the backup text was copied');
     ok((await T.menu()).txt === SAVED, 'S-5: copying the backup text counts as a backup', await T.menu());
     await T.close();
+    // Copy on any other text is no backup (the full review's L4-13): Diagnostics copied, a backup is still due.
+    const G = await phone({ seed: real });
+    await G.ev(() => { Object.defineProperty(navigator, 'clipboard', { value: { writeText: async t => { window.__copied = t; } }, configurable: true }); window.__ironlog.log('test', 'a line for Diagnostics'); });
+    await G.ev(() => window.__ironlog.ACT.diagCopy({ dataset: {} })); await wait(250);
+    const sheet = await G.ev(() => { const m = window.__ironlog.ui.modal; return m ? m.kind : null; });
+    if (sheet === 'text') { await G.page.click('#modal [data-act="copyText"]'); await wait(200); }
+    const diag = { sheet, copied: await G.ev(() => (window.__copied || '').length > 0), menu: (await G.menu()).txt, last: await G.ev(() => window.__ironlog.state.settings.lastExport || null) };
+    ok(diag.copied && diag.menu === DUE && diag.last === null, 'S-5: Diagnostics copied records no backup: still due, no last backup (L4-13)', diag);
+    await G.close();
     // Signed in: an account synced in the last 7 days needs no backup; one that has not synced for longer does.
     const C = cloudOf();
     const A = await phone({ cloud: C, uid: 'u5', seed: real });

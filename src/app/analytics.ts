@@ -192,8 +192,10 @@ export function draftMachineIn(M: Model, exId: string): string | null {
    session's own id, the key its mark (nw) gives it. */
 /** The machine key to save on a lift of the session in progress, or null for a free weight (above). */
 export function machineToSaveIn(M: Model, exId: string): string | null {
-  // A free weight's stretches are read as before (machineKeys): its sessions name no machine.
-  if (!onMachines(EXIn(M, exId))) return null;
+  /* A free weight's stretches are read as before (machineKeys): its sessions name no machine. A lift whose sessions
+     name machines goes on naming them whatever it is filed as now (a lift the library refiled from the machines, or
+     set to a free weight in the editor), so a session saved or edited stays on the machine it is read on. */
+  if (!onMachines(EXIn(M, exId)) && !M.s.sessions.some(s => s.ex.some(b => b.exId === exId && !!b.mc))) return null;
   const d = M.s.draft;
   if (!d) return null;
   const key = draftMachineIn(M, exId);

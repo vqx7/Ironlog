@@ -46,6 +46,7 @@ import {
   NEW_MUSCLES_V5,
   TARGETED,
   TRACK_ONLY,
+  LIB_EQUIP_BEFORE,
   LIB_NAMES_BEFORE,
   LIB_NOTES_BEFORE,
   libExercises,
@@ -815,7 +816,8 @@ function cleanExercise(e0: unknown, e: Rec, name: string): Exercise {
     gr = g ? Math.round(numOr(g.r, NaN)) : NaN;
   // The main muscle as read (an unknown one as chest), and the helpers without it, so a second read changes nothing.
   const primary = typeof e.primary === 'string' && isMuscle(e.primary) ? e.primary : 'chest';
-  const incK = isNum(inc) && inc > 0 ? Math.min(inc, LIMITS.step) : null,
+  // A step of 0 is a fixed load (routines.ts stepOnPlans).
+  const incK = isNum(inc) && inc >= 0 ? Math.min(inc, LIMITS.step) : null,
     maxK = isNum(ml) && ml > 0 ? Math.min(ml, LOAD_MAX) : undefined,
     barK = isNum(bar) && bar > 0 ? Math.min(bar, LIMITS.barKg) : undefined;
   const goal =
@@ -866,7 +868,9 @@ function cleanExercise(e0: unknown, e: Rec, name: string): Exercise {
     barU: unitField(barK ?? null, e.barU).u,
     goalU: unitField(goal ? goal.w : null, e.goalU).u,
     // The unit each machine's weights are in, as picked while the lift was on it: absent until one is, last.
-    machineU: machineUnits(e.machineU)
+    machineU: machineUnits(e.machineU),
+    // The lifter's pick of the equipment a refiled lift had (LIB_EQUIP_BEFORE), last, where an older build keeps it.
+    equipOwn: e.equipOwn === true ? true : undefined
   });
 }
 
@@ -877,10 +881,10 @@ function cleanExercise(e0: unknown, e: Rec, name: string): Exercise {
    nobody has changed: the library's record for a built-in; for a lift of the lifter's own, the empty record, except
    the name, main muscle and equipment it is made with (CUSTOM_MADE_WITH), where `base`'s stands. Set on both sides,
    `base`'s stands, as the whole record did. Machine names and units join machine by machine, `base`'s first.
-   Since the library became its own module (library.ts) it has changed only names and notes of its lifts, each
-   rewritten where a log holds the old one (cleanExercises: LIB_NAMES_BEFORE, LIB_NOTES_BEFORE), so both logs hold the
-   library's values as this build has them. A library change to any other field needs the same rewrite, or a log
-   still holding the old value would read here as one the lifter set. */
+   Since the library became its own module (library.ts) it has changed only names, notes and one lift's equipment,
+   each rewritten where a log holds the old one (cleanExercises: LIB_NAMES_BEFORE, LIB_NOTES_BEFORE, LIB_EQUIP_BEFORE),
+   so both logs hold the library's values as this build has them. A library change to any other field needs the same
+   rewrite, or a log still holding the old value would read here as one the lifter set. */
 /** The fields a lift of the lifter's own is made with (actspick.ts newEx, importflow.ts): never unset. */
 const CUSTOM_MADE_WITH: ReadonlySet<string> = new Set(['name', 'primary', 'equip']);
 /* A number set on a lift and the unit it was entered in are one setting: joined from the side its number comes from,
@@ -1283,11 +1287,18 @@ function cleanExercises(listed: unknown[], s: Rec, removedLib: readonly string[]
   const libName = new Map(lib.map(e => [e.id, e.name]));
   // The same for a note the library has reworded: the old text word for word reads as the library's now; an edited note stays.
   const libNote = new Map(lib.map(e => [e.id, e.note]));
+  const libEquip = new Map(lib.map(e => [e.id, e.equip]));
   for (const e of exercises) {
     const now = libName.get(e.id);
     if (now && !e.custom && (LIB_NAMES_BEFORE[e.id] || []).includes(e.name)) e.name = now;
     const note = libNote.get(e.id);
     if (note !== undefined && !e.custom && (LIB_NOTES_BEFORE[e.id] || []).includes(e.note)) e.note = note;
+    /* A lift the library has refiled (LIB_EQUIP_BEFORE) reads on its equipment now where the log holds the old one,
+       unless the lifter picked the old one since (equipOwn). Saved, sent and compared, it is the old one again
+       (merge.ts savedEquip), so no log is rewritten by the refile and every build's copy is one record. */
+    const equip = libEquip.get(e.id);
+    if (equip !== undefined && !e.custom && !e.equipOwn && (LIB_EQUIP_BEFORE[e.id] || []).includes(e.equip))
+      e.equip = equip;
   }
   // v1 saves predate the per-side flag, so the built-ins in them all carry
   // perSide:false. Backfill it from the library by id, and only that one

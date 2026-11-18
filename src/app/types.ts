@@ -77,6 +77,8 @@ export interface Exercise {
   /** The unit each of the lift's machines has its weights in, by the machine's key, as the lifter picked it while the
       lift was on that machine (the unit sheet); absent until one is picked. Last, after the units above. */
   machineU?: Record<string, Unit> | undefined;
+  /** The equipment a lift the library refiled is set to is the lifter's pick, though it is the library's old one (library.ts LIB_EQUIP_BEFORE). */
+  equipOwn?: true | undefined;
 }
 
 /** A routine day's exercise: the plan for it. */

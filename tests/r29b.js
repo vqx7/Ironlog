@@ -204,13 +204,14 @@ const sess = (id, date, exId, sets) => ({ id, date, dayIdx: 0, dayId: null, dayN
       await ev(() => { const el = document.getElementById('timer'); el.hidden = true; });
       await ev(() => window.__ironlog.ACT.tAdd());
       await wait(300);
-      const c = await ev(() => { const t = document.getElementById('timer'); const cs = getComputedStyle(t); const stops = [...cs.backgroundImage.matchAll(/color\(srgb [\d. ]+\)|rgba?\([^)]+\)/g)].map(m => m[0]); return { stops, bg: getComputedStyle(document.body).backgroundColor, color: cs.color, tp: t.style.getPropertyValue('--tp'), done: t.classList.contains('done') }; });
+      const c = await ev(() => { const t = document.getElementById('timer'); const cs = getComputedStyle(t); const stops = [...cs.backgroundImage.matchAll(/color\(srgb [\d. ]+\)|rgba?\([^)]+\)/g)].map(m => m[0]); return { stops, bg: getComputedStyle(document.body).backgroundColor, color: cs.color, tv: (t.querySelector('[data-t="v"]') || {}).textContent, done: t.classList.contains('done') }; });
       const fg = parse(c.color); const worst = Math.min(...c.stops.map(s => { const b = parse(s); return (Math.max(lum(fg), lum(b)) + 0.05) / (Math.min(lum(fg), lum(b)) + 0.05); }));
       const page_ = parse(c.bg); const dock = parse(c.stops[0]); const dist = Math.hypot(...dock.map((x, i) => x - page_[i]));
-      ok(c.stops.length >= 2 && worst >= 4.5 && dist > 0.15 && !c.done && +c.tp > 0.9, `${acc}${dark ? ' dark' : ' light'}: the running compact timer is a tint of the accent, apart from the page, white text at ${worst.toFixed(2)}:1, bar full at the start`, c);
+      ok(c.stops.length >= 2 && worst >= 4.5 && dist > 0.15 && !c.done && /^0:1[45]$/.test(c.tv || ''), `${acc}${dark ? ' dark' : ' light'}: the running compact timer is a tint of the accent, apart from the page, white text at ${worst.toFixed(2)}:1, its rest's time shown from the start`, c);
       await ev(() => { window.__ironlog.timer.end = Date.now() + 5000; }); await wait(400);
-      const tp2 = await ev(() => +document.getElementById('timer').style.getPropertyValue('--tp'));
-      ok(tp2 < 0.5, `${acc}: the compact timer's bar empties as the rest runs down`, tp2);
+      // The compact pill shows the time alone (no bar since 2.75, when a bar every mode hid was taken out, the full review's P-4).
+      const tv2 = await ev(() => document.getElementById('timer').querySelector('[data-t="v"]').textContent);
+      ok(/^0:0[45]$/.test(tv2), `${acc}: the compact timer's time runs down with the rest`, tv2);
       // The rest card (r71): its time and the accent's Skip readable on it at 4.5:1, the accent's ring at 3:1, a border
       // and a shadow setting it apart from the page, and the ring emptying as the rest runs down.
       await ev(() => { const L = window.__ironlog; L.ACT.tStop(); L.state.settings.timerCompact = false; L.timer.end = 0; L.ACT.tAdd(); });
@@ -296,7 +297,7 @@ const sess = (id, date, exId, sets) => ({ id, date, dayIdx: 0, dayId: null, dayN
   {
     const P = await open('index.html', { touch: true, clock: '2026-10-03T11:30:00' });
     const { page } = P; const ev = (f, a) => page.evaluate(f, a);
-    // 1. The rest bar keeps its length across a reload.
+    // 1. The rest keeps its length across a reload: the full card's ring, or the compact pill's time.
     await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.ui.tab = 'today'; L.render(); document.querySelector('.hero [data-act="startSession"]').click(); });
     await wait(200);
     await ev(() => { const L = window.__ironlog; L.timer.end = 0; L.ACT.tAdd(); L.ACT.tAdd(); L.ACT.tAdd(); L.ACT.tAdd(); });
@@ -304,8 +305,8 @@ const sess = (id, date, exId, sets) => ({ id, date, dayIdx: 0, dayId: null, dayN
     await ev(() => { const t = window.__ironlog.timer; t.end = Date.now() + 15000; t.total = 60; window.__ironlog.saveNow(); localStorage.setItem(window.__ironlog.KEY + '.timer', String(t.end)); localStorage.setItem(window.__ironlog.KEY + '.timerLen', '60'); });
     await page.reload(); await page.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart);
     await wait(500);
-    const tp = await ev(() => { const t = document.getElementById('timer'); return { hidden: t.hidden, tp: +t.style.getPropertyValue('--tp') }; });
-    ok(!tp.hidden && tp.tp > 0.15 && tp.tp < 0.35, '1. after a reload with 15 s of a 60 s rest left, the bar shows about a quarter, not full', tp);
+    const tp = await ev(() => { const t = document.getElementById('timer'); const ring = t.querySelector('[data-t="p"]'); return { hidden: t.hidden, ring: ring ? parseFloat(ring.getAttribute('stroke-dasharray')) : null, tv: (t.querySelector('[data-t="v"]') || {}).textContent }; });
+    ok(!tp.hidden && /^0:1[345]$/.test(tp.tv || '') && (tp.ring === null || (tp.ring > 15 && tp.ring < 35)), '1. after a reload with 15 s of a 60 s rest left, the timer shows about a quarter left, not a full rest', tp);
     // 12. An assisted set with less help than ever is a weight PR live, with no bodyweight logged.
     const ap = await ev(() => { const L = window.__ironlog; L.state.bodyweights = []; L.state.draft = null;
       const S = (id, d, w) => ({ id, date: d, dayIdx: 0, dayId: null, dayName: 'A', routineId: '', free: true, notes: '', ex: [{ exId: 'assistPullup', sets: [{ w, r: 8, rir: 2, warm: false }] }] });
