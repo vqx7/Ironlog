@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-qhk/0GfTKp4IIMtvzxdt2xUuBqLdG17AVpt+eGsvL/4=' 'sha256-huPMTGr6cVObgHsnurSzS3VFHnVgOZK23rNVnZ1rNYI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-XtyJRhHhQ9qkwy0rjmUensTKBmg/lehceGe7Kkcpr2Q=' 'sha256-huPMTGr6cVObgHsnurSzS3VFHnVgOZK23rNVnZ1rNYI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.17-r118">
+<meta name="app-build" content="2026.11.17-r119">
 <title>Ironlog Preview</title>
 <script>window.IRONLOG_APP=true;window.IRONLOG_ENV='preview';window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
@@ -2200,8 +2200,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.72";
-  var APP_VERSION = "2026.11.17-r118";
+  var DISPLAY_VERSION = "2.73";
+  var APP_VERSION = "2026.11.17-r119";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -2294,6 +2294,10 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var isChunkId = (id) => id === "core" || id === "draft" || /^s-\d{4}-\d{2}-[12]$/.test(id) || /^b-\d{4}$/.test(id);
 
   // src/app/model.ts
+  function unitAt(pts, w2) {
+    for (const p3 of pts) if (p3.u && Math.abs(p3.w - w2) < EPS_SAME) return p3.u;
+    return null;
+  }
   var FIRST_MACHINE = "0";
   function machineKeys(xs) {
     let stretch = FIRST_MACHINE;
@@ -2323,7 +2327,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       _eff: null,
       _bwRef: void 0,
       _pace: null,
-      _plates: null
+      _plates: null,
+      _units: null
     };
   }
   function modelOf(s3, today2) {
@@ -2389,6 +2394,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     M3.c._eff = null;
     M3.c._bwRef = void 0;
     M3.c._pace = null;
+    M3.c._units = null;
     M3.c._plates = null;
   }
   var rirHalfOnIn = (M3) => M3.s.settings.rirHalf === true && M3.s.settings.rirMode !== "off";
@@ -2423,16 +2429,18 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   };
   var onStep = (v3, step) => Math.abs(v3 / step - Math.round(v3 / step)) < EPS_SAME;
   var TYPED_STEP = 0.05;
-  function typedUnit(w2) {
-    const a2 = Math.abs(w2);
+  function unitOnGrid(kg2) {
+    const a2 = Math.abs(kg2);
     if (!(a2 > 0)) return null;
-    const kg2 = onStep(a2, TYPED_STEP), lb = onStep(a2 / LB, TYPED_STEP);
-    return kg2 === lb ? null : kg2 ? "kg" : "lb";
+    const k2 = onStep(a2, TYPED_STEP), l4 = onStep(a2 / LB, TYPED_STEP);
+    return k2 === l4 ? null : k2 ? "kg" : "lb";
   }
-  function typedOtherIn(M3, kg2) {
-    const u4 = typedUnit(kg2);
-    return u4 != null && u4 !== UIn(M3);
+  var PER_ONE = Math.round(1 / TYPED_STEP);
+  function onUnitSteps(kg2, u4) {
+    const k2 = u4 === "lb" ? LB : 1;
+    return Math.round(kg2 / k2 * PER_ONE) / PER_ONE * k2;
   }
+  var otherUnitIn = (M3, u4) => u4 != null && u4 !== UIn(M3);
   var PLATES_LB = [45, 35, 25, 10, 5, 2.5], PLATES_KG = [25, 20, 15, 10, 5, 2.5, 1.25];
   var CHANGE_PLATES = { kg: [2, 1.5, 1, 0.5], lb: [1.25] };
   var inUnitIn = (M3, kg2) => UIn(M3) === "lb" ? kg2 / LB : kg2;
@@ -2443,7 +2451,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var typedBoundOfIn = (M3, ex, v3, most) => typedBoundIn(liftModelIn(M3, ex), v3, most);
   var toDIn = (M3, kg2) => kg2 == null ? null : inUnitIn(M3, kg2);
   var fromDIn = (M3, v3) => v3 == null ? null : kgOfIn(M3, v3);
-  var stepReadOfIn = (M3, ex, v3) => stepReadIn(liftModelIn(M3, ex), v3);
+  var stepReadOfIn = (M3, ex, v3, u4) => stepReadIn(liftModelIn(M3, ex), v3, u4);
   var toDOfIn = (M3, ex, kg2) => toDIn(liftModelIn(M3, ex), kg2);
   var fromDOfIn = (M3, ex, v3) => fromDIn(liftModelIn(M3, ex), v3);
   var toDAppIn = (M3, kg2) => toDIn(appModelIn(M3), kg2);
@@ -2454,20 +2462,20 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   function unitStepIn(M3) {
     return UIn(M3) === "kg" ? DEFAULT_STEP.kg : STEP_LB;
   }
-  function stepReadIn(M3, v3) {
-    const u4 = UIn(M3), t4 = typedUnit(v3);
+  function stepReadIn(M3, v3, t4) {
+    const u4 = UIn(M3);
     if (t4 == null || t4 === u4 || !(v3 > 0)) return v3;
     const k2 = u4 === "lb" ? LB : 1, d3 = DEFAULT_STEP[u4];
     return Math.min(LIMITS.step, d3 * 2 ** Math.round(Math.log2(v3 / k2 / d3)) * k2);
   }
-  function loadReadAs(kg2, u4) {
-    const t4 = typedUnit(kg2);
+  function loadReadAs(kg2, t4, u4) {
     if (t4 == null || t4 === u4) return kg2;
     const k2 = u4 === "lb" ? LB : 1, d3 = DEFAULT_STEP[u4];
     return Math.max(1, Math.round(kg2 / k2 / d3)) * d3 * k2;
   }
-  var loadReadIn = (M3, kg2) => loadReadAs(kg2, UIn(M3));
-  var loadReadOfIn = (M3, ex, kg2) => loadReadIn(liftModelIn(M3, ex), kg2);
+  var loadReadIn = (M3, kg2, t4) => loadReadAs(kg2, t4, UIn(M3));
+  var loadReadOfIn = (M3, ex, kg2, t4) => loadReadIn(liftModelIn(M3, ex), kg2, t4);
+  var planStepUnit = (v3) => unitOnGrid(v3);
 
   // src/app/formulas.ts
   var E1_MAX_REPS = 12;
@@ -2539,14 +2547,20 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const st = LOAD_STEPS[u4].find((s3) => onStep(a2 / k2, s3));
     return st ? st / 2 * k2 : 0;
   }
-  function prSameLoad(w2, earlier) {
-    const u4 = typedUnit(w2);
+  function seeLoads(seen, pts) {
+    for (const p3 of pts) {
+      const w2 = Number(p3.w) || 0;
+      if (!seen.has(w2)) seen.set(w2, p3.u ?? null);
+    }
+    return seen;
+  }
+  function prSameLoad(w2, u4, earlier) {
     if (!u4) return w2;
     const k2 = u4 === "lb" ? LB : 1;
     const lo = w2 - Math.max(halfStep(Math.abs(w2), u4), TYPED_STEP * k2) - EPS;
     let best = w2;
-    for (const e5 of earlier)
-      if (e5 < w2 - EPS && e5 >= lo && (best === w2 || e5 > best) && typedUnit(e5) === (u4 === "kg" ? "lb" : "kg")) best = e5;
+    for (const [e5, eu] of earlier)
+      if (e5 < w2 - EPS && e5 >= lo && (best === w2 || e5 > best) && eu === (u4 === "kg" ? "lb" : "kg")) best = e5;
     return best;
   }
   var isWork = (s3) => !s3.warm && Number(s3.r) > 0;
@@ -2884,6 +2898,21 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     if (!s3) return null;
     return s3.w != null ? s3.w : greyW(b2, si);
   }
+  function greyU(b2, si) {
+    const s3 = b2 && b2.sets[si];
+    if (!b2 || !s3 || s3.warm || s3.drop) return null;
+    for (let i5 = si - 1; i5 >= 0; i5--) {
+      const x2 = b2.sets[i5];
+      if (!x2 || x2.warm || x2.drop || x2.w == null || isMissed(x2)) continue;
+      return b2.adj && b2.adj.at === i5 ? unitOnGrid(b2.adj.w) : x2.u ?? null;
+    }
+    return b2.sw == null ? null : unitOnGrid(b2.sw);
+  }
+  function effU(b2, si) {
+    const s3 = b2 && b2.sets[si];
+    if (!s3) return null;
+    return s3.w != null ? s3.u ?? null : greyU(b2, si);
+  }
   function effTarget(b2) {
     const t4 = b2.tgt;
     if (!t4 || t4.kind !== "reps") return t4;
@@ -2969,7 +2998,9 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         // The row's own id, last, where a build before it keeps the unknown field.
         ...typeof s3.rid === "string" ? { rid: s3.rid } : {},
         // What the app asked of it as it was ticked (391), after the id, as normalize writes it.
-        ...s3.sg && !s3.warm && !s3.drop && !s3.cal ? { sg: [...s3.sg] } : {}
+        ...s3.sg && !s3.warm && !s3.drop && !s3.cal ? { sg: [...s3.sg] } : {},
+        // The unit its load was entered in, last, as normalize writes it.
+        ...s3.u && s3.w ? { u: s3.u } : {}
       })),
       // The note's pictures; put last by picsLast once the plan's sets and a new-machine mark are on.
       ...b2.pics && b2.pics.length ? { pics: [...b2.pics] } : {}
@@ -3061,6 +3092,14 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       const nw = markedNew(d3, b2.exId) ? { nw: true } : {};
       return mc || markedNew(d3, b2.exId) ? { ...b2, ...nw, ...named(mc) } : b2;
     });
+  }
+  function setLoad(x2, kg2, u4) {
+    x2.w = kg2;
+    if (kg2 != null && Math.abs(kg2) > 0 && u4) x2.u = u4;
+    else delete x2.u;
+  }
+  function madeLoad(x2, kg2) {
+    setLoad(x2, kg2, kg2 == null ? null : unitOnGrid(kg2));
   }
   function newRow(over) {
     return {
@@ -3731,7 +3770,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     M3 = liftModelIn(M3, ex);
     const g2 = gymOfIn(M3);
     if (!g2 || !ex || ex.bw || ex.assist || ex.timed || ex.inc != null) return null;
-    if (plan && isNum(+plan.inc) && Math.abs(stepReadIn(M3, +plan.inc) - unitStepIn(M3)) > EPS_SAME) return null;
+    if (plan && isNum(+plan.inc) && Math.abs(stepReadIn(M3, +plan.inc, planStepUnit(+plan.inc)) - unitStepIn(M3)) > EPS_SAME)
+      return null;
     const k2 = rackKind(ex);
     if (!k2) return null;
     const m3 = loadMode(ex);
@@ -3790,7 +3830,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const g2 = gymOfIn(M3);
     if (!ex || ex.inc != null || ex.timed || !g2 || !Array.isArray(g2.plates) || !g2.plates.length) return null;
     if (platesMode(ex) !== "bar" || loadMode(ex) !== "total") return null;
-    if (Math.abs(stepReadIn(M3, plan && isNum(+plan.inc) ? +plan.inc : STEP_LB) - unitStepIn(M3)) > EPS_SAME) return null;
+    const pinc = plan && isNum(+plan.inc) ? +plan.inc : STEP_LB;
+    if (Math.abs(stepReadIn(M3, pinc, planStepUnit(pinc)) - unitStepIn(M3)) > EPS_SAME) return null;
     const bar2 = loadFloorIn(M3, ex);
     if (!(bar2 > 0)) return null;
     const key = `${g2.u}|${g2.plates.join(",")}|${bar2}`;
@@ -3834,25 +3875,25 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   }
   function exBarKgIn(M3, ex) {
     M3 = liftModelIn(M3, ex);
-    return ex && ex.barKg !== void 0 && ex.barKg > 0 ? barReadIn(M3, ex.barKg) : barKgIn(M3);
+    return ex && ex.barKg !== void 0 && ex.barKg > 0 ? barReadIn(M3, ex.barKg, ex.barU) : barKgIn(M3);
   }
   function liftMaxIn(M3, ex) {
-    return ex.maxLoad != null ? loadReadIn(liftModelIn(M3, ex), ex.maxLoad) : null;
+    return ex.maxLoad != null ? loadReadIn(liftModelIn(M3, ex), ex.maxLoad, ex.maxLoadU) : null;
   }
   function barUnitIn(M3) {
     if (M3.u) return M3.u;
     const g2 = gymOfIn(M3);
     return g2 && g2.u || UIn(M3);
   }
-  function barReadIn(M3, kg2) {
-    return typedUnit(kg2) === UIn(M3) ? kg2 : loadReadAs(kg2, barUnitIn(M3));
+  function barReadIn(M3, kg2, t4) {
+    return t4 === UIn(M3) ? kg2 : loadReadAs(kg2, t4, barUnitIn(M3));
   }
-  function barReadOfIn(M3, ex, kg2) {
-    return barReadIn(liftModelIn(M3, ex), kg2);
+  function barReadOfIn(M3, ex, kg2, t4) {
+    return barReadIn(liftModelIn(M3, ex), kg2, t4);
   }
   function barKgIn(M3) {
     const b2 = M3.s.settings.barKg;
-    if (b2 != null) return barReadIn(M3, b2);
+    if (b2 != null) return barReadIn(M3, b2, M3.s.settings.barU);
     return barUnitIn(M3) === "lb" ? BAR.lb * LB : BAR.kg;
   }
 
@@ -3911,10 +3952,16 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     if (!k2) return false;
     if (TARGETED.has(k2)) return true;
     const s3 = M3.s.settings;
-    if ((s3.ownTargets || []).includes(k2) || (profIn(M3).focus || []).includes(k2)) return true;
-    if (TRACK_ONLY.has(k2)) return false;
-    const a2 = appBandIn(M3, k2), b2 = s3.bands[k2];
-    return b2[0] !== a2[0] || b2[1] !== a2[1];
+    return (s3.ownTargets || []).includes(k2) || (profIn(M3).focus || []).includes(k2);
+  }
+  function oldOwnTargetsIn(M3) {
+    const s3 = M3.s.settings, own2 = s3.ownTargets || [], focus = profIn(M3).focus || [];
+    const add = MK.filter((k2) => {
+      if (TARGETED.has(k2) || TRACK_ONLY.has(k2) || own2.includes(k2) || focus.includes(k2)) return false;
+      const a2 = appBandIn(M3, k2), b2 = s3.bands[k2];
+      return b2[0] !== a2[0] || b2[1] !== a2[1];
+    });
+    return add.length ? add : null;
   }
   function fitFloorsIn(M3, R2, actual, share) {
     const plan = plannedSetsIn(M3, R2, share);
@@ -3949,13 +3996,33 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   }
 
   // src/app/merge.ts
+  var UNIT_FIELD = {
+    u: "w",
+    incU: "inc",
+    maxLoadU: "maxLoad",
+    barU: "barKg",
+    goalU: "goal"
+  };
+  function givenUnit(f3, k2) {
+    const of = UNIT_FIELD[k2];
+    if (!of) return false;
+    const v3 = f3[k2], n0 = f3[of];
+    const n3 = of === "goal" ? rec(n0)?.w : n0;
+    return (v3 === "kg" || v3 === "lb") && typeof n3 === "number" && unitOnGrid(n3) === v3;
+  }
+  function storedJson(x2) {
+    return JSON.stringify(x2, function(k2, v3) {
+      const f3 = rec(this);
+      return f3 && givenUnit(f3, k2) ? void 0 : v3;
+    });
+  }
   function canon(x2) {
     if (x2 === void 0) return "null";
     if (x2 === null || typeof x2 !== "object") return JSON.stringify(x2);
     const list = arr(x2);
     if (list) return "[" + list.map(canon).join(",") + "]";
     const f3 = rec(x2) || {};
-    return "{" + Object.keys(f3).filter((k2) => f3[k2] !== void 0).sort().map((k2) => JSON.stringify(k2) + ":" + canon(f3[k2])).join(",") + "}";
+    return "{" + Object.keys(f3).filter((k2) => f3[k2] !== void 0 && !givenUnit(f3, k2)).sort().map((k2) => JSON.stringify(k2) + ":" + canon(f3[k2])).join(",") + "}";
   }
   var Hx = (x2) => hashStr(canon(unkept(x2)));
   var sameRecord = (a2, b2) => canon(unkept(a2)) === canon(unkept(b2));
@@ -4503,7 +4570,9 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
                         // The row's own id, last, where a build before it kept the unknown field.
                         ...typeof x2.rid === "string" ? { rid: fixId(x2.rid) } : {},
                         // What the app asked of it, after the id, where a build before 2.61 keeps it.
-                        ...sg ? { sg } : {}
+                        ...sg ? { sg } : {},
+                        // The unit its load was entered in, last, where a build that stores none keeps it.
+                        ...unitField(clampN(x2.w, LOAD_MIN, LOAD_MAX, 0), x2.u)
                       },
                       KNOWN_SETF
                     )
@@ -4722,6 +4791,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     })();
     const hf = arr(st.homeFolded), fl = arr(st.folds), h3 = arr(st.hidden), pr = arr(st.priorities), df = arr(sIn.dashFolded);
     const hc = numOr(st.heightCm, NaN), tb = numOr(st.timeBudget, NaN), bk = numOr(st.barKg, NaN), bg = numOr(st.bwGoalPct, NaN);
+    const barKept = isNum(bk) && bk > 0 ? Math.min(bk, LIMITS.barKg) : null, barUnit = unitField(barKept, st.barU).u;
     const removedLib = (arr(sIn.removedLib) || []).filter((x2) => typeof x2 === "string").map(fixId);
     const inBands = spread(sIn.bands || {});
     const band = (m3) => {
@@ -4792,7 +4862,9 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       dashFolded: df ? strings(df, (k2) => oneOf(k2, DSEC_KEYS)) : DSEC_FOLDED.slice(),
       lastExport: typeof st.lastExport === "string" && isDate(st.lastExport) ? st.lastExport : null,
       removedLib,
-      barKg: isNum(bk) && bk > 0 ? Math.min(bk, LIMITS.barKg) : null,
+      barKg: barKept,
+      // The unit the bar's weight was entered in (unitField), absent with it.
+      ...barUnit ? { barU: barUnit } : {},
       bwGoalPct: isNum(bg) ? Math.min(Math.max(bg, -LIMITS.bwRatePct), LIMITS.bwRatePct) : null,
       bands
     };
@@ -4817,7 +4889,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     "profile",
     "bandsFit",
     "ownTargets",
-    "bwUnit"
+    "bwUnit",
+    "barU"
   ];
   function cleanExercise(e0, e5, name) {
     const sc = arr(e5.secondary);
@@ -4825,6 +4898,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const inc = numOr(e5.inc, NaN), bwf = numOr(e5.bwf, NaN), ml = numOr(e5.maxLoad, NaN), bar2 = numOr(e5.barKg, NaN);
     const gw = g2 ? numOr(g2.w, NaN) : NaN, gr = g2 ? Math.round(numOr(g2.r, NaN)) : NaN;
     const primary = typeof e5.primary === "string" && isMuscle(e5.primary) ? e5.primary : "chest";
+    const incK = isNum(inc) && inc > 0 ? Math.min(inc, LIMITS.step) : null, maxK = isNum(ml) && ml > 0 ? Math.min(ml, LOAD_MAX) : void 0, barK = isNum(bar2) && bar2 > 0 ? Math.min(bar2, LIMITS.barKg) : void 0;
+    const goal = g2 && isNum(gw) && gw >= 0 && gw <= LOAD_MAX && gr >= 1 && gr <= LIMITS.goalReps && !e5.timed && !e5.assist ? { w: gw, r: gr } : void 0;
     return keepExtra(e0, {
       id: fixId(e5.id),
       name,
@@ -4838,7 +4913,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       custom: !!e5.custom,
       archived: !!e5.archived,
       // Load step for this exercise everywhere it appears; null falls back to the routine item.
-      inc: isNum(inc) && inc > 0 ? Math.min(inc, LIMITS.step) : null,
+      inc: incK,
       plates: pick(e5.plates, ["bar", "side", "sleeve", "none"]) ?? null,
       // How the load number reads; absent means the exercise's default.
       load: pick(e5.load, ["each", "total", "side", "stack"]),
@@ -4851,21 +4926,28 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       // Assisted: the load number is the machine's help, stored below 0.
       assist: e5.assist === true && !!e5.bw ? true : void 0,
       bwf: isNum(bwf) && bwf > 0 && bwf <= LIMITS.bwShare ? Math.round(bwf * HUNDREDTHS) / HUNDREDTHS : void 0,
-      maxLoad: isNum(ml) && ml > 0 ? Math.min(ml, LOAD_MAX) : void 0,
+      maxLoad: maxK,
       // This lift's own bar: a trap or EZ bar instead of the bar in Settings. Absent when unset.
-      barKg: isNum(bar2) && bar2 > 0 ? Math.min(bar2, LIMITS.barKg) : void 0,
+      barKg: barK,
       // A lift goal: a load (added load on a bodyweight lift) for a number of reps. Absent when unset.
-      goal: g2 && isNum(gw) && gw >= 0 && gw <= LOAD_MAX && gr >= 1 && gr <= LIMITS.goalReps && !e5.timed && !e5.assist ? { w: gw, r: gr } : void 0,
+      goal,
       /* The unit the lift's equipment is marked in, set by a tap on the unit beside its load: kg or lb. Absent when unset,
          so the lift follows the app's unit and a record saved before this existed hashes as before; a build without it
          keeps it among the fields it does not know (keepExtra). */
       unit: e5.unit === "kg" || e5.unit === "lb" ? e5.unit : void 0,
       /* The names given to the machines the lift was done on, by each machine's key: absent until one is named, so a
          record saved before names existed hashes as before, and a build without them keeps them (keepExtra). */
-      machines: machineNames(e5.machines)
+      machines: machineNames(e5.machines),
+      // The units its step, heaviest load, bar and goal were entered in (unitField), last, where an older build keeps them.
+      incU: unitField(incK, e5.incU).u,
+      maxLoadU: unitField(maxK ?? null, e5.maxLoadU).u,
+      barU: unitField(barK ?? null, e5.barU).u,
+      goalU: unitField(goal ? goal.w : null, e5.goalU).u
     });
   }
   var CUSTOM_MADE_WITH = /* @__PURE__ */ new Set(["name", "primary", "equip"]);
+  var UNIT_OF = { inc: "incU", maxLoad: "maxLoadU", barKg: "barU", goal: "goalU" };
+  var UNIT_FIELDS = new Set(Object.values(UNIT_OF));
   function joinExercises(base, other) {
     const lib = new Map(libExercises().map((e5) => [e5.id, e5]));
     const theirs = new Map(other.map((e5) => [e5.id, e5]));
@@ -4879,8 +4961,12 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       const bR = { ...b2 }, oR = { ...o3 };
       const joined2 = { ...bR };
       for (const k2 of Object.keys(oR)) {
-        if (k2 === "id" || k2 === "machines" || !L2 && CUSTOM_MADE_WITH.has(k2)) continue;
-        if (canon(bR[k2]) === canon(untouched[k2]) && canon(oR[k2]) !== canon(untouched[k2])) joined2[k2] = oR[k2];
+        if (k2 === "id" || k2 === "machines" || UNIT_FIELDS.has(k2) || !L2 && CUSTOM_MADE_WITH.has(k2)) continue;
+        if (canon(bR[k2]) === canon(untouched[k2]) && canon(oR[k2]) !== canon(untouched[k2])) {
+          joined2[k2] = oR[k2];
+          const u4 = UNIT_OF[k2];
+          if (u4) joined2[u4] = oR[u4];
+        }
       }
       if (o3.machines) {
         const mine = b2.machines || {};
@@ -4977,7 +5063,14 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const r4 = r0 == null ? null : isNum(r0) ? Math.round(clampN(r0, 0, LIMITS.reps, 0)) : void 0;
     return w2 === void 0 || r4 === void 0 || w2 == null && r4 == null ? null : [w2, r4];
   }
-  var KNOWN_SETF = /* @__PURE__ */ new Set(["sg"]);
+  var KNOWN_SETF = /* @__PURE__ */ new Set(["sg", "u"]);
+  function unitField(kg2, u4) {
+    if (kg2 == null || !(Math.abs(kg2) > 0)) return {};
+    const on = unitOnGrid(kg2);
+    const kept = u4 === "kg" || u4 === "lb" ? u4 : null;
+    const v3 = kept && (on == null || on === kept) ? kept : on;
+    return v3 ? { u: v3 } : {};
+  }
   function cleanDraftSet(x0) {
     const x2 = rec(x0);
     if (!x2) return [];
@@ -4996,7 +5089,9 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
           // The row's own id, last, where a build before it kept the unknown field.
           ...typeof x2.rid === "string" ? { rid: fixId(x2.rid) } : {},
           // What the app asked of it once ticked (391), after the id.
-          ...sg ? { sg } : {}
+          ...sg ? { sg } : {},
+          // The unit its load was entered in, last.
+          ...unitField(x2.w == null ? null : clampN(x2.w, LOAD_MIN, LOAD_MAX, 0), x2.u)
         },
         KNOWN_SETF
       )
@@ -7002,14 +7097,27 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     return prOverall(p3) ? "Best estimate" : `Best for ${p3.bb != null && BAND_WORDS[p3.bb] || "its reps"}`;
   }
   function prSoFar() {
-    return { front: [], topSc: 0, prevMaxW: -Infinity, byBand: {}, maxPb: null, seen: /* @__PURE__ */ new Set(), none: true };
+    return {
+      front: [],
+      topSc: 0,
+      prevMaxW: -Infinity,
+      prevMaxU: null,
+      byBand: {},
+      maxPb: null,
+      seen: /* @__PURE__ */ new Map(),
+      none: true
+    };
   }
   var prScore = (q) => prScoreOf(q.pl, q.r, q.rq);
   var prDominated = (h3, p3) => h3.front.some((q) => q.pl >= p3.pl - EPS_SAME && q.r >= p3.r);
   function prAdd(h3, x2) {
     if (x2.pb != null) h3.maxPb = h3.maxPb == null ? x2.pb : Math.max(h3.maxPb, x2.pb);
     if (x2.pb != null && x2.pbb != null) h3.byBand[x2.pbb] = Math.max(h3.byBand[x2.pbb] ?? -Infinity, x2.pb);
-    for (const p3 of x2.pts) if (p3.r > 0) h3.prevMaxW = Math.max(h3.prevMaxW, p3.w);
+    for (const p3 of x2.pts)
+      if (p3.r > 0 && p3.w > h3.prevMaxW) {
+        h3.prevMaxW = p3.w;
+        h3.prevMaxU = p3.u ?? null;
+      }
     for (const p3 of x2.pts) h3.topSc = Math.max(h3.topSc, prScore(p3));
     for (const p3 of x2.pts) {
       if (prDominated(h3, p3)) continue;
@@ -7017,7 +7125,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         if (p3.pl >= h3.front[k2].pl - EPS_SAME && p3.r >= h3.front[k2].r) h3.front.splice(k2, 1);
       h3.front.push(p3);
     }
-    for (const p3 of x2.pts) h3.seen.add(p3.w);
+    seeLoads(h3.seen, x2.pts);
     h3.none = false;
   }
   function prBestOf(ex, pts, noBody2) {
@@ -7036,7 +7144,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     if (h3.none) return { pr: null, progress: false };
     let repPR = null;
     const judged = x2.pts.map((p3) => {
-      const w2 = prSameLoad(p3.w, h3.seen);
+      const w2 = prSameLoad(p3.w, p3.u ?? null, h3.seen);
       return { p: w2 === p3.w ? p3 : { ...p3, w: w2, pl: p3.pl + (w2 - p3.w) }, at: p3 };
     });
     const pts = judged.map((j3) => j3.p);
@@ -7068,8 +7176,10 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         pr: {
           type: "Weight PR",
           w: wPR.w,
+          u: wPR.u ?? null,
           r: wPR.r,
           prevW: h3.prevMaxW,
+          prevU: h3.prevMaxU,
           value: e1PR ? shown2 : null,
           prev: e1PR ? pb : null,
           prevAll: h3.maxPb,
@@ -7085,6 +7195,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         pr: {
           type: "Rep PR",
           w: asLogged(rp).w,
+          u: asLogged(rp).u ?? null,
           r: rp.r,
           prevR: h3.front.filter((q) => q.pl >= rp.pl - EPS_SAME).reduce((a2, q) => Math.max(a2, q.r), 0),
           big
@@ -7221,11 +7332,29 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const key = draftMachineIn(M3, exId);
     return key === NEW_MACHINE ? d3.editingId || d3.id || null : key;
   }
+  var loadKey = (w2) => Math.round(w2 * MILLIONTHS);
+  function loadUnitIn(M3, exId, w2) {
+    if (!M3.c._units) M3.c._units = /* @__PURE__ */ new Map();
+    let m3 = M3.c._units.get(exId);
+    if (!m3) {
+      m3 = /* @__PURE__ */ new Map();
+      for (const x2 of IDXIn(M3).byEx[exId] || []) for (const p3 of x2.pts) m3.set(loadKey(p3.w), p3.u);
+      M3.c._units.set(exId, m3);
+    }
+    const k2 = loadKey(w2);
+    return m3.has(k2) ? m3.get(k2) : void 0;
+  }
   function liftMachinesIn(M3, exId) {
     return machinesOf(IDXIn(M3).byEx[exId] || []).map((g2) => {
       const x2 = g2[g2.length - 1];
       const at2 = x2.pts.filter((p3) => Math.abs(p3.w - x2.topW) < EPS_SAME);
-      return { key: g2[0].mk, date: x2.date, w: x2.topW, r: at2.length ? Math.max(...at2.map((p3) => p3.r)) : x2.topReps };
+      return {
+        key: g2[0].mk,
+        date: x2.date,
+        w: x2.topW,
+        u: unitAt(x2.pts, x2.topW),
+        r: at2.length ? Math.max(...at2.map((p3) => p3.r)) : x2.topReps
+      };
     }).sort((a2, b2) => a2.date < b2.date ? 1 : a2.date > b2.date ? -1 : 0);
   }
   function liftOffIn(M3, exId, key, from, to) {
@@ -7320,7 +7449,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
             r: +s3.r,
             w: +s3.w || 0,
             rir: rirEffIn(M3, s3, ex, ss.date),
-            rq: rirEstIn(M3, s3, ex, ss.date)
+            rq: rirEstIn(M3, s3, ex, ss.date),
+            u: s3.u ?? null
           };
         };
         const pts = ptsSrc.map(point);
@@ -7598,13 +7728,13 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       const repsHeld = l32.every((x2) => x2.topReps >= l32[0].topReps);
       const climbing = Number(l32[1].topRir) >= Number(l32[0].topRir) && Number(l32[2].topRir) >= Number(l32[1].topRir) && Number(l32[2].topRir) - Number(l32[0].topRir) >= 1;
       if (sameW && allRir && repsHeld && climbing)
-        easier = { w: l32[0].topW, from: r1(l32[0].topRir), to: r1(l32[2].topRir) };
+        easier = { w: l32[0].topW, u: unitAt(l32[0].pts, l32[0].topW), from: r1(l32[0].topRir), to: r1(l32[2].topRir) };
     }
     let fade = null;
     if (inRange.length >= DRIFT_N) {
       const l32 = inRange.slice(-DRIFT_N);
       if (l32.every((x2) => Math.abs(x2.topW - l32[0].topW) < EPS_SAME) && l32.every((x2) => x2.drop != null) && l32[2].drop - l32[0].drop >= 2)
-        fade = { w: l32[0].topW, from: l32[0].drop, to: l32[2].drop };
+        fade = { w: l32[0].topW, u: unitAt(l32[0].pts, l32[0].topW), from: l32[0].drop, to: l32[2].drop };
     }
     let bestCur = null;
     const byBand = {};
@@ -7840,7 +7970,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     return isCompound(ex) && !ex.bw && !noE1(ex) && loadMode(ex) === "total";
   }
   var emptyLoad = (ex) => ex.bw && !ex.assist ? "0" : "";
-  var fmtWIn = (M3, kg2) => kg2 == null || isNaN(kg2) ? "" : String(r1(toDIn(M3, kg2)));
+  var shownNum = (v3) => String(onStep(v3, TYPED_STEP) ? Math.round(v3 * HUNDREDTHS) / HUNDREDTHS : r1(v3));
+  var fmtWIn = (M3, kg2) => kg2 == null || isNaN(kg2) ? "" : shownNum(toDIn(M3, kg2));
   var fmtWOfIn = (M3, ex, kg2) => fmtWIn(liftModelIn(M3, ex), kg2);
   var fmtWAppIn = (M3, kg2) => fmtWIn(appModelIn(M3), kg2);
   var fmtBodyIn = (M3, kg2) => fmtWOfIn(M3, bodyIn(M3), kg2);
@@ -7851,19 +7982,22 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     }
     return fmtWIn(M3, kg2);
   }
-  function typedLabelIn(M3, ex, kg2) {
+  function typedLabelIn(M3, ex, kg2, u4) {
     M3 = liftModelIn(M3, ex);
-    const u4 = typedUnit(kg2);
     if (u4 == null || u4 === UIn(M3)) return loadLabelIn(M3, ex, kg2);
-    const n3 = (v3) => String(r1(u4 === "lb" ? v3 / LB : v3));
+    const n3 = (v3) => shownNum(u4 === "lb" ? v3 / LB : v3);
     const num3 = ex.bw ? kg2 > 0 ? `BW+${n3(kg2)}` : `BW−${n3(-kg2)}` : n3(kg2);
     return `${num3} ${u4}`;
   }
-  function listLabelIn(M3, ex, kg2, named3) {
-    const lift = liftUIn(M3, ex), u4 = typedUnit(kg2) ?? lift;
+  function listLabelIn(M3, ex, kg2, t4, named3) {
+    const lift = liftUIn(M3, ex), u4 = t4 ?? lift;
     const label = loadLabelIn(M3, { bw: ex.bw, unit: u4 }, kg2);
     if (ex.bw && kg2 === 0) return label;
     return named3 || u4 !== UIn(M3) || u4 !== lift || u4 !== appUIn(M3) ? `${label} ${u4}` : label;
+  }
+  function saidLoadIn(M3, ex, kg2, u4) {
+    M3 = liftModelIn(M3, ex);
+    return u4 != null && u4 !== UIn(M3) ? typedLabelIn(M3, ex, kg2, u4) : `${loadLabelIn(M3, ex, kg2)}${ex.bw ? "" : " " + UIn(M3)}`;
   }
   function swapWIn(M3, ex, res, nw) {
     M3 = liftModelIn(M3, ex);
@@ -7902,15 +8036,14 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const exps = ed ? read.filter((x2) => x2.sid !== ed) : read;
     if (!exps.length) return null;
     const ex = EXIn(M3, exId);
-    const seen = /* @__PURE__ */ new Set();
+    const seen = /* @__PURE__ */ new Map();
     let heaviest = -Infinity;
-    for (const x2 of exps)
-      for (const p3 of x2.pts) {
-        seen.add(p3.w);
-        if (p3.r > 0) heaviest = Math.max(heaviest, p3.w);
-      }
+    for (const x2 of exps) {
+      seeLoads(seen, x2.pts);
+      for (const p3 of x2.pts) if (p3.r > 0) heaviest = Math.max(heaviest, p3.w);
+    }
     const typed = Number(s3.w) || 0;
-    const w2 = prSameLoad(typed, seen);
+    const w2 = prSameLoad(typed, s3.u ?? null, seen);
     const own2 = prLoadIn(M3, ex, s3, date);
     const st = exps.length < every.length ? statsUpToIn(M3, exId, exps) : I2.exStats[exId];
     return { ex, exps, st, heaviest, w: w2, load: own2 + (w2 - typed), own: own2 };
@@ -7934,12 +8067,12 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   function recordsOfIn(M3, ex, exps) {
     let est = null, heavy = null;
     const front = [];
-    const seen = /* @__PURE__ */ new Set();
+    const seen = /* @__PURE__ */ new Map();
     for (const x2 of exps) {
       if (x2.dropOnly) continue;
       const fresh = [];
       for (const p3 of x2.pts) {
-        const d3 = prSameLoad(p3.w, seen) - p3.w, j3 = p3.pl + d3;
+        const d3 = prSameLoad(p3.w, p3.u ?? null, seen) - p3.w, j3 = p3.pl + d3;
         const v3 = noE1(ex) || noBodyIn(M3, ex) ? null : e1(p3.load + d3, p3.r, p3.rq);
         if (v3 != null && (!est || v3 > est.v + EPS_SAME)) est = { v: v3, p: p3, date: x2.date, sid: x2.sid };
         if (!heavy || j3 > heavy.j + EPS_SAME || Math.abs(j3 - heavy.j) < EPS_SAME && p3.r > heavy.p.r)
@@ -7952,7 +8085,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
           if (j3 >= front[k2].j - EPS_SAME && p3.r >= front[k2].p.r) front.splice(k2, 1);
         front.push({ p: p3, j: j3, date: x2.date, sid: x2.sid });
       }
-      for (const p3 of x2.pts) seen.add(p3.w);
+      seeLoads(seen, x2.pts);
     }
     front.sort((a2, b2) => b2.j - a2.j);
     const dates = front.map((f3) => f3.date);
@@ -7972,6 +8105,12 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var OFF_STEP = 0.02;
   var BIG_STEP_REPS = 1.5;
   var RACK_FIT = 0.01;
+  function unitOfIn(M3, ex, w2) {
+    const u4 = ex.id ? loadUnitIn(M3, ex.id, w2) : void 0;
+    return u4 === void 0 ? unitOnGrid(w2) : u4;
+  }
+  var otherIn = (M3, ex, w2) => otherUnitIn(M3, unitOfIn(M3, ex, w2));
+  var hereIn = (M3, ex, w2) => w2 === 0 || unitOfIn(M3, ex, w2) === UIn(M3);
   var RACK_READ_N = 12;
   function snapUnitIn(M3, ex, plan, res, down) {
     M3 = liftModelIn(M3, ex);
@@ -8015,8 +8154,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       const k2 = (inUnitIn(M3, v3) - o3) / st;
       return Math.abs(k2 - Math.round(k2)) > OFF_STEP;
     };
-    const typed = (v3) => onStep(inUnitIn(M3, v3), TYPED_STEP);
-    if (!off(top) || !off(w2) || typed(top)) return null;
+    if (!off(top) || !off(w2) || hereIn(M3, ex, top)) return null;
     const x2 = inUnitIn(M3, w2);
     const lo = at2(Math.floor((x2 - o3) / st + EPS));
     const loaded = !ex.bw && !ex.assist;
@@ -8111,7 +8249,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     return stepOfIn(M3, ex, plan, at2, true);
   }
   function stepOfIn(M3, ex, plan, at2, byEquip) {
-    const v3 = stepReadIn(M3, ex && ex.inc != null ? ex.inc : plan && isNum(+plan.inc) ? +plan.inc : STEP_LB);
+    const pinc = plan && isNum(+plan.inc) ? +plan.inc : STEP_LB;
+    const v3 = ex && ex.inc != null ? stepReadIn(M3, ex.inc, ex.incU) : stepReadIn(M3, pinc, planStepUnit(pinc));
     if (ex && ex.inc == null && Math.abs(v3 - unitStepIn(M3)) < EPS_SAME) {
       const L2 = gymRackIn(M3, ex, plan);
       if (L2) {
@@ -8155,7 +8294,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     if (Ls.kind !== "rack" && Ls.kind !== "grid") return res;
     if (Ls.has(w2)) return res;
     const again = top != null && Math.abs(w2 - top) < EPS_SAME;
-    if (again && !typedOtherIn(M3, w2)) return res;
+    if (again && !otherIn(M3, ex, w2)) return res;
     const f3 = Ls.floor(w2);
     let nw;
     if (again) {
@@ -8207,7 +8346,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   }
   function rackGridIn(M3, ex, plan, at2) {
     if (!ex || ex.assist || ex.inc != null || !rackKind(ex) || gymRackIn(M3, ex, plan)) return null;
-    if (Math.abs(stepReadIn(M3, plan && isNum(+plan.inc) ? +plan.inc : STEP_LB) - unitStepIn(M3)) > EPS_SAME) return null;
+    const pinc = plan && isNum(+plan.inc) ? +plan.inc : STEP_LB;
+    if (Math.abs(stepReadIn(M3, pinc, planStepUnit(pinc)) - unitStepIn(M3)) > EPS_SAME) return null;
     return rackStepIn(M3, ex, at2) || (UIn(M3) === "lb" && rackKind(ex) === "dumbbell" ? RACK.dumbbell.lb[0] * LB : null);
   }
   var gridD = (M3, g2) => Math.round(inUnitIn(M3, g2) * MILLIONTHS) / MILLIONTHS;
@@ -8250,7 +8390,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const L2 = gymRackIn(M3, ex, plan);
     if (L2) {
       const tl = rackTolIn(M3), tf = rackTolIn(M3, L2, at2);
-      const conv = at2 != null && typedOtherIn(M3, at2) && !L2.some((x2) => Math.abs(x2 - at2) < EPS_SAME), jump = jumpPct(ex, plan);
+      const conv = at2 != null && otherIn(M3, ex, at2) && !L2.some((x2) => Math.abs(x2 - at2) < EPS_SAME), jump = jumpPct(ex, plan);
       const next2 = (w2) => L2.find((x2) => x2 > w2 + tl) ?? null;
       return {
         kind: "rack",
@@ -8269,7 +8409,6 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const og = rackGridIn(M3, ex, plan, at2);
     if (og) {
       const t4 = rackTolIn(M3), first = gridStep(M3, og, 0, 1);
-      const typed = (w2) => onStep(inUnitIn(M3, w2), TYPED_STEP);
       const jump = jumpPct(ex, plan);
       return {
         kind: "grid",
@@ -8284,7 +8423,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         },
         above: (w2) => {
           const u4 = gridStep(M3, og, w2, 1);
-          return !typed(w2) && u4 - w2 < jump * w2 ? gridStep(M3, og, u4, 1) : u4;
+          return !hereIn(M3, ex, w2) && u4 - w2 < jump * w2 ? gridStep(M3, og, u4, 1) : u4;
         },
         has: (w2) => Math.abs(gridFloor(M3, og, w2, t4) - w2) <= t4
       };
@@ -8326,7 +8465,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   }
   function unitAnchorIn(M3, ex, at2, step) {
     const su = inUnitIn(M3, step);
-    if (ex.timed || !typedOtherIn(M3, at2) || !(su > 0) || !onStep(su, TYPED_STEP)) return null;
+    if (ex.timed || !otherIn(M3, ex, at2) || !(su > 0) || !onStep(su, TYPED_STEP)) return null;
     const o3 = inUnitIn(M3, loadFloorIn(M3, ex));
     return kgOfIn(M3, o3 + Math.round((inUnitIn(M3, at2) - o3) / su) * su);
   }
@@ -8339,7 +8478,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       const c4 = Ls.floor(to);
       return c4 == null ? Ls.first ?? dn2 : Math.min(dn2, c4);
     }
-    const once = !inHand && typedOtherIn(M3, from) ? unitFloorIn(M3, ex, plan, Math.min(to, from)) : null;
+    const once = !inHand && otherIn(M3, ex, from) ? unitFloorIn(M3, ex, plan, Math.min(to, from)) : null;
     if (once != null) return once < from - EPS_SAME ? once : Math.max(0, from);
     const dn = Ls.below(from);
     let w2;
@@ -8403,9 +8542,12 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     return 0;
   }
   function pastWordsIn(M3, ex, top, lbl) {
-    const other = typedOtherIn(M3, top);
+    const other = otherUnitIn(M3, unitOfIn(M3, ex, top));
     return {
-      was: (w2) => typedOtherIn(M3, w2) ? `${typedLabelIn(M3, ex, w2)}${loadNote(ex)}` : lbl(w2),
+      was: (w2) => {
+        const u4 = unitOfIn(M3, ex, w2);
+        return otherUnitIn(M3, u4) ? `${typedLabelIn(M3, ex, w2, u4)}${loadNote(ex)}` : lbl(w2);
+      },
       upTo: (nw) => other ? `go to ${lbl(nw)}` : `add ${fmtWIn(M3, nw - top)} ${UIn(M3)}`
     };
   }
@@ -8536,7 +8678,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const { ex, last, T: T2, top, planPts, lastR, lastS, basis, opts, plan } = C2;
     if (!opts.before || last.date !== T2 || !(planPts.length > 0)) return null;
     if (!(last.rr && sameRR(last.rr, [+plan.repMin, +plan.repMax]))) return null;
-    const sets = last.pts.map((p3) => `${typedLabelIn(M3, ex, p3.w)}×${p3.r}`).join(", ");
+    const sets = last.pts.map((p3) => `${typedLabelIn(M3, ex, p3.w, p3.u)}×${p3.r}`).join(", ");
     return {
       top,
       w: top,
@@ -8585,7 +8727,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const capW = (w2) => cap != null ? Math.min(w2, cap) : w2;
     const topPts = triedAt(last, top);
     const planPts = topPts.slice(0, Math.max(1, +plan.sets || topPts.length));
-    const L0 = lastOf(seen, last, (p3) => `${typedLabelIn(M3, ex, p3.w)}×${p3.r}`, M3.today(), +plan.repMin);
+    const L0 = lastOf(seen, last, (p3) => `${typedLabelIn(M3, ex, p3.w, p3.u)}×${p3.r}`, M3.today(), +plan.repMin);
     const lastR = L0.lastR, lastS = L0.line, basis = L0.basis;
     const lbl = (w2) => `${loadLabelIn(M3, ex, w2)}${ex.bw ? "" : " " + UIn(M3)}${loadNote(ex)}`;
     const { was, upTo } = pastWordsIn(M3, ex, top, lbl);
@@ -8915,7 +9057,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         return {
           top,
           w: aw,
-          text: `${lastS} Every set at ${was(top)} hit ${plan.repMax}: ${aw === 0 ? "try it without help" : typedOtherIn(M3, top) ? upTo(aw) : `take ${fmtWIn(M3, aw - top)} ${UIn(M3)} of help off`} and aim for ${plan.repMin}+ reps.`,
+          text: `${lastS} Every set at ${was(top)} hit ${plan.repMax}: ${aw === 0 ? "try it without help" : otherUnitIn(M3, unitOfIn(M3, ex, top)) ? upTo(aw) : `take ${fmtWIn(M3, aw - top)} ${UIn(M3)} of help off`} and aim for ${plan.repMin}+ reps.`,
           lastR,
           basis,
           last: lastS,
@@ -8952,7 +9094,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
           return {
             top,
             w: top,
-            text: `${lastS} Every set at ${was(top)} hit ${plan.repMax}. ${typedOtherIn(M3, top) ? `The next load up, ${lbl(nw)}, is a large step` : `The next step, ${fmtWIn(M3, nw - top)} ${UIn(M3)}, is large`} for this load, so build every set to ${Z2} here first; then the new load starts inside your range.`,
+            text: `${lastS} Every set at ${was(top)} hit ${plan.repMax}. ${otherUnitIn(M3, unitOfIn(M3, ex, top)) ? `The next load up, ${lbl(nw)}, is a large step` : `The next step, ${fmtWIn(M3, nw - top)} ${UIn(M3)}, is large`} for this load, so build every set to ${Z2} here first; then the new load starts inside your range.`,
             lastR,
             basis,
             last: lastS,
@@ -9065,7 +9207,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const floor = loadFloorIn(M3, ex);
     if (floor > 0 && w2 < floor - EPS) w2 = floor;
     if (!(w2 > 0)) return null;
-    return { ex: k2.ex, date: x2.date, w: w2, set: `${listLabelIn(M3, k2.ex, set.w)}×${set.r}` };
+    const s0 = set;
+    return { ex: k2.ex, date: x2.date, w: w2, set: `${listLabelIn(M3, k2.ex, s0.w, s0.u)}×${s0.r}` };
   }
   function suggestTimedIn(M3, ex, plan, exps, opts, injM, all, noAdd, away) {
     opts = opts || {};
@@ -9094,10 +9237,10 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const last = exps[exps.length - 1], ws = last.pts;
     const top = Math.max(...ws.map((p3) => p3.w));
     const topPts = ws.filter((p3) => Math.abs(p3.w - top) < EPS_SAME);
-    const at2 = loadReadIn(M3, top);
+    const at2 = loadReadIn(M3, top, unitOfIn(M3, ex, top));
     const lbl = (w2) => `${loadLabelIn(M3, ex, w2)}${ex.bw ? "" : " " + UIn(M3)}${loadNote(ex)}`;
     const { was, upTo } = pastWordsIn(M3, ex, top, lbl);
-    const L0 = lastOf(all, last, (p3) => `${typedLabelIn(M3, ex, p3.w)} for ${p3.r}s`, M3.today());
+    const L0 = lastOf(all, last, (p3) => `${typedLabelIn(M3, ex, p3.w, p3.u)} for ${p3.r}s`, M3.today());
     const lastR = L0.lastR, lastS = L0.line, basis = L0.basis;
     if (injM)
       return {
@@ -9131,7 +9274,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         prev: L0.prev,
         prevOff: L0.prevOff,
         w: at2,
-        text: `${opts.before === M3.today() ? "Earlier today" : "Earlier that day"}: ${ws.map((p3) => `${loadLabelIn(M3, ex, p3.w)} for ${p3.r}s`).join(", ")}. The same again: no step up within one day.`,
+        text: `${opts.before === M3.today() ? "Earlier today" : "Earlier that day"}: ${ws.map((p3) => `${typedLabelIn(M3, ex, p3.w, p3.u)} for ${p3.r}s`).join(", ")}. The same again: no step up within one day.`,
         lastR,
         basis,
         last: lastS,
@@ -9193,7 +9336,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   function easierTextIn(M3, ex, e5) {
     M3 = liftModelIn(M3, ex);
     const sc = effScale(M3.s.settings.rirScale);
-    return `Getting easier at ${loadLabelIn(M3, ex, e5.w)}${ex.bw ? "" : " " + UIn(M3)}: ${sc === "rpe" ? "RPE" : "RIR"} ${effAt(sc, e5.from)} → ${effAt(sc, e5.to)} at the same reps. Adding load today is reasonable.`;
+    return `Getting easier at ${saidLoadIn(M3, ex, e5.w, e5.u)}: ${sc === "rpe" ? "RPE" : "RIR"} ${effAt(sc, e5.from)} → ${effAt(sc, e5.to)} at the same reps. Adding load today is reasonable.`;
   }
 
   // src/app/time.ts
@@ -10265,7 +10408,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       const last = all[all.length - 1];
       let top = null;
       for (const p3 of last ? last.pts : [])
-        if (!top || p3.w > top.w || p3.w === top.w && p3.r > top.r) top = { w: p3.w, r: p3.r };
+        if (!top || p3.w > top.w || p3.w === top.w && p3.r > top.r) top = { w: p3.w, r: p3.r, u: p3.u };
       return { id, wk, line, top };
     });
   }
@@ -10460,14 +10603,11 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       const id = stalled[0];
       const st = I2.exStats[id];
       const flat = stallWordsIn(M3, id);
-      const atTop = (ex, w2) => {
-        const L2 = liftModelIn(M3, ex);
-        return typedOtherIn(L2, w2) ? typedLabelIn(L2, ex, w2) : `${loadLabelIn(L2, ex, w2)}${ex.bw ? "" : " " + UIn(L2)}`;
-      };
+      const atTop = (ex, x2) => saidLoadIn(M3, ex, x2.topW, unitAt(x2.pts, x2.topW));
       if (atRangeTopIn(M3, id))
         return {
           tone: "yellow",
-          text: `${exNameIn(M3, id)} is at the top of its range at ${atTop(EXIn(M3, id), st.last.topW)} and has stalled ${flat}: it is due a step up, not a new range. The session's target says how.`,
+          text: `${exNameIn(M3, id)} is at the top of its range at ${atTop(EXIn(M3, id), st.last)} and has stalled ${flat}: it is due a step up, not a new range. The session's target says how.`,
           why: "Every set reached the top of the range. The next step is more load, or, when one step is large for the load, a few more reps first.",
           act: { label: "See the lift", sec: "exercise", ex: id }
         };
@@ -10758,6 +10898,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var defBand = live(defBandIn);
   var fitFloors = live(fitFloorsIn);
   var refit = live(refitIn);
+  var oldOwnTargets = live(oldOwnTargetsIn);
   var barKg = live(barKgIn);
   var capOf = live(capOfIn);
   var exBarKg = live(exBarKgIn);
@@ -10773,6 +10914,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var loadLabel = live(loadLabelIn);
   var typedLabel = live(typedLabelIn);
   var listLabel = live(listLabelIn);
+  var saidLoad = live(saidLoadIn);
   var IDX = live(IDXIn);
   var allTimeBests = live(allTimeBestsIn);
   var sinceBack = live(sinceBackIn);
@@ -11058,7 +11200,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     }
     if (device.boot) {
       try {
-        writeLocal(JSON.stringify(state));
+        writeLocal(storedJson(state));
         device.ok = true;
       } catch (e5) {
         device.ok = false;
@@ -11072,7 +11214,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   function writeTakenIn() {
     if (!device.boot) return false;
     try {
-      writeLocal(JSON.stringify(state));
+      writeLocal(storedJson(state));
       device.ok = true;
     } catch (e5) {
       device.ok = false;
@@ -11500,7 +11642,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       cloud.pendAt = null;
       let moved = false;
       for (const id of /* @__PURE__ */ new Set([...Object.keys(ch), ...Object.keys(cloud.localH)])) {
-        const h3 = hashStr(JSON.stringify(ch[id] || emptyChunk(id)));
+        const h3 = hashStr(storedJson(ch[id] || emptyChunk(id)));
         if (cloud.localH[id] !== h3) {
           if (cloud.localH[id] !== void 0) {
             cloud.editAt[id] = now2;
@@ -11518,8 +11660,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     try {
       const ch = chunksOf(state);
       cloud.localH = {};
-      for (const id in ch) cloud.localH[id] = hashStr(JSON.stringify(ch[id]));
-      for (const id in cloud.meta) if (!(id in cloud.localH)) cloud.localH[id] = hashStr(JSON.stringify(emptyChunk(id)));
+      for (const id in ch) cloud.localH[id] = hashStr(storedJson(ch[id]));
+      for (const id in cloud.meta) if (!(id in cloud.localH)) cloud.localH[id] = hashStr(storedJson(emptyChunk(id)));
     } catch (e5) {
       log("sync-track", e5);
     }
@@ -11619,7 +11761,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const m3 = cloud.meta[id], h3 = hashStr(sb.json);
     if (m3 && m3.h === h3) return;
     const mine = chunksOf(state)[id] || emptyChunk(id);
-    const localDirty = !m3 || hashStr(JSON.stringify(mine)) !== m3.h;
+    const localDirty = !m3 || hashStr(storedJson(mine)) !== m3.h;
     const et = Number(sb.et) || Number(sb.at) || 0;
     if (!localDirty) applyChunk(id, rec(data));
     else applyChunk(id, mergeChunk(id, baseFor(id, m3, legB), mine, data, et > (cloud.editAt[id] || 0), { conflicts: 0 }));
@@ -11723,7 +11865,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         const data = ch[id] || emptyChunk(id);
         if (!data) continue;
         const m3 = cloud.meta[id];
-        if (!m3 || m3.h !== hashStr(JSON.stringify(data))) return true;
+        if (!m3 || m3.h !== hashStr(storedJson(data))) return true;
       }
     } catch (e5) {
       log("sync-unsent", e5);
@@ -11746,7 +11888,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       if (!isChunkId(id)) continue;
       const data = ch[id] || emptyChunk(id);
       if (!data) continue;
-      const json = JSON.stringify(data);
+      const json = storedJson(data);
       const h3 = hashStr(json);
       const m3 = cloud.meta[id];
       if (m3 && !m3.b && m3.h === h3) {
@@ -11795,7 +11937,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
           trackEdits();
           ownWrite(x2.id, snap && snap.exists ? rec(snap.data()) : null);
           const m3 = cloud.meta[x2.id];
-          let json = JSON.stringify(chunksOf(state)[x2.id] || emptyChunk(x2.id));
+          let json = storedJson(chunksOf(state)[x2.id] || emptyChunk(x2.id));
           const b2 = snap && snap.exists ? rec(snap.data()) : null;
           const seen = seenOf(b2);
           let took = null;
@@ -11829,7 +11971,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
               }
               if (x2.id === "core" && absorbLegacy(legacyBody(rec(rd)))) moreBody2 = true;
               resyncLocalH();
-              json = JSON.stringify(chunksOf(state)[x2.id] || emptyChunk(x2.id));
+              json = storedJson(chunksOf(state)[x2.id] || emptyChunk(x2.id));
               if (hashStr(json) === hashStr(b2.json)) {
                 cloud.meta[x2.id] = took;
                 saveMeta();
@@ -12016,7 +12158,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       const r4 = remote[id], m3 = cloud.meta[id];
       if (m3 && r4.h === m3.h) continue;
       if (id === "draft") draftIn = true;
-      const lJson = JSON.stringify(local[id] || emptyChunk(id));
+      const lJson = storedJson(local[id] || emptyChunk(id));
       const localDirty = !m3 || hashStr(lJson) !== m3.h;
       if (!localDirty) {
         parts[id] = rec(r4.data);
@@ -12269,9 +12411,9 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   async function keepHere(from) {
     const notes = { meta: cloud.meta, editAt: cloud.editAt, last: cloud.last };
     for (let i5 = 0; i5 < KEEP_TRIES; i5++) {
-      const text = JSON.stringify(state);
+      const text = storedJson(state);
       if (!await keepAside(from, text, notes)) return "room";
-      if (JSON.stringify(state) === text) return "kept";
+      if (storedJson(state) === text) return "kept";
     }
     log("aside", new Error("the log kept changing while it was being kept aside"));
     return "busy";
@@ -12774,12 +12916,12 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   }
   var distU = () => appU() === "kg" ? "km" : "mi";
   var distShow = (km) => Math.round((appU() === "kg" ? km : km / KM_MI) * HUNDREDTHS) / HUNDREDTHS;
-  function setShort(ex, w2, r4, named3) {
-    const l4 = listLabel(ex, +(w2 ?? 0) || 0, named3);
-    return ex.timed ? `${l4} for ${r4}s` : `${l4}×${r4}`;
+  function setShort(ex, x2, named3) {
+    const l4 = listLabel(ex, +(x2.w ?? 0) || 0, x2.u, named3);
+    return ex.timed ? `${l4} for ${x2.r}s` : `${l4}×${x2.r}`;
   }
   function setStr(ex, x2) {
-    return `${x2.warm ? "(W) " : x2.drop ? "(D) " : ""}${setShort(ex, x2.w, x2.r)}${missedTag(x2)}${!ex.timed && x2.rir != null && x2.rir !== "" ? rirScale() === "rpe" ? " @RPE " + effShow(x2.rir) : " @" + effShow(x2.rir) : ""}${x2.cal ? " (RIR check)" : ""}`;
+    return `${x2.warm ? "(W) " : x2.drop ? "(D) " : ""}${setShort(ex, { w: x2.w, r: x2.r, u: x2.u })}${missedTag(x2)}${!ex.timed && x2.rir != null && x2.rir !== "" ? rirScale() === "rpe" ? " @RPE " + effShow(x2.rir) : " @" + effShow(x2.rir) : ""}${x2.cal ? " (RIR check)" : ""}`;
   }
   var nz = (v3) => noLog() ? NIL : v3;
   var rirShow = (ex) => state.settings.rirMode !== "off" && !(ex && ex.timed);
@@ -12831,14 +12973,14 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       const v3 = trendE(p3.load, p3.r, 0) || 0;
       if (!q || v3 > q.v) q = { v: v3, p: p3 };
     }
-    return q ? { v: q.v, txt: setShort(ex, q.p.w, q.p.r) } : { v: 0, txt: "" };
+    return q ? { v: q.v, txt: setShort(ex, q.p) } : { v: 0, txt: "" };
   }
   function bestSet(exId) {
     let b2 = null;
     for (const x2 of liftRead(exId))
       for (const p3 of x2.pts) {
         const v3 = trendE(p3.load, p3.r, 0) || p3.load;
-        if (!b2 || v3 > b2.v + EPS || v3 > b2.v - EPS && p3.r > b2.r) b2 = { v: v3, w: p3.w, r: p3.r, date: x2.date };
+        if (!b2 || v3 > b2.v + EPS || v3 > b2.v - EPS && p3.r > b2.r) b2 = { v: v3, w: p3.w, r: p3.r, u: p3.u, date: x2.date };
       }
     return b2;
   }
@@ -12848,7 +12990,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     let b2 = null;
     for (const p3 of x2.pts) {
       const v3 = e1(p3.load, p3.r, p3.rq);
-      if (v3 != null && (!b2 || v3 > b2.v)) b2 = { v: v3, w: p3.w, r: p3.r };
+      if (v3 != null && (!b2 || v3 > b2.v)) b2 = { v: v3, w: p3.w, r: p3.r, u: p3.u };
     }
     return b2;
   }
@@ -12974,7 +13116,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const exps = (IDX().byEx[exId] || []).filter((x2) => !upTo || x2.date <= upTo);
     const last = exps[exps.length - 1];
     const when = last && r4.heavy.date === last.date ? "" : `, ${fmtDate(r4.heavy.date)}`;
-    return `Heaviest ${setShort(ex, r4.heavy.p.w, r4.heavy.p.r)}${loadNote(ex)}${when}`;
+    return `Heaviest ${setShort(ex, r4.heavy.p)}${loadNote(ex)}${when}`;
   }
   function bestSetLine(exId) {
     const r4 = allTimeBests(exId);
@@ -12983,15 +13125,15 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       const e5 = r4.est;
       const over = r4.front.filter((f3) => f3.p.pl >= e5.p.pl - EPS_SAME && f3.p.r >= e5.p.r && (f3.p.pl > e5.p.pl + EPS_SAME || f3.p.r > e5.p.r)).sort((a2, b2) => b2.p.pl - a2.p.pl || b2.p.r - a2.p.r)[0];
       const best = over || e5;
-      return `Best ${setShort(r4.ex, best.p.w, best.p.r)}${loadNote(r4.ex)}, ${fmtDate(best.date)}`;
+      return `Best ${setShort(r4.ex, best.p)}${loadNote(r4.ex)}, ${fmtDate(best.date)}`;
     }
-    return r4.heavy ? `Heaviest ${setShort(r4.ex, r4.heavy.p.w, r4.heavy.p.r)}${loadNote(r4.ex)}, ${fmtDate(r4.heavy.date)}` : "";
+    return r4.heavy ? `Heaviest ${setShort(r4.ex, r4.heavy.p)}${loadNote(r4.ex)}, ${fmtDate(r4.heavy.date)}` : "";
   }
   function goalState(exId) {
     const ex = EX(exId);
     const g0 = ex && ex.goal;
     if (!g0 || !goalOk(ex)) return null;
-    const g2 = { w: loadReadOf(ex, g0.w), r: g0.r };
+    const g2 = { w: loadReadOf(ex, g0.w, ex.goalU), r: g0.r };
     const exps = liftRead(exId);
     const bw = bwRefLoad(ex);
     const noBw = !!ex.bw && !((bwRef() ?? 0) > 0);
@@ -13012,8 +13154,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const pct = !noBw && need && cur2 ? Math.min(PERCENT, cur2 / need * PERCENT) : null;
     return { g: g2, hit, pct, cur: cur2, need, noBw };
   }
-  function goalWords(ex, g2) {
-    return `${loadLabel(ex, loadReadOf(ex, g2.w))}${ex.bw ? "" : " " + liftU(ex)}${loadNote(ex)} × ${g2.r}`;
+  function goalWords(ex, g2, u4 = ex.goalU) {
+    return `${loadLabel(ex, loadReadOf(ex, g2.w, u4))}${ex.bw ? "" : " " + liftU(ex)}${loadNote(ex)} × ${g2.r}`;
   }
   function regionWk() {
     const v3 = ui.regionWk != null ? ui.regionWk : prefGet(REGION_KEY);
@@ -15253,7 +15395,10 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     if (!state.settings.askedShow) return A;
     const said2 = sets.flatMap(
       (x2) => !x2.sg ? [] : [
-        x2.sg[0] != null && x2.sg[1] != null ? setShort(ex, x2.sg[0], x2.sg[1]) : x2.sg[1] != null ? `${x2.sg[1]} ${ex.timed ? "s" : "reps"}` : loadLabel(ex, x2.sg[0] ?? 0)
+        x2.sg[0] != null && x2.sg[1] != null ? (
+          // The load the app asked, made on its equipment's steps in that equipment's unit (unitOnGrid).
+          setShort(ex, { w: x2.sg[0], r: x2.sg[1], u: unitOnGrid(x2.sg[0]) })
+        ) : x2.sg[1] != null ? `${x2.sg[1]} ${ex.timed ? "s" : "reps"}` : listLabel(ex, x2.sg[0] ?? 0, unitOnGrid(x2.sg[0] ?? 0))
       ]
     );
     return said2.length ? b`<br /><span class="muted">Asked: ${said2.join(", ")}</span>` : A;
@@ -16241,7 +16386,7 @@ ${more}`;
   var GENERIC_WORKOUT = /^\s*((early|late)\s+)?(morning|afternoon|evening|night|midday|lunch|weekend)?\s*(workout|session|training|lifting|lift|gym)?\s*$|^imported$/i;
   var TYPED = { reps: 100, sets: 20 };
   var TENTHS2 = 10;
-  function readSets(text, ex, defW, conv, rpe, units) {
+  function readSets(text, ex, defW, conv, rpe, units, convU, defU) {
     const fromRpe = (v3) => v3 >= 1 && v3 <= EFFORT_TOP ? Math.round((EFFORT_TOP - v3) * TENTHS2) / TENTHS2 : NaN;
     let s3 = String(text || "").toLowerCase().replace(/[×*]/g, "x").replace(/\bfor\b/g, "x").replace(/\bat\b/g, "@");
     if (units)
@@ -16259,20 +16404,26 @@ ${more}`;
     const toks = s3.split(/[\s,;/]+/).filter(Boolean);
     const re = /^(?:(bw)(?:\+(\d+(?:\.\d+)?)([kp])?)?x|(\d+(?:\.\d+)?)([kp])?x)?(\d{1,3})(?:@(\d+(?:\.\d+)?))?$/;
     const read = (v3, u4) => u4 === "k" ? v3 : u4 === "p" ? v3 * LB : conv(v3);
-    let w2 = defW == null ? null : defW;
+    const unitOf = (u4) => u4 === "k" ? "kg" : u4 === "p" ? "lb" : convU ?? null;
+    let w2 = defW == null ? null : defW, wu = defW == null ? null : defU ?? null;
     const out = [];
     for (const t4 of toks) {
       const g2 = t4.match(re);
       if (!g2) return null;
       const [, bw, added, addedU, load2, loadU, reps, at2] = g2;
-      if (bw) w2 = added ? read(+added, addedU) : 0;
-      else if (load2 != null) w2 = read(+load2, loadU);
+      if (bw) {
+        w2 = added ? read(+added, addedU) : 0;
+        wu = added ? unitOf(addedU) : null;
+      } else if (load2 != null) {
+        w2 = read(+load2, loadU);
+        wu = unitOf(loadU);
+      }
       const r4 = +(reps || "");
       if (!(r4 >= 1 && r4 <= TYPED.reps)) return null;
       const rir = at2 != null ? rpe ? fromRpe(+at2) : +at2 : allRir;
       if (rir != null && !(rir >= 0 && rir <= EFFORT_TOP)) return null;
       if (w2 == null && !ex.bw) return null;
-      out.push({ w: w2 == null ? 0 : w2, r: r4, rir });
+      out.push({ w: w2 == null ? 0 : w2, r: r4, rir, ...w2 && wu ? { u: wu } : {} });
     }
     return out.length && out.length <= TYPED.sets ? out : null;
   }
@@ -16420,9 +16571,9 @@ ${more}`;
     };
   }
   var BW_SETS_OF = 10;
-  function impTextSets(it, exo, conv) {
+  function impTextSets(it, exo, conv, convU) {
     const out = [];
-    let defW = null;
+    let defW = null, defU = null;
     for (const t4 of it.setsText || []) {
       let st = impSetsText(t4);
       const lu = /(?:\b|\d)kgs?(?![a-wyz])/i.test(t4) ? "kg" : /(?:\b|\d)lbs?(?![a-wyz])|\d\s*#/i.test(t4) ? "lb" : null;
@@ -16437,14 +16588,22 @@ ${more}`;
         if (defW == null) return null;
         for (const g3 of String(t4).toLowerCase().matchAll(/([1-5])\s*[x×*]\s*(\d{1,3})/g))
           for (let k2 = 0; k2 < +(g3[1] || 0); k2++)
-            out.push({ w: defW, r: +(g3[2] || 0), rir: void 0, warm: false, drop: false });
+            out.push({
+              w: defW,
+              r: +(g3[2] || 0),
+              rir: void 0,
+              warm: false,
+              drop: false,
+              ...defU ? { u: defU } : {}
+            });
         continue;
       }
-      const g2 = readSets(st, { bw: !!exo.bw || !!exo.timed }, defW, cv);
+      const g2 = readSets(st, { bw: !!exo.bw || !!exo.timed }, defW, cv, false, false, lu ?? convU, defU);
       if (!g2) return null;
-      out.push(...g2.map((x2) => ({ w: x2.w, r: x2.r, rir: x2.rir, warm: false, drop: false })));
+      out.push(...g2.map((x2) => ({ w: x2.w, r: x2.r, rir: x2.rir, warm: false, drop: false, ...x2.u ? { u: x2.u } : {} })));
       const lastSet = g2[g2.length - 1];
       defW = lastSet ? lastSet.w : defW;
+      defU = lastSet ? lastSet.u ?? null : defU;
     }
     return out;
   }
@@ -16671,7 +16830,8 @@ ${more}`;
       r: +(s3.r ?? 0),
       w: Number(s3.w) || 0,
       rir: rirEff(s3, ex, at2),
-      rq: rirEst(s3, ex, at2)
+      rq: rirEst(s3, ex, at2),
+      u: s3.u ?? null
     };
     const { pb, pbb } = prBestOf(ex, [p3], noBody(ex));
     return { ex, pr: prJudge(ex, h3, { pts: [p3], pb, pbb }).pr };
@@ -16729,7 +16889,7 @@ ${more}`;
       return all == null || j3.value > all + EPS_SAME ? ` (estimated 1RM ${fmtE(ex, j3.value)} ${liftU(ex)}${wasE(ex, j3.value, all) ? `; was ${wasE(ex, j3.value, all)}` : ""})` : ` (your best for ${bandW}, ${fmtE(ex, j3.value)} ${liftU(ex)})`;
     }
     if (pr === "Weight PR" && j3.type === "Weight PR") {
-      const was = ex.assist ? `less help than ever` : `heaviest before ${listLabel(ex, j3.prevW, !ex.bw)}`;
+      const was = ex.assist ? `less help than ever` : `heaviest before ${listLabel(ex, j3.prevW, j3.prevU, !ex.bw)}`;
       return ` (${was}${isCompound(ex) && j3.value != null ? `; best estimate for ${bandW} now ${fmtE(ex, j3.value)}` : ""})`;
     }
     if (j3.type === "Rep PR") return j3.prevR ? ` (was ${j3.prevR} ${ex.timed ? "s" : "reps"})` : " (heaviest yet)";
@@ -16749,10 +16909,14 @@ ${more}`;
     let heavyBeat = false, heavyTxt = "";
     if (heavier.length && t4.prevBest != null && !ex.timed) {
       let best = null, bs = null;
-      const seen = /* @__PURE__ */ new Set();
-      for (const x2 of liftRead(b2.exId)) for (const p3 of x2.pts) seen.add(p3.w);
+      const seen = /* @__PURE__ */ new Map();
+      for (const x2 of liftRead(b2.exId)) seeLoads(seen, x2.pts);
       for (const s3 of heavier) {
-        const v3 = e1(bw + prSameLoad(+(s3.w ?? 0) || 0, seen), +(s3.r ?? 0), rirEst(s3, ex, state.draft || today()));
+        const v3 = e1(
+          bw + prSameLoad(+(s3.w ?? 0) || 0, s3.u ?? null, seen),
+          +(s3.r ?? 0),
+          rirEst(s3, ex, state.draft || today())
+        );
         if (v3 != null && (best == null || v3 > best)) {
           best = v3;
           bs = s3;
@@ -16761,7 +16925,7 @@ ${more}`;
       if (best != null) {
         heavyBeat = best > t4.prevBest + EPS_SAME;
         const iso2 = !isCompound(ex);
-        const setW = bs ? setShort(ex, +(bs.w ?? 0) || 0, +(bs.r ?? 0)) : "";
+        const setW = bs ? setShort(ex, { w: +(bs.w ?? 0) || 0, r: +(bs.r ?? 0), u: bs.u }) : "";
         heavyTxt = iso2 ? heavyBeat ? `Beaten by load: ${setW}, your best yet` : `Heavier than target: ${setW}` : heavyBeat ? `Beaten by load: ${fmtE(ex, best)} ${liftU(ex)} estimated${wasE(ex, best, t4.prevBest) ? `, previous best ${wasE(ex, best, t4.prevBest)}` : ""}` : `Heavier than target, ${fmtE(ex, best)} ${liftU(ex)} estimated against a best of ${fmtE(ex, t4.prevBest)}`;
       }
     }
@@ -16854,7 +17018,11 @@ ${more}`;
       lastR: sg.lastR,
       basis: sg.basis || void 0,
       sw: sg.w == null ? null : sg.w,
-      sets: Array.from({ length: +plan.sets || DEFAULT_PLAN.sets }, () => newRow({ w: fillLoads() ? sg.w : null }))
+      sets: Array.from({ length: +plan.sets || DEFAULT_PLAN.sets }, () => {
+        const row = newRow();
+        madeLoad(row, fillLoads() ? sg.w ?? null : null);
+        return row;
+      })
     };
   }
   function keepLiftMachine(d3, gone2) {
@@ -16900,7 +17068,7 @@ ${more}`;
       sw: sg.w == null ? null : sg.w
     });
     for (const x2 of b2.sets)
-      if (!x2.done && !x2.warm && !x2.drop && x2.r == null && x2.w === oldW && !carried.has(x2)) x2.w = sg.w;
+      if (!x2.done && !x2.warm && !x2.drop && x2.r == null && x2.w === oldW && !carried.has(x2)) madeLoad(x2, sg.w ?? null);
   }
   function draftBack() {
     const d3 = state.draft;
@@ -16988,11 +17156,11 @@ ${more}`;
     });
     if (prev && (!next2 || next2.at !== prev.at || next2.w !== prev.w))
       rows2(prev.at, (x2) => {
-        if (x2.w != null && Math.abs(x2.w - prev.w) < EPS) x2.w = prev.from;
+        if (x2.w != null && Math.abs(x2.w - prev.w) < EPS) madeLoad(x2, prev.from);
       });
     if (next2)
       rows2(next2.at, (x2) => {
-        if (x2.w != null && Math.abs(x2.w - next2.from) < EPS && (x2.w === b2.sw || carried.has(x2))) x2.w = next2.w;
+        if (x2.w != null && Math.abs(x2.w - next2.from) < EPS && (x2.w === b2.sw || carried.has(x2))) madeLoad(x2, next2.w);
       });
   }
   function assessSet(bi, si) {
@@ -17042,7 +17210,7 @@ ${more}`;
     if (!s3 || s3.w != null) return;
     const g2 = greyW(b2, si);
     if (g2 == null) return;
-    s3.w = g2;
+    setLoad(s3, g2, greyU(b2, si));
   }
   function setDone(bi, si, val, again, then) {
     const d3 = state.draft;
@@ -17068,7 +17236,7 @@ ${more}`;
       const ex = EX(b2.exId);
       const fix = far ? "w" : "r";
       confirmBox(
-        `${setShort(ex, effW(b2, si), s3.r, !ex.bw)}?`,
+        `${setShort(ex, { w: effW(b2, si), r: s3.r, u: effU(b2, si) }, !ex.bw)}?`,
         lz ? `0 ${ex.timed ? "seconds" : "reps"} at a weight well under today's working weight. Log it as missed, or go back and fix it.` : `${far || `${s3.r} ${ex.timed ? "seconds" : "reps"} is far past your ${rangeWords(b2.plan)} and anything logged on this exercise.`} Log it as typed, or go back and fix it.`,
         lz ? "Log it as missed" : "Log it",
         () => {
@@ -17183,7 +17351,7 @@ ${more}`;
     const pr = rowPR(b2, si, d3);
     if (!pr) return null;
     const ex = EX(b2.exId);
-    return `${pr === "Best" ? isCompound(ex) ? "New best estimate" : "PR" : pr}: ${exName(b2.exId)}, ${setShort(ex, +(s3.w ?? 0) || 0, s3.r)}${prBeat(b2.exId, s3, d3, pr)}`;
+    return `${pr === "Best" ? isCompound(ex) ? "New best estimate" : "PR" : pr}: ${exName(b2.exId)}, ${setShort(ex, { w: +(s3.w ?? 0) || 0, r: s3.r, u: s3.u })}${prBeat(b2.exId, s3, d3, pr)}`;
   }
   function prRetell(said2, bi, si) {
     const now2 = prSaid(bi, si);
@@ -17324,8 +17492,10 @@ ${more}`;
     const key = d3.id + ":" + bi;
     if (mixSeen.has(key)) return;
     mixSeen.add(key);
+    const said2 = (w2, u4) => u4 && u4 !== liftU(ex) ? typedLabel(ex, w2, u4) : fmtWOf(ex, w2);
+    const lu = unitAt(lastX.pts, last);
     toast(
-      `${fmtWOf(ex, +(s3.w ?? 0))} ${liftU(ex)} is ${r4 > 1 ? "well above" : "well below"} last time's ${fmtWOf(ex, last)}. This one is logged as ${loadWords(ex)}.`,
+      `${s3.u && s3.u !== liftU(ex) ? said2(+(s3.w ?? 0), s3.u) : `${fmtWOf(ex, +(s3.w ?? 0))} ${liftU(ex)}`} is ${r4 > 1 ? "well above" : "well below"} last time's ${said2(last, lu)}. This one is logged as ${loadWords(ex)}.`,
       false,
       MIX_TOAST_MS
     );
@@ -17336,7 +17506,7 @@ ${more}`;
     for (let j3 = si + 1; j3 < b2.sets.length; j3++) {
       const x2 = b2.sets[j3];
       if (x2.warm || x2.drop || x2.done || !(x2.w == null || carried.has(x2))) continue;
-      x2.w = s3.w;
+      setLoad(x2, s3.w, s3.u);
       carried.add(x2);
     }
   }
@@ -17512,8 +17682,17 @@ ${more}`;
     const n3 = numIn(v3);
     return n3 != null && n3 > 0 ? Math.min(r3(appU() === "kg" ? n3 : n3 * KM_MI), LIMITS.distKm) : null;
   };
-  function parseSets(text, ex, defW, conv, rpe) {
-    return readSets(text, ex, defW, conv || ((v3) => Number(fromDOf(ex, v3))), rpe, true);
+  function parseSets(text, ex, defW, conv, rpe, defU) {
+    return readSets(
+      text,
+      ex,
+      defW,
+      conv || ((v3) => Number(fromDOf(ex, v3))),
+      rpe,
+      true,
+      conv ? null : liftU(ex),
+      defU
+    );
   }
   function fillSets(bi, list) {
     const d3 = state.draft;
@@ -17531,7 +17710,7 @@ ${more}`;
           if (si >= b2.sets.length) b2.sets.push(newRow());
           const x2 = b2.sets[si];
           if (!x2) break;
-          x2.w = p3.w;
+          setLoad(x2, p3.w, p3.u ?? (p3.w ? unitOnGrid(p3.w) : null));
           x2.r = p3.r;
           x2.rir = p3.rir;
           x2.warm = false;
@@ -18720,6 +18899,8 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       const n3 = numIn(t4.value);
       act(() => {
         state.settings.barKg = n3 == null || n3 <= 0 ? null : typedBoundApp(n3, LIMITS.barKg);
+        if (state.settings.barKg != null) state.settings.barU = appU();
+        else delete state.settings.barU;
       });
       rerenderKeepScroll();
     },
@@ -19254,7 +19435,11 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
           const e5 = state.exercises.find((x2) => x2.id === f3.it.exId);
           const v3 = typedBoundOf(e5, Math.max(n3, 0), LIMITS.step);
           f3.it.inc = v3;
-          if (e5) e5.inc = v3 > 0 ? v3 : null;
+          if (e5) {
+            e5.inc = v3 > 0 ? v3 : null;
+            if (v3 > 0) e5.incU = liftU(e5);
+            else delete e5.incU;
+          }
         } else if (k2 === "rir") f3.it.rir = clamp(effIn(n3), 0, EFFORT_TOP);
         else if (k2 === "sets") f3.it.sets = clamp(Math.round(n3), 1, LIMITS.sets);
         else if (k2 === "rest") f3.it.rest = clamp(Math.round(n3), 0, LIMITS.restS);
@@ -19607,7 +19792,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
         for (const p3 of x2.pts)
           if (!best || p3.pl > best.pl + EPS_SAME || Math.abs(p3.pl - best.pl) < EPS_SAME && p3.r > best.r) best = p3;
       return line(
-        `${best ? `Best hold ${setShort(ex, best.w, best.r)}. ` : ""}${st.stalled ? `No longer hold or more load in ${STALL.noProgress} sessions: try a harder variation or add load.` : "Progress is longer holds or more load."}`
+        `${best ? `Best hold ${setShort(ex, best)}. ` : ""}${st.stalled ? `No longer hold or more load in ${STALL.noProgress} sessions: try a harder variation or add load.` : "Progress is longer holds or more load."}`
       );
     }
     if (noE1(ex)) {
@@ -19616,7 +19801,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
         for (const p3 of x2.pts)
           if (!best || p3.w > best.w + EPS_SAME || Math.abs(p3.w - best.w) < EPS_SAME && p3.r > best.r) best = p3;
       return line(
-        `${best ? `Best set ${setShort(ex, best.w, best.r)}. ` : ""}${st.stalled ? `No rep or load PR in the last ${STALL.noProgress} sessions.` : "Progress is reps and added load."}`,
+        `${best ? `Best set ${setShort(ex, best)}. ` : ""}${st.stalled ? `No rep or load PR in the last ${STALL.noProgress} sessions.` : "Progress is reps and added load."}`,
         "No 1RM is estimated for a lift that turns about a joint."
       );
     }
@@ -19673,7 +19858,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       parts.push(`${(be.v / bw).toFixed(2)}× bodyweight.`);
     if (!(be && isCompound(ex))) {
       const bs = bestSet(exId);
-      if (bs) parts.unshift(`Best set ${setShort(ex, bs.w, bs.r)}.`);
+      if (bs) parts.unshift(`Best set ${setShort(ex, bs)}.`);
     }
     return line(parts.join(" "), more.join(" "));
   }
@@ -19849,16 +20034,16 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
         const when = fmtDate;
         const line = (e5, h3) => [
           e5 ? `best est ${fmtE(ex, e5.v)}${u4(ex)}${loadNote(ex)}, ${when(e5.date)}` : "",
-          h3 ? `heaviest ${setShort(ex, h3.p.w, h3.p.r)}${loadNote(ex)}, ${when(h3.date)}` : ""
+          h3 ? `heaviest ${setShort(ex, h3.p)}${loadNote(ex)}, ${when(h3.date)}` : ""
         ].filter(Boolean).join(" · ");
         const top = line(est, r4.heavy);
         const b2 = sinceBack(ex.id);
         const older = !!b2 && (!!r4.heavy && r4.heavy.date < b2.from || !!est && est.date < b2.from);
         const since = b2 && older ? line(b2.est && isCompound(ex) ? b2.est : null, b2.heavy) : "";
         return b`<details class="bx" data-ex=${ex.id}><summary><span class="bn">${ex.name}</span><span class="bs">${since ? `All time: ${top}` : top}</span>${since && b2 ? b`<span class="bs">Since you came back on ${when(b2.from)}: ${since}</span>` : A}</summary>
-    ${est ? b`<p class="small u-m0-0-6">Best estimate from ${setShort(ex, est.p.w, est.p.r)}.</p>` : A}
+    ${est ? b`<p class="small u-m0-0-6">Best estimate from ${setShort(ex, est.p)}.</p>` : A}
     <table class="t"><tr><th>${ex.assist ? "Load" : loadHead(ex)}</th><th class="r">${ex.timed ? "Seconds" : "Reps"}</th><th class="r">First done</th></tr>${r4.front.map(
-          (f3) => b`<tr><td class="num">${loadLabel(ex, f3.p.w)}</td><td class="r num">${f3.p.r}</td><td class="r">${when(f3.date)}</td></tr>`
+          (f3) => b`<tr><td class="num">${listLabel(ex, f3.p.w, f3.p.u)}</td><td class="r num">${f3.p.r}</td><td class="r">${when(f3.date)}</td></tr>`
         )}</table></details>`;
       })}</div>${rows2.length > shown2.length ? b`<button class="btn sm u-mt8" data-act="bestsAll">Show all ${rows2.length} lifts</button>` : A}<p class="small muted hastip u-m8-0-0" data-tip="Most reps at each weight, unless a heavier set matched it. Beat a line with a set at least 90% as strong as your best: a rep PR. Best estimate (compound lifts): the highest one-rep max any set gives, in the terms you log it (total, per side or per dumbbell). Warm-ups and drop sets left out.">How to read this</p>${oldBest}`
     };
@@ -20118,7 +20303,7 @@ ${extraKpis()}</div>`;
       const iso2 = p3.type === "e1RM" && !isCompound(ex);
       const ps = iso2 ? prSet(p3.exId, p3.sid) : null;
       const tag = ex.timed && p3.type === "Rep PR" ? "Time PR" : p3.type === "e1RM" ? iso2 ? "PR" : prName(p3) : p3.type;
-      const val = p3.type === "e1RM" ? iso2 ? ps ? setShort(ex, ps.w, ps.r) : "" : fmtE(ex, p3.value) + " " + liftU(ex) : setShort(ex, p3.w, p3.r);
+      const val = p3.type === "e1RM" ? iso2 ? ps ? setShort(ex, ps) : "" : fmtE(ex, p3.value) + " " + liftU(ex) : setShort(ex, p3);
       return b`<div class="row spread u-p6-0_bb1-solid-line"><span>${ex.name} <span class=${`tag ${p3.type === "Rep PR" ? "blue" : "green"}`}>${tag}</span></span><span class="num">${val} <span class="muted small">${fmtDate(p3.date)}</span></span></div>`;
     })}` : b`<p class="muted">No PRs yet. Your first session of an exercise sets the baseline.</p>`;
     const nLifts = Object.keys(I2.byEx).length;
@@ -20205,15 +20390,15 @@ ${extraKpis()}</div>`;
     const nSess = st ? st.n : 0;
     const f0 = exps[0];
     return b`<select data-bind="dashEx" aria-label="Exercise">${withData.map((id) => b`<option value=${id} .selected=${l3(id === exId)}>${exName(id)}</option>`)}</select>
-    <div class="u-mt8">${exHeadline(exId)}</div>${nextLine(exId)}${goalLine(exId)}${n0 ? b`<div class="kpis u-mt8"><div class="kpi"><div class="v">${nSess}</div><div class="l">Sessions logged</div></div><div class="kpi"><div class="v">${st && st.stalled ? "Yes" : "No"}</div><div class="l">Stalled</div></div></div>` : A}<div class="kpis" style=${`margin-top:8px${n0 ? ";display:none" : ""}`}>${e1Mode ? b`<div class="kpi"><div class="v">${be ? (ex.bw ? "≈" : "") + fmtE(ex, be.v) : "n/a"}</div><div class="l">Best estimate (${liftU(ex)}${loadNote(ex)}) ${tipButton(BEST_EST_TIP, "About the best estimate")}</div></div>` : b`<div class="kpi"><div class="v">${bs ? setShort(ex, bs.w, bs.r) : "n/a"}</div><div class="l">Best set${loadNote(ex)}</div></div>`}<div class="kpi"><div class="v">${nSess}</div><div class="l">Sessions logged</div></div></div>
+    <div class="u-mt8">${exHeadline(exId)}</div>${nextLine(exId)}${goalLine(exId)}${n0 ? b`<div class="kpis u-mt8"><div class="kpi"><div class="v">${nSess}</div><div class="l">Sessions logged</div></div><div class="kpi"><div class="v">${st && st.stalled ? "Yes" : "No"}</div><div class="l">Stalled</div></div></div>` : A}<div class="kpis" style=${`margin-top:8px${n0 ? ";display:none" : ""}`}>${e1Mode ? b`<div class="kpi"><div class="v">${be ? (ex.bw ? "≈" : "") + fmtE(ex, be.v) : "n/a"}</div><div class="l">Best estimate (${liftU(ex)}${loadNote(ex)}) ${tipButton(BEST_EST_TIP, "About the best estimate")}</div></div>` : b`<div class="kpi"><div class="v">${bs ? setShort(ex, bs) : "n/a"}</div><div class="l">Best set${loadNote(ex)}</div></div>`}<div class="kpi"><div class="v">${nSess}</div><div class="l">Sessions logged</div></div></div>
     ${n0 || !f0 ? "" : b`${rangeChips("ex", weeksSpan(f0.date), CHART_WEEKS, "all")}<div class="chartbox"><canvas id="chEx"></canvas></div>${chartFallback()}
     <p class="small muted hastip u-m4-0-0" data-tip="Filled diamond: a new best estimate (a weight PR that also set one is filled too). Hollow diamond: a rep PR or a weight PR that did not raise the estimate, which can sit below an earlier best. The thin dotted line is your RIR at the working weight.">Reading the chart</p>`}
     ${st && st.easier ? b`<p class="small u-cblue_mt6"><b>${easierText(ex, st.easier)}</b></p>` : ""}
-    ${st && st.fade ? b`<p class="small u-cyellow_mt6"><b>Drop-off growing at ${loadLabel(ex, st.fade.w)}${ex.bw ? "" : " " + liftU(ex)}: ${st.fade.from} → ${st.fade.to} reps lost first set to last, last three sessions.</b> Likely fatigue or short rest, not lost strength.</p>` : ""}
+    ${st && st.fade ? b`<p class="small u-cyellow_mt6"><b>Drop-off growing at ${saidLoad(ex, st.fade.w, st.fade.u)}: ${st.fade.from} → ${st.fade.to} reps lost first set to last, last three sessions.</b> Likely fatigue or short rest, not lost strength.</p>` : ""}
     ${ex.bw && !state.bodyweights.length ? b`<p class="small u-cyellow">Log your bodyweight to see a trend here.</p>` : bwBackfillNote(exId)}
     <div class="scroll-x"><table class="t u-mt8"><tr><th>Date</th><th>Sets</th>${e1Mode ? b`<th class="r">Best estimate</th>` : A}</tr>${exps.slice(-EX_ROWS).reverse().map((x2) => {
       const tag = sessionWord(x2);
-      return b`<tr><td>${fmtDate(x2.date)}${I2.prs.some((p3) => p3.big && p3.sid === x2.sid && p3.exId === exId) ? b` <span class="tag gold">PR</span>` : A}${tag ? b` <span class="tag">${tag}</span>` : A}</td><td>${x2.pts.map((p3) => setShort(ex, p3.w, p3.r)).join(", ")}</td>${e1Mode ? b`<td class="r num">${x2.best ? (ex.bw ? "≈" : "") + fmtE(ex, x2.best) : ""}</td>` : A}</tr>`;
+      return b`<tr><td>${fmtDate(x2.date)}${I2.prs.some((p3) => p3.big && p3.sid === x2.sid && p3.exId === exId) ? b` <span class="tag gold">PR</span>` : A}${tag ? b` <span class="tag">${tag}</span>` : A}</td><td>${x2.pts.map((p3) => setShort(ex, p3)).join(", ")}</td>${e1Mode ? b`<td class="r num">${x2.best ? (ex.bw ? "≈" : "") + fmtE(ex, x2.best) : ""}</td>` : A}</tr>`;
     })}</table></div>`;
   }
   function risingWords(names) {
@@ -21919,7 +22104,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     };
     const rows2 = all.slice(0, MOVING_ROWS).map((m3, k2) => {
       const ex = EX(m3.id);
-      const set = m3.top && ex ? setShort(ex, m3.top.w, m3.top.r) : "";
+      const set = m3.top && ex ? setShort(ex, m3.top) : "";
       return b`<button type="button" class="mvrow" data-act="goDash" data-sec="exercise" data-ex=${m3.id} aria-label=${`${exName(m3.id)}, rising${set ? `, last best set ${set}` : ""}. Open on Stats`}><span class="mvname">${exName(m3.id)}</span>${m3.line.length > 1 ? spark(m3.line, k2) : A}<span class="mvset">${set}</span></button>`;
     });
     return section({
@@ -22336,7 +22521,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     const a2 = b2.adj;
     if (!a2 || !b2.sets.some((x2, i5) => i5 > a2.at && !x2.done && !x2.warm && !x2.drop)) return "";
     const ex = EX(b2.exId);
-    const lb = (w2) => `${loadLabel(ex, w2)}${ex.bw ? "" : " " + liftU(ex)}${loadNote(ex)}`;
+    const lb = (w2) => `${saidLoad(ex, w2, b2.sets.find((x2) => x2.w != null && Math.abs(x2.w - w2) < EPS && x2.u)?.u)}${loadNote(ex)}`;
     if (Math.abs(a2.w - a2.from) < EPS)
       return b`<p class="adjline small" id=${`adj-${bi}`}><span><b>Next sets: ${a2.r} reps at ${lb(a2.w)}</b>, because ${a2.why}.</span><button class="linkbtn" data-act="adjKeep" data-b=${bi}>Keep as it was</button></p>`;
     return b`<p class="adjline small" id=${`adj-${bi}`}><span><b>Next sets: ${lb(a2.w)}</b>, ${a2.up ? "up" : "down"} because ${a2.why}.</span><button class="linkbtn" data-act="adjKeep" data-b=${bi}>Keep ${lb(a2.from)}</button></p>`;
@@ -22480,7 +22665,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       const prs = b2.sets.filter((x2, si) => !x2.warm && rowPR(b2, si, d3)).length;
       const done = blockDone(b2);
       const work2 = b2.sets.filter((x2) => !x2.warm && !x2.drop);
-      const line = done ? ws.map((x2) => setShort(ex, x2.w, x2.r) + missedTag(x2)).join(", ") : `${work2.filter((x2) => x2.done).length} of ${work2.length} sets`;
+      const line = done ? ws.map((x2) => setShort(ex, { w: x2.w, r: x2.r, u: x2.u }) + missedTag(x2)).join(", ") : `${work2.filter((x2) => x2.done).length} of ${work2.length} sets`;
       return b`<section class=${"block folded" + ssCls} id=${`blk-${bi}`} data-bi=${bi}>${bgrip(bi, ex.name)}<button class="bfold" data-act="bOpen" data-b=${bi} aria-expanded="false" aria-label=${done ? `${ex.name}, done. Open to edit` : `${ex.name}, ${line} done. Open`}><span class=${done ? "bf-ck" : "bf-ck bf-todo"} aria-hidden="true">${done ? "✓" : ""}</span><span class="bf-t"><b>${ssLbl}${ex.name}</b><span>${line}</span></span>${prs ? b`<span class="bf-pr">PR</span>` : ""}<span class="chev" aria-hidden="true"></span></button></section>`;
     }
     const partner = ss ? d3.ex.filter((x2) => x2 !== b2 && x2.plan.ss === p3.ss).map((x2) => exName(x2.exId)).join(" + ") : "";
@@ -22596,8 +22781,8 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
           if (t4.dataset.f === "w") {
             const bx = d3.ex[bi];
             const as = !!bx && !!EX(bx.exId).assist;
-            s3.w = n3 == null ? null : as ? -Math.min(fromDOf(bx && EX(bx.exId), Math.abs(n3)) ?? 0, -LOAD_MIN) : Math.min(fromDOf(bx && EX(bx.exId), Math.max(n3, 0)) ?? 0, LOAD_MAX);
-            if (s3.w === 0) s3.w = 0;
+            const kg2 = n3 == null ? null : as ? -Math.min(fromDOf(bx && EX(bx.exId), Math.abs(n3)) ?? 0, -LOAD_MIN) : Math.min(fromDOf(bx && EX(bx.exId), Math.max(n3, 0)) ?? 0, LOAD_MAX);
+            setLoad(s3, kg2 === 0 ? 0 : kg2, bx ? liftU(EX(bx.exId)) : null);
             carried.delete(s3);
           } else s3.r = n3 == null ? null : Math.min(Math.max(Math.floor(n3 + EPS), 0), LIMITS.reps);
         },
@@ -24233,7 +24418,8 @@ ${JSON.stringify(ctx, null, 1)}`;
     return Object.fromEntries(newExE);
   }
   function notInLog(out) {
-    const fp = (ss) => ss.date + "|" + ss.ex.map((b2) => b2.exId + ":" + b2.sets.map((q) => q.r).join(",")).sort().join(";");
+    const asWritten = (q) => Math.round((q.u === "lb" ? q.w / LB : q.w) / TYPED_STEP);
+    const fp = (ss) => ss.date + "|" + ss.ex.map((b2) => b2.exId + ":" + b2.sets.map((q) => `${q.r}@${asWritten(q)}`).join(",")).sort().join(";");
     const have = new Set(state.sessions.map(fp));
     const seen = /* @__PURE__ */ new Set();
     const fresh = [];
@@ -24293,12 +24479,14 @@ ${JSON.stringify(ctx, null, 1)}`;
         const exo = m3.pick[it.name] === "new" ? newEx2[it.name] || EX("") : EX(m3.pick[it.name] || "");
         const fileSets = it.sets || [];
         if (!it.setsText && !exo.timed && fileSets.some((q) => q.timed)) timedOff += fileSets.filter((q) => q.timed).length;
-        const sets = it.setsText ? impTextSets(it, exo, conv) : fileSets.filter((q) => exo.timed || !q.timed).map((s3) => ({
+        const sets = it.setsText ? impTextSets(it, exo, conv, m3.unit) : fileSets.filter((q) => exo.timed || !q.timed).map((s3) => ({
           w: s3.u ? s3.u === "kg" ? s3.w : s3.w * LB : conv(s3.w),
           r: s3.r,
           rir: s3.rir,
           warm: s3.warm,
-          drop: s3.drop && !s3.warm
+          drop: s3.drop && !s3.warm,
+          // The row's unit, else the file's: the unit the load was written in.
+          u: s3.u ?? m3.unit
         }));
         if (!sets || !sets.length) {
           if (!bad.includes(it.name)) bad.push(it.name);
@@ -24311,7 +24499,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         if (!exo.bw && !exo.timed) {
           for (const q of sets)
             if (q.w > 0 && q.w < ODD.kg || q.r > ODD.reps) {
-              odd.push(`${exo.name} ${fmtWOf(exo, q.w)} ${liftU(exo)} x ${q.r}${x2.date ? `, ${fmtDate(x2.date)}` : ""}`);
+              odd.push(`${exo.name} ${saidLoad(exo, q.w, q.u)} x ${q.r}${x2.date ? `, ${fmtDate(x2.date)}` : ""}`);
               break;
             }
         }
@@ -25336,9 +25524,9 @@ ${JSON.stringify(ctx, null, 1)}`;
         for (const x2 of xs) if (x2.mk === mk) machineOf.set(`${x2.sid}|${id}`, name);
       }
     }
-    const typed = (ex, w2) => {
-      const u4 = typedUnit(w2) ?? liftU(ex);
-      return [Math.round((u4 === "lb" ? w2 / LB : w2) * TYPED_CENTS) / TYPED_CENTS, u4];
+    const typed = (ex, s3) => {
+      const u4 = s3.u ?? liftU(ex);
+      return [Math.round((u4 === "lb" ? s3.w / LB : s3.w) * TYPED_CENTS) / TYPED_CENTS, u4];
     };
     for (const ss of sortedSessions()) {
       for (const b2 of ss.ex) {
@@ -25368,7 +25556,7 @@ ${JSON.stringify(ctx, null, 1)}`;
             "",
             ex.timed ? "seconds" : "reps",
             s3.cal ? `stop at ${s3.cal.at}, called ${s3.cal.pred} left` : "",
-            ...typed(ex, +s3.w || 0),
+            ...typed(ex, { w: +s3.w || 0, u: s3.u }),
             machineOf.get(`${ss.id}|${b2.exId}`) || ""
           ]);
         });
@@ -25867,9 +26055,9 @@ ${JSON.stringify(ctx, null, 1)}`;
   }
   function shownNumbers(x2) {
     return {
-      inc: x2.inc != null ? fmtWOf(x2, stepReadOf(x2, x2.inc)) : "",
+      inc: x2.inc != null ? fmtWOf(x2, stepReadOf(x2, x2.inc, x2.incU)) : "",
       max: x2.maxLoad != null ? fmtWOf(x2, liftMax(x2) ?? 0) : "",
-      bar: x2.barKg != null ? fmtWOf(x2, barReadOf(x2, x2.barKg)) : ""
+      bar: x2.barKg != null ? fmtWOf(x2, barReadOf(x2, x2.barKg, x2.barU)) : ""
     };
   }
   function afterAdd(bi) {
@@ -26282,25 +26470,37 @@ ${JSON.stringify(ctx, null, 1)}`;
       e5.secondary = e5.secondary.filter((k2) => k2 !== e5.primary);
       const was = m3.isNew ? void 0 : state.exercises.find((x2) => x2.id === e5.id);
       const sh = was ? shownNumbers(was) : null;
+      const u4 = liftU(e5);
       if (sh && e5.incRaw === sh.inc) delete e5.incRaw;
       else {
         const n3 = numIn(e5.incRaw);
         e5.inc = n3 != null && n3 > 0 ? typedBoundOf(e5, n3, LIMITS.step) : null;
+        if (e5.inc != null) e5.incU = u4;
+        else delete e5.incU;
         delete e5.incRaw;
       }
       if (sh && e5.maxRaw === sh.max) delete e5.maxRaw;
       else {
         const n3 = numIn(e5.maxRaw);
-        if (n3 != null && n3 > 0)
-          e5.maxLoad = Number(fromDOf(e5, Math.min(n3, liftU(e5) === "lb" ? MAX_LOAD.lb : MAX_LOAD.kg)));
-        else delete e5.maxLoad;
+        if (n3 != null && n3 > 0) {
+          e5.maxLoad = Number(fromDOf(e5, Math.min(n3, u4 === "lb" ? MAX_LOAD.lb : MAX_LOAD.kg)));
+          e5.maxLoadU = u4;
+        } else {
+          delete e5.maxLoad;
+          delete e5.maxLoadU;
+        }
         delete e5.maxRaw;
       }
       if (sh && e5.barRaw === sh.bar && platesMode(e5) === "bar") delete e5.barRaw;
       else {
         const n3 = numIn(e5.barRaw);
-        if (n3 != null && n3 > 0 && platesMode(e5) === "bar") e5.barKg = typedBoundOf(e5, n3, LIMITS.barKg);
-        else delete e5.barKg;
+        if (n3 != null && n3 > 0 && platesMode(e5) === "bar") {
+          e5.barKg = typedBoundOf(e5, n3, LIMITS.barKg);
+          e5.barU = u4;
+        } else {
+          delete e5.barKg;
+          delete e5.barU;
+        }
         delete e5.barRaw;
       }
       {
@@ -26899,7 +27099,9 @@ ${JSON.stringify(ctx, null, 1)}`;
                   cal: x2.cal ? { ...x2.cal } : void 0,
                   rid: x2.rid,
                   // What the app asked of it when it was first ticked (391): an edit keeps it.
-                  ...x2.sg ? { sg: [...x2.sg] } : {}
+                  ...x2.sg ? { sg: [...x2.sg] } : {},
+                  // The unit its load was entered in: an edit keeps it.
+                  ...x2.u ? { u: x2.u } : {}
                 })
               ),
               ...b2.nw ? { nw: true } : {},
@@ -26945,14 +27147,11 @@ ${JSON.stringify(ctx, null, 1)}`;
     if (k2 !== NEW_MACHINE && !was) return;
     const ed = d3.editingId;
     if (ed && k2 === NEW_MACHINE && draftMachine(b0.exId) === ed) return;
-    const u4 = was && !ed ? typedUnit(was.w) : null;
+    const u4 = was && !ed ? was.u : null;
     const key = k2 === NEW_MACHINE ? newMachineKey() : k2;
     act(
       () => {
-        if (u4) {
-          if (u4 === appU()) delete e5.unit;
-          else e5.unit = u4;
-        }
+        if (u4) e5.unit = u4;
         for (const b2 of d3.ex)
           if (b2.exId === b0.exId) {
             if (ed) pickName(b2, k2 === NEW_MACHINE ? ed : k2);
@@ -26975,7 +27174,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     const named3 = k2 === NEW_MACHINE ? name : machineName(e5.id, k2);
     toast(
       // The machine's label is one thing to read, so it is kept on one line (no-break spaces) when the message wraps.
-      named3 ? `${e5.name}: ${named3.replace(/ /g, " ")}` : was ? `${e5.name}: ${`${fmtDate(was.date)} · ${listLabel(e5, was.w, true)} × ${was.r}`.replace(/ /g, " ")}` : `${e5.name}: new machine`,
+      named3 ? `${e5.name}: ${named3.replace(/ /g, " ")}` : was ? `${e5.name}: ${`${fmtDate(was.date)} · ${listLabel(e5, was.w, was.u, true)} × ${was.r}`.replace(/ /g, " ")}` : `${e5.name}: new machine`,
       true
     );
   }
@@ -27002,11 +27201,11 @@ ${JSON.stringify(ctx, null, 1)}`;
               if (fill && x2.w == null) {
                 const g2 = greyW(b2, i5);
                 if (g2 != null) {
-                  x2.w = g2;
+                  setLoad(x2, g2, greyU(b2, i5));
                   if (g2 !== b2.sw) carried.add(x2);
                 }
               } else if (!fill && (x2.w === b2.sw || carried.has(x2))) {
-                x2.w = null;
+                setLoad(x2, null, null);
                 carried.delete(x2);
               }
             });
@@ -27063,10 +27262,12 @@ ${JSON.stringify(ctx, null, 1)}`;
       rerenderKeepScroll();
       toast(name ? `Named ${name}` : "Machine name taken off", true);
     },
-    /* The unit beside a lift's loads, tapped: the lift's equipment is marked in the other unit. Kept on the lift (back in
-       the app's unit it follows the app again, as one never switched does), so every screen and the next session read it;
-       the lift's blocks in the workout read their targets again in it, and a load already typed is converted, never read
-       as a number of the new unit. */
+    /* The unit beside a lift's loads, picked: the lift's equipment is marked in it and kept on the lift, so every screen
+       and the next session read it; the lift's blocks in the workout read their targets again in it, and a load already
+       typed keeps the unit it was typed in. A mark is kept in the app's unit too, so the lift is on that unit's own
+       weights whatever the app's or Your gym's unit (liftModelIn): a kg machine in a gym in lb is marked kg with the app
+       in kg. Taken off when it matched the app's unit, the mark put the lift back on Your gym's lb plates, and no pick
+       put it on kg's. */
     unitOpen(t4) {
       const b2 = Number(t4.dataset.b);
       if (state.draft && state.draft.ex[b2]) openModal({ kind: "unit", b: b2 });
@@ -27078,11 +27279,11 @@ ${JSON.stringify(ctx, null, 1)}`;
       if (ui.modal && ui.modal.kind === "unit") closeModal();
       if (!d3 || !b2 || !e5) return;
       const to = t4.dataset.v === "kg" || t4.dataset.v === "lb" ? t4.dataset.v : liftU(e5) === "kg" ? "lb" : "kg";
-      if (to === liftU(e5)) return;
+      const g2 = state.settings.gym;
+      if (to === e5.unit || !e5.unit && to === appU() && (!g2 || g2.u === to)) return;
       act(
         () => {
-          if (to === appU()) delete e5.unit;
-          else e5.unit = to;
+          e5.unit = to;
           for (const x2 of d3.ex)
             if (x2.exId === b2.exId) {
               if (!d3.editingId && !x2.sets.some((s3) => s3.done)) refreshBlock(x2);
@@ -27135,7 +27336,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       if (!(tot >= at2)) return no("Total reps to failure should be at least the rep you would have stopped at.");
       if (tot > CAL_MOST) return no("That is more than 100 reps. Check the number.");
       const set = {
-        w: kg(ex, Math.max(0, w2 || 0)),
+        w: null,
         r: tot,
         rir: 0,
         warm: false,
@@ -27143,6 +27344,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         done: true,
         cal: { at: at2, pred }
       };
+      setLoad(set, kg(ex, Math.max(0, w2 || 0)), liftU(ex));
       act(
         () => {
           let si = b2.sets.findIndex((x2) => !x2.done && !x2.warm && x2.r == null);
@@ -27185,8 +27387,13 @@ ${JSON.stringify(ctx, null, 1)}`;
       }
       closeModal();
       act(() => {
-        if (n3 != null && n3 > 0) e5.maxLoad = kg(e5, Math.min(n3, liftU(e5) === "lb" ? MAX_LOAD2.lb : MAX_LOAD2.kg));
-        else delete e5.maxLoad;
+        if (n3 != null && n3 > 0) {
+          e5.maxLoad = kg(e5, Math.min(n3, liftU(e5) === "lb" ? MAX_LOAD2.lb : MAX_LOAD2.kg));
+          e5.maxLoadU = liftU(e5);
+        } else {
+          delete e5.maxLoad;
+          delete e5.maxLoadU;
+        }
       });
       refreshEx(e5.id);
       rerenderKeepScroll();
@@ -27218,13 +27425,14 @@ ${JSON.stringify(ctx, null, 1)}`;
         return;
       }
       const was = e5.goal;
-      const goal = {
-        w: was && w2 != null && String(numIn(fmtWOf(e5, loadReadOf(e5, was.w)))) === String(w2) ? was.w : kg(e5, w2 || 0),
-        r: r4
-      };
+      const same = !!was && w2 != null && String(numIn(fmtWOf(e5, loadReadOf(e5, was.w, e5.goalU)))) === String(w2);
+      const goal = { w: same && was ? was.w : kg(e5, w2 || 0), r: r4 };
+      const gu = same ? e5.goalU : liftU(e5);
       act(
         () => {
           e5.goal = goal;
+          if (goal.w > 0 && gu) e5.goalU = gu;
+          else delete e5.goalU;
         },
         { undo: true }
       );
@@ -27242,6 +27450,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       act(
         () => {
           delete e5.goal;
+          delete e5.goalU;
         },
         { undo: true }
       );
@@ -27275,6 +27484,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       closeModal();
       act(() => {
         e5.inc = inc;
+        e5.incU = liftU(e5);
       });
       refreshEx(e5.id);
       rerenderKeepScroll();
@@ -27376,7 +27586,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       }
       const fi = b2.sets.findIndex((x2) => !x2.done && !x2.warm);
       const defW = fi >= 0 ? effW(b2, fi) : null;
-      const got = parseSets(txt, EX(b2.exId), defW, null, rirScale() === "rpe");
+      const got = parseSets(txt, EX(b2.exId), defW, null, rirScale() === "rpe", fi >= 0 ? effU(b2, fi) : null);
       if (got) {
         const n3 = fillSets(m3.b, got);
         const now2 = ui.modal;
@@ -27424,7 +27634,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       const r4 = sinceBack(id);
       if (!r4 || r4.first) continue;
       const set = r4.heavy && r4.heavy.sid === sid ? r4.heavy.p : r4.est && r4.est.sid === sid ? r4.est.p : null;
-      if (set) out.push(`${EX(id).name} ${setShort(EX(id), set.w, set.r)}`);
+      if (set) out.push(`${EX(id).name} ${setShort(EX(id), set)}`);
     }
     return out;
   }
@@ -27541,7 +27751,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       const appSet = (x2, si) => b2.sw != null && Math.abs((+(x2.w ?? 0) || 0) - b2.sw) < EPS_SAME || !!b2.adj && b2.adj.up && si <= b2.adj.at;
       b2.sets.forEach((x2, si) => {
         if (si < firstTop && x2.done && !x2.warm && !x2.drop && +(x2.r ?? 0) > 0 && (e5.bw || +(x2.w ?? 0) > 0) && !appSet(x2, si) && easy(x2))
-          ramps.push({ bi, si, name: e5.name, txt: setShort(e5, +(x2.w ?? 0) || 0, x2.r) });
+          ramps.push({ bi, si, name: e5.name, txt: setShort(e5, { w: +(x2.w ?? 0) || 0, r: x2.r, u: x2.u }) });
       });
     }
     if (ramps.length) {
@@ -27714,19 +27924,19 @@ ${JSON.stringify(ctx, null, 1)}`;
       const own2 = pr.value != null && isCompound(e5) && !(top && top.v > pr.value + EPS_SAME);
       return {
         name: e5.name,
-        what: `Weight PR, ${setShort(e5, pr.w, pr.r)}${own2 && pr.value != null ? `, best estimate ${fmtE(e5, pr.value)} ${liftU(e5)}${loadNote(e5)}` : ""}`,
-        was: e5.assist ? "less help than ever" : isFinite(pr.prevW ?? NaN) ? `heaviest before ${listLabel(e5, pr.prevW ?? 0, !e5.bw)}` : ""
+        what: `Weight PR, ${setShort(e5, pr)}${own2 && pr.value != null ? `, best estimate ${fmtE(e5, pr.value)} ${liftU(e5)}${loadNote(e5)}` : ""}`,
+        was: e5.assist ? "less help than ever" : isFinite(pr.prevW ?? NaN) ? `heaviest before ${listLabel(e5, pr.prevW ?? 0, pr.prevU, !e5.bw)}` : ""
       };
     }
     const ps = pr.type === "e1RM" && !isCompound(e5) ? prSet(pr.exId, pr.sid) : null;
-    if (ps) return { name: e5.name, what: `PR, ${setShort(e5, ps.w, ps.r)}`, was: "your best for that number of reps" };
+    if (ps) return { name: e5.name, what: `PR, ${setShort(e5, ps)}`, was: "your best for that number of reps" };
     return pr.type === "e1RM" ? {
       name: e5.name,
       what: `${prName(pr)} ${fmtE(e5, pr.value)} ${liftU(e5)}${loadNote(e5)}`,
       was: prOverall(pr) ? wasE(e5, pr.value, pr.prevAll) ? `was ${wasE(e5, pr.value, pr.prevAll)}` : "" : wasE(e5, pr.value, pr.prev) ? `was ${wasE(e5, pr.value, pr.prev)} at those reps` : ""
     } : {
       name: e5.name,
-      what: `${e5.timed ? "Time" : "Rep"} PR, ${setShort(e5, pr.w, pr.r)}`,
+      what: `${e5.timed ? "Time" : "Rep"} PR, ${setShort(e5, pr)}`,
       was: pr.prevR ? `was ${pr.prevR} ${e5.timed ? "s" : "reps"} at this load or heavier` : "heaviest yet"
     };
   }
@@ -27820,7 +28030,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     const heavier = prAll.flatMap((p3) => {
       if (p3.big || p3.type !== "Weight PR") return [];
       const e5 = EX(p3.exId);
-      return [`${e5.name} ${setShort(e5, p3.w, p3.r)}`];
+      return [`${e5.name} ${setShort(e5, p3)}`];
     });
     const backBest = backBests(ex, prAll, sess.id);
     const { work, miss, hard } = setCounts(ex, sess.date);
@@ -27893,11 +28103,11 @@ ${JSON.stringify(ctx, null, 1)}`;
     if (i5 < 0) i5 = b2.sets.length - 1;
     const x2 = b2.sets[i5], ex = EX(b2.exId), did2 = d3.id, exId = b2.exId, n3 = b2.sets.slice(0, i5 + 1).filter((y2) => !y2.warm && !y2.drop).length;
     const what = `${x2.warm ? "Warm-up" : x2.drop ? "Drop set" : "Set " + n3}`;
-    const shown2 = x2.w ?? effW(b2, i5);
+    const shown2 = x2.w ?? effW(b2, i5), shownU = x2.w != null ? x2.u ?? null : effU(b2, i5);
     const val = +(x2.r ?? 0) > 0 ? (
       // No load anywhere on a loaded lift: the reps alone, never a 0 the row does not show.
-      shown2 == null && !ex.bw && !ex.timed ? `${x2.r} rep${Number(x2.r) === 1 ? "" : "s"}` : setShort(ex, shown2 ?? 0, x2.r)
-    ) : x2.w != null ? loadLabel(ex, x2.w) + (ex.bw ? "" : " " + liftU(ex)) : "";
+      shown2 == null && !ex.bw && !ex.timed ? `${x2.r} rep${Number(x2.r) === 1 ? "" : "s"}` : setShort(ex, { w: shown2 ?? 0, r: x2.r, u: shownU })
+    ) : x2.w != null ? saidLoad(ex, x2.w, x2.u) : "";
     const at2 = i5;
     confirmBox(
       `Remove ${what.toLowerCase()}?`,
@@ -28079,7 +28289,7 @@ ${JSON.stringify(ctx, null, 1)}`;
           if (!was || !b2) return;
           if (s3.r != null && +s3.r === greyR(b2, si)) s3.r = null;
           const gw = greyW(b2, si);
-          if (!fillLoads() && s3.w != null && gw != null && Math.abs(s3.w - gw) < EPS) s3.w = null;
+          if (!fillLoads() && s3.w != null && gw != null && Math.abs(s3.w - gw) < EPS) setLoad(s3, null, null);
           const o3 = ordBack.get(b2);
           if (o3 && !b2.sets.some((x2) => x2.done) && Date.now() - o3.t < REORDER_BACK_MS) {
             ordBack.delete(b2);
@@ -28139,7 +28349,7 @@ ${JSON.stringify(ctx, null, 1)}`;
           const row = newRow();
           b2.sets.push(row);
           if (ld >= 0) assessSet(bi, ld);
-          if (fillLoads()) row.w = effW(b2, b2.sets.length - 1);
+          if (fillLoads()) setLoad(row, effW(b2, b2.sets.length - 1), effU(b2, b2.sets.length - 1));
         },
         { inProgress: true }
       );
@@ -28157,13 +28367,21 @@ ${JSON.stringify(ctx, null, 1)}`;
       const ex = EX(b2.exId);
       const dir = t4.dataset.d === "-1" ? -1 : 1;
       const f3 = t4.dataset.sf === "w" ? "w" : "r";
-      let w2 = null, r4 = null;
+      let w2 = null, wu = null, r4 = null;
       if (f3 === "w") {
         if (ex.assist) return;
         const to = stepLoad(ex, b2.plan, effW(b2, si) ?? 0, dir);
-        const v3 = to == null ? null : toDOf(ex, to);
-        if (v3 == null) return;
-        w2 = Math.min(fromDOf(ex, Math.max(Math.round(v3 * HUNDREDTHS) / HUNDREDTHS, 0)) ?? 0, LOAD_MAX);
+        if (to == null) return;
+        const ru = unitOnGrid(to);
+        if (ru) {
+          w2 = Math.min(onUnitSteps(Math.max(to, 0), ru), LOAD_MAX);
+          wu = ru;
+        } else {
+          const v3 = toDOf(ex, to);
+          if (v3 == null) return;
+          w2 = Math.min(fromDOf(ex, Math.max(Math.round(v3 * HUNDREDTHS) / HUNDREDTHS, 0)) ?? 0, LOAD_MAX);
+          wu = liftU(ex);
+        }
       } else {
         const was = +(s3.r ?? greyR(b2, si) ?? 0) || 0;
         r4 = Math.min(Math.max(was + dir * (ex.timed ? STEP_SECONDS : 1), 0), LIMITS.reps);
@@ -28173,7 +28391,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       act(
         () => {
           if (w2 != null) {
-            s3.w = w2;
+            setLoad(s3, w2, wu);
             carried.delete(s3);
           } else s3.r = r4;
           if (s3.done && doneChanged(bi, si, f3)) return;
@@ -28217,7 +28435,9 @@ ${JSON.stringify(ctx, null, 1)}`;
       }
       act(
         () => {
-          b2.sets.splice(at2, 0, newRow({ w: w2, warm: true }));
+          const row = newRow({ warm: true });
+          madeLoad(row, w2);
+          b2.sets.splice(at2, 0, row);
           adjSync(b2);
         },
         { inProgress: true }
@@ -28272,13 +28492,14 @@ ${JSON.stringify(ctx, null, 1)}`;
           s: s3,
           si,
           w: s3.w ?? greyW(b2, si),
+          u: s3.w != null ? s3.u ?? null : greyU(b2, si),
           r: isMissed(s3) || +(s3.r ?? 0) > 0 ? s3.r : Math.round(greyR(b2, si) ?? 0)
         }));
         act(
           () => {
             for (const x2 of shown2) noteAsked(d3, b2, x2.si);
             for (const x2 of shown2) {
-              x2.s.w = x2.w;
+              setLoad(x2.s, x2.w, x2.u);
               x2.s.r = x2.r;
               x2.s.done = true;
               assessSet(bi, x2.si);
@@ -28329,7 +28550,9 @@ ${JSON.stringify(ctx, null, 1)}`;
       while (at2 + 1 < b2.sets.length && b2.sets[at2 + 1].drop) at2++;
       act(
         () => {
-          b2.sets.splice(at2 + 1, 0, newRow({ w: w2, drop: true }));
+          const row = newRow({ drop: true });
+          madeLoad(row, w2);
+          b2.sets.splice(at2 + 1, 0, row);
         },
         { inProgress: true }
       );
@@ -29244,7 +29467,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         `<p>Tap a section's title to fold or open it. Drag its ⠿ to move it; the order is kept. Each time the app opens, every section starts folded, except Sessions on History.</p>
    <p><b>More sections</b>: when a tab has sections hidden, its bottom lists them; tap one to add it. The menu at the top right has Show, hide, or reorder sections. Settings, Layout shows or hides any section (nothing stops being tracked), and Default layout goes back to how a new install starts.</p>
    <p><b>Your settings</b>: Settings has your training (goal, days, minutes, and focus), your gym's weights, the rest timer, auto-mark, RIR, units, theme and accent, weekly set targets, and priority muscles.</p>
-   <p><b>kg or lb on one lift</b>: when a lift's equipment is marked in the other unit, tap LB or KG beside its weight in a workout. Its loads, targets, steps, and charts follow it; a load already typed is converted, never read again in the other unit. The unit beside a weigh-in field does the same for your scale. Totals that add lifts together stay in the unit in Settings, and a set from before a switch shows as it was typed.</p>`
+   <p><b>kg or lb on one lift</b>: when a lift's equipment is marked in the other unit, tap the lb or kg under its name in a workout and pick its unit. The lift keeps that unit and is on that unit's own weights, whatever the unit in Settings or Your gym's. Its loads, targets, steps, and charts follow it; a load already typed keeps the unit it was typed in. The unit beside a weigh-in field does the same for your scale. Totals that add lifts together stay in the unit in Settings, and every set shows as it was typed, in the unit it was typed in.</p>`
       ],
       [
         "data",
@@ -29356,7 +29579,7 @@ ${JSON.stringify(ctx, null, 1)}`;
           (e5) => {
             const known = EX(e5.exId);
             const exo = known.id === e5.exId && !known.archived ? known : b2.newEx.find((n3) => n3.id === e5.exId) || known;
-            return b`<p class="small muted u-m0">${exo.name}: ${e5.sets.map((q) => (q.warm ? "W " : q.drop ? "D " : "") + setShort(exo, q.w, q.r)).join(", ")}</p>`;
+            return b`<p class="small muted u-m0">${exo.name}: ${e5.sets.map((q) => (q.warm ? "W " : q.drop ? "D " : "") + setShort(exo, { w: q.w, r: q.r, u: q.u })).join(", ")}</p>`;
           }
         )}`
       )}${b2.sessions.length > SHOWN.sessions ? b`<p class="small muted">and ${b2.sessions.length - SHOWN.sessions} more</p>` : A}</details>` : A}
@@ -29403,7 +29626,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     const e5 = EX(m3.exId);
     const g2 = e5.goal;
     return b`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="goalH"><div class="sheet-h"><h3 id="goalH">Goal: ${e5.name}</h3>${closeX()}</div>
-    <div class="grid2"><label class="field">${e5.bw ? `Added load (${liftU(e5)})` : `Load (${liftU(e5)}${loadNote(e5)})`}<input type="text" inputmode="decimal" id="goalW" value=${g2 ? fmtWOf(e5, loadReadOf(e5, g2.w)) : ""} placeholder=${e5.bw ? "0" : ""}></label>
+    <div class="grid2"><label class="field">${e5.bw ? `Added load (${liftU(e5)})` : `Load (${liftU(e5)}${loadNote(e5)})`}<input type="text" inputmode="decimal" id="goalW" value=${g2 ? fmtWOf(e5, loadReadOf(e5, g2.w, e5.goalU)) : ""} placeholder=${e5.bw ? "0" : ""}></label>
     <label class="field">Reps<input type="text" inputmode="numeric" id="goalR" value=${g2 ? String(g2.r) : ""}></label></div>
     <div class="row u-mt12"><button class="btn primary" data-act="goalSave">Save</button>${g2 ? b`<button class="btn danger" data-act="goalClear">Remove goal</button>` : ""}<button class="btn" data-act="mClose">Cancel</button></div></div>`;
   }
@@ -29442,7 +29665,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     const k02 = draftMachine(b2.exId);
     const now2 = pendingMachine(b2.exId) ? NEW_MACHINE : k02;
     const row = (k2, name, last) => b`<div class="mcitem"><button class=${"mcrow" + (k2 === now2 ? " on" : "")} data-act="machinePick" data-b=${m3.b} data-k=${k2} aria-pressed=${String(k2 === now2)}><span class="mcdot"></span><span class="mcl">${name ? b`<b>${name}</b>${last ? b`<span class="mcsub">${last}</span>` : A}` : last ?? "New machine"}</span></button><button type="button" class="ib mcpen" data-act="machineNaming" data-b=${m3.b} data-k=${k2} aria-label=${`Name ${name || last || "the new machine"}`}>✎</button></div>`;
-    const lastOf2 = (x2) => `${fmtDate(x2.date)} · ${listLabel(ex, x2.w, true)} × ${x2.r}`;
+    const lastOf2 = (x2) => `${fmtDate(x2.date)} · ${listLabel(ex, x2.w, x2.u, true)} × ${x2.r}`;
     const unlisted = now2 && !ms.some((x2) => x2.key === now2) ? row(now2, machineName(b2.exId, now2), null) : A;
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${ex.name}</h3>${closeX()}</div>
     <p class="mc-h">Machine</p><div class="mclist">${ms.map((x2) => row(x2.key, machineName(b2.exId, x2.key), lastOf2(x2)))}${unlisted}${canAddMachine(b2.exId) ? b`<button type="button" class="btn fullw" data-act="machineNaming" data-b=${m3.b} data-k=${NEW_MACHINE}>Add a machine</button>` : A}</div></div>`;
@@ -29598,11 +29821,11 @@ ${JSON.stringify(ctx, null, 1)}`;
       <figcaption class="small muted row spread"><span>${fmtDate(pts[0].date)}</span><span class="hastip" data-tip="Each full session's working sets read as one number from loads, reps, and RIR when it is rated on most sets. It shows direction only and is not a 1RM. Sessions where the lift was done lighter are left out.">Strength reading</span><span>${fmtDate(pts[pts.length - 1].date)}</span></figcaption></figure>`;
     }
     const bs = bestSet(exId);
-    const best = be && isCompound(ex) ? `Best estimate ${fmtE(ex, be.v)} ${liftU(ex)}${loadNote(ex)}` : bs ? `Best set ${setShort(ex, bs.w, bs.r, !ex.bw)}` : "";
+    const best = be && isCompound(ex) ? `Best estimate ${fmtE(ex, be.v)} ${liftU(ex)}${loadNote(ex)}` : bs ? `Best set ${setShort(ex, bs, !ex.bw)}` : "";
     const setsOf = (x2) => {
       const ss = state.sessions.find((q) => q.id === x2.sid);
       const bl = ss && ss.ex.find((q) => q.exId === exId);
-      return bl ? bl.sets.map((q) => setStr(ex, q)).join(", ") : x2.pts.map((q) => setShort(ex, q.w, q.r)).join(", ");
+      return bl ? bl.sets.map((q) => setStr(ex, q)).join(", ") : x2.pts.map((q) => setShort(ex, q)).join(", ");
     };
     const rows2 = all.slice(-HIST_ROWS).reverse().map((x2) => {
       const kind = sessionWord(x2);
@@ -30262,6 +30485,19 @@ ${JSON.stringify(ctx, null, 1)}`;
     } catch (e5) {
       log("refit", e5);
     }
+    try {
+      const add = oldOwnTargets();
+      if (add)
+        act(
+          () => {
+            const o3 = state.settings.ownTargets || [];
+            state.settings.ownTargets = MK.filter((x2) => o3.includes(x2) || add.includes(x2));
+          },
+          { app: true }
+        );
+    } catch (e5) {
+      log("ownTargets", e5);
+    }
   }
   function exposeForTests() {
     window.__ironlog = {
@@ -30504,6 +30740,8 @@ ${JSON.stringify(ctx, null, 1)}`;
       makeDemo,
       invalidate,
       normalize,
+      // The log as it is saved and sent (units its numbers give left out), for checks that read the save back.
+      storedJson,
       snapshot,
       saveNow,
       timer,
@@ -30612,6 +30850,11 @@ ${JSON.stringify(ctx, null, 1)}`;
       fromDBody,
       typedLabel,
       listLabel,
+      // A load already lifted in a sentence, the targets an older build typed to record, and a load put on a unit's 0.05 steps,
+      // so tests/engine.js compares the page's answers with Node's.
+      saidLoad,
+      oldOwnTargets,
+      onUnitSteps,
       stepReadOf,
       loadLabel,
       exName,
@@ -30647,7 +30890,8 @@ ${JSON.stringify(ctx, null, 1)}`;
       picsTidy,
       risingWords,
       // A set as the app writes it, by the lift's id: Today's Lifts moving is checked against it.
-      setShortOf: (id, w2, r4) => setShort(EX(id), w2, r4),
+      // A suite gives a number alone: read in the unit its 0.05 steps say, as a load the app made is.
+      setShortOf: (id, w2, r4) => setShort(EX(id), { w: w2, r: r4, u: unitOnGrid(w2) }),
       // Today's Lifts moving, so tests/engine.js compares the page's answer with the engine's in Node.
       liftsMoving,
       // Whether a bodyweight lift has no weigh-in to read, so tests/engine.js compares it with Node's.
