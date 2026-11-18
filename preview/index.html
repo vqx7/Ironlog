@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-tT9CiQJE/0lWyO2C8oQt5XXapLqH0MHVOfcUm08WbMU=' 'sha256-huPMTGr6cVObgHsnurSzS3VFHnVgOZK23rNVnZ1rNYI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-Je7lXsg5Ec/vpRv0BpYilby3iDzRZo2RSM3cr99Akc4=' 'sha256-huPMTGr6cVObgHsnurSzS3VFHnVgOZK23rNVnZ1rNYI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
 <meta name="app-build" content="2026.11.17-r121">
@@ -1875,6 +1875,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var LIB_EQUIP_BEFORE = {
     preacher: ["machine"]
   };
+  var LIB_EQUIP = new Map(LIB.map(([id, , , , equip]) => [id, equip]));
+  var libEquipOf = (id) => LIB_EQUIP.get(id);
   var LIB_NOTES_BEFORE = {
     declinePushup: ["Feet on a bench: about 70% of bodyweight, against 64% for a floor push-up (Ebben 2011)."],
     ohCableExt: ["Long head at long length. Grew the triceps more than pushdowns in a 2023 study (Maeo et al.)."],
@@ -4038,10 +4040,16 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const n3 = of === "goal" ? rec(n0)?.w : n0;
     return (v3 === "kg" || v3 === "lb") && typeof n3 === "number" && unitOnGrid(n3) === v3;
   }
+  function savedEquip(f3, k2) {
+    if (k2 !== "equip" || f3.custom === true || f3.equipOwn === true || typeof f3.id !== "string") return void 0;
+    const old = LIB_EQUIP_BEFORE[f3.id];
+    return old && old[0] !== void 0 && f3.equip === libEquipOf(f3.id) ? old[0] : void 0;
+  }
   function storedJson(x2) {
     return JSON.stringify(x2, function(k2, v3) {
       const f3 = rec(this);
-      return f3 && givenUnit(f3, k2) ? void 0 : v3;
+      if (!f3) return v3;
+      return givenUnit(f3, k2) ? void 0 : savedEquip(f3, k2) ?? v3;
     });
   }
   function canon(x2) {
@@ -4050,7 +4058,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const list = arr(x2);
     if (list) return "[" + list.map(canon).join(",") + "]";
     const f3 = rec(x2) || {};
-    return "{" + Object.keys(f3).filter((k2) => f3[k2] !== void 0 && !givenUnit(f3, k2)).sort().map((k2) => JSON.stringify(k2) + ":" + canon(f3[k2])).join(",") + "}";
+    return "{" + Object.keys(f3).filter((k2) => f3[k2] !== void 0 && !givenUnit(f3, k2)).sort().map((k2) => JSON.stringify(k2) + ":" + canon(savedEquip(f3, k2) ?? f3[k2])).join(",") + "}";
   }
   var Hx = (x2) => hashStr(canon(unkept(x2)));
   var sameRecord = (a2, b2) => canon(unkept(a2)) === canon(unkept(b2));
@@ -4966,7 +4974,9 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       barU: unitField(barK ?? null, e5.barU).u,
       goalU: unitField(goal ? goal.w : null, e5.goalU).u,
       // The unit each machine's weights are in, as picked while the lift was on it: absent until one is, last.
-      machineU: machineUnits(e5.machineU)
+      machineU: machineUnits(e5.machineU),
+      // The lifter's pick of the equipment a refiled lift had (LIB_EQUIP_BEFORE), last, where an older build keeps it.
+      equipOwn: e5.equipOwn === true ? true : void 0
     });
   }
   var CUSTOM_MADE_WITH = /* @__PURE__ */ new Set(["name", "primary", "equip"]);
@@ -5278,7 +5288,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       const note = libNote.get(e5.id);
       if (note !== void 0 && !e5.custom && (LIB_NOTES_BEFORE[e5.id] || []).includes(e5.note)) e5.note = note;
       const equip = libEquip.get(e5.id);
-      if (equip !== void 0 && !e5.custom && (LIB_EQUIP_BEFORE[e5.id] || []).includes(e5.equip)) e5.equip = equip;
+      if (equip !== void 0 && !e5.custom && !e5.equipOwn && (LIB_EQUIP_BEFORE[e5.id] || []).includes(e5.equip))
+        e5.equip = equip;
     }
     if (numOr(s3.version, 1) < V_PER_SIDE) {
       const libMap = new Map(lib.map((e5) => [e5.id, e5]));
@@ -7387,7 +7398,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     return prior.length ? prior[prior.length - 1].mk : FIRST_MACHINE;
   }
   function machineToSaveIn(M3, exId) {
-    if (!onMachines(EXIn(M3, exId))) return null;
+    if (!onMachines(EXIn(M3, exId)) && !M3.s.sessions.some((s3) => s3.ex.some((b2) => b2.exId === exId && !!b2.mc))) return null;
     const d3 = M3.s.draft;
     if (!d3) return null;
     const key = draftMachineIn(M3, exId);
@@ -26647,6 +26658,8 @@ ${JSON.stringify(ctx, null, 1)}`;
       const ld = e5.load;
       if ((ld === "each" || ld === "total" || ld === "side" || ld === "stack") && !e5.bw) e5.load = ld;
       else delete e5.load;
+      if (!e5.custom && (LIB_EQUIP_BEFORE[e5.id] || []).includes(e5.equip)) e5.equipOwn = true;
+      else delete e5.equipOwn;
       if (!m3.isNew && !(e5.bw && e5.assist) && hasSets(e5.id, (w2) => w2 < 0)) {
         toast("This exercise has sets logged with machine help, so it stays assisted.");
         return;
