@@ -583,18 +583,24 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
     ok(!inA.s.includes('k1') && inA.d && !inB.s.includes('k1') && inB.d, 'S-6: and both tabs show both changes', { inA, inB });
     // The same record changed in both: the later save is kept, and the app says so.
     await B.ev(() => { window.__deaf = true; });
+    /* Each tab's clock here starts at the test's time when the tab opens, so the second tab's runs behind the first's by
+       the time between the two openings; two tabs on a phone read one clock. B's change is made that much later, and a
+       tenth of a second more, so it is the later one on either clock. */
+    const skew = Math.max(0, Date.parse(await clockOf(A)) - Date.parse(await clockOf(B)));
     await A.ev(() => { const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 'k2').notes = 'from A'; }); });
-    await wait(100);
+    await wait(skew + 100);
     await B.ev(() => { const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 'k2').notes = 'from B'; }); });
     await wait(300);
     await B.ev(() => { window.__deaf = false; });
     const k2 = (await A.stored()).sessions.find(s => s.id === 'k2');
-    // 2.49's rule, kept: the tab that has not heard the other's save takes that save's copy (NEW-124 is OPEN: the later
-    // edit should be kept; 2.50's first fix let this tab's own copy win, and lost logged sets, REV-1 to REV-4).
-    ok(k2 && k2.notes === 'from A', 'S-6: the same record changed in both tabs at once keeps one whole copy, the one saved first (NEW-124: the moment before either tab hears the other)', k2 && k2.notes);
+    /* The later edit is kept, by the record's own time, as on two phones (2.76, the full review's L3-1, NEW-124): each
+       tab writes its records' times with its save, so the tab that had not heard the other's save reads them when it
+       merges it. Until 2.76 the tab that had not heard the other's save took that save's copy, the earlier edit here;
+       2.50's first fix let a tab's own copy win, and lost logged sets (REV-1 to REV-4). */
+    ok(k2 && k2.notes === 'from B', 'S-6: the same record changed in both tabs at once keeps the later edit, made in the tab that had not heard the other (L3-1, NEW-124)', { k2: k2 && k2.notes, skew });
     const said = await B.ev(() => (window.__toasts || []).map(t => t.text));
-    // NEW-124: 2.49 said "1 item was edited on two devices. The later edit was kept.", untrue here: the other tab's earlier change was kept.
-    ok(said.some(t => t === "1 item was changed in two tabs at once. The other tab's change was kept.") && !said.some(t => /later edit/.test(t)), 'S-6: and the app says what was kept: "1 item was changed in two tabs at once. The other tab\'s change was kept." (NEW-124)', { B: said, A: await A.ev(() => (window.__toasts || []).map(t => t.text)) });
+    // NEW-124: 2.49 said "1 item was edited on two devices. The later edit was kept.", untrue when the other tab's earlier change was kept.
+    ok(said.some(t => t === '1 item was changed in two tabs at once. The later change was kept.') && !said.some(t => /edited on two devices/.test(t)), 'S-6: and the app says what was kept: "1 item was changed in two tabs at once. The later change was kept." (NEW-124)', { B: said, A: await A.ev(() => (window.__toasts || []).map(t => t.text)) });
     await A.close();
 
     // The independent review of 2.50 and 2.51 (REV-1, REV-2, REV-4): a tab that has not heard the other's saves never
@@ -640,8 +646,9 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       const A2 = await phone({ seed: function (S) { S.sessions.push({ id: 'k3', date: '2026-11-05', dayIdx: 0, dayName: 'Day 1', notes: 'first', ex: [{ exId: 'bench', sets: [{ w: 62.5, r: 8, rir: 2, done: true }] }] }); S.settings.lastExport = '2026-11-11'; } });
       const B2 = await tab(A2, FILE); B2.ev = (f, a) => B2.page.evaluate(f, a); await wait(300);
       await B2.ev(() => { window.__deaf = true; });
+      const skew2 = Math.max(0, Date.parse(await clockOf(A2)) - Date.parse(await clockOf(B2)));
       await A2.ev(() => { const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 'k3').notes = 'typed in tab A'; }); });
-      await wait(150);
+      await wait(skew2 + 150);
       await B2.ev(() => { const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 'k3').notes = 'typed in tab B'; }, { undo: true }); });
       await wait(400);
       await B2.ev(() => { window.__deaf = false; }); await wait(200);
@@ -799,7 +806,7 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       await A4.flush(); await B4.ev(() => window.__ironlog.flush()); await wait(800);
       const noteOf = st => (st.sessions.find(x => x.id === 'k4') || {}).notes;
       const got = { save: noteOf(await A4.stored()), account: noteOf(C.doc('u6r', 's-2026-11-1') || { sessions: [] }), A: noteOf(await A4.ev(() => window.__ironlog.state)), B: noteOf(await B4.ev(() => window.__ironlog.state)), said: await B4.ev(() => window.__said) };
-      ok(got.save === 'typed in tab A' && got.account === got.save && got.A === got.save && got.B === got.save, 'S-6: signed in, the same record changed in both tabs at once: one whole copy on the phone, in the account and in both tabs (REV-3, NEW-124)', got);
+      ok(got.save === 'typed in tab B' && got.account === got.save && got.A === got.save && got.B === got.save, 'S-6: signed in, the same record changed in both tabs at once: one whole copy on the phone, in the account and in both tabs (REV-3, NEW-124)', got);
       ok(got.said === 1, 'S-6: and the app says it once (REV-3: twice on 2.50\'s first fix)', got.said);
       await A4.close();
     }
@@ -918,6 +925,29 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       const got = { A: await t2(A), B: await t2(B), Z: await t2(Z), account: (C.sessionsIn(uid).find(s => s.id === 't2') || {}).notes };
       ok(['A', 'B', 'Z', 'account'].every(k => got[k] === 'from tab A, later'), 'S-6: an edit not yet noted when the other tab\'s save comes in keeps its own time: later than another phone\'s edit of the same session, it is kept in both tabs, on the other phone and in the account', got);
       await A.close();
+    }
+    /* The pull's clean-up of ready-made routines an older build left in Recently deleted is the app's own change, so it
+       moves no edit time (2.72's rule), with a second tab open too (REV27-7): on the build before this fix a tab that
+       had heard the other tab noted the clean-up's save as an edit of core, moving core's time to that moment. */
+    {
+      const Cp = cloudOf(), uid = 'u6p';
+      const X1 = await phone({ cloud: Cp, uid, seed: S => { S.sessions.push({ id: 's1', date: '2026-11-03', dayIdx: 0, dayName: 'Day 1', notes: 'start', ex: [{ exId: 'bench', sets: [{ w: 60, r: 8, rir: 2, done: true }] }] }); S.settings.lastExport = '2026-11-11'; } });
+      ok(await X1.settled(), 'S-6: (setup) a tab synced to the account');
+      await X1.ev(() => { const L = window.__ironlog; L.act(() => { L.state.settings.timerSound = false; }); }); await wait(1200); await X1.flush(); await wait(300);
+      const X2 = await tab(X1, FILE, Cp.setup(uid, 'X2')); X2.ev = (f, a) => X2.page.evaluate(f, a); await wait(900);
+      // The other tab saves once, so this tab has heard another tab.
+      await X2.ev(() => { const L = window.__ironlog; L.act(() => { L.state.sessions[0].notes = 'from tab 2'; }); }); await wait(1800);
+      const coreAt = () => X1.ev(() => window.__ironlog.cloud.editAt.core || null);
+      const t0 = await coreAt();
+      // Another phone on an earlier build left a ready-made routine in Recently deleted: the account's core holds it.
+      const tpl = await X1.ev(() => { const L = window.__ironlog; return JSON.parse(JSON.stringify(L.routineFromTemplate(L.TEMPLATES[0].key))); });
+      const key = `data/users/${uid}/core`, raw = JSON.parse(Cp.store.get(key)), core = JSON.parse(raw.json);
+      core.trash = [{ id: tpl.id, kind: 'routine', date: '2026-11-10', data: tpl }, ...(core.trash || [])];
+      Cp.store.set(key, JSON.stringify({ ...raw, at: raw.at + 1, w: 'other.' + raw.at, json: JSON.stringify(core) }));
+      await wait(1500); await X1.sync(); await wait(600);
+      const got = { cleared: await X1.ev(id => !window.__ironlog.state.trash.some(t => t.id === id), tpl.id), before: t0, after: await coreAt() };
+      ok(got.cleared && got.before !== null && got.after === got.before, 'S-6: with a second tab open, the pull clearing a ready-made routine an older build left in Recently deleted moves no edit time (2.72\'s rule, REV27-7)', got);
+      await X1.close();
     }
   }
 
@@ -1399,6 +1429,95 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       const got = { P: await r1(Pp), Q: await r1(Q), account: acct };
       ok(['P', 'Q'].every(k => got[k].r1 === 'later, on P' && got[k].b1 === 'gone' && got[k].on === 'b1') && got.account === 'later, on P', 'S-11: the machine names a delete keeps for a session it did not touch move no edit time: an older edit made with no signal on one phone loses to the later edit on the other, on both phones and in the account, the kept session still on its machine (L3-5)', got);
       await Pp.close();
+    }
+    /* A clash on one record is decided by that record's own last edit, not its half-month document's (2.76, the full
+       review's L3-1). With no signal, phone H writes Nov 3's note; phone I, later, writes Nov 3's note too and syncs;
+       then H, still without signal, writes Nov 10's note, in the same half-month. I's note on Nov 3 is the later edit
+       of that session and stands, and H's Nov 10 stands: on 2.75, H's last edit to the document outranked I's later
+       edit of Nov 3. Synced in the other order, the same log. */
+    {
+      const mk = (id, date) => ({ id, date, dayIdx: 0, dayName: 'Day 1', notes: 'start', ex: [{ exId: 'bench', sets: [{ w: 60, r: 8, rir: 2, done: true }] }] });
+      const seedT = (S, L, xs) => { S.sessions.push(...xs); S.settings.lastExport = '2026-11-11'; };
+      const want = ['Nov 3, later, on I', 'Nov 10, last, on H'];
+      const both = async P => { const n = await notesOf(P); return [n.n3, n.n10]; };
+      for (const [uid, order] of [['u11t', 'H first'], ['u11u', 'I first']]) {
+        const Ct = cloudOf();
+        const H = await phone({ cloud: Ct, uid, arg: [mk('n3', '2026-11-03'), mk('n10', '2026-11-10')], seed: seedT });
+        ok(await H.settled(), `S-11: (setup, ${order}) an account holds Nov 3 and Nov 10`);
+        const I = await phone({ cloud: Ct, uid, who: 'I', browser: H.browser, clock: await clockOf(H) });
+        ok(await I.settled(), `S-11: (setup, ${order}) a second phone takes them`); await I.sync();
+        await H.ev(() => { window.__offline = true; });
+        if (order === 'I first') await I.ev(() => { window.__offline = true; });
+        await note(H, 'n3', 'Nov 3, first, on H'); await wait(400);
+        await note(I, 'n3', 'Nov 3, later, on I'); if (order === 'H first') await I.flush(); await wait(400);
+        await note(H, 'n10', 'Nov 10, last, on H'); await wait(400);
+        if (order === 'H first') { await H.ev(() => { window.__offline = false; }); await H.flush(); await H.sync(); await I.sync(); await H.sync(); }
+        else { await H.ev(() => { window.__offline = false; }); await H.flush(); await I.ev(() => { window.__offline = false; }); await I.flush(); await I.sync(); await H.sync(); await I.sync(); }
+        const got = { H: await both(H), I: await both(I), account: ['n3', 'n10'].map(id => (Ct.sessionsIn(uid).find(x => x.id === id) || {}).notes) };
+        ok(Object.values(got).every(v => JSON.stringify(v) === JSON.stringify(want)), `S-11: each session keeps its own later edit, whatever else either phone edited in its half-month (${order === 'H first' ? 'I syncs first' : 'H syncs first'}): Nov 3 the note written later on I, Nov 10 the one written on H after it (L3-1)`, got);
+        await H.close();
+      }
+      /* A phone whose clock runs behind still writes an edit made after one it has seen as the later one (L3-1, the
+         plan's slow clock): L's clock is an hour behind. N, with no signal, writes Nov 3's note; M writes Nov 10's and
+         syncs; L takes M's copy, then writes Nov 3's note after it. When N's signal comes back, L's note stands on
+         every phone and in the account: on 2.75 L's edit was timed by its own clock, an hour back, before N's. */
+      const C9 = cloudOf();
+      const M = await phone({ cloud: C9, uid: 'u11v', arg: [mk('n3', '2026-11-03'), mk('n10', '2026-11-10')], seed: seedT });
+      ok(await M.settled(), 'S-11: (setup) an account holds Nov 3 and Nov 10');
+      const N = await phone({ cloud: C9, uid: 'u11v', who: 'N', browser: M.browser, clock: await clockOf(M) });
+      ok(await N.settled(), 'S-11: (setup) a second phone takes them'); await N.sync();
+      const behind = new Date(Date.parse(await clockOf(M)) - 3600e3).toISOString();
+      const Lp = await phone({ cloud: C9, uid: 'u11v', who: 'L', browser: M.browser, clock: behind });
+      ok(await Lp.settled(), 'S-11: (setup) a third phone, its clock an hour behind, takes them'); await Lp.sync();
+      await N.ev(() => { window.__offline = true; });
+      await note(N, 'n3', 'Nov 3, first, on N'); await wait(400);
+      await note(M, 'n10', 'Nov 10, on M'); await M.flush(); await wait(300); await Lp.sync();
+      ok((await notesOf(Lp)).n10 === 'Nov 10, on M', "S-11: (setup) the phone behind has M's edit", await notesOf(Lp));
+      await note(Lp, 'n3', 'Nov 3, later, on L'); await wait(200); await Lp.flush();
+      await N.ev(() => { window.__offline = false; }); await N.flush(); await N.sync(); await Lp.sync(); await M.sync();
+      const late = { L: (await notesOf(Lp)).n3, M: (await notesOf(M)).n3, N: (await notesOf(N)).n3, account: (C9.sessionsIn('u11v').find(x => x.id === 'n3') || {}).notes };
+      ok(Object.values(late).every(v => v === 'Nov 3, later, on L'), "S-11: a phone whose clock is an hour behind, editing after it took another phone's edit, writes the later edit: it stands over a third phone's earlier one, on every phone and in the account (L3-1)", late);
+      await N.close();
+      /* The profile photo the same way (L3-9): a phone holding a photo changed on a phone an hour ahead times its own
+         change after it, whatever its clock says, so its change is the later one (on 2.75, an hour before). */
+      const ph = await Lp.ev(async () => {
+        const ahead = Date.now() + 3600e3;
+        localStorage.setItem('ironlog.v1.photo', 'data:image/jpeg;base64,/9j/AA==');
+        localStorage.setItem('ironlog.v1.photoSync', JSON.stringify({ uid: '', et: ahead, up: false }));
+        window.__ironlog.ACT.photoDel({ dataset: {} });
+        return ahead;
+      });
+      await wait(80); await confirmOk(Lp); await wait(150);
+      const after = await Lp.ev(() => JSON.parse(localStorage.getItem('ironlog.v1.photoSync') || 'null'));
+      ok(after && after.et > ph, "S-11: a photo change made after one timed an hour ahead is timed after it (L3-9)", { before: ph, after });
+      /* A first sign-in takes each record's time as the account sent it (REV27-2). A phone that signs in with nothing
+         on it (a new phone, a browser that cleared its storage, a sign out and in), or with a log of its own, then
+         edits the half-month, sends the times of the records it took as the account had them, so a later edit made
+         with no signal on another phone still wins its clash. On the build before this fix such a phone sent only the
+         times it had noted itself, Nov 3's was gone from the account, and the earlier edit was kept. */
+      for (const [uid, how] of [['u11w', 'nothing on it'], ['u11x', 'a log of its own']]) {
+        const Cw = cloudOf();
+        const A = await phone({ cloud: Cw, uid, arg: [mk('n3', '2026-11-03'), mk('n10', '2026-11-10')], seed: seedT });
+        ok(await A.settled(), `S-11: (setup, ${how}) an account holds Nov 3 and Nov 10`);
+        const B = await phone({ cloud: Cw, uid, who: 'B', browser: A.browser, clock: await clockOf(A) });
+        ok(await B.settled(), `S-11: (setup, ${how}) a second phone takes them`); await B.sync();
+        await A.ev(() => { window.__offline = true; });
+        await note(B, 'n3', 'Nov 3, first, on B'); await wait(400); await B.flush();
+        await note(A, 'n3', 'Nov 3, later, on A'); await wait(400);
+        const W = how === 'nothing on it'
+          ? await phone({ cloud: Cw, uid, who: 'W', browser: A.browser, clock: await clockOf(A), fresh: true })
+          : await phone({ cloud: Cw, uid: null, who: 'W', browser: A.browser, clock: await clockOf(A), arg: [mk('w1', '2026-11-12')], seed: seedT });
+        if (how !== 'nothing on it') await W.ev(u => { window.__uid = u; window.__ironlog.cloudInit(); }, uid);
+        ok(await W.settled(), `S-11: (setup, ${how}) a phone signs in and takes the account's log`); await W.sync();
+        await note(W, 'n10', 'Nov 10, last, on W'); await wait(400); await W.flush();
+        await A.ev(() => { window.__offline = false; }); await A.flush(); await A.sync(); await W.sync(); await B.sync(); await A.sync();
+        const got = { A: await notesOf(A), W: await notesOf(W), B: await notesOf(B) };
+        const acct = id => (Cw.sessionsIn(uid).find(x => x.id === id) || {}).notes;
+        const n3 = { A: got.A.n3, W: got.W.n3, B: got.B.n3, account: acct('n3') }, n10 = { A: got.A.n10, W: got.W.n10, account: acct('n10') };
+        ok(Object.values(n3).every(v => v === 'Nov 3, later, on A') && Object.values(n10).every(v => v === 'Nov 10, last, on W'), `S-11: after a phone with ${how} signs in and edits the half-month, the later edit of Nov 3, made with no signal, stands on every phone and in the account (REV27-2)`, { n3, n10 });
+        await A.close();
+      }
+      await M.close();
     }
   }
 

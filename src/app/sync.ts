@@ -38,7 +38,19 @@ import {
   stripDemo,
   unionById
 } from './chunks';
-import { Hx, canon, merge3List, merge3Val, mergeSession, mergeWorkout, sameRecord, storedJson } from './merge';
+import {
+  Hx,
+  canon,
+  docWins,
+  merge3List,
+  merge3Val,
+  mergeSession,
+  mergeWorkout,
+  recordKey,
+  sameRecord,
+  storedJson
+} from './merge';
+import type { Wins } from './merge';
 import { keptOnSession, unname } from './machines';
 import { draftCardio, draftSession } from './session';
 import type { DraftLike } from './session';
@@ -199,6 +211,9 @@ export function saveNow(): void {
     }
   }
   markEdit();
+  // With another tab open, this save's records are noted now, so the notes it reads when it merges this save say when
+  // each was edited (mergeIn).
+  if (tabsHeard) trackEdits();
   fx.setSaveState();
   cloudSoon();
 }
@@ -315,9 +330,15 @@ function sentIn(v: unknown): Record<string, CloudSent> {
 const notesIn = (
   m: Rec,
   from: string
-): { meta: Record<string, SyncNote> | null; editAt: Record<string, number> | null; last: number | null } => {
+): {
+  meta: Record<string, SyncNote> | null;
+  editAt: Record<string, number> | null;
+  recAt: Record<string, Record<string, number>> | null;
+  last: number | null;
+} => {
   const M = rec(m.meta),
-    E = rec(m.editAt);
+    E = rec(m.editAt),
+    T = rec(m.recAt);
   let meta: Record<string, SyncNote> | null = null,
     editAt: Record<string, number> | null = null;
   if (M) {
@@ -335,7 +356,15 @@ const notesIn = (
       if (typeof t === 'number') editAt[k] = t;
     }
   }
-  return { meta, editAt, last: typeof m.last === 'number' ? m.last : null };
+  let recAt: Record<string, Record<string, number>> | null = null;
+  if (T) {
+    recAt = {};
+    for (const k in T) {
+      const t = timesIn(T[k]);
+      if (t) recAt[k] = t;
+    }
+  }
+  return { meta, editAt, recAt, last: typeof m.last === 'number' ? m.last : null };
 };
 /* The notes on the phone describe the log on the phone, always. So they are not written while the log's own
    save is failing: a sync note saved ahead of the log made the log of the
@@ -375,7 +404,7 @@ const sameNote = (a: SyncNote | undefined, b: SyncNote | undefined): boolean =>
   a === b || (!!a && !!b && a.h === b.h && a.at === b.at);
 /** Joins notes another tab wrote for the same log and account into this tab's (above): whether this tab's held something theirs did not. */
 function joinNotes(m: Rec, text: string | null): boolean {
-  const { meta, editAt, last } = notesIn(m, 'tabs');
+  const { meta, editAt, recAt, last } = notesIn(m, 'tabs');
   const seenRec = rec(parseJson(notesSeen || 'null'));
   const base: Record<string, SyncNote> = (seenRec && notesIn(seenRec, 'tabs').meta) || {};
   const theirs = meta || {};
@@ -402,6 +431,21 @@ function joinNotes(m: Rec, text: string | null): boolean {
   const te = editAt || {};
   for (const k in cloud.editAt) if (!(k in te) || cloud.editAt[k] > te[k]) mine = true;
   for (const k in te) cloud.editAt[k] = Math.max(cloud.editAt[k] || 0, te[k]);
+  /* Each record's edit time: the later news of the two (laterEntry), a time that stopped being known included, so a
+     time one tab dropped when it took in a copy with none never comes back from the other tab. */
+  const tr = recAt || {};
+  for (const d of new Set([...Object.keys(cloud.recAt), ...Object.keys(tr)])) {
+    const here = cloud.recAt[d] || {},
+      there = tr[d] || {};
+    const out: Record<string, number> = {};
+    for (const k of new Set([...Object.keys(here), ...Object.keys(there)])) {
+      const h = here[k],
+        t = there[k];
+      out[k] = h === undefined ? (t ?? 0) : t === undefined ? h : laterEntry(t, h);
+      if (h !== undefined && out[k] !== t) mine = true;
+    }
+    cloud.recAt[d] = out;
+  }
   if (cloud.last != null && (last == null || cloud.last > last)) mine = true;
   else cloud.last = last;
   const sent = sentIn(m.sent);
@@ -452,6 +496,7 @@ function saveMeta(): boolean {
       sent: Object.keys(cloud.sent).length ? cloud.sent : undefined,
       last: cloud.last,
       editAt: cloud.editAt,
+      recAt: cloud.recAt,
       devId: cloud.devId,
       acct: cloud.acct || undefined,
       ep: notesEp || undefined
@@ -691,7 +736,7 @@ export function mergeChunk(
   base: Base | null | undefined,
   local: unknown,
   remote: unknown,
-  remoteWins: boolean,
+  remoteWins: Wins,
   stat: { conflicts: number }
 ): Rec {
   const l = normChunk(id, local || emptyChunk(id)) || {},
@@ -701,9 +746,9 @@ export function mergeChunk(
     const ba = (base && base.a) || null,
       bf = (base && base.f) || {},
       bs = (base && base.s) || {};
-    for (const k of CORE_ARR) out[k] = merge3List(ba ? ba[k] || {} : null, l[k], r[k], remoteWins, stat);
+    for (const k of CORE_ARR) out[k] = merge3List(ba ? ba[k] || {} : null, l[k], r[k], remoteWins, stat, k);
     for (const k of CORE_FIELDS) {
-      const v = merge3Val(base ? bf[k] : '?', l[k], r[k], remoteWins, stat);
+      const v = merge3Val(base ? bf[k] : '?', l[k], r[k], remoteWins, stat, recordKey('', k));
       if (v === undefined) delete out[k];
       else out[k] = v;
     }
@@ -715,7 +760,14 @@ export function mergeChunk(
        side added (Your gym, an accent) or brought back by Undo is a change on
        that side, not a conflict the other side's absence could win. */
     for (const k of new Set([...Object.keys(ls), ...Object.keys(rs)])) {
-      const v = merge3Val(base ? (k in bs ? bs[k] : Hx(undefined)) : '?', ls[k], rs[k], remoteWins, stat);
+      const v = merge3Val(
+        base ? (k in bs ? bs[k] : Hx(undefined)) : '?',
+        ls[k],
+        rs[k],
+        remoteWins,
+        stat,
+        recordKey('settings', k)
+      );
       if (v !== undefined) settings[k] = v;
     }
     return out;
@@ -727,7 +779,7 @@ export function mergeChunk(
       rd = draftOf(r),
       bd = base && base.draft && !base.draft.editingId ? base.draft : null;
     if (bd && ld && rd && ld.id === rd.id && bd.id === ld.id && !ld.editingId && !rd.editingId)
-      return { draft: mergeWorkout(bd, ld, rd, remoteWins, stat) };
+      return { draft: mergeWorkout(bd, ld, rd, docWins(remoteWins), stat) };
     // Closed on one side (finished or discarded) while the other ticked on: closed stays closed, whichever edit was
     // later, since closing is the lifter's call; the sets ticked since are kept by keepLost (joined to the saved session).
     if (bd && ((!rd && ld && ld.id === bd.id) || (!ld && rd && rd.id === bd.id))) return { draft: null };
@@ -738,21 +790,23 @@ export function mergeChunk(
     if (bd && ld && rd && ld.id === bd.id && rd.follows === bd.id) return { draft: r.draft };
     if (bd && ld && rd && rd.id === bd.id && ld.follows === bd.id) return { draft: l.draft };
     // Otherwise one session in progress is one record: the later edit replaces the other (keepLost keeps the other's sets).
-    const v = merge3Val(base ? base.d : '?', l.draft || null, r.draft || null, remoteWins, stat);
+    const v = merge3Val(base ? base.d : '?', l.draft || null, r.draft || null, docWins(remoteWins), stat);
     return { draft: v === undefined ? null : v };
   }
   if (id.startsWith('b-')) {
     const ba = (base && base.a) || null;
     const out: Rec = {};
     for (const k of ['bodyweights', 'measurements']) {
-      const v = merge3List(ba ? ba[k] || {} : null, l[k], r[k], remoteWins, stat);
+      const v = merge3List(ba ? ba[k] || {} : null, l[k], r[k], remoteWins, stat, k);
       if (v.length) out[k] = v;
     }
     return out;
   }
   const ba = (base && base.a) || null;
-  const out: Rec = { sessions: merge3List(ba ? ba.sessions || {} : null, l.sessions, r.sessions, remoteWins, stat) };
-  const c = merge3List(ba ? ba.cardio || {} : null, l.cardio, r.cardio, remoteWins, stat);
+  const out: Rec = {
+    sessions: merge3List(ba ? ba.sessions || {} : null, l.sessions, r.sessions, remoteWins, stat, 'sessions')
+  };
+  const c = merge3List(ba ? ba.cardio || {} : null, l.cardio, r.cardio, remoteWins, stat, 'cardio');
   if (c.length) out.cardio = c;
   return out;
 }
@@ -793,6 +847,136 @@ function applyChunk(id: string, data: Rec | null): void {
     );
 }
 
+/* ---------- when each record was last edited ---------- */
+
+/* A clash on one record is decided by that record's own last edit, not its document's: a half-month document holds every
+   session of those days, so an edit to Oct 31 on one phone outranked a correction of Oct 17 made later on the other.
+   Each record's time is noted here as the document's is (trackEdits: the lifter's edits only, never the app's own),
+   kept in the sync notes (recAt), and sent beside the document (`rt`), never in the record itself: a build that keeps
+   no record times then writes the document without them, so a time never outlives an edit it does not describe, and a
+   record whose two copies do not both carry a time is decided by the documents' times, as before. The records are
+   each list's by its id, the core document's values by name, and each setting (recordKeys); the workout in progress is
+   its own document. Every time this device writes, a record's or a document's, is later than every time it has seen
+   (laterThanSeen), so a phone whose clock runs behind still writes its later edit as the later one. */
+/** The keyed records of document `id` (above), each with the hash `hash` gives it. */
+function recordKeys(id: string, chunk: unknown, hash: (x: unknown) => string): Record<string, string> {
+  const c = rec(chunk) || {};
+  const out: Record<string, string> = {};
+  if (id === 'draft') return out;
+  const lists =
+    id === 'core' ? CORE_ARR : id.startsWith('b-') ? ['bodyweights', 'measurements'] : ['sessions', 'cardio'];
+  for (const k of lists)
+    for (const x of arr(c[k]) || []) {
+      const R = rec(x);
+      if (R && typeof R.id === 'string') out[recordKey(k, R.id)] = hash(R);
+    }
+  if (id === 'core') {
+    for (const k of CORE_FIELDS) if (c[k] !== undefined) out[recordKey('', k)] = hash(c[k]);
+    const set = rec(c.settings) || {};
+    for (const k in set) out[recordKey('settings', k)] = hash(set[k]);
+  }
+  return out;
+}
+/** A record's fingerprint as this device's tracker compares it (the fast hash of its text as saved). */
+const savedHash = (x: unknown): string => hashStr(storedJson(x));
+/** Record times as stored or sent: each a number, by its key; null when there are none. */
+function timesIn(v: unknown): Record<string, number> | null {
+  const r = rec(v);
+  if (!r) return null;
+  const out: Record<string, number> = {};
+  for (const k in r) {
+    const t = r[k];
+    if (typeof t === 'number' && Number.isFinite(t)) out[k] = t;
+  }
+  return Object.keys(out).length ? out : null;
+}
+/** The latest edit time this device holds, a document's or a record's, its own or taken in. */
+function latestSeen(): number {
+  let t = 0;
+  for (const k in cloud.editAt) t = Math.max(t, cloud.editAt[k]);
+  for (const d in cloud.recAt) for (const k in cloud.recAt[d]) t = Math.max(t, Math.abs(cloud.recAt[d][k]));
+  return t;
+}
+/* A record whose copy was taken in with no time (from a build that keeps none) has no known time from then on. That is
+   kept as the moment it stopped being known, below 0 (`unknownSince`), not as no entry: the notes of two tabs are
+   joined by the later of each record's entries (joinNotes), so an old time the other tab still held would come back
+   and outrank the later edit the copy taken in held. A time below 0 decides no clash and is never sent. */
+/** Which of two entries of one record's time is the later news: the one of the later moment, known or not. */
+const laterEntry = (a: number, b: number): number => (Math.abs(b) > Math.abs(a) ? b : a);
+/** A record's time as known: undefined for none or one that stopped being known (above). */
+const knownTime = (t: number | undefined): number | undefined => (t !== undefined && t > 0 ? t : undefined);
+/** An edit time to write now: `t`, or just after the latest one seen when this device's clock is behind it (above). */
+const laterThanSeen = (t: number): number => Math.max(t, latestSeen() + 1);
+/** Notes the records of document `id` the lifter changed since its text `was` (trackEdits): each changed or added at `at`; one gone is forgotten. */
+function noteRecords(id: string, was: string | undefined, now: unknown, at: number): void {
+  if (was === undefined) return;
+  let before: Record<string, string>;
+  try {
+    before = recordKeys(id, parseJson(was), savedHash);
+  } catch (e) {
+    log('sync-track', e);
+    return;
+  }
+  const after = recordKeys(id, now, savedHash);
+  const times = (cloud.recAt[id] = cloud.recAt[id] || {});
+  for (const k in after) if (before[k] !== after[k]) times[k] = at;
+  for (const k in times) if (!(k in after)) delete times[k];
+}
+/** The rule a clash in document `id` keeps a record by: its own times where both sides know them, the other side's
+    copy when its time is later (`theirs`: the times sent with it); else the document's rule, `doc`. */
+function clashRule(id: string, theirs: Record<string, number> | null, doc: boolean): Wins {
+  const mine = cloud.recAt[id];
+  if (!theirs || !mine) return doc;
+  return {
+    doc,
+    rec: k => {
+      const a = knownTime(mine[k]),
+        b = knownTime(theirs[k]);
+      return a === undefined || b === undefined || a === b ? null : b > a;
+    }
+  };
+}
+/** Each record's time in document `id` once copies are merged or taken in: the other side's where the copy kept is
+    its own (none when it sent none), the later of the two where both held the same copy, this device's otherwise. */
+function recordTimesAfter(
+  id: string,
+  local: unknown,
+  remote: unknown,
+  merged: unknown,
+  theirs: Record<string, number> | null
+): void {
+  const L = recordKeys(id, normChunk(id, local || emptyChunk(id)), Hx),
+    R = recordKeys(id, normChunk(id, remote || emptyChunk(id)), Hx),
+    M = recordKeys(id, normChunk(id, merged || emptyChunk(id)), Hx);
+  const was = cloud.recAt[id] || {},
+    times: Record<string, number> = {};
+  // The moment a record's time stops being known here, read once, before any is written (laterThanSeen).
+  let gone: number | null = null;
+  const unknownSince = (): number => -(gone ??= laterThanSeen(Date.now()));
+  for (const k in M) {
+    const t = theirs ? knownTime(theirs[k]) : undefined,
+      mine = was[k];
+    if (M[k] === R[k] && M[k] !== L[k]) times[k] = t !== undefined ? t : unknownSince();
+    else if (M[k] === R[k] && M[k] === L[k]) {
+      if (mine !== undefined || t !== undefined) times[k] = laterEntry(mine ?? 0, t ?? 0);
+    } else if (mine !== undefined) times[k] = mine;
+  }
+  if (Object.keys(times).length) cloud.recAt[id] = times;
+  else delete cloud.recAt[id];
+}
+/** The record times sent with document `id` as it holds `chunk`: those of its records this device knows (none: undefined). */
+function timesOut(id: string, chunk: unknown): Record<string, number> | undefined {
+  const known = cloud.recAt[id];
+  if (!known) return undefined;
+  const keys = recordKeys(id, chunk, () => '');
+  const out: Record<string, number> = {};
+  for (const k in keys) {
+    const t = knownTime(known[k]);
+    if (t !== undefined) out[k] = t;
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+
 /* ---------- what changed on this device ---------- */
 
 /* When each document last changed on this device. It decides conflicts, so it
@@ -801,6 +985,8 @@ function applyChunk(id: string, data: Rec | null): void {
 /* Called on every save, so it only notes the time; the hashing runs once the
    taps pause, and again before any sync, so logging a set stays instant. */
 let trackT: number | null = null;
+/** Each document's text as saved when this device last looked (trackEdits, resyncLocalH): what its records are read against. */
+let seenText: Record<string, string> = {};
 function markEdit(): void {
   if (!cloud.pendAt) cloud.pendAt = Date.now();
   clearTimer(trackT);
@@ -814,16 +1000,23 @@ function trackEdits(): void {
     const ch = chunksOf(state);
     const now = cloud.pendAt || Date.now();
     cloud.pendAt = null;
+    // The time written: read once, before any is written here (laterThanSeen).
+    let at: number | null = null;
+    const stamp = (): number => (at ??= laterThanSeen(now));
     let moved = false;
     for (const id of new Set([...Object.keys(ch), ...Object.keys(cloud.localH)])) {
       // Same-device change detection: key order is stable here, so the fast hash is enough.
-      const h = hashStr(storedJson(ch[id] || emptyChunk(id)));
+      const doc = ch[id] || emptyChunk(id);
+      const text = storedJson(doc);
+      const h = hashStr(text);
       if (cloud.localH[id] !== h) {
         if (cloud.localH[id] !== undefined) {
-          cloud.editAt[id] = now;
+          cloud.editAt[id] = stamp();
+          noteRecords(id, seenText[id], doc, stamp());
           moved = true;
         }
         cloud.localH[id] = h;
+        seenText[id] = text;
       }
     }
     if (moved) saveMeta();
@@ -841,8 +1034,16 @@ function resyncLocalH(): void {
   try {
     const ch = chunksOf(state);
     cloud.localH = {};
-    for (const id in ch) cloud.localH[id] = hashStr(storedJson(ch[id]));
-    for (const id in cloud.meta) if (!(id in cloud.localH)) cloud.localH[id] = hashStr(storedJson(emptyChunk(id)));
+    seenText = {};
+    for (const id in ch) {
+      seenText[id] = storedJson(ch[id]);
+      cloud.localH[id] = hashStr(seenText[id]);
+    }
+    for (const id in cloud.meta)
+      if (!(id in cloud.localH)) {
+        seenText[id] = storedJson(emptyChunk(id));
+        cloud.localH[id] = hashStr(seenText[id]);
+      }
   } catch (e) {
     log('sync-track', e);
   }
@@ -985,7 +1186,7 @@ function keepLost(
     setState(
       normalize({ ...state, sessions: state.sessions.map(q => (q.id === lost.id ? joined : q)), cardio: cardioNow })
     );
-    edited(joined.date);
+    edited(joined.date, lostKeys(lost.id, cardio));
     conflictNote(stat, tabs);
     return sets ? 'joined' : 'cardioJoined';
   }
@@ -997,12 +1198,21 @@ function keepLost(
       cardio: unionById(state.cardio, cardio)
     })
   );
-  edited(lost.date);
+  edited(lost.date, lostKeys(lost.id, cardio));
   return kept ? 'saved' : 'cardio';
 }
-/** Notes an edit of the half-month document of a date made here now (keepLost), so a later merge of it reads this device's change as the later one; the flush that follows carries it. */
-function edited(date: string): void {
-  cloud.editAt[chunkOf(date)] = Date.now();
+/** The records keepLost writes: the session of a workout's id and its cardio rows, by their keys. */
+const lostKeys = (id: string, cardio: readonly { id?: unknown }[]): string[] => [
+  recordKey('sessions', id),
+  ...cardio.flatMap(c => (typeof c.id === 'string' ? [recordKey('cardio', c.id)] : []))
+];
+/** Notes an edit of the half-month document of a date made here now (keepLost), and of its records `keys`, so a later merge of it reads this device's change as the later one; the flush that follows carries it. */
+function edited(date: string, keys: readonly string[]): void {
+  const id = chunkOf(date),
+    at = laterThanSeen(Date.now());
+  cloud.editAt[id] = at;
+  const times = (cloud.recAt[id] = cloud.recAt[id] || {});
+  for (const k of keys) times[k] = at;
   saveMeta();
 }
 /** Says what became of the account's copy of a workout that lost a merge here (keepLost): the sets ticked or the cardio logged on the other phone, saved, or added to the session saved here. */
@@ -1029,9 +1239,15 @@ async function sessionFromCloud(d: DraftLike, legB: Base | null): Promise<void> 
   if (m && m.h === h) return;
   const mine = chunksOf(state)[id] || emptyChunk(id);
   const localDirty = !m || hashStr(storedJson(mine)) !== m.h;
-  const et = Number(sb.et) || Number(sb.at) || 0;
-  if (!localDirty) applyChunk(id, rec(data));
-  else applyChunk(id, mergeChunk(id, baseFor(id, m, legB), mine, data, et > (cloud.editAt[id] || 0), { conflicts: 0 }));
+  const et = Number(sb.et) || Number(sb.at) || 0,
+    rt = timesIn(sb.rt);
+  const merged = !localDirty
+    ? rec(data)
+    : mergeChunk(id, baseFor(id, m, legB), mine, data, clashRule(id, rt, et > (cloud.editAt[id] || 0)), {
+        conflicts: 0
+      });
+  applyChunk(id, merged);
+  recordTimesAfter(id, mine, data, merged, rt);
   // Taken as it is or merged, the document's edit time is at least the account's copy's (cloudFlush sends it on).
   cloud.editAt[id] = Math.max(cloud.editAt[id] || 0, et);
   // The account's copy is now the agreed base, as after a pull; what this device adds to it is its own later edit.
@@ -1045,17 +1261,20 @@ async function sessionFromCloud(d: DraftLike, legB: Base | null): Promise<void> 
    item before either heard the other, that copy may be the earlier change, so the words say whose was kept, not
    that it was later (not "The later edit was kept" of the earlier one). */
 /** Says how many items were changed in two places at once, and which copy was kept: the later edit between devices (tabs false), the other tab's between tabs. */
-function conflictNote(stat: { conflicts: number }, tabs = false): void {
+function conflictNote(stat: { conflicts: number; byTime?: number }, tabs = false): void {
   const n = stat.conflicts;
   if (!n) return;
+  // Between tabs, the later change where every clash was decided by its records' times; else the other tab's.
+  const later = !tabs || (stat.byTime || 0) === n;
   log(
     'sync-conflict',
-    `${n} record(s) edited ${tabs ? "in two tabs; kept the other tab's copy" : 'on two devices; kept the later edit'}`
+    `${n} record(s) edited ${tabs ? `in two tabs; kept ${later ? 'the later change' : "the other tab's copy"}` : 'on two devices; kept the later edit'}`
   );
-  const items = `${n} item${n === 1 ? ' was' : 's were'}`;
+  const items = `${n} item${n === 1 ? ' was' : 's were'}`,
+    was = n === 1 ? ' was' : 's were';
   fx.toast(
     tabs
-      ? `${items} changed in two tabs at once. The other tab's change${n === 1 ? ' was' : 's were'} kept.`
+      ? `${items} changed in two tabs at once. ${later ? `The later change${was}` : `The other tab's change${was}`} kept.`
       : `${items} edited on two devices. The later edit was kept.`
   );
 }
@@ -1303,8 +1522,11 @@ export async function cloudFlush(): Promise<void> {
           }
           if (rd) {
             const ret = Number(b.et) || Number(b.at);
-            const remoteWins = ret > (cloud.editAt[x.id] || 0);
-            const merged = mergeChunk(x.id, baseFor(x.id, m, legB), parseJson(json), rd, remoteWins, stat);
+            const remoteWins = ret > (cloud.editAt[x.id] || 0),
+              rt = timesIn(b.rt);
+            const mine = parseJson(json);
+            const merged = mergeChunk(x.id, baseFor(x.id, m, legB), mine, rd, clashRule(x.id, rt, remoteWins), stat);
+            recordTimesAfter(x.id, mine, rd, merged, rt);
             cloud.editAt[x.id] = Math.max(cloud.editAt[x.id] || 0, ret);
             // The workout here before this flush took anything in, for what is said after it; each merge reads the one here now.
             const prev = x.id === 'draft' ? state.draft : null;
@@ -1353,7 +1575,16 @@ export async function cloudFlush(): Promise<void> {
            agreed, never this moment, which made a change the app made on its own (a newer build's reading of an old
            log) outrank a lifter's edit made before it on another phone. A document never agreed is new here: this
            moment. */
-        const doc: CloudDoc = { v: 1, at, et: cloud.editAt[x.id] || (m ? m.at : at), w: writeMark(), json };
+        const rt = timesOut(x.id, parseJson(json));
+        const doc: CloudDoc = {
+          v: 1,
+          at,
+          et: cloud.editAt[x.id] || (m ? m.at : at),
+          w: writeMark(),
+          json,
+          // Each record's last edit, where this device knows it (recordTimesAfter): what a clash on one is decided by.
+          ...(rt ? { rt } : {})
+        };
         // Kept until the answer comes, so a write applied whose answer is lost is known as this device's own (ownWrite).
         cloud.sent[x.id] = {
           w: doc.w,
@@ -1417,7 +1648,7 @@ export async function cloudFlush(): Promise<void> {
   }
 }
 /** One document of the account as read: its write time, its edit time, its data and the hash of its text. */
-type Remote = { at: number; et: number; data: unknown; h: string };
+type Remote = { at: number; et: number; data: unknown; h: string; rt: Record<string, number> | null };
 
 /** The account's documents as read, each with its times, its data and the hash of its text; one that cannot be read is left out and logged. */
 function remoteDocs(docs: readonly { id: string; exists: boolean; data(): unknown }[]): Record<string, Remote> {
@@ -1432,7 +1663,8 @@ function remoteDocs(docs: readonly { id: string; exists: boolean; data(): unknow
         at: Number(b.at) || 0,
         et: Number(b.et) || Number(b.at) || 0,
         data: parseJson(b.json),
-        h: hashStr(b.json)
+        h: hashStr(b.json),
+        rt: timesIn(b.rt)
       };
     } catch (e) {
       log('sync-parse', e);
@@ -1562,9 +1794,13 @@ function mergeFirstLink(mine: State, rState: State, rids: readonly string[], rem
   setState(joined);
   // The cloud copy becomes the agreed base, so the merged result is what
   // the flush writes, rather than being merged a second time.
+  const minePart = chunksOf(mine),
+    joinedPart = chunksOf(joined);
   for (const id of rids) {
     cloud.meta[id] = { h: remote[id].h, at: remote[id].at, b: baseOf(id, remote[id].data) };
     cloud.editAt[id] = Date.now();
+    // Each record's time: the account's where the joined log holds its copy, this phone's where it holds its own.
+    recordTimesAfter(id, minePart[id], remote[id].data, joinedPart[id], remote[id].rt);
   }
   return keptDraft;
 }
@@ -1594,6 +1830,7 @@ function mergeChanged(
     const localDirty = !m || hashStr(lJson) !== m.h;
     if (!localDirty) {
       parts[id] = rec(r.data);
+      recordTimesAfter(id, local[id], r.data, parts[id], r.rt);
       adoptedIds.add(id);
       any = true;
       continue;
@@ -1612,9 +1849,10 @@ function mergeChanged(
       baseFor(id, m, legB),
       local[id] || emptyChunk(id),
       r.data,
-      r.et > (cloud.editAt[id] || 0),
+      clashRule(id, r.rt, r.et > (cloud.editAt[id] || 0)),
       stat
     );
+    recordTimesAfter(id, local[id], r.data, parts[id], r.rt);
     cloud.editAt[id] = Math.max(cloud.editAt[id] || 0, r.et);
     // The cloud copy is now the agreed base; the merge result is written by the flush below.
     cloud.meta[id] = { h: r.h, at: r.at, b: baseOf(id, r.data) };
@@ -1696,6 +1934,8 @@ export async function cloudPull(): Promise<void> {
       // by what is here, not by whether a save was found at start: a first run's workout must survive a sign-in before a reopen
       parts = Object.fromEntries(rids.map(k => [k, rec(remote[k].data)]));
       rids.forEach(k => adoptedIds.add(k));
+      // Each record's time as the account sent it (recordTimesAfter), so a later edit on another phone is still the later one.
+      for (const k of rids) recordTimesAfter(k, null, remote[k].data, remote[k].data, remote[k].rt);
     } else {
       merged = true; // no Undo: a merge only adds, and undoing it would take the account's own sessions off every device
       keptDraft = mergeFirstLink(mine, rState, rids, remote);
@@ -1740,8 +1980,10 @@ export async function cloudPull(): Promise<void> {
       const n0 = state.trash.length;
       state.trash = state.trash.filter(t => !(t.kind === 'routine' && plainTemplate(t.data)));
       if (state.trash.length !== n0) {
+        // The app's own bookkeeping, no edit: taken as seen before its save, which with another tab open notes
+        // edits at once (saveNow), and after it.
+        seenAsIs();
         saveNow();
-        // The app's own bookkeeping, no edit (seenAsIs).
         seenAsIs();
       }
     }
@@ -1899,6 +2141,7 @@ function readStored(): void {
   cloud.meta = n.meta || {};
   cloud.sent = {};
   cloud.editAt = n.editAt || {};
+  cloud.recAt = n.recAt || {};
   cloud.last = n.last;
   cloud.acct = now;
   setState(load());
@@ -1976,6 +2219,7 @@ async function takeAccount(id: string): Promise<boolean> {
     cloud.meta = {};
     cloud.sent = {};
     cloud.editAt = {};
+    cloud.recAt = {};
     cloud.last = null;
     // The phone's log goes into the account, and a workout set aside for an edit with it.
     parkedRetag('', id);
@@ -1998,7 +2242,15 @@ async function takeAccount(id: string): Promise<boolean> {
     }
     use = a === 'alt';
   }
-  const before = { state, meta: cloud.meta, editAt: cloud.editAt, last: cloud.last, acct: cloud.acct, ep: notesEp };
+  const before = {
+    state,
+    meta: cloud.meta,
+    editAt: cloud.editAt,
+    recAt: cloud.recAt,
+    last: cloud.last,
+    acct: cloud.acct,
+    ep: notesEp
+  };
   if (use && from) {
     const k = await keepHere(from);
     if (k !== 'kept') {
@@ -2034,6 +2286,8 @@ async function takeAccount(id: string): Promise<boolean> {
   cloud.meta = (n && n.meta) || {};
   cloud.sent = {};
   cloud.editAt = (n && n.editAt) || {};
+  // A log kept aside keeps no record times: its records are decided by their documents' times until edited again.
+  cloud.recAt = (n && n.recAt) || {};
   cloud.last = n ? n.last : null;
   if (next) {
     setState(next);
@@ -2048,6 +2302,7 @@ async function takeAccount(id: string): Promise<boolean> {
     cloud.meta = before.meta;
     cloud.sent = {};
     cloud.editAt = before.editAt;
+    cloud.recAt = before.recAt;
     cloud.last = before.last;
     cloud.acct = before.acct;
     notesEp = before.ep;
@@ -2153,6 +2408,7 @@ export function cloudStop(forget?: boolean): void {
     cloud.meta = {};
     cloud.sent = {};
     cloud.editAt = {};
+    cloud.recAt = {};
     cloud.last = null;
     newEp();
   }
@@ -2172,6 +2428,7 @@ export function cloudStop(forget?: boolean): void {
    same data never keep rewriting it back and forth. */
 function onStorage(ev: StorageEvent): void {
   if (ev.storageArea && ev.storageArea !== localStorage) return;
+  if (ev.key === KEY || ev.key === SYNC_KEY) tabsHeard = true;
   if (ev.key === SYNC_KEY && ev.newValue) {
     try {
       const m = rec(parseJson(ev.newValue));
@@ -2183,10 +2440,11 @@ function onStorage(ev: StorageEvent): void {
         // The same log and account: joined (joinNotes), and written back when this tab held something they lacked.
         if (joinNotes(m, ev.newValue)) saveMeta();
       } else if (m) {
-        const { meta, editAt, last } = notesIn(m, 'tabs');
+        const { meta, editAt, recAt, last } = notesIn(m, 'tabs');
         if (meta) cloud.meta = meta;
         cloud.sent = sentIn(m.sent);
         if (editAt) cloud.editAt = editAt;
+        cloud.recAt = recAt || {};
         cloud.last = last;
         // The notes' account with them: a tab that kept the account it read before acted for it on another's log.
         cloud.acct = typeof m.acct === 'string' ? m.acct : null;
@@ -2208,6 +2466,23 @@ function onStorage(ev: StorageEvent): void {
     log('tabs', e);
   }
   mergeIn(ev.newValue, false);
+}
+/** Whether another tab has written the log or the notes while this one was open: then each save notes its records'
+    times at once (saveNow), for the other tab to merge it by. */
+let tabsHeard = false;
+/** The record times in the notes another tab last wrote, where they are its and not yet taken in here; else null. */
+function otherTabTimes(): Record<string, Record<string, number>> | null {
+  try {
+    const text = localStorage.getItem(SYNC_KEY);
+    if (text == null || text === notesSeen) return null;
+    const m = rec(parseJson(text));
+    if (!m || epOf(m) !== notesEp || (typeof m.acct === 'string' ? m.acct : null) !== cloud.acct) return null;
+    return notesIn(m, 'tabs').recAt;
+  } catch (e) {
+    // Notes unreadable now: the other tab's copy is kept where both changed one record, as with no times.
+    log('tabs', e);
+    return null;
+  }
 }
 /* Another tab's save merged into this tab's log: taken whole when this tab
    has nothing unsaved, else three ways against this tab's last save; what
@@ -2237,10 +2512,12 @@ function mergeIn(text: string, own: boolean): void {
     log('tabs', e);
     base = null;
   }
+  // The other tab's record times, as it wrote them with this save, read before this tab writes its own notes.
+  const other = otherTabTimes();
   // This tab's edits not yet noted keep their own time: noted before the other tab's save is merged in (the rule
   // above resyncLocalH).
   trackEdits();
-  const stat = { conflicts: 0 };
+  const stat = { conflicts: 0, byTime: 0 };
   // The workout here before the merge: the copy that may lose it (below), and what is then said.
   const dr0 = state.draft;
   let kept: Kept = null;
@@ -2250,20 +2527,24 @@ function mergeIn(text: string, own: boolean): void {
       Rr = chunksOf(incoming),
       B = chunksOf(base),
       parts: Record<string, Rec | null> = {};
-    /* A record changed in both tabs keeps the other tab's copy. Letting this tab's own copy win on its own save
-       loses what the other tab logged: a tab behind takes away the other's new workout and its sets, a change typed
-       loses to a later tick, and Undo takes back the other tab's edit (tests/storage-sync.js S-6). A tab shown again takes in the other's saves first
-       (onVisibility), so a clash needs both tabs changing one item before either hears the other, a moment; the
-       words then say whose copy was kept (conflictNote). */
+    /* A record changed in both tabs keeps the later edit, by each record's time, as on two phones: the other tab
+       writes its records' times with its save (saveNow), and this tab has just noted its own. Where either is unknown
+       (a tab on a build that keeps none, or one whose times were not yet written), the other tab's copy: letting this
+       tab's own copy win on its own save loses what the other tab logged: a tab behind takes away the other's new
+       workout and its sets, a change typed loses to a later tick, and Undo takes back the other tab's edit
+       (tests/storage-sync.js S-6). A tab shown again takes in the other's saves first (onVisibility), so a clash needs
+       both tabs changing one item before either hears the other, a moment; the words then say whose copy was kept
+       (conflictNote). */
     for (const id of new Set([...Object.keys(L), ...Object.keys(Rr), ...Object.keys(B)]))
       parts[id] = mergeChunk(
         id,
         baseOf(id, B[id] || emptyChunk(id)),
         L[id] || emptyChunk(id),
         Rr[id] || emptyChunk(id),
-        true,
+        clashRule(id, other ? other[id] || null : null, true),
         stat
       );
+    for (const id in parts) recordTimesAfter(id, L[id], Rr[id], parts[id], other ? other[id] || null : null);
     setState(assemble(parts));
     /* The copy of the workout that lost the merge keeps its sets, as on two phones (keepLost): this tab's when it held
        something logged the other tab's save lacked, the other tab's when it did and this tab's copy stood. Logged means
@@ -2319,10 +2600,11 @@ export function syncStart(): void {
     const m = rec(parseJson(text || 'null'));
     notesSeen = text;
     if (m) {
-      const { meta, editAt, last } = notesIn(m, 'sync-meta');
+      const { meta, editAt, recAt, last } = notesIn(m, 'sync-meta');
       cloud.meta = meta || {};
       cloud.last = last || null;
       cloud.editAt = editAt || {};
+      cloud.recAt = recAt || {};
       cloud.devId = typeof m.devId === 'string' ? m.devId : null;
       cloud.acct = typeof m.acct === 'string' ? m.acct : null;
       cloud.sent = sentIn(m.sent);
@@ -2341,6 +2623,7 @@ export function syncStart(): void {
     cloud.meta = {};
     cloud.sent = {};
     cloud.editAt = {};
+    cloud.recAt = {};
   }
   resyncLocalH();
   window.addEventListener('storage', onStorage);

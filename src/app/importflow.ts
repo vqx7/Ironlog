@@ -16,7 +16,7 @@
 import { APP_NAME, STORAGE_ID } from './config';
 import { addDays, andList, daysBetween, isDate, median, today, uid, WEEK_DAYS } from './util';
 import { KM_MI, LB, TYPED_STEP } from './units';
-import { LIB_NAMES_BEFORE, ML, onMachines } from './library';
+import { LIB_NAMES_BEFORE, ML, equipAsSaved, onMachines } from './library';
 import { dropStarter, routineSig } from './routines';
 import { offTarget } from './formulas';
 import { fmtDate } from './format';
@@ -478,8 +478,8 @@ export function impBuild(m: ImpPreviewModal): ImpBuilt {
       else {
         const b = { exId: exo.id, note: it.note || '', rr: null, sets };
         ex.push(b);
-        // The machine the app's own file names, put on each session below (fileMachines).
-        if (it.machine && onMachines(exo)) labelled.set(b, it.machine);
+        // The machine the app's own file names, put on each session below (fileMachines), for a lift saved as a machine lift.
+        if (it.machine && onMachines({ equip: equipAsSaved(exo) })) labelled.set(b, it.machine);
       }
       if (it.ss) grp[exo.id] = it.ss;
     }

@@ -11,13 +11,30 @@ import { hashStr } from './util';
 import { unitOnGrid } from './units';
 import { arr, rec } from './records';
 import { keptOn, keptOnSession, unkept } from './machines';
-import { LIB_EQUIP_BEFORE, libEquipOf } from './library';
+import { equipAsSaved } from './library';
 import type { Rec } from './records';
 import type { Session } from './types';
 import type { DraftLike } from './session';
 
-/** The conflicts a merge counted. */
-type Stat = { conflicts: number };
+/** The conflicts a merge counted, and how many of them each record's own edit times decided (byTime). */
+type Stat = { conflicts: number; byTime?: number };
+
+/* Which copy a clash keeps (a record changed on both sides since the copy both agreed): the later edit. Where the sync
+   knows when each side last edited that record (sync.ts recAt, sent beside a document as `rt`), the record's own times
+   decide; else the document's (`doc`), as for a copy from a build that kept no record times. A boolean is a document's
+   rule alone (Undo, the workout open on two phones). */
+/** The rule a merge keeps a clashed record by: the other side's copy when true (above). */
+export type Wins = boolean | { doc: boolean; rec: (key: string) => boolean | null };
+/** Whether the other side's copy of the record keyed `key` wins its clash, counted in `stat` when its times decided. */
+function winsFor(w: Wins, key: string, stat: Stat): boolean {
+  if (typeof w === 'boolean') return w;
+  const r = w.rec(key);
+  if (r === null) return w.doc;
+  stat.byTime = (stat.byTime || 0) + 1;
+  return r;
+}
+/** The document's own rule of a clash rule (Wins), for a merge that has no record times. */
+export const docWins = (w: Wins): boolean => (typeof w === 'boolean' ? w : w.doc);
 
 /** A plain object read by its own keys. */
 type Fields = Record<string, unknown>;
@@ -54,9 +71,14 @@ function givenUnit(f: Readonly<Fields>, k: string): boolean {
 /** The equipment field `k` of record `f` is saved and compared as: the library's old one where `f` holds the new one
     unpicked (above), else undefined (as it is). */
 function savedEquip(f: Readonly<Fields>, k: string): string | undefined {
-  if (k !== 'equip' || f.custom === true || f.equipOwn === true || typeof f.id !== 'string') return undefined;
-  const old = LIB_EQUIP_BEFORE[f.id];
-  return old && old[0] !== undefined && f.equip === libEquipOf(f.id) ? old[0] : undefined;
+  if (k !== 'equip' || typeof f.id !== 'string' || typeof f.equip !== 'string') return undefined;
+  const was = equipAsSaved({
+    id: f.id,
+    equip: f.equip,
+    custom: f.custom === true,
+    equipOwn: f.equipOwn === true ? true : undefined
+  });
+  return was !== f.equip ? was : undefined;
 }
 
 /* The log as it is saved and sent: as it is, with each unit its number gives left out (givenUnit). Read back, every build
@@ -124,8 +146,9 @@ export function merge3List(
   base: Record<string, string> | null | undefined,
   l: unknown,
   r: unknown,
-  remoteWins: boolean,
-  stat: Stat
+  remoteWins: Wins,
+  stat: Stat,
+  list = ''
 ): Rec[] {
   const known = !!base;
   base = base || {};
@@ -171,7 +194,7 @@ export function merge3List(
       continue;
     }
     stat.conflicts++;
-    out.push(remoteWins ? keptOn(b, a) : keptOn(a, b));
+    out.push(winsFor(remoteWins, recordKey(list, id), stat) ? keptOn(b, a) : keptOn(a, b));
   }
   return out;
 }
@@ -179,14 +202,17 @@ export function merge3List(
 /** Merges two versions of one value against its base fingerprint: the side
     that changed wins, and when both did, remoteWins decides and the conflict
     is counted. */
-export function merge3Val<V>(bh: string | undefined, a: V, b: V, remoteWins: boolean, stat: Stat): V {
+export function merge3Val<V>(bh: string | undefined, a: V, b: V, remoteWins: Wins, stat: Stat, key = ''): V {
   const ah = Hx(a),
     rh = Hx(b);
   if (ah === rh || rh === bh) return a;
   if (ah === bh) return b;
   stat.conflicts++;
-  return remoteWins ? b : a;
+  return winsFor(remoteWins, key, stat) ? b : a;
 }
+
+/** A record's key in its document, as its edit time is kept by (sync.ts recordKeys): its list and its id, or a value's name. */
+export const recordKey = (list: string, id: string): string => `${list}/${id}`;
 
 /* ---------- one workout open on two phones ---------- */
 
