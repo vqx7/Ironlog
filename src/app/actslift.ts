@@ -6,7 +6,7 @@
 
 import type { DraftSet, Exercise } from './types';
 import { isDate, isNum, numIn, today, uid } from './util';
-import { JK, MK, injLabel } from './library';
+import { JK, MK, injLabel, onMachines } from './library';
 import { LIMITS, within } from './records';
 import { cleanCardio } from './normalize';
 import { effU, effW, greyU, greyW, setLoad } from './session';
@@ -76,8 +76,8 @@ function pickMachine(bi: number, k: string | undefined, name: string): void {
   const ed = d.editingId;
   // A new machine in an edit is named by the session's own key, which is the machine it is on already when it began one.
   if (ed && k === NEW_MACHINE && draftMachine(b0.exId) === ed) return;
-  // The machine's unit: the one its last session's heaviest set was entered in (a machine's own unit is recorded with it next).
-  const u = was && !ed ? was.u : null;
+  // The machine's unit: the one picked for the lift while on it, else the one its last session's heaviest set was entered in.
+  const u = was && !ed ? was.mu : null;
   const key = k === NEW_MACHINE ? newMachineKey() : k;
   act(
     () => {
@@ -228,9 +228,19 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       t.dataset.v === 'kg' || t.dataset.v === 'lb' ? t.dataset.v : liftU(e) === 'kg' ? 'lb' : 'kg';
     const g = state.settings.gym;
     if (to === e.unit || (!e.unit && to === appU() && (!g || g.u === to))) return;
+    /* On a machine, cable or Smith lift the unit is that machine's too, so picking the machine again brings it
+       (pickMachine): kept beside those of the lift's other machines, a machine no session is on any more left out. */
+    const on = onMachines(e) ? draftMachine(b.exId) : null;
+    const key = on === NEW_MACHINE ? newMachineKey() : on;
+    const has = new Set(liftMachines(b.exId).map(x => x.key));
     act(
       () => {
         e.unit = to;
+        if (key)
+          e.machineU = {
+            ...Object.fromEntries(Object.entries(e.machineU || {}).filter(([k]) => has.has(k) && k !== key)),
+            [key]: to
+          };
         /* A block not started reads its target again in the new unit; one with a set done keeps what it started
            with, as for a change of the app's unit, its words said again in the new unit, so the sets done at the
            load asked still count; an edit of a saved session reads nothing again of today's. */

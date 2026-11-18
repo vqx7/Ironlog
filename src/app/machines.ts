@@ -3,8 +3,9 @@
    where a change would move a session it does not touch to another machine (normalize.ts keepMachines), and marks it so
    (`kp`). A name the app kept is no one's edit: every comparison of two copies of one record reads it as absent
    (unkept), and the copy kept takes the other's kept names where it names none (keptOn). So a kept name never beats a
-   correction or a pick made elsewhere, and is never lost to one. This module is the only code that makes, changes or
-   takes off a name (tests/hygiene.js), so that holds wherever a name is written. */
+   correction or a pick made elsewhere, and is never lost to one. A saved session opened to edit carries each name as
+   it was (nameAsIs), and is saved so unless a machine is picked in the edit (savedName). This module is the only code
+   that makes, changes or takes off a name (tests/hygiene.js), so that holds wherever a name is written. */
 
 import { arr, fixId, rec } from './records';
 import type { Rec } from './records';
@@ -13,13 +14,19 @@ import type { Session } from './types';
 /** What an exercise holds of its machine's name: given by the lifter, or kept by the app (`kp`). */
 type Named = { mc?: string | undefined; kp?: true | undefined };
 
-/** A name the lifter gave, to spread into an exercise made with it: nothing for none. */
-export function named(key: string | null | undefined): { mc?: string } {
-  return key ? { mc: key } : {};
-}
 /** A name the app kept, to spread into an exercise made with it. */
 export function keptName(key: string): { mc: string; kp: true } {
   return { mc: key, kp: true };
+}
+/** Exercise `b`'s name as it is, given or kept, to spread into a copy of it (a saved session opened to edit): nothing for none. */
+export function nameAsIs(b: Named): Named {
+  return b.mc ? (b.kp ? keptName(b.mc) : { mc: b.mc }) : {};
+}
+/** The name to save on a lift's exercise, `key` (none for null): kept where one of the lift's blocks `from` holds it as a
+    name the app kept (an edit in which no machine was picked), else the lifter's. */
+export function savedName(key: string | null, from: readonly Named[]): Named {
+  if (!key) return {};
+  return from.some(b => b.mc === key && b.kp) ? keptName(key) : { mc: key };
 }
 /** Names exercise `b` with the machine the lifter picked: their name, no longer one the app kept. */
 export function pickName(b: Named, key: string): void {

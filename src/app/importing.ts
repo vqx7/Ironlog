@@ -51,7 +51,7 @@ interface ImpReadItem {
   setsText?: string[] | undefined;
   note?: string | undefined;
   ss?: string | undefined;
-  /** The machine it was done on, from the app's own file (its machine column), for a lift done on more than one. */
+  /** The machine it was done on, from the app's own file (its machine column): its name, or the day one with none was first used. */
   machine?: string | undefined;
 }
 /** A session as the reader found it: no date when the notes gave none (the preview asks for one). */
@@ -884,7 +884,7 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
       it = { name: ex, sets: [], note: '', ...(cell('ss') ? { ss: cell('ss') } : {}) };
       ss.items.set(ex, it);
     }
-    // The app's own file names the machine of a lift done on more than one (390 C), the same on each of its rows.
+    // The app's own file names the machine of a lift done on more than one or on a named one, the same on each of its rows.
     const machine = at(r, cMachine);
     if (machine && !it.machine) it.machine = machine;
     /* An exercise's note may sit on any of its rows (a set's note in another

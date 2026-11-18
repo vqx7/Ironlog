@@ -880,6 +880,27 @@ export function machineName(exId: string, key: string): string | null {
   return (k && e && e.machines && e.machines[k]) || null;
 }
 
+/* A lift's machines as a file names them (the CSV's machine column, which import reads back): by the name the lifter
+   gave one, else by the day it was first used, as the Machine sheet says a machine with no name by a day; each label the
+   lift's alone, a second of the same name or day taking "-2". */
+/** Each of lift `exId`'s machines by key, with its label in a file (above), in the order first used. */
+export function machineLabels(exId: string): Map<string, string> {
+  const e = state.exercises.find(x => x.id === exId);
+  const out = new Map<string, string>();
+  const used = new Set<string>();
+  for (const x of IDX().byEx[exId] || []) {
+    if (out.has(x.mk)) continue;
+    const base = (e && e.machines && e.machines[x.mk]) || x.date;
+    let label = base;
+    for (let n = 2; used.has(label); n++) label = `${base}-${n}`;
+    used.add(label);
+    out.set(x.mk, label);
+  }
+  return out;
+}
+/** Whether a file's machine label is a day, as one with no name is written (machineLabels): not a name to give it. */
+export const isDayLabel = (label: string): boolean => /^\d{4}-\d{2}-\d{2}(-\d+)?$/.test(label);
+
 /** The quick picks offered when a machine is named. */
 const MACHINE_CHOICES = 6;
 /** Names given to machines on other lifts, the most used first and then in order, without those this lift has (so a

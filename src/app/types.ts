@@ -74,6 +74,9 @@ export interface Exercise {
   maxLoadU?: Unit | undefined;
   barU?: Unit | undefined;
   goalU?: Unit | undefined;
+  /** The unit each of the lift's machines has its weights in, by the machine's key, as the lifter picked it while the
+      lift was on that machine (the unit sheet); absent until one is picked. Last, after the units above. */
+  machineU?: Record<string, Unit> | undefined;
 }
 
 /** A routine day's exercise: the plan for it. */
@@ -497,6 +500,8 @@ export interface DraftBlock {
   nw?: true | undefined;
   /** The machine picked for the lift in this session (a key, machineKeys), on every block of it; absent until one is picked. */
   mc?: string | undefined;
+  /** In an edit, the session's machine name was one the app kept (SessionEx.kp): it stays so unless a machine is picked. */
+  kp?: true | undefined;
   /** The pictures on this exercise's note, by id, carried to the saved exercise by Finish; absent when none. */
   pics?: string[] | undefined;
 }

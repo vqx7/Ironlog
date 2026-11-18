@@ -315,12 +315,12 @@ for(const [file,label] of [['baselines/r119.html','r119'],['baselines/r118.html'
   const raw=await P.page.evaluate(()=>localStorage.getItem('ironlog.v1'));await P.ctx.close();
   const N=await open('index.html',{browser,state:JSON.parse(raw),clock:'2026-09-26T10:00:00'});
   const now=await N.page.evaluate(READ);
-  const mem=await N.page.evaluate(()=>{const S=window.__ironlog.state;return {sessions:S.sessions.filter(x=>/^k/.test(x.id)).map(x=>({id:x.id,u:x.ex.map(b=>b.sets.map(q=>q.u||null)),last:x.ex.map(b=>b.sets.map(q=>Object.keys(q).pop()))})),ex:['bench','dbCurl'].map(id=>{const e=S.exercises.find(x=>x.id===id);return {u:[e.incU||null,e.maxLoadU||null,e.goalU||null,e.barU||null],last:Object.keys(e).slice(-4).join()};}),bar:S.settings.barU||null};});
+  const mem=await N.page.evaluate(()=>{const S=window.__ironlog.state;return {sessions:S.sessions.filter(x=>/^k/.test(x.id)).map(x=>({id:x.id,u:x.ex.map(b=>b.sets.map(q=>q.u||null)),last:x.ex.map(b=>b.sets.map(q=>Object.keys(q).pop()))})),ex:['bench','dbCurl'].map(id=>{const e=S.exercises.find(x=>x.id===id);return {u:[e.incU||null,e.maxLoadU||null,e.goalU||null,e.barU||null],last:Object.keys(e).slice(-5).join()};}),bar:S.settings.barU||null};});
   const saved=await N.page.evaluate(()=>{const L=window.__ironlog;L.saveNow();return localStorage.getItem('ironlog.v1');});
   const o=JSON.parse(raw);
   const k=id=>mem.sessions.find(x=>x.id===id);
   ok(JSON.stringify(k('k1').u)==='[["kg","kg","kg"],["lb","lb"]]'&&JSON.stringify(k('k2').u)==='[["kg","lb","kg"],["lb"]]'&&k('k2').last.flat().every(x=>x==='u'),'r118: opened here, each set has the unit its load lies on (100 and 102.5 in kg, 225 lb in lb on the same bench, the curls in lb) and 61.37 its own kg, last among its fields',mem.sessions);
-  ok(JSON.stringify(mem.ex[0].u)==='["kg","kg","kg","kg"]'&&JSON.stringify(mem.ex[1].u)==='["lb","lb","lb",null]'&&mem.ex[0].last==='incU,maxLoadU,barU,goalU'&&mem.bar==='lb','r118: a lift\'s step, heaviest load, goal and bar each have the unit its number lies on, last among the lift\'s fields; the bar in settings too',mem);
+  ok(JSON.stringify(mem.ex[0].u)==='["kg","kg","kg","kg"]'&&JSON.stringify(mem.ex[1].u)==='["lb","lb","lb",null]'&&mem.ex[0].last==='incU,maxLoadU,barU,goalU,machineU'&&mem.bar==='lb','r118: a lift\'s step, heaviest load, goal and bar each have the unit its number lies on, last among the lift\'s fields but its machines\' units (2.74); the bar in settings too',mem);
   ok(saved===raw,'r118: saved again here, the log is 2.72\'s save byte for byte: each unit its number gives left out, the one it does not give (61.37 kg) kept, nothing to send again',{same:saved===raw});
   ok(JSON.parse(saved).sessions.find(x=>x.id==='k2').ex[0].sets[2].u==='kg','r118: the unit a number does not give is in the save',{});
   ok(JSON.stringify(now.w)===JSON.stringify(was.w),'r118: every load read here is the load 2.72 read',{});
