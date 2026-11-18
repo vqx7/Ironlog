@@ -35,8 +35,9 @@ const K = +process.env.ENGINE_N || 1000, BATCH = 100;
 // and musTrend, a muscle's strength trend in words, which Stats and the muscles sheet call and no adapter reaches (r54);
 // and r55's routine helpers: what a session records of its routine (pwOf), a first-run choice replacing the starter
 // (dropStarter), a day given an exercise (trainOn) and the item a lift's plan comes from (planItemOf).
+// 2.75: a cycle's next training day (nextTrainIdx) and a day's second workout's name (pmNameOf), which keep routines.ts's share.
 // r64 (302): the rest a ready-made routine gives each lift, and the signatures the routines had up to r63.
-const PLAIN = ['avgWeeksTxt', 'dayLabel', 'daySets', 'ssLetters', 'routineSig', 'tplCountLine', 'musTrend', 'pwOf', 'dropStarter', 'trainOn', 'planItemOf', 'platesPerSide', 'planSetsOf', 'withPlanSets', 'templateRest', 'templateSigsBefore', 'gymClean', 'onUnitSteps'];
+const PLAIN = ['avgWeeksTxt', 'dayLabel', 'daySets', 'ssLetters', 'routineSig', 'tplCountLine', 'musTrend', 'pwOf', 'dropStarter', 'trainOn', 'planItemOf', 'nextTrainIdx', 'pmNameOf', 'platesPerSide', 'planSetsOf', 'withPlanSets', 'templateRest', 'templateSigsBefore', 'gymClean', 'onUnitSteps'];
 // Every adapter live.ts gives the legacy script, read from live.ts itself, so a new one cannot go uncalled.
 const ADAPTERS = [...fs.readFileSync(path.join(APP, 'live.ts'), 'utf8').matchAll(/^export const (\w+) = live\(\w+In\);$/gm)].map(m => m[1]);
 // The adapters added since r53, and the plain functions above the digest does not call (tests/wide.js's digest is kept
@@ -65,6 +66,9 @@ const EXTRA = {
   liftsMoving: () => [[]],
   // 2.70 (NEW-156, NEW-167): the week's word and the lifts in each of its groups, and whether lifts flat together point to fatigue.
   verdict: () => [[]], fatigueCall: () => [[]],
+  // 2.75: a cycle's next training day, from before any day, after each, and on routines with no training day; a day's second workout's name, given or not.
+  nextTrainIdx: (s) => [...s.routines.flatMap(r => [[r, -1], [r, 0], [r, r.days.length - 1]]), [{ days: [{ rest: true, items: [] }] }, -1], [{ days: [{ rest: true, items: [] }, { rest: true, items: [] }] }, 1]],
+  pmNameOf: (s) => [...s.routines.flatMap(r => r.days.map(d => [d])), [{ name: 'Legs', pmName: 'Legs, evening' }], [{ name: 'Legs' }]],
   planItemOf: (s, ids) => s.routines.slice(0, 2).flatMap(r => ids.slice(0, 6).flatMap(id => [[r, id], [r, id, r.days.length > 1 ? r.days[1].id : null]])),
   // A lift's all-time bests, now and as of the log's middle session (a past workout's), and where the weeks are counted from.
   allTimeBests: (s, ids) => ids.flatMap(id => [[id], [id, s.sessions.length ? s.sessions[Math.floor(s.sessions.length / 2)].date : '']]),

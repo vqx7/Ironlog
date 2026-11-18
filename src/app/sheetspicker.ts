@@ -29,8 +29,8 @@ import {
 } from './live';
 import { dayLabel, dayWorkout } from './routines';
 import { estMin, min5, repSpan } from './format';
-import { setSecs, setupSecs } from './formulas';
-import { MINUTE_S, today } from './util';
+import { LIGHTER_SET_SHARE, setSecs, setupSecs } from './formulas';
+import { MINUTE_S, shareWords, today } from './util';
 import { remainMin, shortPlan } from './worksets';
 import { tipButton } from './view';
 import { curRoutineB, findItem, libFiltered, sessionsOn } from './display';
@@ -159,7 +159,7 @@ export function pickTodaySheet(): TemplateResult {
     lead = html`<p class="small u-m0">${best.day.name} fits today better than ${plan.day.name}, next in your plan: ${plan.ready < 1 ? `${plan.day.name} leans on muscles that may still be recovering.` : 'it trains what is furthest behind this week.'} ${tipButton('Starting it moves your cycle on from there, the same as choosing it under Change day.', 'About the cycle')}</p>`;
   const sameDay = sessionsOn(today()).length > 0;
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Pick for me</h3>${closeX()}</div>
-    ${lead}${sameDay ? html`<p class="small muted u-m8-0-0">Includes the session logged today.</p>` : ''}${rk.deload ? html`<p class="small muted u-m8-0-0">Deload week: counted at half the sets.</p>` : ''}
+    ${lead}${sameDay ? html`<p class="small muted u-m8-0-0">Includes the session logged today.</p>` : ''}${rk.deload ? html`<p class="small muted u-m8-0-0">Deload week: counted at ${shareWords(LIGHTER_SET_SHARE)} the sets.</p>` : ''}
     ${top.map(
       (
         x,

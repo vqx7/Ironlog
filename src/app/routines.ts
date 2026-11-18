@@ -36,6 +36,23 @@ export const DAYS: readonly string[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'
 /** The most days a routine can have. */
 export const MAX_DAYS = 14;
 
+/* A lift's load step is the lift's own (its exercise's `inc`), set by any of its three editors (the session's Load step,
+   the exercise editor, Plan) through one rule: the number typed, 0 included, a fixed load the engine moves by reps
+   (the Guide, Load steps). An older build drops a step of 0 from a lift but keeps one on a plan item, where it
+   read the plan's, so 0 is put on each of the lift's items too, and a step other than 0 takes a 0 left on them back
+   to the plan's own default: a fixed load set once is fixed on every day and routine, and no 0 left on a day comes
+   back when the lift's step is cleared. */
+/** Puts a lift's step on its plan items, in every routine, as the rule above has it (`inc` 0, other, or null cleared). */
+export function stepOnPlans(routines: readonly Routine[], exId: string, inc: number | null): void {
+  for (const r of routines)
+    for (const d of r.days)
+      for (const it of d.items)
+        if (it.exId === exId) {
+          if (inc === 0) it.inc = 0;
+          else if (it.inc === 0) it.inc = DEFAULT_PLAN.inc;
+        }
+}
+
 /** A routine day's label: the weekday on a weekly schedule, else its place in the cycle. */
 export function dayLabel(R: Pick<Routine, 'schedule'> | null | undefined, i: number): string {
   return R && R.schedule === 'weekly' ? DAYS[i] : `Day ${i + 1}`;
@@ -732,13 +749,36 @@ export function dayShare(R: RoutineLike): number {
    times: each planned set's credit (above), a helper muscle's at half. */
 function addDayCredit(M: Model, d: Day | NewRoutine['days'][number], f: number, out: Record<string, number>): void {
   if (d.rest) return;
-  for (const it of d.items) {
+  addItemsCredit(M, d.items, f, false, out);
+}
+/** Adds planned items' hard sets per muscle into `out`, each counted f times: a lift's main muscle in full, each helper at HELPER_CREDIT unless `direct`. */
+function addItemsCredit(
+  M: Model,
+  items: readonly { exId: string; sets: number | string; rir: number | string }[],
+  f: number,
+  direct: boolean,
+  out: Record<string, number>
+): void {
+  for (const it of items) {
     const pc = planCreditIn(M, it);
     if (!pc) continue;
     const ex = EXIn(M, it.exId);
-    out[ex.primary] = (out[ex.primary] || 0) + it.sets * f * pc;
-    for (const m of ex.secondary) out[m] = (out[m] || 0) + HELPER_CREDIT * it.sets * f * pc;
+    const n = (+it.sets || 0) * f * pc;
+    out[ex.primary] = (out[ex.primary] || 0) + n;
+    if (!direct) for (const m of ex.secondary) out[m] = (out[m] || 0) + HELPER_CREDIT * n;
   }
+}
+/* Planned sets per muscle are one count everywhere (the weekly plan, a day's sets in Plan, Pick for me): hard sets
+   only, as the weekly plan counts them, so a day planned at RIR 4 counts its sets as the weekly plan does. */
+/** The hard sets planned items give each muscle (above): helpers at HELPER_CREDIT, or the main muscles alone (`direct`). */
+export function itemsCreditIn(
+  M: Model,
+  items: readonly { exId: string; sets: number | string; rir: number | string }[],
+  direct = false
+): Record<string, number> {
+  const out: Record<string, number> = {};
+  addItemsCredit(M, items, 1, direct, out);
+  return out;
 }
 
 /* One day's planned hard sets per muscle, which the weeks a cycle's days

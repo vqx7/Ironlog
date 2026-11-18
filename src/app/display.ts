@@ -4,7 +4,7 @@
 import { IN, KM_MI, FT_IN } from './units';
 import { NIL, fmtDate, fmtWith, missedTag } from './format';
 import { bestFit, e1, fitE, trendE, RECENT_DAYS, BEST_WEEKS, TAPE_WEEKS } from './formulas';
-import { MK, ML, isCommon, isCompound, loadMode, nameMatch } from './library';
+import { MK, ML, isCommon, isCompound, loadMode, nameMatch, noE1 } from './library';
 import { dayParts, dayWorkout, partOf, routineEmpty, routineSig, sessDayIdx } from './routines';
 import { rec } from './records';
 import { REGION_WKS, REGION_WK_DEFAULT } from './layout';
@@ -228,13 +228,20 @@ export function topSetPt(ex: ExerciseLike, x: Exposure): { v: number; txt: strin
   return q ? { v: q.v, txt: setShort(ex, q.p) } : { v: 0, txt: '' };
 }
 
-/** A lift's strongest working set by reps alone, with its date; at one score, the one with more reps. */
+/* A lift's best set, one rule for Stats' headline, its Best set tile and the lift's history sheet: a timed hold by its
+   load as read, then its seconds; a lift with no estimate by its load as stored, then reps; any other by its estimate
+   with nothing in reserve (reps alone), then reps. */
+/** A lift's best working set (above), with its date; at one score, the one with more reps. */
 export function bestSet(exId: string): { v: number; w: number; r: number; u: Unit | null; date: string } | null {
+  const ex = EX(exId);
+  const plain = !!ex.timed || noE1(ex);
+  const score = (p: ExPoint): number => (ex.timed ? p.pl : plain ? p.w : trendE(p.load, p.r, 0) || p.load);
+  const tol = plain ? EPS_SAME : EPS;
   let b: { v: number; w: number; r: number; u: Unit | null; date: string } | null = null;
   for (const x of liftRead(exId))
     for (const p of x.pts) {
-      const v = trendE(p.load, p.r, 0) || p.load;
-      if (!b || v > b.v + EPS || (v > b.v - EPS && p.r > b.r)) b = { v, w: p.w, r: p.r, u: p.u, date: x.date };
+      const v = score(p);
+      if (!b || v > b.v + tol || (v > b.v - tol && p.r > b.r)) b = { v, w: p.w, r: p.r, u: p.u, date: x.date };
     }
   return b;
 }
@@ -781,6 +788,62 @@ export function weekSlots(R: Routine): WeekSlot[] {
     if (slot) slot.doneOn = s.date;
   }
   return out;
+}
+
+/* A fixed-weekday routine adapts (V, 2026-11-02) to a slipped day. A workout done on another day fills
+   its own slot (weekSlots), so its day stops reading missed, and Today offers the earliest workout this week still
+   to do, else today's; once today's is done, today or earlier, the next one this week ("show what is up next if
+   something was completed already"). A rest day with nothing behind keeps its card. Today's own workout is a tap
+   away on the note (and in the week bar), for a lifter who would rather move on. */
+/** The week's workout Today offers on a fixed-weekday routine, and why; null for the card as before. */
+function weekOffer(R: Routine, wd: number): { di: number; part: 1 | 2; kind: 'behind' | 'today' | 'ahead' } | null {
+  const slots = weekSlots(R);
+  const todo = slots.filter(x => !x.doneOn);
+  const behind = todo.find(x => x.di < wd);
+  if (behind) return { di: behind.di, part: behind.part, kind: 'behind' };
+  const mine = todo.find(x => x.di === wd);
+  if (mine) return { di: wd, part: mine.part, kind: 'today' };
+  if (!slots.some(x => x.di === wd)) return null;
+  const next = todo.find(x => x.di > wd);
+  return next ? { di: next.di, part: next.part, kind: 'ahead' } : null;
+}
+/* The workout Today offers with none picked, one rule for every screen that names it: the card, the line under Today
+   that says a hidden Workout preview has something to show, and Stats' Next session. On a fixed-weekday routine the
+   week's workout due (weekOffer: one still to do, else today's, else the next), outside a rest week; else today's
+   weekday; on a cycle, its next day. */
+/** The day Today offers with none picked (above), the workout of it, and why when it is the week's due one. */
+export function offeredDay(R: Routine): { di: number; part: 1 | 2; offer: ReturnType<typeof weekOffer> } {
+  const wd = dayOfWeek(today());
+  if (R.schedule !== 'weekly') return { di: R.days.length ? cycleState(R).next : 0, part: 1, offer: null };
+  const offer = isRestWeek(weekStart(today())) ? null : weekOffer(R, wd);
+  return { di: offer ? offer.di : wd, part: offer ? offer.part : 1, offer };
+}
+
+/** The next day due that holds lift `exId`, in the order Today offers the days (offeredDay): on a fixed-weekday routine
+    outside a rest week, this week's workouts still to do, earliest first, then next week's from Monday; else from the
+    day Today offers, round the routine. */
+export function nextDueWith(R: Routine, exId: string): Routine['days'][number] | null {
+  const has = (d: Routine['days'][number] | undefined): boolean =>
+    !!d && !d.rest && d.items.some(it => it.exId === exId);
+  const n = R.days.length;
+  if (!n) return null;
+  if (R.schedule === 'weekly' && !isRestWeek(weekStart(today()))) {
+    const todo = [
+      ...new Set(
+        weekSlots(R)
+          .filter(x => !x.doneOn)
+          .map(x => x.di)
+      )
+    ].sort((a, b) => a - b);
+    const due = todo.map(di => R.days[di]).find(has);
+    return due || R.days.find(has) || null;
+  }
+  const start = offeredDay(R).di;
+  for (let k = 0; k < n; k++) {
+    const d = R.days[(start + k) % n];
+    if (has(d)) return d;
+  }
+  return null;
 }
 
 /** This week's days ahead on a fixed-weekday routine whose every workout was done on another day, each with the workouts

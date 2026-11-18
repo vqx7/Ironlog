@@ -608,10 +608,12 @@ function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioE
     p => (p.sid ? p.sid === sess.id : p.date === sess.date) && ex.some(b => b.exId === p.exId)
   );
   const prs = prAll.filter(p => p.big);
+  // A heavier set than any before that is no PR: the session's own judgement, or one beside the PR counted.
   const heavier = prAll.flatMap(p => {
-    if (p.big || p.type !== 'Weight PR') return [];
+    const set = p.big ? p.heavy : p.type === 'Weight PR' ? p : null;
+    if (!set) return [];
     const e = EX(p.exId);
-    return [`${e.name} ${setShort(e, p)}`];
+    return [`${e.name} ${setShort(e, set)}`];
   });
   const backBest = backBests(ex, prAll, sess.id);
   // Read with the session saved, as of its day, as the week counts it.

@@ -434,6 +434,94 @@ const clashes = r => r.stalls.filter(st => r.prs.some(p => p.name === st.name &&
     await P.ctx.close();
   }
 
+  // ---- The workout Today offers, wherever it is named (2.75, the full review's L4-10): on a fixed-weekday routine with
+  // Monday's Push not done, the card offers Push; Stats' Next session for the bench is Push's bench target, not that of
+  // today's own day; and on a rest weekday the line under Today says the hidden Workout preview has Push to show.
+  {
+    const it = (uid, exId, lo, hi) => ({ uid, exId, sets: 3, repMin: lo, repMax: hi, rir: 2, rest: 120, ss: null });
+    const R = { id: 'RW', name: 'Week', schedule: 'weekly', days: [
+      { id: 'Dmon', name: 'Push', rest: false, items: [it('a1', 'bench', 6, 10)] },
+      { id: 'Dtue', name: 'Pull', rest: false, items: [it('b1', 'cableRow', 8, 12), it('b2', 'bench', 12, 15)] },
+      { id: 'Dwed', name: 'Legs', rest: false, items: [it('c1', 'backSquat', 6, 10)] },
+      { id: 'Dthu', name: 'Rest', rest: true, items: [] }, { id: 'Dfri', name: 'Rest', rest: true, items: [] },
+      { id: 'Dsat', name: 'Rest', rest: true, items: [] }, { id: 'Dsun', name: 'Rest', rest: true, items: [] }] };
+    const old = [{ id: 'o1', date: '2026-10-26', dayIdx: 0, dayId: 'Dmon', dayName: 'Push', routineId: 'RW', notes: '', ex: [{ exId: 'bench', rr: [6, 10], sets: [8, 8, 8].map(r => ({ w: 185 * 0.45359237, r, rir: 2 })) }] }];
+    const read = async (clock, hide) => {
+      const P = await open(FILE, { browser, clock });
+      const r = await P.page.evaluate(async ([R, ss, hide]) => {
+        const L = window.__ironlog; const S = L.state; S.settings.onboarded = true; S.settings.unit = 'lb'; S.routines = [R]; S.activeRoutineId = R.id; S.sessions = ss; S.draft = null;
+        if (hide) S.settings.hidden = [...(S.settings.hidden || []), 'today:session'];
+        L.state = L.normalize(S); L.invalidate(); L.saveNow(); L.ui.tab = 'today'; L.ui.todayDay = null; L.render(); await new Promise(res => setTimeout(res, 80));
+        const h = document.querySelector('#view .hero');
+        const card = h ? ((h.querySelector('h2') || {}).textContent || '').trim() : null;
+        const foot = !!document.querySelector('#moreLine [data-k="today:session"]');
+        L.ui.tab = 'dash'; L.ui.dashEx = 'bench'; L.render(); document.querySelectorAll('#view details').forEach(d => { d.open = true; }); L.render(); await new Promise(res => setTimeout(res, 80));
+        const next = ((document.getElementById('nextLine') || {}).textContent || '').replace(/\s+/g, ' ').trim();
+        const push = L.suggest('bench', R.days[0].items[0]).target, pull = L.suggest('bench', R.days[1].items[1]).target;
+        return { card, foot, next, push, pull };
+      }, [R, old, hide]);
+      await P.ctx.close();
+      return r;
+    };
+    const tue = await read('2026-11-03T08:00:00', false);
+    ok(tue.card === 'Push' && tue.push !== tue.pull && tue.next.includes(tue.push) && !tue.next.includes(tue.pull), "Tuesday with Monday's Push not done: the card offers Push, and Stats' Next session for the bench is Push's target, not Pull's (L4-10)", tue);
+    const thu = await read('2026-11-05T08:00:00', true);
+    ok(thu.card === 'Push' && thu.foot, "Thursday, a rest day, with Monday's Push not done and the Workout preview hidden: the card offers Push and the line under Today offers the preview (L4-10)", thu);
+  }
+
+  // ---- A lift's best set, wherever it is named (2.75, the full review's L4-11): Stats' headline, its Best set tile and
+  // the lift's history sheet name one set. A farmer hold done at 30 kg a hand for 5 s and at 28 kg for 12 s: the
+  // headline ranks a hold by its load, then its seconds, and so do the tile and the sheet (2.74's tile, ranking by an
+  // estimate read from the seconds, said 28 for 12s under a headline of 30 for 5s).
+  {
+    const P = await open(FILE, { browser, clock: '2026-11-11T10:00:00' });
+    const r = await P.page.evaluate(async () => {
+      const L = window.__ironlog; const S = L.state; S.settings.onboarded = true; S.settings.unit = 'kg';
+      const mk = (id, date, w, r) => ({ id, date, dayIdx: 0, dayId: null, dayName: 'Grip', routineId: '', free: true, notes: '', ex: [{ exId: 'farmerHold', rr: null, sets: [{ w, r, rir: 2 }, { w, r, rir: 2 }] }] });
+      S.sessions = [mk('f1', '2026-11-03', 30, 5), mk('f2', '2026-11-07', 28, 12)]; S.draft = null;
+      L.state = L.normalize(S); L.invalidate(); L.saveNow();
+      L.ui.tab = 'dash'; L.ui.dashEx = 'farmerHold'; L.render(); document.querySelectorAll('#view details').forEach(d => { d.open = true; }); L.render(); await new Promise(res => setTimeout(res, 80));
+      const head = ((document.querySelector('#view .headline') || {}).textContent || '').replace(/\s+/g, ' ').trim();
+      const kpi = [...document.querySelectorAll('#view .kpi')].find(k => /Best set/.test(k.textContent));
+      const tile = kpi ? ((kpi.querySelector('.v') || {}).textContent || '').trim() : null;
+      // The lift's own best, where the build has the one rule to read it by (2.75); the screens are compared on any build.
+      const best = L.bestSet ? L.bestSet('farmerHold') : undefined;
+      return { head, tile, best: best ? [best.w, best.r] : best === undefined ? 'none' : null };
+    });
+    const said = /Best hold ([^.]*)\./.exec(r.head);
+    ok(said && said[1] === '30 for 5s' && (r.best === 'none' || (r.best && r.best[0] === 30 && r.best[1] === 5)) && (r.tile === null || r.tile === said[1]), "a hold's best set is one set on Stats: the headline's best hold, the tile's and the lift's own best (30 kg for 5 s, over 28 kg for 12 s) (L4-11)", { ...r, said: said && said[1] });
+    ok(!P.errors.length, 'no page errors (the best set)', P.errors);
+    await P.ctx.close();
+  }
+
+  // ---- The words that state a rule read its constant (2.75, the full review's L4-16): a build with a lighter day of a
+  // third of the sets at 80% of the loads says so on Change's Lighter day, in Today's help on Change and in the Guide,
+  // and says it nowhere as half the sets or 90%.
+  {
+    const fs = require('fs'), os = require('os'), path = require('path');
+    const part = 'app/formulas.ts', src = fs.readFileSync(path.join(__dirname, '..', 'src', part), 'utf8');
+    const changed = src.replace('export const LIGHTER_SET_SHARE = 1 / 2;', 'export const LIGHTER_SET_SHARE = 1 / 3;').replace('export const LIGHT_SHARE = 0.9;', 'export const LIGHT_SHARE = 0.8;');
+    ok(changed !== src && changed.includes('1 / 3') && changed.includes('= 0.8;'), 'the build with other lighter-day numbers finds both constants', part);
+    const file = path.join(os.tmpdir(), 'ironlog-l416-coherence.html');
+    fs.writeFileSync(file, require('../scripts/join').build({ override: { [part]: changed } }).html);
+    const P = await open(file, { browser, clock: '2026-11-11T10:00:00' });
+    const r = await P.page.evaluate(async () => {
+      const L = window.__ironlog; const S = L.state; S.settings.onboarded = true; L.makeDemo(); L.saveNow();
+      L.ui.tab = 'today'; L.render(); await new Promise(res => setTimeout(res, 80));
+      const help = (document.querySelector('#view') || {}).innerHTML || '';
+      const alt = document.querySelector('.hero [data-act="startAltOpen"]'); if (alt) alt.click(); await new Promise(res => setTimeout(res, 120));
+      const change = ((document.querySelector('#modal .sheet') || {}).innerText || '').replace(/\s+/g, ' ');
+      L.ACT.mClose && L.ACT.mClose();
+      const guide = L.guideText ? L.guideText() : '';
+      return { change, help, guide };
+    });
+    const said = t => /a third the sets/.test(t) && /80%/.test(t) && !/half the sets/.test(t) && !/90% loads/.test(t);
+    ok(said(r.change), "Change's Lighter day says the build's numbers: a third the sets, about 80% loads (L4-16)", r.change.slice(0, 400));
+    ok(/a third the sets/.test(r.help) && /80%/.test(r.help) && !/half the sets|half sets/.test(r.help), "Today's help on Change says them too, the deload week's included (L4-16)", '');
+    ok(!P.errors.length, 'no page errors (the build with other lighter-day numbers)', P.errors);
+    await P.ctx.close();
+  }
+
   // ---- One PR, every screen (r72, 387-B4 and NEW-65): a set's PR as the row and the toast say it as it is ticked
   // (livePR, against the log as it stood before that day, as in a workout) is the PR the counted list holds for its
   // session, which Today's tile, Stats' count, Recent PRs and the recap all read. On the demo, and on a log of lifts

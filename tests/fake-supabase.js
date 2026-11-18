@@ -4,7 +4,7 @@
 // rows, signed-out requests see nothing). It also serves a folder of static
 // files, so the app and its "cloud" share one origin like in production.
 //
-// start(root) -> {base, users, rows, feedback, confirm(email), addReader(email), feedbackTables(on), feedbackKey(on), loseReplies(n), expireTokens(email?), captchaSeen, captcha(on), raceAlways(on), failOnce(path, status, body), log, close()}
+// start(root) -> {base, users, rows, feedback, setMinPassword(n), confirm(email), addReader(email), feedbackTables(on), feedbackKey(on), loseReplies(n), expireTokens(email?), captchaSeen, captcha(on), raceAlways(on), failOnce(path, status, body), log, close()}
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -21,6 +21,7 @@ function start(root) {
   const rowsLive = rows;
   const rowsPreview = new Map(); // the same for public.docs_preview (the preview build, r24)
   let pvOn = true;              // false: docs_preview is not created yet
+  let minPassword = 6;          // the server's own shortest password (Supabase's default); a project can ask more
   const feedback = [];          // rows of public.feedback
   const readers = new Set();    // user ids in public.feedback_readers
   let fbOn = true;              // false: the feedback tables are not created yet
@@ -102,7 +103,7 @@ function start(root) {
       }
       if (p === '/auth/v1/signup' && req.method === 'POST') {
         const { email, password } = json();
-        if (!password || password.length < 6) return send(res, 422, { code: 422, error_code: 'weak_password', msg: 'Password should be at least 6 characters.', weak_password: { reasons: ['length'] } });
+        if (!password || password.length < minPassword) return send(res, 422, { code: 422, error_code: 'weak_password', msg: `Password should be at least ${minPassword} characters.`, weak_password: { reasons: ['length'] } });
         const ex = users.get(email);
         if (ex) { const f = userJson(ex); f.identities = []; f.id = crypto.randomUUID(); return send(res, 200, f); }
         // r45: each sign-up's email carries a 6-digit code as well as the link; only the newest works, for an hour.
@@ -264,6 +265,7 @@ function start(root) {
     const base = `http://127.0.0.1:${server.address().port}`;
     r({ base, users, rows, rowsPreview, log,
       previewTable(v) { pvOn = !!v; },
+      setMinPassword(n) { minPassword = n; },
       addUser(email, password) { const nu = { id: crypto.randomUUID(), email, password, confirmed: true, created: new Date().toISOString() }; users.set(email, nu); return nu; },
       confirm(email) { const x = users.get(email); if (x) { x.confirmed = true; x.code = null; } },
       codeFor(email) { const x = users.get(email); return x && x.code; },

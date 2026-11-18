@@ -4,6 +4,10 @@
 import { state } from './store';
 import { effAt, effScale } from './format';
 import { EFFORT_TOP } from './records';
+import { HARD_RIR, RIR_CALL_TOP } from './formulas';
+
+/** The step of the half-rep scale and of RPE. */
+const HALF_REP = 0.5;
 
 /* Effort in half points or as RPE: a setting for how effort
    is entered and shown. What is stored is always RIR (RPE 8 is RIR 2, RPE
@@ -32,11 +36,14 @@ export function effIn(n: number): number {
 /** The name of the scale in use for a field's label: RPE, or RIR. */
 export const effName = (): string => (rirScale() === 'rpe' ? 'RPE' : 'RIR');
 
-/* RIR 4 to 5 as half a set (a setting): hardCredit in
-   src/app/analytics.ts counts it and says why. This names the range in the
-   lifter's own effort scale: a half-rep scale allows 3.5, RPE reads 5 to 6.5. */
-/** The range Count RIR 4 to 5 as half a set names, in the scale in use. */
+/* A set past HARD_RIR, up to RIR_CALL_TOP, as half a set (a setting): hardCredit in src/app/setread.ts counts it and
+   says why. This names that range in the lifter's own effort scale, from the first effort the scale has past HARD_RIR
+   (a whole rep, or half of one on the half-rep scale and RPE): RIR 4 to 5, RIR 3.5 to 5, RPE 5 to 6.5. */
+/** The range the half-set setting names (above), in the scale in use. */
 export const halfLbl = () => {
   const k = rirScale();
-  return k === 'rpe' ? 'RPE 5 to 6.5' : k === 'half' ? 'RIR 3.5 to 5' : 'RIR 4 to 5';
+  const from = HARD_RIR + (k === 'whole' ? 1 : HALF_REP);
+  return k === 'rpe'
+    ? `RPE ${effAt(k, RIR_CALL_TOP)} to ${effAt(k, from)}`
+    : `RIR ${effAt(k, from)} to ${effAt(k, RIR_CALL_TOP)}`;
 };

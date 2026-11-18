@@ -32,7 +32,9 @@
   --part:#9fd6b7;
   --green-bg:#dcf2e5; --yellow-bg:#fbebd0; --red-bg:#fde3e0; --blue-bg:#e1ebfd;
   --on-accent:#ffffff; --on-ink:#f4f5f7;
-  --volt:#d4ff3f; --on-volt:#0b0c0e; --volt-line:#0d0f12; --volt-soft:#f0ffc4;
+  /* Each accent's colour, written once: the accent itself in every theme and its swatch in Settings read it. */
+  --acc-volt:#d4ff3f; --acc-blue:#2a63f5; --acc-ember:#ff6a2b; --acc-pink:#ec4899; --acc-violet:#7c4dff; --acc-cyan:#00c8ff; --acc-red:#ff2d46;
+  --volt:var(--acc-volt); --on-volt:#0b0c0e; --volt-line:#0d0f12; --volt-soft:#f0ffc4;
   --gold:#ffc53d; --on-gold:#1a1300;
   /* The logo (r25): amber plates on a handle in the ink colour. */
   --brand:#e59a0c; --brand-bar:#15171b;
@@ -48,8 +50,7 @@
   --hero-rim:inset 0 1px 0 rgba(255,255,255,.95),inset 0 -1px 0 rgba(13,15,18,.06);
   --hero-shadow:0 0 0 1px var(--card-b),0 1px 2px rgba(13,15,18,.05),0 12px 32px rgba(13,15,18,.08);
   /* The rest timer (r29, V: it blended into the screen): a deep tint of the
-     accent, the same in both themes, with white text and a bar along its top
-     that empties as the rest runs down. Done is the full accent. */
+     accent, the same in both themes, with white text. Done is the full accent. */
   --dock:color-mix(in srgb,var(--volt) 40%,#0b0d10); --on-dock:#ffffff;
   /* 46% at its lightest keeps white text at 4.5:1 or more on all three accents (Volt is the closest, 4.66). */
   --dock-bg:linear-gradient(165deg,color-mix(in srgb,var(--volt) 46%,#0b0d10),color-mix(in srgb,var(--volt) 32%,#0b0d10));
@@ -78,7 +79,7 @@
     --green:#3ddc84; --yellow:#ffb020; --red:#ff5a4e; --blue:#5aa7ff; --brand:#ffb020; --brand-bar:#f2f4f6; --part:#1f6b45;
     --green-bg:#0f2a1c; --yellow-bg:#33250a; --red-bg:#3a1512; --blue-bg:#0f2440;
     --on-accent:#0a0b0d; --on-ink:#0a0b0d;
-    --volt:#d4ff3f; --on-volt:#0b0c0e; --volt-line:#d4ff3f; --volt-soft:#232c0c;
+    --volt:var(--acc-volt); --on-volt:#0b0c0e; --volt-line:var(--acc-volt); --volt-soft:#232c0c;
     --hero:#131518; --on-hero:#f3f4f6; --hero-2:#1c1f23;
     --hero-bg:linear-gradient(112deg,rgba(255,255,255,0) 18%,rgba(255,255,255,.045) 38%,rgba(255,255,255,.095) 47%,rgba(255,255,255,.03) 56%,rgba(255,255,255,0) 72%),radial-gradient(150px 150px at 90% 11%,color-mix(in srgb,var(--volt) 15%,transparent),transparent 70%),linear-gradient(165deg,#1d2025,#121417 62%,#16191d);
     --hero-rim:inset 0 1px 0 rgba(255,255,255,.09),inset 0 -1px 0 rgba(0,0,0,.4);
@@ -97,7 +98,7 @@
   --green:#3ddc84; --yellow:#ffb020; --red:#ff5a4e; --blue:#5aa7ff; --brand:#ffb020; --brand-bar:#f2f4f6; --part:#1f6b45;
   --green-bg:#0f2a1c; --yellow-bg:#33250a; --red-bg:#3a1512; --blue-bg:#0f2440;
   --on-accent:#0a0b0d; --on-ink:#0a0b0d;
-  --volt:#d4ff3f; --on-volt:#0b0c0e; --volt-line:#d4ff3f; --volt-soft:#232c0c;
+  --volt:var(--acc-volt); --on-volt:#0b0c0e; --volt-line:var(--acc-volt); --volt-soft:#232c0c;
   --hero:#131518; --on-hero:#f3f4f6; --hero-2:#1c1f23;
   --hero-bg:linear-gradient(112deg,rgba(255,255,255,0) 18%,rgba(255,255,255,.045) 38%,rgba(255,255,255,.095) 47%,rgba(255,255,255,.03) 56%,rgba(255,255,255,0) 72%),radial-gradient(150px 150px at 90% 11%,color-mix(in srgb,var(--volt) 15%,transparent),transparent 70%),linear-gradient(165deg,#1d2025,#121417 62%,#16191d);
   --hero-rim:inset 0 1px 0 rgba(255,255,255,.09),inset 0 -1px 0 rgba(0,0,0,.4);
@@ -113,28 +114,28 @@
    the blue or cyan accent, the blue status colour (above target, information, supersets) turns violet, and with the red
    accent the red one (errors, warnings, Delete and Discard, a missed planned day, a falling trend) turns magenta (V's pick), so "done" never looks like a status. Every pair is
    checked for 4.5:1 in tests/design.js. */
-:root[data-accent="blue"]{--volt:#2a63f5;--on-volt:#ffffff;--volt-line:#1f4fd1;--volt-soft:#e2ebff;--blue:#6d28d9;--blue-bg:#efe9ff}
-:root[data-accent="ember"]{--volt:#ff6a2b;--on-volt:#0b0c0e;--volt-line:#c2410c;--volt-soft:#ffe6db}
+:root[data-accent="blue"]{--volt:var(--acc-blue);--on-volt:#ffffff;--volt-line:#1f4fd1;--volt-soft:#e2ebff;--blue:#6d28d9;--blue-bg:#efe9ff}
+:root[data-accent="ember"]{--volt:var(--acc-ember);--on-volt:#0b0c0e;--volt-line:#c2410c;--volt-soft:#ffe6db}
 /* Pink (r37, V): dark text on the fill, as Ember, since white on pink is under 4.5:1. */
-:root[data-accent="pink"]{--volt:#ec4899;--on-volt:#0b0c0e;--volt-line:#be185d;--volt-soft:#fde2ef}
+:root[data-accent="pink"]{--volt:var(--acc-pink);--on-volt:#0b0c0e;--volt-line:#be185d;--volt-soft:#fde2ef}
 /* Violet takes white text (4.8:1); Cyan and Red take dark text, as white on them is under 4.5:1 (r65.2). */
-:root[data-accent="violet"]{--volt:#7c4dff;--on-volt:#ffffff;--volt-line:#5b2fe0;--volt-soft:#ece6ff}
-:root[data-accent="cyan"]{--volt:#00c8ff;--on-volt:#0b0c0e;--volt-line:#0071a1;--volt-soft:#dcf6ff;--blue:#6d28d9;--blue-bg:#efe9ff}
-:root[data-accent="red"]{--volt:#ff2d46;--on-volt:#0b0c0e;--volt-line:#c4001f;--volt-soft:#ffe1e5;--red:#a3168f;--red-bg:#fbe3f6}
+:root[data-accent="violet"]{--volt:var(--acc-violet);--on-volt:#ffffff;--volt-line:#5b2fe0;--volt-soft:#ece6ff}
+:root[data-accent="cyan"]{--volt:var(--acc-cyan);--on-volt:#0b0c0e;--volt-line:#0071a1;--volt-soft:#dcf6ff;--blue:#6d28d9;--blue-bg:#efe9ff}
+:root[data-accent="red"]{--volt:var(--acc-red);--on-volt:#0b0c0e;--volt-line:#c4001f;--volt-soft:#ffe1e5;--red:#a3168f;--red-bg:#fbe3f6}
 @media (prefers-color-scheme:dark){
-  :root[data-accent="blue"]:not([data-theme="light"]){--volt:#2a63f5;--on-volt:#ffffff;--volt-line:#6f9bff;--volt-soft:#0f1d40;--blue:#b69cff;--blue-bg:#221a3d}
-  :root[data-accent="ember"]:not([data-theme="light"]){--volt:#ff6a2b;--on-volt:#0b0c0e;--volt-line:#ff7a3d;--volt-soft:#2f1609}
-  :root[data-accent="pink"]:not([data-theme="light"]){--volt:#ec4899;--on-volt:#0b0c0e;--volt-line:#f472b6;--volt-soft:#3a0f25}
-  :root[data-accent="violet"]:not([data-theme="light"]){--volt:#7c4dff;--on-volt:#ffffff;--volt-line:#a68bff;--volt-soft:#1d1340}
-  :root[data-accent="cyan"]:not([data-theme="light"]){--volt:#00c8ff;--on-volt:#0b0c0e;--volt-line:#4fdcff;--volt-soft:#062a36;--blue:#b69cff;--blue-bg:#221a3d}
-  :root[data-accent="red"]:not([data-theme="light"]){--volt:#ff2d46;--on-volt:#0b0c0e;--volt-line:#ff5c6f;--volt-soft:#3a0a12;--red:#f472d0;--red-bg:#3a1233}
+  :root[data-accent="blue"]:not([data-theme="light"]){--volt:var(--acc-blue);--on-volt:#ffffff;--volt-line:#6f9bff;--volt-soft:#0f1d40;--blue:#b69cff;--blue-bg:#221a3d}
+  :root[data-accent="ember"]:not([data-theme="light"]){--volt:var(--acc-ember);--on-volt:#0b0c0e;--volt-line:#ff7a3d;--volt-soft:#2f1609}
+  :root[data-accent="pink"]:not([data-theme="light"]){--volt:var(--acc-pink);--on-volt:#0b0c0e;--volt-line:#f472b6;--volt-soft:#3a0f25}
+  :root[data-accent="violet"]:not([data-theme="light"]){--volt:var(--acc-violet);--on-volt:#ffffff;--volt-line:#a68bff;--volt-soft:#1d1340}
+  :root[data-accent="cyan"]:not([data-theme="light"]){--volt:var(--acc-cyan);--on-volt:#0b0c0e;--volt-line:#4fdcff;--volt-soft:#062a36;--blue:#b69cff;--blue-bg:#221a3d}
+  :root[data-accent="red"]:not([data-theme="light"]){--volt:var(--acc-red);--on-volt:#0b0c0e;--volt-line:#ff5c6f;--volt-soft:#3a0a12;--red:#f472d0;--red-bg:#3a1233}
 }
-:root[data-accent="blue"][data-theme="dark"]{--volt:#2a63f5;--on-volt:#ffffff;--volt-line:#6f9bff;--volt-soft:#0f1d40;--blue:#b69cff;--blue-bg:#221a3d}
-:root[data-accent="ember"][data-theme="dark"]{--volt:#ff6a2b;--on-volt:#0b0c0e;--volt-line:#ff7a3d;--volt-soft:#2f1609}
-:root[data-accent="pink"][data-theme="dark"]{--volt:#ec4899;--on-volt:#0b0c0e;--volt-line:#f472b6;--volt-soft:#3a0f25}
-:root[data-accent="violet"][data-theme="dark"]{--volt:#7c4dff;--on-volt:#ffffff;--volt-line:#a68bff;--volt-soft:#1d1340}
-:root[data-accent="cyan"][data-theme="dark"]{--volt:#00c8ff;--on-volt:#0b0c0e;--volt-line:#4fdcff;--volt-soft:#062a36;--blue:#b69cff;--blue-bg:#221a3d}
-:root[data-accent="red"][data-theme="dark"]{--volt:#ff2d46;--on-volt:#0b0c0e;--volt-line:#ff5c6f;--volt-soft:#3a0a12;--red:#f472d0;--red-bg:#3a1233}
+:root[data-accent="blue"][data-theme="dark"]{--volt:var(--acc-blue);--on-volt:#ffffff;--volt-line:#6f9bff;--volt-soft:#0f1d40;--blue:#b69cff;--blue-bg:#221a3d}
+:root[data-accent="ember"][data-theme="dark"]{--volt:var(--acc-ember);--on-volt:#0b0c0e;--volt-line:#ff7a3d;--volt-soft:#2f1609}
+:root[data-accent="pink"][data-theme="dark"]{--volt:var(--acc-pink);--on-volt:#0b0c0e;--volt-line:#f472b6;--volt-soft:#3a0f25}
+:root[data-accent="violet"][data-theme="dark"]{--volt:var(--acc-violet);--on-volt:#ffffff;--volt-line:#a68bff;--volt-soft:#1d1340}
+:root[data-accent="cyan"][data-theme="dark"]{--volt:var(--acc-cyan);--on-volt:#0b0c0e;--volt-line:#4fdcff;--volt-soft:#062a36;--blue:#b69cff;--blue-bg:#221a3d}
+:root[data-accent="red"][data-theme="dark"]{--volt:var(--acc-red);--on-volt:#0b0c0e;--volt-line:#ff5c6f;--volt-soft:#3a0a12;--red:#f472d0;--red-bg:#3a1233}
 *,*::before,*::after{box-sizing:inherit}
 /* One-off spacing and layout for single elements (r65, the r63 audit's A-9),
    which sat in 342 style attributes in the screens' markup. Each class does
@@ -1080,7 +1081,7 @@ table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .ico{width:20px;height:20px;vertical-align:-4px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;display:inline-block;margin:0 1px}
 .chip.acc{display:inline-flex;align-items:center;gap:8px}
 .sw{display:inline-block;width:14px;height:14px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)}
-.sw-blue{background:#2a63f5}.sw-volt{background:#d4ff3f}.sw-ember{background:#ff6a2b}.sw-pink{background:#ec4899}.sw-violet{background:#7c4dff}.sw-cyan{background:#00c8ff}.sw-red{background:#ff2d46}
+.sw-blue{background:var(--acc-blue)}.sw-volt{background:var(--acc-volt)}.sw-ember{background:var(--acc-ember)}.sw-pink{background:var(--acc-pink)}.sw-violet{background:var(--acc-violet)}.sw-cyan{background:var(--acc-cyan)}.sw-red{background:var(--acc-red)}
 .bm3d{margin-top:10px}
 .bm3d-stage{position:relative;border-radius:var(--r-lg);background:radial-gradient(60% 55% at 50% 42%,var(--surface) 0%,transparent 75%);min-height:220px;overflow:hidden}
 .bm3d-canvas{display:block;touch-action:pan-y;cursor:grab;-webkit-tap-highlight-color:transparent}
@@ -1245,8 +1246,6 @@ details.more>summary .small{display:block;font-weight:400}
 #toast button{background:none;border:0;color:inherit;font-weight:700;text-decoration:underline;cursor:pointer;pointer-events:auto;min-height:44px;padding:0 6px;margin:-12px 0}
 #timer{position:fixed;left:0;right:0;bottom:calc(58px + env(safe-area-inset-bottom,0px));z-index:25;background:var(--dock-bg),var(--dock);color:var(--on-dock);border-top:0;display:flex;align-items:center;justify-content:space-between;padding:6px 16px}
 #timer.done{background:var(--volt);color:var(--on-volt)}
-#timer::before{content:"";position:absolute;left:0;top:0;height:3px;width:calc(var(--tp,1) * 100%);background:var(--on-dock);opacity:.85;transition:width .25s linear}
-#timer.done::before,#timer.compact::before{display:none}
 input.need{box-shadow:0 0 0 2px var(--yellow)}
 
 #timer.compact{left:auto;right:12px;bottom:calc(66px + env(safe-area-inset-bottom,0px));border-radius:999px;padding:4px 4px 4px 14px;gap:10px;box-shadow:0 0 0 2px color-mix(in srgb,var(--volt) 70%,transparent),0 4px 14px rgba(0,0,0,.25)}
@@ -1259,7 +1258,6 @@ input.need{box-shadow:0 0 0 2px var(--yellow)}
    full and the time reads Go. The page keeps room at its foot so the last row scrolls clear of it. */
 #timer:not(.compact){left:12px;right:12px;bottom:calc(58px + 10px + env(safe-area-inset-bottom,0px));height:76px;border-radius:24px;background:var(--surface);color:var(--ink);border:1px solid var(--line);box-shadow:0 8px 24px rgba(0,0,0,.28);justify-content:flex-start;gap:8px;padding:0 8px 0 10px}
 #timer.done:not(.compact){background:var(--surface);color:var(--ink)}
-#timer:not(.compact)::before{display:none}
 #timer .tdial{flex:none;width:56px;height:56px}
 #timer .tdial circle{fill:none;stroke-width:4}
 #timer .tdial .trk{stroke:var(--line)}

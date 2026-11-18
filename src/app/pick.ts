@@ -48,9 +48,9 @@ import {
   setSecs,
   setupSecs
 } from './formulas';
-import { dayParts, dayWorkout, nextTrainIdx, partOf, sessDayIdx } from './routines';
+import { dayParts, dayWorkout, itemsCreditIn, nextTrainIdx, partOf, sessDayIdx } from './routines';
 import { sessCmp } from './records';
-import { addDays, andList, daysBetween, r1, MINUTE_S, PERCENT, WEEK_DAYS } from './util';
+import { addDays, andList, dayOfWeek, daysBetween, r1, MINUTE_S, PERCENT, WEEK_DAYS } from './util';
 import { agoTxt, min5 } from './format';
 import type { ReadDay } from './setread';
 import { isHardIn } from './setread';
@@ -198,19 +198,12 @@ export function cycleStateIn(
   return { last: L.i, lastDate: L.s.date, next, done, restToday, restIdx: restToday ? (L.i + since) % n : -1 };
 }
 
-/** The hard sets a routine day plans per muscle: a lift's main muscle in full, each helper at HELPER_CREDIT. */
+/** The hard sets a routine day plans per muscle, as the weekly plan counts them (routines.ts itemsCreditIn): a lift's main muscle in full, each helper at HELPER_CREDIT. */
 export function sessionMuscleSetsIn(
   M: Model,
-  day: { items: readonly { exId: string; sets: number | string }[] }
+  day: { items: readonly { exId: string; sets: number | string; rir: number | string }[] }
 ): Record<string, number> {
-  const out: Record<string, number> = {};
-  for (const it of day.items) {
-    const ex = EXIn(M, it.exId);
-    const n = +it.sets || 0;
-    out[ex.primary] = (out[ex.primary] || 0) + n;
-    for (const m of ex.secondary) out[m] = (out[m] || 0) + HELPER_CREDIT * n;
-  }
-  return out;
+  return itemsCreditIn(M, day.items);
 }
 
 /* ---------- need and recovery ---------- */
@@ -295,14 +288,9 @@ function lastHitTxtIn(M: Model, m: string): string {
 
 /* ---------- Pick for me, before a session ---------- */
 
-/** Hard sets per main muscle a routine day plans, direct only (the muscles a day's reasons name). */
+/** Hard sets per main muscle a routine day plans, direct only (the muscles a day's reasons name), as the weekly plan counts them. */
 function dayDirectIn(M: Model, day: Day): Record<string, number> {
-  const out: Record<string, number> = {};
-  for (const it of day.items) {
-    const ex = EXIn(M, it.exId);
-    out[ex.primary] = (out[ex.primary] || 0) + (+it.sets || 0);
-  }
-  return out;
+  return itemsCreditIn(M, day.items, true);
 }
 
 /** A routine day as Pick for me ranks it. */
@@ -342,7 +330,7 @@ export function rankDaysIn(M: Model): {
   const f = deload ? LIGHTER_SET_SHARE : 1;
   const weekly = R.schedule === 'weekly';
   // Today's place in a weekly routine, Monday first (Date counts from Sunday).
-  const planIdx = weekly ? (new Date(t + 'T12:00:00').getDay() + WEEK_DAYS - 1) % WEEK_DAYS : cycleStateIn(M, R).next;
+  const planIdx = weekly ? dayOfWeek(t) : cycleStateIn(M, R).next;
   // Each workout's last date, by day and workout (a day's second workout is ranked on its own).
   const lastDone: Record<string, string> = {};
   for (const x of M.s.sessions) {

@@ -11,6 +11,7 @@ import { hashStr } from './util';
 import { unitOnGrid } from './units';
 import { arr, rec } from './records';
 import { keptOn, keptOnSession, unkept } from './machines';
+import { LIB_EQUIP_BEFORE, libEquipOf } from './library';
 import type { Rec } from './records';
 import type { Session } from './types';
 import type { DraftLike } from './session';
@@ -46,16 +47,29 @@ function givenUnit(f: Readonly<Fields>, k: string): boolean {
   return (v === 'kg' || v === 'lb') && typeof n === 'number' && unitOnGrid(n) === v;
 }
 
+/* A lift the library refiled (LIB_EQUIP_BEFORE) reads on its new equipment in memory (normalize.ts), and is saved, sent
+   and compared with the old one, as every build before the refile wrote it, unless the lifter picked the old one since
+   (equipOwn): so the refile rewrites no log, and the copy a build before it holds is the same record, never a second
+   edit that clashes with the lifter's own. */
+/** The equipment field `k` of record `f` is saved and compared as: the library's old one where `f` holds the new one
+    unpicked (above), else undefined (as it is). */
+function savedEquip(f: Readonly<Fields>, k: string): string | undefined {
+  if (k !== 'equip' || f.custom === true || f.equipOwn === true || typeof f.id !== 'string') return undefined;
+  const old = LIB_EQUIP_BEFORE[f.id];
+  return old && old[0] !== undefined && f.equip === libEquipOf(f.id) ? old[0] : undefined;
+}
+
 /* The log as it is saved and sent: as it is, with each unit its number gives left out (givenUnit). Read back, every build
    that stores units gives a set its unit again from its number (normalize.ts unitField), so nothing is lost; a document that
    only gained the units its numbers give is the same document, written and sent as before, so a phone still on an
    older build never takes such a copy for an edit that beats its own delete or correction; and a unit its number does
    not give is kept and sent. */
-/** A log, or any part of it, as JSON for the phone's storage and the account: each unit its number gives left out. */
+/** A log, or any part of it, as JSON for the phone's storage and the account: each unit its number gives left out, a refiled lift's equipment as before (savedEquip). */
 export function storedJson(x: unknown): string {
   return JSON.stringify(x, function (this: unknown, k: string, v: unknown): unknown {
     const f = rec(this);
-    return f && givenUnit(f, k) ? undefined : v;
+    if (!f) return v;
+    return givenUnit(f, k) ? undefined : (savedEquip(f, k) ?? v);
   });
 }
 
@@ -77,7 +91,7 @@ export function canon(x: unknown): string {
     Object.keys(f)
       .filter(k => f[k] !== undefined && !givenUnit(f, k))
       .sort()
-      .map(k => JSON.stringify(k) + ':' + canon(f[k]))
+      .map(k => JSON.stringify(k) + ':' + canon(savedEquip(f, k) ?? f[k]))
       .join(',') +
     '}'
   );
@@ -473,8 +487,9 @@ function undoDraftOf(v: unknown): UndoDraft | null {
 }
 
 /* Undo inside a session: the session in progress merged exercise by
-   exercise (keyed by exercise and its occurrence), base = right after the
-   action, local = now, other = before it. Exercises changed only by the
+   exercise (keyed by each card's own id, `bid`, as the merge between two
+   phones keys them; a card of a build before card ids by its exercise and
+   occurrence), base = right after the action, local = now, other = before it. Exercises changed only by the
    action go back; ones changed since keep the newer version. Merged as a
    whole record, any set logged after the action would block the undo. */
 export function mergeDraft(base0: unknown, cur0: unknown, pre0: unknown, saved: (id: string) => boolean): unknown {
@@ -489,13 +504,8 @@ export function mergeDraft(base0: unknown, cur0: unknown, pre0: unknown, saved: 
   if (pre && (!base || base.id !== pre.id) && canon(cur0) === canon(base0) && !saved(pre.id)) return pre0;
   if (!pre || !cur || !base || pre.id !== cur.id || base.id !== cur.id) return cur0 === undefined ? null : cur0;
   type B = UndoDraft['ex'][number];
-  const keyed = (list: readonly B[] | null | undefined): [string, B][] => {
-    const seen: Record<string, number> = {};
-    return (list || []).map((b): [string, B] => {
-      const k = b.exId + '#' + (seen[b.exId] = (seen[b.exId] || 0) + 1);
-      return [k, b];
-    });
-  };
+  // The one keying of a workout's cards (blockKeys), the two phones' merge's.
+  const keyed = (list: readonly B[] | null | undefined): [string, B][] => blockKeys(list || []);
   const B = new Map(keyed(base.ex)),
     C = keyed(cur.ex),
     P = keyed(pre.ex);

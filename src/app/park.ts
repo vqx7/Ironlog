@@ -12,8 +12,8 @@
 import { act } from './act';
 import { fmtDate } from './format';
 import { normalize } from './normalize';
-import { parseJson, rec } from './records';
-import { PARKED_KEY, log, prefDel, prefGet, prefSet } from './storage';
+import { arr, rec } from './records';
+import { PARKED_KEY, log, parkedRec, prefDel, prefSet } from './storage';
 import { onSaved } from './sync';
 import { cloud, fx, state, ui } from './store';
 import { addDays, iso, today } from './util';
@@ -27,7 +27,7 @@ const who = (): string => cloud.acct || '';
 
 /** The set-aside workout's record, if one is held: the account it was for, the workout as saved, and when it was set aside (null on a copy set aside by a build before 2.57, not yet seen by this one). */
 function held(): { uid: string; draft: unknown; at: number | null } | null {
-  const r = rec(parseJson(prefGet(PARKED_KEY) || 'null'));
+  const r = parkedRec();
   return r && typeof r['uid'] === 'string'
     ? { uid: r['uid'], draft: r['draft'], at: typeof r['at'] === 'number' ? r['at'] : null }
     : null;
@@ -98,6 +98,14 @@ const waiting = (): ReturnType<typeof held> => {
 
 /** Whether a workout is set aside on this phone, for any account (not one already brought back whose copy waits for a save). */
 export const parkedHeld = (): boolean => waiting() != null;
+
+/** Whether the workout set aside on this phone names lift `exId`, so the library keeps the lift while it waits. */
+export const parkedNames = (exId: string): boolean => {
+  const h = held();
+  const d = h ? rec(h.draft) : null;
+  const ex = d ? arr(d['ex']) : null;
+  return !!ex && ex.some(b => rec(b)?.['exId'] === exId);
+};
 
 /** Whether a workout set aside on this phone is this account's, so it can come back here. */
 export const parkedHere = (): boolean => {

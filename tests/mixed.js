@@ -28,6 +28,9 @@
 //   (7) the update from 2.69: a phone or tab that takes it reads the log as
 //       it is and writes nothing it did not change, so a delete, a correction
 //       or an Undo made on 2.69 stands, in two tabs and on two phones.
+//   (8) the update from 2.74, which refiles the Preacher Curl (2.75): the
+//       refile is no edit, so an edit of that lift made with no signal on
+//       another phone stands, and no clash is said.
 // `node tests/mixed.js <older page>` runs it against another build (default
 // baselines/r55.html); this build is index.html, or IRONLOG_FILE.
 const { open, tab, engine } = require('./h');
@@ -320,6 +323,50 @@ const plain = rows => (rows || []).map(s => `${s.w}x${s.r}`).join(',');
       const g4 = { F: await mcOf(F), G: await mcOf(G), account: ((JSON.parse(inAcct).sessions || []).find(s => s.id === 'g4') || { ex: [{}] }).ex[0].mc || '-' };
       ok(g4.F === '0' && g4.G === '0' && g4.account === '0', `(7) a machine picked for a session with no signal (${how}) is kept on both phones and in the account, the other phone having taken the update and made a later edit in the same half month (REV25-1)`, g4);
     }
+  }
+
+  /* ---- (8) The update from 2.74 (baselines/r120.html), which refiles the Preacher Curl with the barbells (2.75). The
+     refile is read on each phone and never sent (merge.ts savedEquip), so it is no edit of the lift against the copy
+     the phones agreed. Two phones on 2.74; phone B, with no signal, writes a note on the Preacher Curl; phone A, later,
+     turns "Timer sound" off and syncs (core, the document both records are in, is then A's later). Both take the
+     update: B's note stands on both phones and in the account, A's timer too, and no clash is said (REV27-1). */
+  {
+    const R120 = 'baselines/r120.html', CP = cloudOf(), uid = 'u10';
+    // What the toast says on the updated page, each message once.
+    const said = () => {
+      window.__said = [];
+      const hook = () => {
+        const el = document.getElementById('toast');
+        if (!el) { setTimeout(hook, 20); return; }
+        new MutationObserver(() => { const t = el.hidden ? '' : el.innerText.replace(/\s+/g, ' ').trim(); if (t && window.__said[window.__said.length - 1] !== t) window.__said.push(t); }).observe(el, { childList: true, subtree: true, attributes: true, characterData: true });
+      };
+      hook();
+    };
+    const update = async P => { await P.ctx.addInitScript(said); await P.page.close(); const T = await tab(P, 'index.html', CP.setup(uid)); const Q = await phone.dress(T, P); await wait(600); return Q; };
+    const lift = P => P.ev(() => { const e = window.__ironlog.state.exercises.find(x => x.id === 'preacher'); return e ? `${e.equip}: ${e.note}` : '-'; });
+    const A0 = await phone(browser, CP, R120, uid); pages.push(A0);
+    await A0.ev(() => { const L = window.__ironlog; L.state.settings.lastExport = '2026-10-21'; L.saveNow(); });
+    await A0.settle();
+    const B0 = await phone(browser, CP, R120, uid); pages.push(B0);
+    await wait(900); await B0.settle(); await A0.settle();
+    const was = [await lift(A0), await lift(B0)];
+    await B0.ev(() => { window.__offline = true; const L = window.__ironlog; L.act(() => { L.state.exercises.find(x => x.id === 'preacher').note = 'Elbows on the pad'; }); });
+    await wait(1200);
+    await A0.ev(() => { const L = window.__ironlog; L.act(() => { L.state.settings.timerSound = false; }); });
+    await wait(1200); await A0.settle();
+    const A = await update(A0); pages.push(A);
+    await A.settle();
+    const B = await update(B0); pages.push(B);
+    await B.settle(); await A.settle(); await B.settle();
+    const core = JSON.parse((JSON.parse(CP.content()).find(([k]) => k === `data/users/${uid}/core`) || [null, '{}'])[1]);
+    const inAcct = ((core.exercises || []).find(x => x.id === 'preacher') || {});
+    const got = { was, A: await lift(A), B: await lift(B), account: `${inAcct.equip}: ${inAcct.note}`, timer: [await A.ev(() => window.__ironlog.state.settings.timerSound), await B.ev(() => window.__ironlog.state.settings.timerSound)].join(), said: [...(await A.ev(() => window.__said || [])), ...(await B.ev(() => window.__said || []))] };
+    ok(got.was.join() === 'machine: ,machine: ' && got.A === 'barbell: Elbows on the pad' && got.B === 'barbell: Elbows on the pad' && got.account === 'machine: Elbows on the pad' && got.timer === 'false,false',
+      '(8) a note written with no signal on the Preacher Curl on a phone on 2.74 stands after both phones take the update that refiles it, the other phone\'s later "Timer sound" too: read as a barbell lift on both, saved in the account as 2.74 saves it (REV27-1)', got);
+    ok(!got.said.some(t => /edited on two devices/i.test(t)), '(8) and no clash is said: the refile is no edit', got.said);
+    const w0 = CP.writes(), c0 = CP.content();
+    await A.settle(); await B.settle(); await A.settle();
+    ok(CP.writes() === w0 && CP.content() === c0, '(8) syncing back and forth after the update writes nothing more', { writes: CP.writes() - w0 });
   }
 
   const errors = pages.flatMap(P => P.errors);

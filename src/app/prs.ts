@@ -137,12 +137,12 @@ export function prBestOf(
 }
 
 /** A PR as the scorer makes it, before the list gives it its date, session and lift: each kind of Pr without those three. */
-type PrMade = Each<Pr>;
+export type PrMade = Each<Pr>;
 /** Each member of a union of PRs without its date, session and lift (distributed, so each kind keeps its own fields). */
 type Each<P> = P extends Pr ? Omit<P, 'date' | 'sid' | 'exId'> : never;
 
 /** Judges a session's sets against what came before (h): the PR it makes, one a session, and whether the lift moved. */
-export function prJudge(
+function prJudge(
   ex: ExerciseLike,
   h: PrSoFar,
   x: Pick<Exposure, 'pts' | 'pb' | 'pbb'>,
@@ -206,10 +206,10 @@ export function prJudge(
      weight, the strongest by the same score (as the live toast
      names it, so the recap does not name 82.5 x 11 beside the estimate of
      82.5 x 10). */
-  /* `heaviestHere`: the heaviest set of the session before the one judged alone (prCounted). A set lighter than it is no
+  /* `heaviestHere`: the heaviest set of the session before the one judged alone (prOfSet). A set lighter than it is no
      Weight PR however heavy against the sessions before, and is named by its next kind (145 x 10 after 155 x 7: a best
-     estimate), as the set's own message names it (worksets.ts rowPR); one as heavy is, so the session's weight PR is its
-     strongest set at its new heaviest weight. What it beat is still the heaviest before the session. */
+     estimate); one as heavy is, so the session's weight PR is its strongest set at its new heaviest weight. What it
+     beat is still the heaviest before the session. */
   const wJ = !ex.timed
     ? pts
         .filter(p => p.r > 0 && p.w > h.prevMaxW + EPS_SAME && p.w + EPS_SAME >= heaviestHere)
@@ -277,24 +277,53 @@ export function prJudge(
   return { pr: null, progress };
 }
 
-/* The PR a session counts, as its sets were announced one by one: each set judged alone against the sessions before, the
-   biggest news among those counted (big), a weight PR first (the heaviest),
-   then a best estimate (the highest), then a rep PR (the strongest). Judged
-   as a whole, a session would name a best estimate from one set and count it
-   by another set's strength, and the recap say Best estimate where the
-   toast had said Rep PR. Null when no set counts one: the session's own
-   judgement then names what it did (Heaviest yet), not counted. */
+/* A set's PR, as the gym says it and the list counts it: one rule for both (ruling 17 with the session's earlier sets,
+   V 2026-11-17). Judged against the sessions before (prJudge), its kind named by the heaviest set done before it in
+   the session (a set lighter than one before it is no Weight PR), and none where a set done before it in the session,
+   itself a PR, is as strong: a higher score, or the same score with as many reps at as much load. So 100 x 9 after
+   100 x 10 is no new best, and 102.5 x 8 after 100 x 10 at the same effort is Heaviest yet, not a PR. Only counted
+   news (big). */
+/** The PR set `p` makes after the session's working sets `before` (in order), as said and counted (above), or null. */
+export function prOfSet(
+  ex: ExerciseLike,
+  h: PrSoFar,
+  before: readonly ExPoint[],
+  p: ExPoint,
+  noBody: boolean
+): PrMade | null {
+  if (!(p.r > 0)) return null;
+  // A set judged alone against the sessions before, after a session's sets as heavy as `heaviest`: counted news, or null.
+  const alone = (q: ExPoint, heaviest: number): PrMade | null => {
+    const { pr } = prJudge(ex, h, { pts: [q], ...prBestOf(ex, [q], noBody) }, heaviest);
+    return pr && pr.big ? pr : null;
+  };
+  const done = before.filter(q => q.r > 0);
+  const pr = alone(
+    p,
+    done.reduce((a, q) => Math.max(a, q.w), -Infinity)
+  );
+  if (!pr) return null;
+  const me = prScore(p);
+  const asStrong = (q: ExPoint): boolean =>
+    prScore(q) > me + EPS || (prScore(q) >= me - EPS && q.pl >= p.pl - EPS && q.r >= p.r);
+  return done.some(q => asStrong(q) && alone(q, -Infinity)) ? null : pr;
+}
+
+/* The PR a session counts, as its sets were said one by one (prOfSet): the biggest news among them, a weight PR first
+   (the heaviest), then a best estimate (the highest), then a rep PR (the strongest). Judged as a whole, a session
+   would name a best estimate from one set and count it by another set's strength, and the recap say Best estimate
+   where the toast had said Rep PR. Null when no set counts one: the session's own judgement then names what it did
+   (Heaviest yet), not counted. */
 function prCounted(ex: ExerciseLike, h: PrSoFar, x: Pick<Exposure, 'pts'>, noBody: boolean): PrMade | null {
   // The kinds, the smallest news first.
   const ORDER: readonly PrMade['type'][] = ['Rep PR', 'e1RM', 'Weight PR'];
   const rank = (t: PrMade['type']): number => ORDER.indexOf(t);
   let top: { pr: PrMade; key: number } | null = null;
-  // The heaviest set done before each one in the session (prJudge).
-  let before = -Infinity;
+  const before: ExPoint[] = [];
   for (const p of x.pts) {
-    const { pr } = prJudge(ex, h, { pts: [p], ...prBestOf(ex, [p], noBody) }, before);
-    if (p.r > 0) before = Math.max(before, p.w);
-    if (!pr || !pr.big) continue;
+    const pr = prOfSet(ex, h, before, p, noBody);
+    before.push(p);
+    if (!pr) continue;
     // Within a kind: the heaviest weight PR, the highest estimate, the strongest rep PR.
     const key = pr.type === 'Weight PR' ? pr.w : pr.type === 'e1RM' ? (pr.value ?? 0) : prScore(p);
     if (!top || rank(pr.type) > rank(top.pr.type) || (rank(pr.type) === rank(top.pr.type) && key > top.key + EPS_SAME))
@@ -322,8 +351,15 @@ export function idxPRsIn(M: Model, id: string, exps: Exposure[], prs: Pr[]): num
        counted when any set was stronger than ever, so 100 x 7 at 2 in reserve would be a counted best estimate
        because 100 x 12 at 4 in the same session scored more, a set no toast announces, being no
        heavier and no more reps than one before. A PR is a set stronger than every earlier one (CLAUDE.md). */
-    const pr = prCounted(ex, h, x, noBodyIn(M, ex)) ?? (j.pr ? { ...j.pr, big: false } : null);
-    if (pr) prs.push({ date: x.date, sid: x.sid, exId: id, ...pr });
+    const counted = prCounted(ex, h, x, noBodyIn(M, ex));
+    const pr = counted ?? (j.pr ? { ...j.pr, big: false } : null);
+    /* A set heavier than any before that is not the PR counted, after a stronger one (102.5 x 8 after 100 x 10): said
+       once, quietly, as Heaviest yet, beside the PR (ruling 17). */
+    const heavy =
+      counted && j.pr && j.pr.type === 'Weight PR' && !(counted.type === 'Weight PR' && counted.w >= j.pr.w - EPS_SAME)
+        ? { w: j.pr.w, u: j.pr.u, r: j.pr.r }
+        : null;
+    if (pr) prs.push({ date: x.date, sid: x.sid, exId: id, ...pr, ...(heavy ? { heavy } : {}) });
     prAdd(h, x);
     if (x.best != null) maxBest = maxBest == null ? x.best : Math.max(maxBest, x.best);
   }

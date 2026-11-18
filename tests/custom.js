@@ -18,6 +18,8 @@
 //  14. Pick for me halves its sets in a deload or lighter session
 //  15. warm-ups climb to the working load
 //  16. the exercise editor saved without a field touched keeps every number as it was set
+//  17. an exercise a record still names is hidden, never removed; a lift the log does not know counts to no muscle
+//  18. a load step of 0 typed in any of its three editors is the lift's, a fixed load on every day
 const { open } = require('./h');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x) : ''); } else console.log('ok  ', m); };
 const LB = 0.45359237;
@@ -269,11 +271,14 @@ const near = (a, b, e) => a != null && b != null && Math.abs(a - b) < (e || 1e-6
     A.state.settings.rirMode = 'off'; const off = A.planSetsPerWeek(R); A.state.settings.rirMode = 'on';
     A.state.deloadWeek = A.weekStart(A.today()); const ws = A.weekStats().tgt; A.state.deloadWeek = null;
     const ps = A.plannedSets(R);
-    return { normal, deload, off, ws, sideDelts: ps.sideDelts || 0 };
+    // The day's planned sets as Plan and Pick for me count them (sessionMuscleSets): the same hard sets as the week's.
+    const day = A.sessionMuscleSets(R.days[0]);
+    return { normal, deload, off, ws, sideDelts: ps.sideDelts || 0, daySide: day.sideDelts || 0 };
   }, [LB]);
   // Bench 4 (RIR 1) + RDL 3 (RIR 2) = 7; the RIR 4 lateral raises are not hard. Deload: 2 + 2 = 4. RIR off: 10.
   ok(r11.normal === 7 && r11.off === 10 && r11.sideDelts === 0, '11. sets planned at RIR 4 are not counted as planned hard sets (7, or 10 with RIR off)', r11);
   ok(r11.deload === 4 && r11.ws === 4, '11. in a deload week the target is half the sets per exercise, rounded up (4)', r11);
+  ok(r11.daySide === 0, '11. the day\'s planned sets per muscle (Plan, Pick for me) count the RIR 4 raises as the week does: none (the full review\'s L2-10)', r11);
 
   // ---- 12. Past weeks against the routine they were logged on.
   const r12 = await ev(([LB]) => {
@@ -330,6 +335,67 @@ const near = (a, b, e) => a != null && b != null && Math.abs(a - b) < (e || 1e-6
   });
   ok(JSON.stringify(r16.bench.kept) === JSON.stringify({ inc: 5, max: 100, bar: 20 }) && JSON.stringify(r16.ezCurl.kept) === JSON.stringify({ inc: 1, max: null, bar: 10 }) && r16.bench.shown.inc === '10' && r16.bench.shown.max === '220' && r16.bench.shown.bar === '45',
     '16. the exercise editor saved untouched, the app in lb: a 5 kg step, 100 kg heaviest and 20 kg bar shown as 10, 220 and 45 and kept as set, never rewritten as lb', r16);
+
+  // ---- 17. A custom exercise is hidden, never removed, while any record names it (2.75, the full review's L4-8): its only
+  // session in Recently deleted, the exercise deleted from the library, the session restored: the lift is still itself,
+  // its 4 sets count to calves, and none to chest. A lift the log no longer knows counts to no muscle at all.
+  const r17 = await ev(async () => {
+    const A = window.__ironlog; const wait = ms => new Promise(r => setTimeout(r, ms));
+    window.__reset('lb', [{ id: 'cs1', date: '2026-10-01', dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '', ex: [{ exId: 'cx1', rr: [10, 15], sets: [0, 1, 2, 3].map(() => ({ w: 50, r: 12, rir: 2, warm: false, drop: false })) }] }],
+      null, s => { s.exercises.push({ id: 'cx1', name: 'My Calf Machine', primary: 'calves', secondary: [], equip: 'machine', bw: false, custom: true }); });
+    A.saveNow();
+    const before = { calves: A.rolling7('calves'), chest: A.rolling7('chest') };
+    A.ACT.histDel({ dataset: { id: 'cs1' } }); await wait(100); if (A.ui.modal) A.ACT.mOk(); await wait(100);
+    A.ACT.exDel({ dataset: { ex: 'cx1' } }); await wait(100);
+    const said = A.ui.modal ? (document.querySelector('#modal .sheet') || {}).innerText || '' : '';
+    if (A.ui.modal) A.ACT.mOk(); await wait(100);
+    const kept = A.state.exercises.find(e => e.id === 'cx1');
+    A.ACT.restore({ dataset: { id: 'cs1', k: 'session' } }); await wait(150); A.invalidate();
+    const after = { name: A.EX('cx1').name, calves: A.rolling7('calves'), chest: A.rolling7('chest') };
+    // A session naming a lift this log does not hold (one deleted on another phone before this build): no muscle's sets.
+    window.__reset('lb', [{ id: 'cs2', date: '2026-10-01', dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '', ex: [{ exId: 'gone1', rr: [10, 15], sets: [0, 1, 2].map(() => ({ w: 50, r: 12, rir: 2, warm: false, drop: false })) }] }]);
+    const unknown = { chest: A.rolling7('chest'), name: A.EX('gone1').name };
+    return { before, said: said.replace(/\s+/g, ' '), kept: kept ? { archived: !!kept.archived } : null, after, unknown };
+  });
+  ok(r17.before.calves === 4 && r17.before.chest === 0 && /hidden from the library/.test(r17.said) && r17.kept && r17.kept.archived && r17.after.name === 'My Calf Machine' && r17.after.calves === 4 && r17.after.chest === 0,
+    '17. a custom exercise whose only session is in Recently deleted, deleted from the library: hidden, not removed; the session restored is still My Calf Machine, its 4 sets on calves, none on chest', r17);
+  ok(r17.unknown.chest === 0 && r17.unknown.name === 'Deleted exercise', '17. a session naming a lift the log does not hold counts to no muscle, never to chest', r17.unknown);
+
+  // ---- 18. A load step of 0 typed in any of its three editors (Plan, the exercise editor, a session's Load step) is the
+  // lift's, on every day and routine: a fixed load, more reps then harder reps (the Guide). A step other than 0 typed
+  // after it takes every day back off it (2.75, the full review's L4-9: Plan's 0 cleared the lift's own step and set 0
+  // on its one day; the other two refused 0).
+  const r18 = await ev(async ([LB]) => {
+    const A = window.__ironlog; const wait = ms => new Promise(r => setTimeout(r, ms));
+    const its = [{ uid: 'p1', exId: 'bench', sets: 3, repMin: 6, repMax: 10, rir: 1, rest: 120, inc: 5 * LB }, { uid: 'p2', exId: 'bench', sets: 3, repMin: 6, repMax: 10, rir: 1, rest: 120, inc: 5 * LB }];
+    const setUp = () => window.__reset('lb', [window.__sess('2026-09-28', 'bench', 135 * LB, [10, 10, 10], { rr: [6, 10], rid: 'R9', did: 'A' })], null,
+      s => { s.routines = [{ id: 'R9', name: 'Two days', schedule: 'cycle', days: [{ id: 'A', name: 'A', rest: false, items: [{ ...its[0] }] }, { id: 'B', name: 'B', rest: false, items: [{ ...its[1] }] }] }]; s.activeRoutineId = 'R9'; }, true);
+    const both = () => { A.invalidate(); const R = A.state.routines.find(r => r.id === 'R9'); return R.days.map(d => { const it = d.items[0]; const g = A.suggest('bench', it); return { kind: g.tgt && g.tgt.kind, w: Math.round(g.w / LB * 100) / 100, fixed: /fixed load/.test(g.text) }; }); };
+    const out = {};
+    // Plan: day A's step typed 0.
+    setUp(); A.ui.tab = 'program'; A.ui.openItem = 'p1'; A.render(); await wait(150);
+    const f = document.querySelector('input[data-it="inc"][data-uid="p1"]');
+    if (f) { f.value = '0'; f.dispatchEvent(new Event('input', { bubbles: true })); f.dispatchEvent(new Event('change', { bubbles: true })); await wait(1200); }
+    out.plan = { field: !!f, inc: A.EX('bench').inc, days: both() };
+    // The exercise editor: 0.
+    setUp(); A.ACT.exEdit({ dataset: { ex: 'bench' } }); A.ui.modal.e.incRaw = '0'; A.ACT.exSave(); await wait(100);
+    out.editor = { inc: A.EX('bench').inc, days: both() };
+    // A session's Load step: 0, then 5 after it.
+    setUp(); A.saveNow(); A.ui.tab = 'today'; A.render(); A.ACT.startSession({ dataset: { day: '0', light: '0' } }); await wait(150);
+    const bi = A.state.draft ? A.state.draft.ex.findIndex(b => b.exId === 'bench') : -1;
+    const sheet = async v => { A.ACT.bInc({ dataset: { b: String(bi) } }); await wait(80); const el = document.getElementById('incVal'); if (el) el.value = v; A.ACT.incSave(); await wait(100); };
+    await sheet('0');
+    out.session = { inc: A.EX('bench').inc, days: both(), toasts: (document.getElementById('toast') || {}).innerText || '' };
+    await sheet('5');
+    out.after = { inc: Math.round(A.EX('bench').inc / LB * 100) / 100, days: both() };
+    A.state.draft = null; A.saveNow();
+    return out;
+  }, [LB]);
+  const fixed = d => d.length === 2 && d.every(x => x.kind === 'reps' && near(x.w, 135, 1e-6) && x.fixed);
+  ok(r18.plan.field && r18.plan.inc === 0 && fixed(r18.plan.days), '18. 0 typed as day A\'s step in Plan is the lift\'s: a fixed load at 135 lb on both days (L4-9)', r18.plan);
+  ok(r18.editor.inc === 0 && fixed(r18.editor.days), '18. 0 saved in the exercise editor: the same on both days (L4-9)', r18.editor);
+  ok(r18.session.inc === 0 && fixed(r18.session.days), '18. 0 saved in a session\'s Load step: taken, the same on both days (L4-9)', r18.session);
+  ok(near(r18.after.inc, 5, 1e-6) && r18.after.days.every(x => x.kind !== 'reps' || !x.fixed) && r18.after.days.every(x => !x.fixed), '18. a 5 lb step typed after it: neither day is a fixed load any more', r18.after);
 
   ok(!errors.length, 'no page errors (' + errors.join(' | ') + ')');
   await browser.close();

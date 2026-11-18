@@ -37,6 +37,8 @@ export interface TextSheet {
   help: string;
   text?: string | undefined;
   readonly?: boolean | undefined;
+  /** The text is the backup: copied, it records a backup made (Settings' last backup, Backup due). Absent on every other text. */
+  backup?: true | undefined;
 }
 
 /** The picker as it is open: what it adds to or swaps, its search and muscle, and its title. */

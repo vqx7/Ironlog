@@ -11,7 +11,7 @@ import { html, nothing } from 'lit-html';
 import type { TemplateResult } from 'lit-html';
 import { live } from 'lit-html/directives/live.js';
 import { MEAS, MK, ML, MUSCLES, injLabel, isCompound, loadMode, noE1, BWF } from './library';
-import { DAYS, sessDayIdx, trainDaysOf, weekFactor } from './routines';
+import { DAYS, trainDaysOf, weekFactor } from './routines';
 import {
   GROW_PCT,
   TREND_MIN,
@@ -28,7 +28,10 @@ import {
   BRZYCKI_TOP,
   E1_MAX_REPS,
   E1_MAX_RIR,
-  MUSCLE_TREND_MIN
+  MUSCLE_TREND_MIN,
+  REP_PR_SHARE,
+  LIGHTER_SET_SHARE,
+  LIGHT_SHARE
 } from './formulas';
 import { estMin, fmtDate, repSpan } from './format';
 import {
@@ -61,13 +64,12 @@ import {
   r1,
   today,
   weekStart,
-  EPS_SAME,
   WEEK_DAYS,
   SUNDAY,
   PERCENT,
   HUNDREDTHS,
-  dayOfWeek,
-  pctOf
+  pctOf,
+  shareWords
 } from './util';
 import {
   activeRoutine,
@@ -81,7 +83,6 @@ import {
   bwAt,
   bwRef,
   coach,
-  cycleState,
   dateIndex,
   easierText,
   EX,
@@ -96,7 +97,6 @@ import {
   isDeloadWeek,
   isRestWeek,
   lastLighterWeek,
-  liftRead,
   liftU,
   listLabel,
   logBack,
@@ -146,13 +146,13 @@ import {
   sizeRows,
   sizeWhat,
   tonnageNow,
-  topSetPt
+  topSetPt,
+  nextDueWith
 } from './display';
 import { volumeRows } from './plan';
 import { pageTitle, helpButton, howText, section, slotted, subsection, tabFoot, tipButton } from './view';
 import type { Field } from './view';
 import type { Part } from './view';
-import type { Routine } from './types';
 import type { ExPoint, ExStat, Idx } from './model';
 import type { Block } from './weeks';
 import { rangeKey, weekWindow } from './graphs';
@@ -279,19 +279,13 @@ export function exHeadline(exId: string): Part {
     );
   }
   if (ex.timed) {
-    let best: Pick<ExPoint, 'pl' | 'r' | 'w' | 'u'> | null = null;
-    for (const x of liftRead(exId))
-      for (const p of x.pts)
-        if (!best || p.pl > best.pl + EPS_SAME || (Math.abs(p.pl - best.pl) < EPS_SAME && p.r > best.r)) best = p;
+    const best = bestSet(exId);
     return line(
       `${best ? `Best hold ${setShort(ex, best)}. ` : ''}${st.stalled ? `No longer hold or more load in ${STALL.noProgress} sessions: try a harder variation or add load.` : 'Progress is longer holds or more load.'}`
     );
   }
   if (noE1(ex)) {
-    let best: Pick<ExPoint, 'r' | 'w' | 'u'> | null = null;
-    for (const x of liftRead(exId))
-      for (const p of x.pts)
-        if (!best || p.w > best.w + EPS_SAME || (Math.abs(p.w - best.w) < EPS_SAME && p.r > best.r)) best = p;
+    const best = bestSet(exId);
     return line(
       `${best ? `Best set ${setShort(ex, best)}. ` : ''}${st.stalled ? `No rep or load PR in the last ${STALL.noProgress} sessions.` : 'Progress is reps and added load.'}`,
       'No 1RM is estimated for a lift that turns about a joint.'
@@ -593,32 +587,13 @@ function nextLine(exId: string): Part {
   if (EX(exId).archived) return '';
   // The plan of the next day due that has this lift: one lift on a heavy and a light day has two targets.
   const R = activeRoutine();
-  const d = nextDayWith(exId, R);
+  // The next training day due that has the lift, in the order Today offers the days (display.ts nextDueWith).
+  const d = nextDueWith(R, exId);
   const sg = suggest(exId, d ? planFor(exId, R, d.id) : planFor(exId, R), { deload: isDeloadWeek() });
   const why = whyTarget(sg);
   return sg && sg.target
     ? html`<p class="small u-m6-0-0" id="nextLine"><b>Next session</b>: ${sg.target}${why ? html` ${tipButton(why, 'Why this target')}` : nothing}</p>`
     : '';
-}
-/* The next training day due that has the lift, or null: on a weekly plan
-   today's weekday, or tomorrow's once today's day is logged (a Monday heavy
-   day done does not show Monday's target over Thursday's);
-   on a cycle the cycle's next day, which already counts what is logged. */
-function nextDayWith(exId: string, R: Routine): Routine['days'][number] | null {
-  const n = R.days.length;
-  if (!n) return null;
-  let start: number;
-  if (R.schedule === 'weekly') {
-    const wd = dayOfWeek(today());
-    start = state.sessions.some(x => x.date === today() && x.routineId === R.id && sessDayIdx(R, x) === wd)
-      ? (wd + 1) % n
-      : wd;
-  } else start = cycleState(R).next;
-  for (let k = 0; k < n; k++) {
-    const d = R.days[(start + k) % n];
-    if (d && !d.rest && d.items.some(it => it.exId === exId)) return d;
-  }
-  return null;
 }
 
 /** A lift's goal on Stats: where it stands and a way to change it, or a way to set one. */
@@ -719,7 +694,7 @@ export function bestsBoard(): { n: number; html: TemplateResult } {
       f =>
         html`<tr><td class="num">${listLabel(ex, f.p.w, f.p.u)}</td><td class="r num">${f.p.r}</td><td class="r">${when(f.date)}</td></tr>`
     )}</table></details>`;
-    })}</div>${rows.length > shown.length ? html`<button class="btn sm u-mt8" data-act="bestsAll">Show all ${rows.length} lifts</button>` : nothing}<p class="small muted hastip u-m8-0-0" data-tip="Most reps at each weight, unless a heavier set matched it. Beat a line with a set at least 90% as strong as your best: a rep PR. Best estimate (compound lifts): the highest one-rep max any set gives, in the terms you log it (total, per side or per dumbbell). Warm-ups and drop sets left out.">How to read this</p>${oldBest}`
+    })}</div>${rows.length > shown.length ? html`<button class="btn sm u-mt8" data-act="bestsAll">Show all ${rows.length} lifts</button>` : nothing}<p class="small muted hastip u-m8-0-0" data-tip="Most reps at each weight, unless a heavier set matched it. Beat a line with a set at least ${pctOf(REP_PR_SHARE)}% as strong as your best: a rep PR. Best estimate (compound lifts): the highest one-rep max any set gives, in the terms you log it (total, per side or per dumbbell). Warm-ups and drop sets left out.">How to read this</p>${oldBest}`
   };
 }
 
@@ -1128,7 +1103,7 @@ function stallsBody(stalled: readonly (readonly [string, ExStat])[]): {
       ? html`${stalled.map(
           ([id, s]) =>
             html`<div class="row spread u-p6-0_bb1-solid-line"><span><span class="plate yellow u-h14_van2"></span> ${exName(id)}</span><span class="muted small">last ${fmtDate(s.last.date)}</span></div>`
-        )}${tired ? html`<p class="small hastip u-cred_mt8" data-tip="Several main lifts flat together often points to fatigue. Check sleep, food, and stress; Deload week is under More options on Today (half the sets, about 90% loads, kept out of your trends). Isolation and core lifts are not counted here.">${bigN} main lifts stalled at once: likely fatigue</p>` : nothing}`
+        )}${tired ? html`<p class="small hastip u-cred_mt8" data-tip="Several main lifts flat together often points to fatigue. Check sleep, food, and stress; Deload week is under More options on Today (${shareWords(LIGHTER_SET_SHARE)} the sets, about ${pctOf(LIGHT_SHARE)}% loads, kept out of your trends). Isolation and core lifts are not counted here.">${bigN} main lifts stalled at once: likely fatigue</p>` : nothing}`
       : html`<p class="muted">No stalls detected.</p>`
   }${
     lw

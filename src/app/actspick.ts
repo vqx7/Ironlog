@@ -5,8 +5,8 @@
    (inProgress). */
 
 import { uid, numIn } from './util';
-import { BWF, MK, bwShare } from './library';
-import { dayLabel, fixSupersets, partOf, trainOn } from './routines';
+import { BWF, LIB_EQUIP_BEFORE, MK, bwShare } from './library';
+import { dayLabel, fixSupersets, partOf, stepOnPlans, trainOn } from './routines';
 import type { DraftBlock, Exercise, Plan, Routine } from './types';
 import { joinRows, joinable } from './session';
 import { platesMode } from './gym';
@@ -576,11 +576,15 @@ export const PICK_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const sh = was ? shownNumbers(was) : null;
     // A number entered is kept with the unit its field shows it in, the lift's; one left as shown keeps its own.
     const u = liftU(e);
+    // A step entered goes on the lift's plan items too (stepOnPlans), once the exercise is saved below.
+    let stepEntered = false;
     if (sh && e.incRaw === sh.inc) delete e.incRaw;
     else {
+      stepEntered = true;
       const n = numIn(e.incRaw);
-      e.inc = n != null && n > 0 ? typedBoundOf(e, n, LIMITS.step) : null;
-      if (e.inc != null) e.incU = u;
+      // 0 is a fixed load (routines.ts stepOnPlans), as the other two step editors take it.
+      e.inc = n != null && n >= 0 ? typedBoundOf(e, n, LIMITS.step) : null;
+      if (e.inc != null && e.inc > 0) e.incU = u;
       else delete e.incU;
       delete e.incRaw;
     }
@@ -623,6 +627,9 @@ export const PICK_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const ld = e.load;
     if ((ld === 'each' || ld === 'total' || ld === 'side' || ld === 'stack') && !e.bw) e.load = ld;
     else delete e.load;
+    // The equipment a lift the library refiled had, picked here, is the lifter's (normalize.ts reads it unmarked as the library's now).
+    if (!e.custom && (LIB_EQUIP_BEFORE[e.id] || []).includes(e.equip)) e.equipOwn = true;
+    else delete e.equipOwn;
     // Sets already logged with machine help are below 0; the exercise must stay assisted to read them right.
     if (!m.isNew && !(e.bw && e.assist) && hasSets(e.id, w => w < 0)) {
       toast('This exercise has sets logged with machine help, so it stays assisted.');
@@ -644,6 +651,7 @@ export const PICK_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         const i = state.exercises.findIndex(x => x.id === e.id);
         if (i >= 0) state.exercises[i] = saved;
       }
+      if (stepEntered) stepOnPlans(state.routines, saved.id, saved.inc ?? null);
     });
     // After the change, so the session's blocks read the exercise as saved.
     if (!m.isNew) refreshEx(e.id);

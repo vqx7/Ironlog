@@ -148,12 +148,16 @@ function strongCsv() {
     ok(r.bw.v0 === r.bw.v1, 'a weigh-in logged today does not change weight lifted in an earlier session', r.bw);
     ok(r.len1 === null, 'no average session length from one timed session', r.len1);
 
-    // The PR toast names the band its estimate is from.
+    /* The PR toast never reads wrong beside a higher overall best. Until 2.75 a best of its band alone was a PR, and its
+       toast named the band it beat (225 x 7 at 1 in reserve after 215 x 6 at 1, under 265 x 3 to failure). Since 2.75
+       only a set stronger than every earlier one is a PR (V's decision 1), so no toast is said for it, and one that is
+       said beat the best overall: 225 x 8 at 1 names the best before as the one it beat. */
     const t = await ev(() => { const L = window.__ironlog; const LB = 0.45359237;
       const S = (id, d, w, r, rir) => ({ id, date: d, dayIdx: 0, dayId: null, dayName: 'A', routineId: '', free: true, notes: '', ex: [{ exId: 'bench', sets: [{ w: w * LB, r, rir, warm: false }] }] });
       L.state.sessions = [S('x1', '2026-09-20', 265, 3, 0), S('x2', '2026-09-27', 215, 6, 1)]; L.invalidate();
-      return L.prBeat('bench', { w: 225 * LB, r: 7, rir: 1 }, '2026-10-04', 'Best'); });
-    ok(/6 to 10 reps to failure/.test(t), 'the best-estimate toast says which rep band it beat, so it never reads wrong beside a higher overall best', t);
+      const est = L.allTimeBests('bench').est.v;
+      return { band: L.prBeat('bench', { w: 225 * LB, r: 7, rir: 1 }, '2026-10-04', 'Best'), over: L.prBeat('bench', { w: 225 * LB, r: 8, rir: 1 }, '2026-10-04', 'Best'), was: Math.round(est / LB) }; });
+    ok(t.band === '' && new RegExp(`; was ${t.was}\\)$`).test(t.over) && !/reps to failure/.test(t.over), 'no toast for a best of its band alone, and the one said beside a stronger set names the best before it beat, so it never reads wrong beside a higher overall best', t);
 
     // Labels that contradicted each other: "301 → 300.7 · up".
     const lt = await ev(() => { const L = window.__ironlog; const LB = 0.45359237; const S = (id, d, w, r) => ({ id, date: d, dayIdx: 0, dayId: null, dayName: 'A', routineId: '', free: true, notes: '', ex: [{ exId: 'backSquat', sets: [{ w: w * LB, r, rir: 1, warm: false }] }] });

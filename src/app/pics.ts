@@ -25,7 +25,7 @@
    (not gone fifty days after a sign-out). */
 
 import { arr, isPicId, rec } from './records';
-import { log, picRowsRead, picRowsWrite } from './storage';
+import { log, parkedRec, picRowsRead, picRowsWrite } from './storage';
 import { cloud, state } from './store';
 import { uid, DAY_MS } from './util';
 
@@ -297,7 +297,10 @@ export async function picAdd(f: Blob): Promise<{ id: string } | { why: string }>
   return { id: row.id };
 }
 
-/** Every picture the log names: the sessions', a workout in progress's, and those in Recently deleted. */
+/* A picture is kept while anything that can come back names it: a session, the workout in progress, Recently deleted,
+   and a workout set aside (kept 30 days, which stand still while another workout is open, so it can outlast the 45
+   days a picture no one names is kept). */
+/** Every picture the log names: the sessions', a workout in progress's, those in Recently deleted, and a set-aside workout's. */
 function named(): Set<string> {
   const out = new Set<string>();
   const add = (v: unknown): void => {
@@ -312,6 +315,8 @@ function named(): Set<string> {
   for (const s of state.sessions) sess(s);
   if (state.draft) sess(state.draft);
   for (const t of state.trash) if (t.kind === 'session') sess(t.data);
+  const parked = parkedRec();
+  if (parked) sess(parked['draft']);
   return out;
 }
 

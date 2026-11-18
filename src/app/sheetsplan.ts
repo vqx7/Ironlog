@@ -11,7 +11,8 @@ import { TEMPLATES, dayLabel, dayParts, dayWorkout, routineFromTemplate } from '
 import { activeRoutine, dayMinutes, isDeloadWeek, prof, cycleState } from './live';
 import {} from './display';
 import { estMin, min5 } from './format';
-import { WEEK_DAYS } from './util';
+import { WEEK_DAYS, pctOf, shareWords } from './util';
+import { LIGHTER_SET_SHARE, LIGHT_SHARE } from './formulas';
 import { ui } from './store';
 import { profFields } from './settings';
 import { closeX } from './sheetsmisc';
@@ -93,7 +94,12 @@ export function startAltSheet(m: {
     opts.push(opt('startSession', `Plan: ${day.name}`, `${day.items.length} exercises from your plan`, { day: di }));
   if (!m.free && playable && !deload)
     opts.push(
-      opt('startSession', 'Lighter day', 'Every exercise, half the sets, about 90% loads', { day: di, light: true })
+      opt(
+        'startSession',
+        'Lighter day',
+        `Every exercise, ${shareWords(LIGHTER_SET_SHARE)} the sets, about ${pctOf(LIGHT_SHARE)}% loads`,
+        { day: di, light: true }
+      )
     );
   if (!m.free && playable)
     opts.push(opt('startShort', 'Short on time', 'Your minutes; the main work stays at full effort', { day: di }));

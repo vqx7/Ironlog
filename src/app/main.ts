@@ -40,6 +40,8 @@ import {
   planItemOf,
   plannedPerWeek,
   planSetsOf,
+  nextTrainIdx,
+  pmNameOf,
   pwOf,
   routineFromTemplate,
   routineSig,
@@ -296,7 +298,8 @@ import {
   sizeRows,
   sizeWhat,
   tonnageNow,
-  weekPlan
+  weekPlan,
+  bestSet
 } from './display';
 import { markupOf, viewStart } from './view';
 import { ask, closeModal, openModal, render, rerenderKeepScroll, setRoot, setSaveState, setSheets } from './page';
@@ -692,6 +695,7 @@ function exposeForTests(): void {
     makeDemo,
     invalidate,
     normalize,
+    bestSet,
     // The log as it is saved and sent (units its numbers give left out), for checks that read the save back.
     storedJson,
     snapshot,
@@ -760,6 +764,8 @@ function exposeForTests(): void {
     dropStarter,
     trainOn,
     planItemOf,
+    nextTrainIdx,
+    pmNameOf,
     fatigueStalls,
     avgWeeksTxt,
     routineFromLog,

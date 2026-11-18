@@ -19,9 +19,19 @@ import {
 import { IDXIn, stallWordsIn } from './analytics';
 import { trendScope, trendW } from './trend';
 import { ON_PLAN_TIP, actualAvg4In, avgWaitIn, muscleStatusIn, recentLighterIn, AVG_WEEKS } from './weeks';
-import { GROW_PCT, atLoad, isWork, lighter, STALL, LIGHT_SHARE, DELOAD_GAP_DAYS, TREND_WEEKS } from './formulas';
+import {
+  GROW_PCT,
+  atLoad,
+  isWork,
+  lighter,
+  STALL,
+  LIGHTER_SET_SHARE,
+  LIGHT_SHARE,
+  DELOAD_GAP_DAYS,
+  TREND_WEEKS
+} from './formulas';
 import { MK, ML, isCompound, noE1 } from './library';
-import { andList, r1, weekStart, PERCENT, pctOf, WEEK_DAYS } from './util';
+import { andList, r1, weekStart, PERCENT, pctOf, shareWords, WEEK_DAYS } from './util';
 import { effScale, LIGHT_RIR } from './format';
 import { belowMin } from './volume';
 import { plannedPerWeek, plannedSetsIn } from './routines';
@@ -349,7 +359,7 @@ export function coachIn(M: Model): CoachLine {
         big.map(id => exNameIn(M, id)),
         FATIGUE_STALLS
       )}. A deload week may help.`,
-      why: `Several main lifts flat together often points to fatigue. Check sleep, food, and stress. A deload week is half the sets at about ${pctOf(LIGHT_SHARE)}% loads. Isolation and core lifts are not counted.`,
+      why: `Several main lifts flat together often points to fatigue. Check sleep, food, and stress. A deload week is ${shareWords(LIGHTER_SET_SHARE)} the sets at about ${pctOf(LIGHT_SHARE)}% loads. Isolation and core lifts are not counted.`,
       act: { label: 'Start a deload week', deload: true }
     };
   const inj = injuredSetIn(M);

@@ -363,7 +363,7 @@ export const LIB: readonly LibRow[] = [
 ['triDips','Dips (upright, triceps focus)','triceps','chest frontDelts','bodyweight','b',''],
 ['inclineCurl','Incline DB Curl','biceps','','dumbbell','','Shoulder extended, so the long head works at long length.'],
 ['bayesianCurl','Bayesian Cable Curl','biceps','','cable','r','Face away from a low cable with the arm behind the torso. Tension at long length.'],
-['preacher','Preacher Curl','biceps','','machine','',''],
+['preacher','Preacher Curl','biceps','','barbell','',''],
 ['spiderCurl','Spider Curl','biceps','','dumbbell','r','Chest on an incline bench, arms hanging. Tension at short length.'],
 ['bbCurl','Barbell Curl','biceps','forearms','barbell','',''],
 ['cableCurl','Cable Curl','biceps','','cable','',''],
@@ -534,6 +534,19 @@ export const isCommon = (
 export const LIB_NAMES_BEFORE: Readonly<Record<string, readonly string[]>> = {
   reversePecDeck: ['Reverse Pec Deck']
 };
+
+/* The same for a lift's equipment: a log holds the equipment the library gave a lift when it was saved, so a lift the
+   library refiles keeps the old one on every phone that saved before. One the library gave before reads as the
+   library's now; one the lifter picked in the exercise editor stays (V, 2026-11-17: the Preacher Curl is done on an EZ
+   bar more often than on a machine, so the library files it with the barbells, as the EZ-Bar Curl is). */
+/** The equipment the library gave a built-in lift before it refiled it, by id: the Preacher Curl's machine, before it was filed with the barbells. */
+export const LIB_EQUIP_BEFORE: Readonly<Record<string, readonly string[]>> = {
+  preacher: ['machine']
+};
+/** The equipment the library files a built-in lift with now, by id. */
+const LIB_EQUIP = new Map(LIB.map(([id, , , , equip]) => [id, equip]));
+/** The equipment the library files lift `id` with now, or undefined for a lift it does not hold. */
+export const libEquipOf = (id: string): string | undefined => LIB_EQUIP.get(id);
 
 /* The same for a lift's note: a log holds the note the library gave when it was saved, and shows it as
    the lift's tip. The Guide's Sources name the studies and tips do not (V, 2026-11-08), so a note that is

@@ -116,7 +116,8 @@ import {
   rirShow,
   setShort,
   undoLabel,
-  weekSlots
+  weekSlots,
+  offeredDay
 } from './display';
 import {
   fieldValue,
@@ -573,23 +574,6 @@ function moreBtn(deload: boolean): Part {
     deload && !ui.heroMore ? html`<span class="tag blue">Deload week on</span>` : nothing
   }`;
 }
-/* A fixed-weekday routine adapts (V, 2026-11-02) to a slipped day. A workout done on another day fills
-   its own slot (weekSlots), so its day stops reading missed, and Today offers the earliest workout this week still
-   to do, else today's; once today's is done, today or earlier, the next one this week ("show what is up next if
-   something was completed already"). A rest day with nothing behind keeps its card. Today's own workout is a tap
-   away on the note (and in the week bar), for a lifter who would rather move on. */
-/** The week's workout Today offers on a fixed-weekday routine, and why; null for the card as before. */
-function weekOffer(R: Routine, wd: number): { di: number; part: 1 | 2; kind: 'behind' | 'today' | 'ahead' } | null {
-  const slots = weekSlots(R);
-  const todo = slots.filter(x => !x.doneOn);
-  const behind = todo.find(x => x.di < wd);
-  if (behind) return { di: behind.di, part: behind.part, kind: 'behind' };
-  const mine = todo.find(x => x.di === wd);
-  if (mine) return { di: wd, part: mine.part, kind: 'today' };
-  if (!slots.some(x => x.di === wd)) return null;
-  const next = todo.find(x => x.di > wd);
-  return next ? { di: next.di, part: next.part, kind: 'ahead' } : null;
-}
 /** When a workout was done this week, in a word: today, yesterday, or its weekday. */
 function doneWhen(d: string): string {
   const t = today();
@@ -632,7 +616,7 @@ function moreRow(deload: boolean, playable: boolean, di: number, part?: 1 | 2): 
     deload ? 'Deload week: on' : 'Deload week'
   }</button>${playable ? html`<button class="btn sm" data-act="eqOpen" data-day=${di} data-part=${part === 2 ? '2' : nothing}>Limited equipment</button>` : nothing}<button class=${`btn sm ${rw ? 'noted' : ''}`} data-act="restWkOpen">Rest week</button><button class="btn sm" data-act="injAdd">Flag an injury</button><button class="btn sm" data-act="cardioNew">Log cardio</button></div>`;
 }
-const STARTS_HELP = html`In <b>Change</b>: <b>Lighter day</b>: every exercise on the day, half the sets (rounded up), about ${pctOf(LIGHT_SHARE)}% of the loads, ${LIGHT_RIR} or more reps in reserve, and no target to beat: a one-day deload. For a day you are run down or sore, or slept badly. It does not count against your trends. <b>Short on time</b>: tell it your minutes; it keeps priority and lagging muscles and your main lifts at full effort and trims the rest. <b>Pick for me</b>: ranks your routine's days for today from what each muscle got in the last ${PICK_DAYS} days, how recently it was trained hard, injuries, and where you are in the cycle, then says why. <b>Blank session</b>: log anything; your cycle stays put. <b>Deload week</b> (More options): a whole week of half sets at about ${pctOf(LIGHT_SHARE)}% loads. <b>Limited equipment</b> (More options): today's workout with each exercise your gym cannot do swapped for the closest match it can.`;
+const STARTS_HELP = html`In <b>Change</b>: <b>Lighter day</b>: every exercise on the day, ${shareWords(LIGHTER_SET_SHARE)} the sets (rounded up), about ${pctOf(LIGHT_SHARE)}% of the loads, ${LIGHT_RIR} or more reps in reserve, and no target to beat: a one-day deload. For a day you are run down or sore, or slept badly. It does not count against your trends. <b>Short on time</b>: tell it your minutes; it keeps priority and lagging muscles and your main lifts at full effort and trims the rest. <b>Pick for me</b>: ranks your routine's days for today from what each muscle got in the last ${PICK_DAYS} days, how recently it was trained hard, injuries, and where you are in the cycle, then says why. <b>Blank session</b>: log anything; your cycle stays put. <b>Deload week</b> (More options): a whole week of ${shareWords(LIGHTER_SET_SHARE)} the sets at about ${pctOf(LIGHT_SHARE)}% loads. <b>Limited equipment</b> (More options): today's workout with each exercise your gym cannot do swapped for the closest match it can.`;
 
 /** The set-aside workout card's line, with the last day it is kept (park.ts). */
 function parkLine(): string {
@@ -647,9 +631,10 @@ export function viewToday(): TemplateResult {
   const cs = weekly ? null : cycleState(R);
   if (typeof ui.todayDay === 'number' && ui.todayDay >= R.days.length) ui.todayDay = null;
   const chosen = typeof ui.todayDay === 'number' ? ui.todayDay : null;
-  // On a fixed-weekday routine the card offers the week's workout due: one still to do, else today's.
-  const offer = weekly && chosen == null && !isRestWeek(weekStart(today())) ? weekOffer(R, wd) : null;
-  const di = chosen == null ? (offer ? offer.di : weekly ? wd : cs ? cs.next : 0) : chosen;
+  // With none picked, the workout Today offers (offeredDay): on a fixed-weekday routine the week's workout due.
+  const off = offeredDay(R);
+  const offer = chosen == null ? off.offer : null;
+  const di = chosen == null ? off.di : chosen;
   const day0: Day = R.days[di] || { id: '', name: '', rest: true, items: [] };
   const t = today();
   // "Next up" is said once, in Change day below: on the card it made the
@@ -992,14 +977,10 @@ ${
    its foot: the workout preview with a plan's day on the card, Injuries
    with one flagged. */
 const TODAY_OFFER: Readonly<Record<string, () => boolean>> = {
+  // The day the card shows: the one picked, else the one Today offers (offeredDay).
   'today:session': () => {
     const R = activeRoutine();
-    const di =
-      typeof ui.todayDay === 'number' && ui.todayDay < R.days.length
-        ? ui.todayDay
-        : R.schedule === 'weekly'
-          ? dayOfWeek(today())
-          : cycleState(R).next;
+    const di = typeof ui.todayDay === 'number' && ui.todayDay < R.days.length ? ui.todayDay : offeredDay(R).di;
     const d = R.days[di];
     return !!d && !d.rest && d.items.length > 0;
   },
