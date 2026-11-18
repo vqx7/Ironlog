@@ -546,7 +546,22 @@ export const LIB_EQUIP_BEFORE: Readonly<Record<string, readonly string[]>> = {
 /** The equipment the library files a built-in lift with now, by id. */
 const LIB_EQUIP = new Map(LIB.map(([id, , , , equip]) => [id, equip]));
 /** The equipment the library files lift `id` with now, or undefined for a lift it does not hold. */
-export const libEquipOf = (id: string): string | undefined => LIB_EQUIP.get(id);
+const libEquipOf = (id: string): string | undefined => LIB_EQUIP.get(id);
+/* A refiled lift is read on its new equipment and saved, sent and compared with the old one, unless the lifter picked
+   the old one since (equipOwn): so the refile rewrites no log (merge.ts savedEquip), and the app's own sets spreadsheet,
+   read back, reads it as the log it came from did (importflow.ts: a lift saved as a machine lift keeps its machines). */
+/** The equipment lift `e` is saved as: the library's old one where it holds the library's present one unpicked
+    (above), else its own. */
+export function equipAsSaved(e: {
+  readonly id: string;
+  readonly equip: string;
+  readonly custom?: boolean;
+  readonly equipOwn?: true | undefined;
+}): string {
+  if (e.custom || e.equipOwn) return e.equip;
+  const old = LIB_EQUIP_BEFORE[e.id];
+  return old && old[0] !== undefined && e.equip === libEquipOf(e.id) ? old[0] : e.equip;
+}
 
 /* The same for a lift's note: a log holds the note the library gave when it was saved, and shows it as
    the lift's tip. The Guide's Sources name the studies and tips do not (V, 2026-11-08), so a note that is

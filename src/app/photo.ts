@@ -40,7 +40,8 @@ const OLD_EDGES: readonly number[] = [256, 512];
 const PHOTO_SHAPE = /^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/;
 
 /** Where the phone's copy of the photo stands against the account: the account's id (empty when the change was made
-    before the sync knew the account), when the copy was last changed (ms, the changing phone's clock), and whether
+    before the sync knew the account), when the copy was last changed (ms, the changing phone's clock, or just after the
+    change it replaced: changedHere), and whether
     that change is still to be sent. */
 interface PhotoNote {
   uid: string;
@@ -101,9 +102,13 @@ function noteSet(n: PhotoNote): void {
   prefSet(PHOTO_SYNC, JSON.stringify(n));
 }
 
-/** A change made on this phone, to be sent: the account it belongs to and when it was made. */
+/* The later change wins between phones, by these times; a phone whose clock runs behind would write an earlier time for
+   a later change. So a change made here is timed after the one the phone holds, taken in or made here, whatever its
+   clock says. */
+/** A change made on this phone, to be sent: the account it belongs to and when it was made (above). */
 function changedHere(): void {
-  noteSet({ uid: cloud.uid || '', et: Date.now(), up: true });
+  const n = photoNote();
+  noteSet({ uid: cloud.uid || '', et: Math.max(Date.now(), n ? n.et + 1 : 0), up: true });
 }
 
 /** Whether a change to the photo made here has not reached the signed-in account yet (sync.ts, hasUnsent). */

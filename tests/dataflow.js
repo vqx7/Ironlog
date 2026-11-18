@@ -116,6 +116,33 @@ const keyOf=d=>(joined.machPress.find(x=>x.startsWith(d))||'').split(' ')[1];
 ok(keyOf('2026-10-01')==='r2'&&keyOf('2026-10-15')==='r2'&&keyOf('2026-10-08')==='0'&&keyOf('2026-10-17')&&!['0','r2'].includes(keyOf('2026-10-17'))&&JSON.stringify(joined.pecDeck)==='["2026-09-21 0","2026-10-02 0","2026-10-09 0"]'&&Object.keys(joined.names).length===2,'CSV read into a log whose lift has machines of those names: Cybex\'s sessions join its Cybex, Hammer\'s its Hammer, the pec deck\'s its Life Fitness; the machine with no name is one of its own, and no name is added (L4-14)',joined);
 await P3.ctx.close();
 }
+// The Preacher Curl, which the library refiled from the machines to the barbells (2.75), done on two machines (named
+// in its sessions, as 2.74 saved them): the file names each session's machine, and read back into an empty log each
+// machine's sessions stay together, as a machine lift's do, so the lift reads the same from it (REV27-5's rule: a
+// lift whose sessions name machines goes on naming them). On 2.75 the file's column was dropped for a lift filed
+// with free weights, and the two machines read as one.
+{
+const LB=0.45359237;
+const P4=await open('index.html',{browser,clock:'2026-11-10T10:00:00'});
+await P4.page.evaluate(LB=>{const L=window.__ironlog;const S=L.state;S.settings.onboarded=true;S.settings.unit='lb';
+  const mk=(id,date,lb,reps,more)=>({id,date,dayIdx:0,dayId:null,dayName:'Arms',routineId:'',free:true,notes:'',ex:[{exId:'preacher',note:'',rr:[8,12],sets:[reps,reps,reps].map(r=>({w:lb*LB,r,rir:2,done:true})),...more}]});
+  S.sessions=[mk('p1','2026-10-20',80,10,{mc:'0'}),mk('p2','2026-10-23',80,10,{mc:'0'}),mk('p3','2026-10-27',50,12,{nw:true,mc:'p3'}),mk('p4','2026-10-30',50,12,{mc:'p3'}),mk('p5','2026-11-03',80,10,{mc:'0'}),mk('p6','2026-11-06',80,10,{mc:'0'})];
+  L.state=L.normalize(S);L.invalidate();L.saveNow();},LB);
+const pcRead=P=>P.page.evaluate(()=>{const L=window.__ironlog;const k={};let n=0;return (L.IDX().byEx.preacher||[]).map(x=>x.date+':'+(k[x.mk]??=String.fromCharCode(65+n++))).join(' ');});
+const before=await pcRead(P4);
+const [dl4]=await Promise.all([P4.page.waitForEvent('download'),P4.page.evaluate(()=>window.__ironlog.exportCSV())]);
+const text4=require('fs').readFileSync(await dl4.path(),'utf8');
+await P4.ctx.close();
+const P5=await open('index.html',{browser,clock:'2026-11-10T10:00:00',realStarter:true});
+const col=await P5.page.evaluate(async t=>{const L=window.__ironlog;L.state.settings.onboarded=true;L.saveNow();L.impStart({text:t});await new Promise(r=>setTimeout(r,300));L.ACT.impGo();await new Promise(r=>setTimeout(r,300));
+  const rows=L.impRows(t);const m=rows[0].indexOf('machine'),e=rows[0].indexOf('exercise');return [...new Set(rows.slice(1).filter(r=>r[e]==='Preacher Curl').map(r=>r[m]))];},text4);
+const after=await pcRead(P5);
+const want='2026-10-20:A 2026-10-23:A 2026-10-27:B 2026-10-30:B 2026-11-03:A 2026-11-06:A';
+ok(before===want&&JSON.stringify(col)==='["2026-10-20","2026-10-27"]','CSV: the refiled Preacher Curl\'s rows name the machine each session was done on, by the day it was first used',{before,col});
+ok(after===want,'CSV read back into an empty log: the refiled Preacher Curl\'s two machines stay apart, each session on the one it was done on (REV27-5\'s rule, NEW-190)',{after,want});
+ok(!P5.errors.length,'no console errors reading back the refiled Preacher Curl\'s machines',P5.errors);
+await P5.ctx.close();
+}
 // Every set's unit through the CSV (2.73): written as stored, never read back from the number, and read back by an
 // import into an empty log as it was entered: a load and its unit, on a lift in the app's unit and on one marked in
 // the other, a load typed to the hundredth included. And import's check for a session already in the log compares
