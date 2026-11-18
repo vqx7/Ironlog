@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-XwvQABiHcuD7TVT+nEhYhpD/E3SDNIhD7O7ZhTXh8C4=' 'sha256-huPMTGr6cVObgHsnurSzS3VFHnVgOZK23rNVnZ1rNYI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-tT9CiQJE/0lWyO2C8oQt5XXapLqH0MHVOfcUm08WbMU=' 'sha256-huPMTGr6cVObgHsnurSzS3VFHnVgOZK23rNVnZ1rNYI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.17-r120">
+<meta name="app-build" content="2026.11.17-r121">
 <title>Ironlog Preview</title>
 <script>window.IRONLOG_APP=true;window.IRONLOG_ENV='preview';window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
@@ -56,7 +56,9 @@ window.addEventListener('appinstalled',()=>{window.__installEvt=null;if(window.i
   --part:#9fd6b7;
   --green-bg:#dcf2e5; --yellow-bg:#fbebd0; --red-bg:#fde3e0; --blue-bg:#e1ebfd;
   --on-accent:#ffffff; --on-ink:#f4f5f7;
-  --volt:#d4ff3f; --on-volt:#0b0c0e; --volt-line:#0d0f12; --volt-soft:#f0ffc4;
+  /* Each accent's colour, written once: the accent itself in every theme and its swatch in Settings read it. */
+  --acc-volt:#d4ff3f; --acc-blue:#2a63f5; --acc-ember:#ff6a2b; --acc-pink:#ec4899; --acc-violet:#7c4dff; --acc-cyan:#00c8ff; --acc-red:#ff2d46;
+  --volt:var(--acc-volt); --on-volt:#0b0c0e; --volt-line:#0d0f12; --volt-soft:#f0ffc4;
   --gold:#ffc53d; --on-gold:#1a1300;
   /* The logo (r25): amber plates on a handle in the ink colour. */
   --brand:#e59a0c; --brand-bar:#15171b;
@@ -72,8 +74,7 @@ window.addEventListener('appinstalled',()=>{window.__installEvt=null;if(window.i
   --hero-rim:inset 0 1px 0 rgba(255,255,255,.95),inset 0 -1px 0 rgba(13,15,18,.06);
   --hero-shadow:0 0 0 1px var(--card-b),0 1px 2px rgba(13,15,18,.05),0 12px 32px rgba(13,15,18,.08);
   /* The rest timer (r29, V: it blended into the screen): a deep tint of the
-     accent, the same in both themes, with white text and a bar along its top
-     that empties as the rest runs down. Done is the full accent. */
+     accent, the same in both themes, with white text. Done is the full accent. */
   --dock:color-mix(in srgb,var(--volt) 40%,#0b0d10); --on-dock:#ffffff;
   /* 46% at its lightest keeps white text at 4.5:1 or more on all three accents (Volt is the closest, 4.66). */
   --dock-bg:linear-gradient(165deg,color-mix(in srgb,var(--volt) 46%,#0b0d10),color-mix(in srgb,var(--volt) 32%,#0b0d10));
@@ -102,7 +103,7 @@ window.addEventListener('appinstalled',()=>{window.__installEvt=null;if(window.i
     --green:#3ddc84; --yellow:#ffb020; --red:#ff5a4e; --blue:#5aa7ff; --brand:#ffb020; --brand-bar:#f2f4f6; --part:#1f6b45;
     --green-bg:#0f2a1c; --yellow-bg:#33250a; --red-bg:#3a1512; --blue-bg:#0f2440;
     --on-accent:#0a0b0d; --on-ink:#0a0b0d;
-    --volt:#d4ff3f; --on-volt:#0b0c0e; --volt-line:#d4ff3f; --volt-soft:#232c0c;
+    --volt:var(--acc-volt); --on-volt:#0b0c0e; --volt-line:var(--acc-volt); --volt-soft:#232c0c;
     --hero:#131518; --on-hero:#f3f4f6; --hero-2:#1c1f23;
     --hero-bg:linear-gradient(112deg,rgba(255,255,255,0) 18%,rgba(255,255,255,.045) 38%,rgba(255,255,255,.095) 47%,rgba(255,255,255,.03) 56%,rgba(255,255,255,0) 72%),radial-gradient(150px 150px at 90% 11%,color-mix(in srgb,var(--volt) 15%,transparent),transparent 70%),linear-gradient(165deg,#1d2025,#121417 62%,#16191d);
     --hero-rim:inset 0 1px 0 rgba(255,255,255,.09),inset 0 -1px 0 rgba(0,0,0,.4);
@@ -121,7 +122,7 @@ window.addEventListener('appinstalled',()=>{window.__installEvt=null;if(window.i
   --green:#3ddc84; --yellow:#ffb020; --red:#ff5a4e; --blue:#5aa7ff; --brand:#ffb020; --brand-bar:#f2f4f6; --part:#1f6b45;
   --green-bg:#0f2a1c; --yellow-bg:#33250a; --red-bg:#3a1512; --blue-bg:#0f2440;
   --on-accent:#0a0b0d; --on-ink:#0a0b0d;
-  --volt:#d4ff3f; --on-volt:#0b0c0e; --volt-line:#d4ff3f; --volt-soft:#232c0c;
+  --volt:var(--acc-volt); --on-volt:#0b0c0e; --volt-line:var(--acc-volt); --volt-soft:#232c0c;
   --hero:#131518; --on-hero:#f3f4f6; --hero-2:#1c1f23;
   --hero-bg:linear-gradient(112deg,rgba(255,255,255,0) 18%,rgba(255,255,255,.045) 38%,rgba(255,255,255,.095) 47%,rgba(255,255,255,.03) 56%,rgba(255,255,255,0) 72%),radial-gradient(150px 150px at 90% 11%,color-mix(in srgb,var(--volt) 15%,transparent),transparent 70%),linear-gradient(165deg,#1d2025,#121417 62%,#16191d);
   --hero-rim:inset 0 1px 0 rgba(255,255,255,.09),inset 0 -1px 0 rgba(0,0,0,.4);
@@ -137,28 +138,28 @@ window.addEventListener('appinstalled',()=>{window.__installEvt=null;if(window.i
    the blue or cyan accent, the blue status colour (above target, information, supersets) turns violet, and with the red
    accent the red one (errors, warnings, Delete and Discard, a missed planned day, a falling trend) turns magenta (V's pick), so "done" never looks like a status. Every pair is
    checked for 4.5:1 in tests/design.js. */
-:root[data-accent="blue"]{--volt:#2a63f5;--on-volt:#ffffff;--volt-line:#1f4fd1;--volt-soft:#e2ebff;--blue:#6d28d9;--blue-bg:#efe9ff}
-:root[data-accent="ember"]{--volt:#ff6a2b;--on-volt:#0b0c0e;--volt-line:#c2410c;--volt-soft:#ffe6db}
+:root[data-accent="blue"]{--volt:var(--acc-blue);--on-volt:#ffffff;--volt-line:#1f4fd1;--volt-soft:#e2ebff;--blue:#6d28d9;--blue-bg:#efe9ff}
+:root[data-accent="ember"]{--volt:var(--acc-ember);--on-volt:#0b0c0e;--volt-line:#c2410c;--volt-soft:#ffe6db}
 /* Pink (r37, V): dark text on the fill, as Ember, since white on pink is under 4.5:1. */
-:root[data-accent="pink"]{--volt:#ec4899;--on-volt:#0b0c0e;--volt-line:#be185d;--volt-soft:#fde2ef}
+:root[data-accent="pink"]{--volt:var(--acc-pink);--on-volt:#0b0c0e;--volt-line:#be185d;--volt-soft:#fde2ef}
 /* Violet takes white text (4.8:1); Cyan and Red take dark text, as white on them is under 4.5:1 (r65.2). */
-:root[data-accent="violet"]{--volt:#7c4dff;--on-volt:#ffffff;--volt-line:#5b2fe0;--volt-soft:#ece6ff}
-:root[data-accent="cyan"]{--volt:#00c8ff;--on-volt:#0b0c0e;--volt-line:#0071a1;--volt-soft:#dcf6ff;--blue:#6d28d9;--blue-bg:#efe9ff}
-:root[data-accent="red"]{--volt:#ff2d46;--on-volt:#0b0c0e;--volt-line:#c4001f;--volt-soft:#ffe1e5;--red:#a3168f;--red-bg:#fbe3f6}
+:root[data-accent="violet"]{--volt:var(--acc-violet);--on-volt:#ffffff;--volt-line:#5b2fe0;--volt-soft:#ece6ff}
+:root[data-accent="cyan"]{--volt:var(--acc-cyan);--on-volt:#0b0c0e;--volt-line:#0071a1;--volt-soft:#dcf6ff;--blue:#6d28d9;--blue-bg:#efe9ff}
+:root[data-accent="red"]{--volt:var(--acc-red);--on-volt:#0b0c0e;--volt-line:#c4001f;--volt-soft:#ffe1e5;--red:#a3168f;--red-bg:#fbe3f6}
 @media (prefers-color-scheme:dark){
-  :root[data-accent="blue"]:not([data-theme="light"]){--volt:#2a63f5;--on-volt:#ffffff;--volt-line:#6f9bff;--volt-soft:#0f1d40;--blue:#b69cff;--blue-bg:#221a3d}
-  :root[data-accent="ember"]:not([data-theme="light"]){--volt:#ff6a2b;--on-volt:#0b0c0e;--volt-line:#ff7a3d;--volt-soft:#2f1609}
-  :root[data-accent="pink"]:not([data-theme="light"]){--volt:#ec4899;--on-volt:#0b0c0e;--volt-line:#f472b6;--volt-soft:#3a0f25}
-  :root[data-accent="violet"]:not([data-theme="light"]){--volt:#7c4dff;--on-volt:#ffffff;--volt-line:#a68bff;--volt-soft:#1d1340}
-  :root[data-accent="cyan"]:not([data-theme="light"]){--volt:#00c8ff;--on-volt:#0b0c0e;--volt-line:#4fdcff;--volt-soft:#062a36;--blue:#b69cff;--blue-bg:#221a3d}
-  :root[data-accent="red"]:not([data-theme="light"]){--volt:#ff2d46;--on-volt:#0b0c0e;--volt-line:#ff5c6f;--volt-soft:#3a0a12;--red:#f472d0;--red-bg:#3a1233}
+  :root[data-accent="blue"]:not([data-theme="light"]){--volt:var(--acc-blue);--on-volt:#ffffff;--volt-line:#6f9bff;--volt-soft:#0f1d40;--blue:#b69cff;--blue-bg:#221a3d}
+  :root[data-accent="ember"]:not([data-theme="light"]){--volt:var(--acc-ember);--on-volt:#0b0c0e;--volt-line:#ff7a3d;--volt-soft:#2f1609}
+  :root[data-accent="pink"]:not([data-theme="light"]){--volt:var(--acc-pink);--on-volt:#0b0c0e;--volt-line:#f472b6;--volt-soft:#3a0f25}
+  :root[data-accent="violet"]:not([data-theme="light"]){--volt:var(--acc-violet);--on-volt:#ffffff;--volt-line:#a68bff;--volt-soft:#1d1340}
+  :root[data-accent="cyan"]:not([data-theme="light"]){--volt:var(--acc-cyan);--on-volt:#0b0c0e;--volt-line:#4fdcff;--volt-soft:#062a36;--blue:#b69cff;--blue-bg:#221a3d}
+  :root[data-accent="red"]:not([data-theme="light"]){--volt:var(--acc-red);--on-volt:#0b0c0e;--volt-line:#ff5c6f;--volt-soft:#3a0a12;--red:#f472d0;--red-bg:#3a1233}
 }
-:root[data-accent="blue"][data-theme="dark"]{--volt:#2a63f5;--on-volt:#ffffff;--volt-line:#6f9bff;--volt-soft:#0f1d40;--blue:#b69cff;--blue-bg:#221a3d}
-:root[data-accent="ember"][data-theme="dark"]{--volt:#ff6a2b;--on-volt:#0b0c0e;--volt-line:#ff7a3d;--volt-soft:#2f1609}
-:root[data-accent="pink"][data-theme="dark"]{--volt:#ec4899;--on-volt:#0b0c0e;--volt-line:#f472b6;--volt-soft:#3a0f25}
-:root[data-accent="violet"][data-theme="dark"]{--volt:#7c4dff;--on-volt:#ffffff;--volt-line:#a68bff;--volt-soft:#1d1340}
-:root[data-accent="cyan"][data-theme="dark"]{--volt:#00c8ff;--on-volt:#0b0c0e;--volt-line:#4fdcff;--volt-soft:#062a36;--blue:#b69cff;--blue-bg:#221a3d}
-:root[data-accent="red"][data-theme="dark"]{--volt:#ff2d46;--on-volt:#0b0c0e;--volt-line:#ff5c6f;--volt-soft:#3a0a12;--red:#f472d0;--red-bg:#3a1233}
+:root[data-accent="blue"][data-theme="dark"]{--volt:var(--acc-blue);--on-volt:#ffffff;--volt-line:#6f9bff;--volt-soft:#0f1d40;--blue:#b69cff;--blue-bg:#221a3d}
+:root[data-accent="ember"][data-theme="dark"]{--volt:var(--acc-ember);--on-volt:#0b0c0e;--volt-line:#ff7a3d;--volt-soft:#2f1609}
+:root[data-accent="pink"][data-theme="dark"]{--volt:var(--acc-pink);--on-volt:#0b0c0e;--volt-line:#f472b6;--volt-soft:#3a0f25}
+:root[data-accent="violet"][data-theme="dark"]{--volt:var(--acc-violet);--on-volt:#ffffff;--volt-line:#a68bff;--volt-soft:#1d1340}
+:root[data-accent="cyan"][data-theme="dark"]{--volt:var(--acc-cyan);--on-volt:#0b0c0e;--volt-line:#4fdcff;--volt-soft:#062a36;--blue:#b69cff;--blue-bg:#221a3d}
+:root[data-accent="red"][data-theme="dark"]{--volt:var(--acc-red);--on-volt:#0b0c0e;--volt-line:#ff5c6f;--volt-soft:#3a0a12;--red:#f472d0;--red-bg:#3a1233}
 *,*::before,*::after{box-sizing:inherit}
 /* One-off spacing and layout for single elements (r65, the r63 audit's A-9),
    which sat in 342 style attributes in the screens' markup. Each class does
@@ -1104,7 +1105,7 @@ table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .ico{width:20px;height:20px;vertical-align:-4px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;display:inline-block;margin:0 1px}
 .chip.acc{display:inline-flex;align-items:center;gap:8px}
 .sw{display:inline-block;width:14px;height:14px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)}
-.sw-blue{background:#2a63f5}.sw-volt{background:#d4ff3f}.sw-ember{background:#ff6a2b}.sw-pink{background:#ec4899}.sw-violet{background:#7c4dff}.sw-cyan{background:#00c8ff}.sw-red{background:#ff2d46}
+.sw-blue{background:var(--acc-blue)}.sw-volt{background:var(--acc-volt)}.sw-ember{background:var(--acc-ember)}.sw-pink{background:var(--acc-pink)}.sw-violet{background:var(--acc-violet)}.sw-cyan{background:var(--acc-cyan)}.sw-red{background:var(--acc-red)}
 .bm3d{margin-top:10px}
 .bm3d-stage{position:relative;border-radius:var(--r-lg);background:radial-gradient(60% 55% at 50% 42%,var(--surface) 0%,transparent 75%);min-height:220px;overflow:hidden}
 .bm3d-canvas{display:block;touch-action:pan-y;cursor:grab;-webkit-tap-highlight-color:transparent}
@@ -1269,8 +1270,6 @@ details.more>summary .small{display:block;font-weight:400}
 #toast button{background:none;border:0;color:inherit;font-weight:700;text-decoration:underline;cursor:pointer;pointer-events:auto;min-height:44px;padding:0 6px;margin:-12px 0}
 #timer{position:fixed;left:0;right:0;bottom:calc(58px + env(safe-area-inset-bottom,0px));z-index:25;background:var(--dock-bg),var(--dock);color:var(--on-dock);border-top:0;display:flex;align-items:center;justify-content:space-between;padding:6px 16px}
 #timer.done{background:var(--volt);color:var(--on-volt)}
-#timer::before{content:"";position:absolute;left:0;top:0;height:3px;width:calc(var(--tp,1) * 100%);background:var(--on-dock);opacity:.85;transition:width .25s linear}
-#timer.done::before,#timer.compact::before{display:none}
 input.need{box-shadow:0 0 0 2px var(--yellow)}
 
 #timer.compact{left:auto;right:12px;bottom:calc(66px + env(safe-area-inset-bottom,0px));border-radius:999px;padding:4px 4px 4px 14px;gap:10px;box-shadow:0 0 0 2px color-mix(in srgb,var(--volt) 70%,transparent),0 4px 14px rgba(0,0,0,.25)}
@@ -1283,7 +1282,6 @@ input.need{box-shadow:0 0 0 2px var(--yellow)}
    full and the time reads Go. The page keeps room at its foot so the last row scrolls clear of it. */
 #timer:not(.compact){left:12px;right:12px;bottom:calc(58px + 10px + env(safe-area-inset-bottom,0px));height:76px;border-radius:24px;background:var(--surface);color:var(--ink);border:1px solid var(--line);box-shadow:0 8px 24px rgba(0,0,0,.28);justify-content:flex-start;gap:8px;padding:0 8px 0 10px}
 #timer.done:not(.compact){background:var(--surface);color:var(--ink)}
-#timer:not(.compact)::before{display:none}
 #timer .tdial{flex:none;width:56px;height:56px}
 #timer .tdial circle{fill:none;stroke-width:4}
 #timer .tdial .trk{stroke:var(--line)}
@@ -1724,7 +1722,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     ["triDips", "Dips (upright, triceps focus)", "triceps", "chest frontDelts", "bodyweight", "b", ""],
     ["inclineCurl", "Incline DB Curl", "biceps", "", "dumbbell", "", "Shoulder extended, so the long head works at long length."],
     ["bayesianCurl", "Bayesian Cable Curl", "biceps", "", "cable", "r", "Face away from a low cable with the arm behind the torso. Tension at long length."],
-    ["preacher", "Preacher Curl", "biceps", "", "machine", "", ""],
+    ["preacher", "Preacher Curl", "biceps", "", "barbell", "", ""],
     ["spiderCurl", "Spider Curl", "biceps", "", "dumbbell", "r", "Chest on an incline bench, arms hanging. Tension at short length."],
     ["bbCurl", "Barbell Curl", "biceps", "forearms", "barbell", "", ""],
     ["cableCurl", "Cable Curl", "biceps", "", "cable", "", ""],
@@ -1873,6 +1871,9 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var isCommon = (e5) => !!e5 && !e5.custom && !e5.rare && COMMON.has(e5.id);
   var LIB_NAMES_BEFORE = {
     reversePecDeck: ["Reverse Pec Deck"]
+  };
+  var LIB_EQUIP_BEFORE = {
+    preacher: ["machine"]
   };
   var LIB_NOTES_BEFORE = {
     declinePushup: ["Feet on a bench: about 70% of bodyweight, against 64% for a floor push-up (Ebben 2011)."],
@@ -2200,8 +2201,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.74";
-  var APP_VERSION = "2026.11.17-r120";
+  var DISPLAY_VERSION = "2.75";
+  var APP_VERSION = "2026.11.17-r121";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -2215,6 +2216,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   ];
   var THREE_URLS = typeof window !== "undefined" && window.IRONLOG_APP ? ["./vendor/three.module.min.js"] : THREE_CDN;
   var NET_MS = 2e4;
+  var INSTALLED_MODES = "standalone minimal-ui window-controls-overlay";
   var TICKETS_AT = "https://github.com/";
   var TURNSTILE_SITE_KEY = "";
   var TURNSTILE_ORIGIN = "https://challenges.cloudflare.com";
@@ -2376,7 +2378,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     return M3.c.EXMAP[id] || {
       id,
       name: "Deleted exercise",
-      primary: "chest",
+      primary: "",
       secondary: [],
       equip: "other",
       bw: false,
@@ -3213,6 +3215,15 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   // src/app/routines.ts
   var DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   var MAX_DAYS = 14;
+  function stepOnPlans(routines, exId, inc) {
+    for (const r4 of routines)
+      for (const d3 of r4.days)
+        for (const it of d3.items)
+          if (it.exId === exId) {
+            if (inc === 0) it.inc = 0;
+            else if (it.inc === 0) it.inc = DEFAULT_PLAN.inc;
+          }
+  }
   function dayLabel(R2, i5) {
     return R2 && R2.schedule === "weekly" ? DAYS[i5] : `Day ${i5 + 1}`;
   }
@@ -3615,13 +3626,22 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   }
   function addDayCredit(M3, d3, f3, out) {
     if (d3.rest) return;
-    for (const it of d3.items) {
+    addItemsCredit(M3, d3.items, f3, false, out);
+  }
+  function addItemsCredit(M3, items, f3, direct, out) {
+    for (const it of items) {
       const pc = planCreditIn(M3, it);
       if (!pc) continue;
       const ex = EXIn(M3, it.exId);
-      out[ex.primary] = (out[ex.primary] || 0) + it.sets * f3 * pc;
-      for (const m3 of ex.secondary) out[m3] = (out[m3] || 0) + HELPER_CREDIT * it.sets * f3 * pc;
+      const n3 = (+it.sets || 0) * f3 * pc;
+      out[ex.primary] = (out[ex.primary] || 0) + n3;
+      if (!direct) for (const m3 of ex.secondary) out[m3] = (out[m3] || 0) + HELPER_CREDIT * n3;
     }
+  }
+  function itemsCreditIn(M3, items, direct = false) {
+    const out = {};
+    addItemsCredit(M3, items, 1, direct, out);
+    return out;
   }
   function dayCreditIn(M3, d3) {
     const out = {};
@@ -4260,13 +4280,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const base = undoDraftOf(base0), cur2 = undoDraftOf(cur0), pre = undoDraftOf(pre0);
     if (pre && (!base || base.id !== pre.id) && canon(cur0) === canon(base0) && !saved(pre.id)) return pre0;
     if (!pre || !cur2 || !base || pre.id !== cur2.id || base.id !== cur2.id) return cur0 === void 0 ? null : cur0;
-    const keyed = (list) => {
-      const seen = {};
-      return (list || []).map((b2) => {
-        const k2 = b2.exId + "#" + (seen[b2.exId] = (seen[b2.exId] || 0) + 1);
-        return [k2, b2];
-      });
-    };
+    const keyed = (list) => blockKeys(list || []);
     const B5 = new Map(keyed(base.ex)), C2 = keyed(cur2.ex), P2 = keyed(pre.ex);
     const Cm = new Map(C2);
     const pick2 = (k2) => {
@@ -4906,7 +4920,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const inc = numOr(e5.inc, NaN), bwf = numOr(e5.bwf, NaN), ml = numOr(e5.maxLoad, NaN), bar2 = numOr(e5.barKg, NaN);
     const gw = g2 ? numOr(g2.w, NaN) : NaN, gr = g2 ? Math.round(numOr(g2.r, NaN)) : NaN;
     const primary = typeof e5.primary === "string" && isMuscle(e5.primary) ? e5.primary : "chest";
-    const incK = isNum(inc) && inc > 0 ? Math.min(inc, LIMITS.step) : null, maxK = isNum(ml) && ml > 0 ? Math.min(ml, LOAD_MAX) : void 0, barK = isNum(bar2) && bar2 > 0 ? Math.min(bar2, LIMITS.barKg) : void 0;
+    const incK = isNum(inc) && inc >= 0 ? Math.min(inc, LIMITS.step) : null, maxK = isNum(ml) && ml > 0 ? Math.min(ml, LOAD_MAX) : void 0, barK = isNum(bar2) && bar2 > 0 ? Math.min(bar2, LIMITS.barKg) : void 0;
     const goal = g2 && isNum(gw) && gw >= 0 && gw <= LOAD_MAX && gr >= 1 && gr <= LIMITS.goalReps && !e5.timed && !e5.assist ? { w: gw, r: gr } : void 0;
     return keepExtra(e0, {
       id: fixId(e5.id),
@@ -5257,11 +5271,14 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     }
     const libName = new Map(lib.map((e5) => [e5.id, e5.name]));
     const libNote = new Map(lib.map((e5) => [e5.id, e5.note]));
+    const libEquip = new Map(lib.map((e5) => [e5.id, e5.equip]));
     for (const e5 of exercises) {
       const now2 = libName.get(e5.id);
       if (now2 && !e5.custom && (LIB_NAMES_BEFORE[e5.id] || []).includes(e5.name)) e5.name = now2;
       const note = libNote.get(e5.id);
       if (note !== void 0 && !e5.custom && (LIB_NOTES_BEFORE[e5.id] || []).includes(e5.note)) e5.note = note;
+      const equip = libEquip.get(e5.id);
+      if (equip !== void 0 && !e5.custom && (LIB_EQUIP_BEFORE[e5.id] || []).includes(e5.equip)) e5.equip = equip;
     }
     if (numOr(s3.version, 1) < V_PER_SIDE) {
       const libMap = new Map(lib.map((e5) => [e5.id, e5]));
@@ -5596,8 +5613,9 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var PARKED_KEY = KEY + ".parked";
   var CLOSED_KEY = KEY + ".closed";
   var PHOTO_KEY = KEY + ".photo", PHOTO_SYNC = KEY + ".photoSync", PHOTO_ASKED = KEY + ".photoAsked", PHOTO_TIP = KEY + ".photoTip";
+  var parkedRec = () => rec(parseJson(prefGet(PARKED_KEY) || "null"));
   function parkedRetag(from, to) {
-    const r4 = rec(parseJson(prefGet(PARKED_KEY) || "null"));
+    const r4 = parkedRec();
     if (r4 && r4["uid"] === from) prefSet(PARKED_KEY, JSON.stringify({ ...r4, uid: to }));
   }
   var DEMOSET_KEY = KEY + ".demoSettings";
@@ -6373,6 +6391,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     for (const s3 of state.sessions) sess(s3);
     if (state.draft) sess(state.draft);
     for (const t4 of state.trash) if (t4.kind === "session") sess(t4.data);
+    const parked = parkedRec();
+    if (parked) sess(parked["draft"]);
     return out;
   }
   async function picsTidy(now2 = Date.now()) {
@@ -7228,15 +7248,31 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     }
     return { pr: null, progress };
   }
+  function prOfSet(ex, h3, before2, p3, noBody2) {
+    if (!(p3.r > 0)) return null;
+    const alone = (q, heaviest) => {
+      const { pr: pr2 } = prJudge(ex, h3, { pts: [q], ...prBestOf(ex, [q], noBody2) }, heaviest);
+      return pr2 && pr2.big ? pr2 : null;
+    };
+    const done = before2.filter((q) => q.r > 0);
+    const pr = alone(
+      p3,
+      done.reduce((a2, q) => Math.max(a2, q.w), -Infinity)
+    );
+    if (!pr) return null;
+    const me = prScore(p3);
+    const asStrong = (q) => prScore(q) > me + EPS || prScore(q) >= me - EPS && q.pl >= p3.pl - EPS && q.r >= p3.r;
+    return done.some((q) => asStrong(q) && alone(q, -Infinity)) ? null : pr;
+  }
   function prCounted(ex, h3, x2, noBody2) {
     const ORDER2 = ["Rep PR", "e1RM", "Weight PR"];
     const rank = (t4) => ORDER2.indexOf(t4);
     let top = null;
-    let before2 = -Infinity;
+    const before2 = [];
     for (const p3 of x2.pts) {
-      const { pr } = prJudge(ex, h3, { pts: [p3], ...prBestOf(ex, [p3], noBody2) }, before2);
-      if (p3.r > 0) before2 = Math.max(before2, p3.w);
-      if (!pr || !pr.big) continue;
+      const pr = prOfSet(ex, h3, before2, p3, noBody2);
+      before2.push(p3);
+      if (!pr) continue;
       const key = pr.type === "Weight PR" ? pr.w : pr.type === "e1RM" ? pr.value ?? 0 : prScore(p3);
       if (!top || rank(pr.type) > rank(top.pr.type) || rank(pr.type) === rank(top.pr.type) && key > top.key + EPS_SAME)
         top = { pr, key };
@@ -7251,8 +7287,10 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       if (x2.dropOnly) continue;
       const j3 = prJudge(ex, h3, x2);
       x2.progress = j3.progress;
-      const pr = prCounted(ex, h3, x2, noBodyIn(M3, ex)) ?? (j3.pr ? { ...j3.pr, big: false } : null);
-      if (pr) prs.push({ date: x2.date, sid: x2.sid, exId: id, ...pr });
+      const counted = prCounted(ex, h3, x2, noBodyIn(M3, ex));
+      const pr = counted ?? (j3.pr ? { ...j3.pr, big: false } : null);
+      const heavy = counted && j3.pr && j3.pr.type === "Weight PR" && !(counted.type === "Weight PR" && counted.w >= j3.pr.w - EPS_SAME) ? { w: j3.pr.w, u: j3.pr.u, r: j3.pr.r } : null;
+      if (pr) prs.push({ date: x2.date, sid: x2.sid, exId: id, ...pr, ...heavy ? { heavy } : {} });
       prAdd(h3, x2);
       if (x2.best != null) maxBest = maxBest == null ? x2.best : Math.max(maxBest, x2.best);
     }
@@ -9537,14 +9575,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     return { last: L2.i, lastDate: L2.s.date, next: next2, done, restToday, restIdx: restToday ? (L2.i + since) % n3 : -1 };
   }
   function sessionMuscleSetsIn(M3, day) {
-    const out = {};
-    for (const it of day.items) {
-      const ex = EXIn(M3, it.exId);
-      const n3 = +it.sets || 0;
-      out[ex.primary] = (out[ex.primary] || 0) + n3;
-      for (const m3 of ex.secondary) out[m3] = (out[m3] || 0) + HELPER_CREDIT * n3;
-    }
-    return out;
+    return itemsCreditIn(M3, day.items);
   }
   function rolling7In(M3, m3, extra, at2) {
     const dm = IDXIn(M3).dayMus;
@@ -9595,12 +9626,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     return k2 == null ? `not trained hard in ${RECOVERY.window / WEEK_DAYS} weeks` : `last hard ${agoTxt(k2)}`;
   }
   function dayDirectIn(M3, day) {
-    const out = {};
-    for (const it of day.items) {
-      const ex = EXIn(M3, it.exId);
-      out[ex.primary] = (out[ex.primary] || 0) + (+it.sets || 0);
-    }
-    return out;
+    return itemsCreditIn(M3, day.items, true);
   }
   function rankDaysIn(M3) {
     const R2 = activeRoutineIn(M3);
@@ -9612,7 +9638,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const deload = isDeloadWeekIn(M3);
     const f3 = deload ? LIGHTER_SET_SHARE : 1;
     const weekly = R2.schedule === "weekly";
-    const planIdx = weekly ? ((/* @__PURE__ */ new Date(t4 + "T12:00:00")).getDay() + WEEK_DAYS - 1) % WEEK_DAYS : cycleStateIn(M3, R2).next;
+    const planIdx = weekly ? dayOfWeek(t4) : cycleStateIn(M3, R2).next;
     const lastDone = {};
     for (const x2 of M3.s.sessions) {
       const k2 = x2.dayId ? `${x2.dayId}:${weekly ? partOf(x2) : 1}` : "";
@@ -10582,7 +10608,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
           big.map((id) => exNameIn(M3, id)),
           FATIGUE_STALLS
         )}. A deload week may help.`,
-        why: `Several main lifts flat together often points to fatigue. Check sleep, food, and stress. A deload week is half the sets at about ${pctOf(LIGHT_SHARE)}% loads. Isolation and core lifts are not counted.`,
+        why: `Several main lifts flat together often points to fatigue. Check sleep, food, and stress. A deload week is ${shareWords(LIGHTER_SET_SHARE)} the sets at about ${pctOf(LIGHT_SHARE)}% loads. Isolation and core lifts are not counted.`,
         act: { label: "Start a deload week", deload: true }
       };
     const inj = injuredSetIn(M3);
@@ -12910,6 +12936,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   }
 
   // src/app/effort.ts
+  var HALF_REP = 0.5;
   var rirScale = () => effScale(state.settings.rirScale);
   function effShow(v3) {
     if (v3 == null || v3 === "") return "";
@@ -12923,7 +12950,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var effName = () => rirScale() === "rpe" ? "RPE" : "RIR";
   var halfLbl = () => {
     const k2 = rirScale();
-    return k2 === "rpe" ? "RPE 5 to 6.5" : k2 === "half" ? "RIR 3.5 to 5" : "RIR 4 to 5";
+    const from = HARD_RIR + (k2 === "whole" ? 1 : HALF_REP);
+    return k2 === "rpe" ? `RPE ${effAt(k2, RIR_CALL_TOP)} to ${effAt(k2, from)}` : `RIR ${effAt(k2, from)} to ${effAt(k2, RIR_CALL_TOP)}`;
   };
 
   // src/app/display.ts
@@ -13002,11 +13030,15 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     return q ? { v: q.v, txt: setShort(ex, q.p) } : { v: 0, txt: "" };
   }
   function bestSet(exId) {
+    const ex = EX(exId);
+    const plain = !!ex.timed || noE1(ex);
+    const score = (p3) => ex.timed ? p3.pl : plain ? p3.w : trendE(p3.load, p3.r, 0) || p3.load;
+    const tol = plain ? EPS_SAME : EPS;
     let b2 = null;
     for (const x2 of liftRead(exId))
       for (const p3 of x2.pts) {
-        const v3 = trendE(p3.load, p3.r, 0) || p3.load;
-        if (!b2 || v3 > b2.v + EPS || v3 > b2.v - EPS && p3.r > b2.r) b2 = { v: v3, w: p3.w, r: p3.r, u: p3.u, date: x2.date };
+        const v3 = score(p3);
+        if (!b2 || v3 > b2.v + tol || v3 > b2.v - tol && p3.r > b2.r) b2 = { v: v3, w: p3.w, r: p3.r, u: p3.u, date: x2.date };
       }
     return b2;
   }
@@ -13327,6 +13359,43 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     }
     return out;
   }
+  function weekOffer(R2, wd) {
+    const slots = weekSlots(R2);
+    const todo = slots.filter((x2) => !x2.doneOn);
+    const behind = todo.find((x2) => x2.di < wd);
+    if (behind) return { di: behind.di, part: behind.part, kind: "behind" };
+    const mine = todo.find((x2) => x2.di === wd);
+    if (mine) return { di: wd, part: mine.part, kind: "today" };
+    if (!slots.some((x2) => x2.di === wd)) return null;
+    const next2 = todo.find((x2) => x2.di > wd);
+    return next2 ? { di: next2.di, part: next2.part, kind: "ahead" } : null;
+  }
+  function offeredDay(R2) {
+    const wd = dayOfWeek(today());
+    if (R2.schedule !== "weekly") return { di: R2.days.length ? cycleState(R2).next : 0, part: 1, offer: null };
+    const offer = isRestWeek(weekStart(today())) ? null : weekOffer(R2, wd);
+    return { di: offer ? offer.di : wd, part: offer ? offer.part : 1, offer };
+  }
+  function nextDueWith(R2, exId) {
+    const has = (d3) => !!d3 && !d3.rest && d3.items.some((it) => it.exId === exId);
+    const n3 = R2.days.length;
+    if (!n3) return null;
+    if (R2.schedule === "weekly" && !isRestWeek(weekStart(today()))) {
+      const todo = [
+        ...new Set(
+          weekSlots(R2).filter((x2) => !x2.doneOn).map((x2) => x2.di)
+        )
+      ].sort((a2, b2) => a2 - b2);
+      const due = todo.map((di) => R2.days[di]).find(has);
+      return due || R2.days.find(has) || null;
+    }
+    const start2 = offeredDay(R2).di;
+    for (let k2 = 0; k2 < n3; k2++) {
+      const d3 = R2.days[(start2 + k2) % n3];
+      if (has(d3)) return d3;
+    }
+    return null;
+  }
   function doneElsewhere() {
     const R2 = activeRoutine();
     const cur2 = weekStart(today());
@@ -13471,11 +13540,10 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var ADD_ICON = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/></svg>';
 
   // src/app/env.ts
-  var INSTALLED_MODES = ["standalone", "minimal-ui", "window-controls-overlay"];
   function isStandalone() {
     try {
       if (navigator.standalone === true) return true;
-      return INSTALLED_MODES.some((m3) => window.matchMedia(`(display-mode: ${m3})`).matches);
+      return INSTALLED_MODES.split(" ").some((m3) => window.matchMedia(`(display-mode: ${m3})`).matches);
     } catch (e5) {
       return false;
     }
@@ -14029,7 +14097,6 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     el.classList.toggle("done", !left);
     const tot = Math.max(timer.total || 0, left, 1);
     const tp = Math.max(0, Math.min(1, left / tot));
-    el.style.setProperty("--tp", String(tp));
     const ring = el.querySelector('[data-t="p"]');
     if (ring) ring.setAttribute("stroke-dasharray", `${left ? r1(tp * PERCENT) : PERCENT} ${PERCENT}`);
     if (!left) {
@@ -15716,7 +15783,7 @@ ${more}`;
   // src/app/park.ts
   var who = () => cloud.acct || "";
   function held2() {
-    const r4 = rec(parseJson(prefGet(PARKED_KEY) || "null"));
+    const r4 = parkedRec();
     return r4 && typeof r4["uid"] === "string" ? { uid: r4["uid"], draft: r4["draft"], at: typeof r4["at"] === "number" ? r4["at"] : null } : null;
   }
   var PARK_KEEP_DAYS = 30;
@@ -15759,6 +15826,12 @@ ${more}`;
     return h3 && backHere != null && heldId(h3) === backHere ? null : h3;
   };
   var parkedHeld = () => waiting2() != null;
+  var parkedNames = (exId) => {
+    const h3 = held2();
+    const d3 = h3 ? rec(h3.draft) : null;
+    const ex = d3 ? arr(d3["ex"]) : null;
+    return !!ex && ex.some((b2) => rec(b2)?.["exId"] === exId);
+  };
   var parkedHere = () => {
     const h3 = waiting2();
     return !!h3 && h3.uid === who();
@@ -16857,7 +16930,7 @@ ${more}`;
     if (!n3) return false;
     return typeof d3.note0 === "string" ? n3 !== d3.note0.trim() : true;
   }
-  function liveMade(exId, s3, at2) {
+  function liveMade(exId, s3, at2, before2 = []) {
     if (!s3 || s3.warm || s3.drop || !(+(s3.r ?? 0) > 0)) return null;
     const date = dayOf(at2);
     const f3 = prFrame(exId, s3, date);
@@ -16865,49 +16938,30 @@ ${more}`;
     const { ex, exps } = f3;
     const h3 = prSoFar();
     for (const x2 of exps) if (!x2.dropOnly) prAdd(h3, x2);
-    const p3 = {
-      load: ex.bw ? f3.own : loadOf(ex, s3, date),
-      pl: f3.own,
-      r: +(s3.r ?? 0),
-      w: Number(s3.w) || 0,
-      rir: rirEff(s3, ex, at2),
-      rq: rirEst(s3, ex, at2),
-      u: s3.u ?? null
+    const point = (x2) => {
+      const own2 = prLoad(ex, x2, date);
+      return {
+        load: ex.bw ? own2 : loadOf(ex, x2, date),
+        pl: own2,
+        r: +(x2.r ?? 0),
+        w: Number(x2.w) || 0,
+        rir: rirEff(x2, ex, at2),
+        rq: rirEst(x2, ex, at2),
+        u: x2.u ?? null
+      };
     };
-    const { pb, pbb } = prBestOf(ex, [p3], noBody(ex));
-    return { ex, pr: prJudge(ex, h3, { pts: [p3], pb, pbb }).pr };
+    return { ex, pr: prOfSet(ex, h3, before2.map(point), point(s3), noBody(ex)) };
   }
-  function livePR(exId, s3, at2) {
-    const m3 = liveMade(exId, s3, at2);
-    const pr = m3 && m3.pr;
-    if (!m3 || !pr || !pr.big) return null;
-    if (pr.type === "Weight PR") return "Weight PR";
-    if (pr.type === "e1RM") return "Best";
-    return m3.ex.timed ? "Time PR" : "Rep PR";
+  var prWord = (ex, pr) => pr.type === "Weight PR" ? "Weight PR" : pr.type === "e1RM" ? "Best" : ex.timed ? "Time PR" : "Rep PR";
+  function livePR(exId, s3, at2, before2 = []) {
+    const m3 = liveMade(exId, s3, at2, before2);
+    return m3 && m3.pr ? prWord(m3.ex, m3.pr) : null;
   }
   function rowPR(b2, si, at2) {
     const s3 = b2.sets[si];
     if (!s3 || !s3.done) return null;
-    const pr = livePR(b2.exId, s3, at2);
-    const date = dayOf(at2);
-    if (!pr) return null;
-    const ex = EX(b2.exId);
-    const scq = (x2) => {
-      const l4 = prLoad(ex, x2, date);
-      const r4 = +(x2.r ?? 0);
-      return prScoreOf(l4, r4, rirEst(x2, ex, at2));
-    };
-    const me = scq(s3), myLoad = prLoad(ex, s3, date), myR = +(s3.r ?? 0);
-    const asStrong = (x2) => scq(x2) > me + EPS || scq(x2) >= me - EPS && prLoad(ex, x2, date) >= myLoad - EPS && +(x2.r ?? 0) >= myR;
-    if (b2.sets.some(
-      (x2, i5) => i5 < si && x2.done && !x2.warm && !x2.drop && +(x2.r ?? 0) > 0 && asStrong(x2) && livePR(b2.exId, x2, at2)
-    ))
-      return null;
-    if (pr === "Weight PR" && earlierSets(b2, si).some((x2) => prLoad(ex, x2, date) >= myLoad - EPS)) {
-      const m3 = liveMade(b2.exId, s3, at2);
-      return m3 && m3.pr && m3.pr.type === "Weight PR" && m3.pr.value != null ? "Best" : ex.timed ? "Time PR" : "Rep PR";
-    }
-    return pr;
+    const m3 = liveMade(b2.exId, s3, at2, earlierSets(b2, si));
+    return m3 && m3.pr ? prWord(m3.ex, m3.pr) : null;
   }
   var earlierSets = (b2, si) => {
     const ex = state.draft ? state.draft.ex : [];
@@ -16917,8 +16971,8 @@ ${more}`;
       (x2) => x2.done && !x2.warm && !x2.drop && +(x2.r ?? 0) > 0
     );
   };
-  function prBeat(exId, s3, at2, pr) {
-    const m3 = liveMade(exId, s3, at2);
+  function prBeat(exId, s3, at2, pr, before2 = []) {
+    const m3 = liveMade(exId, s3, at2, before2);
     const j3 = m3 && m3.pr;
     if (!m3 || !j3) return "";
     const { ex } = m3;
@@ -16967,7 +17021,8 @@ ${more}`;
         heavyBeat = best > t4.prevBest + EPS_SAME;
         const iso2 = !isCompound(ex);
         const setW = bs ? setShort(ex, { w: +(bs.w ?? 0) || 0, r: +(bs.r ?? 0), u: bs.u }) : "";
-        heavyTxt = iso2 ? heavyBeat ? `Beaten by load: ${setW}, your best yet` : `Heavier than target: ${setW}` : heavyBeat ? `Beaten by load: ${fmtE(ex, best)} ${liftU(ex)} estimated${wasE(ex, best, t4.prevBest) ? `, previous best ${wasE(ex, best, t4.prevBest)}` : ""}` : `Heavier than target, ${fmtE(ex, best)} ${liftU(ex)} estimated against a best of ${fmtE(ex, t4.prevBest)}`;
+        const yet = !!bs && !!rowPR(b2, b2.sets.indexOf(bs), state.draft || today());
+        heavyTxt = iso2 ? heavyBeat ? `Beaten by load: ${setW}${yet ? ", your best yet" : ""}` : `Heavier than target: ${setW}` : heavyBeat ? `Beaten by load: ${fmtE(ex, best)} ${liftU(ex)} estimated${wasE(ex, best, t4.prevBest) ? `, previous best ${wasE(ex, best, t4.prevBest)}` : ""}` : `Heavier than target, ${fmtE(ex, best)} ${liftU(ex)} estimated against a best of ${fmtE(ex, t4.prevBest)}`;
       }
     }
     if (t4.kind === "reps") {
@@ -17319,22 +17374,7 @@ ${more}`;
     if (val && isMissed(s3) && !s3.warm && !s3.drop) toast(MISSED_SAID);
     if (val && !d3.editingId && blockDone(b2) && !blkIsOpen(bi, b2)) W.foldWait.add(b2);
     onLiftDraw(bi, redraw);
-    const said2 = prSaid(bi, si);
-    if (said2 && !wasPR) {
-      toast(said2, false, PR_TOAST_MS, "pr");
-      const btn = document.querySelector(`[data-act="sDone"][data-b="${bi}"][data-s="${si}"]`);
-      const row = btn && btn.closest(".sg");
-      if (row instanceof HTMLElement) {
-        row.classList.remove("prflash");
-        void row.offsetWidth;
-        row.classList.add("prflash");
-        row.addEventListener("animationend", () => row.classList.remove("prflash"), { once: true });
-      }
-      try {
-        if (navigator.vibrate) navigator.vibrate(PR_BUZZ);
-      } catch (e5) {
-      }
-    }
+    if (!wasPR) prMoment(bi, si);
     let autoRest = val && !again && !s3.warm && !d3.editingId && !d3.past && +b2.plan.rest > 0 && state.settings.timerMode === "auto";
     if (autoRest && b2.plan.ss) {
       const grp = d3.ex.filter((x2) => x2.plan && x2.plan.ss === b2.plan.ss);
@@ -17356,6 +17396,35 @@ ${more}`;
       W.foldT = setTimeout(() => autoFold(rf), FOLD_MS.tick);
     }
     if (val && b2.sets.filter((x2) => x2.done).length === 1 && orderAt(b2) >= 0) orderSoon(b2);
+  }
+  function prMoment(bi, si) {
+    const said2 = prSaid(bi, si);
+    if (!said2) return;
+    toast(said2, false, PR_TOAST_MS, "pr");
+    const btn = document.querySelector(`[data-act="sDone"][data-b="${bi}"][data-s="${si}"]`);
+    const row = btn && btn.closest(".sg");
+    if (row instanceof HTMLElement) {
+      row.classList.remove("prflash");
+      void row.offsetWidth;
+      row.classList.add("prflash");
+      row.addEventListener("animationend", () => row.classList.remove("prflash"), { once: true });
+    }
+    try {
+      if (navigator.vibrate) navigator.vibrate(PR_BUZZ);
+    } catch (e5) {
+    }
+  }
+  function prOfBatch(bi, done) {
+    const d3 = state.draft;
+    const b2 = d3 && d3.ex[bi];
+    if (!d3 || !b2) return;
+    for (let k2 = done.length - 1; k2 >= 0; k2--) {
+      const si = b2.sets.indexOf(done[k2]);
+      if (si >= 0 && rowPR(b2, si, d3)) {
+        prMoment(bi, si);
+        return;
+      }
+    }
   }
   function doneChanged(bi, si, f3) {
     const d3 = state.draft;
@@ -17392,7 +17461,7 @@ ${more}`;
     const pr = rowPR(b2, si, d3);
     if (!pr) return null;
     const ex = EX(b2.exId);
-    return `${pr === "Best" ? isCompound(ex) ? "New best estimate" : "PR" : pr}: ${exName(b2.exId)}, ${setShort(ex, { w: +(s3.w ?? 0) || 0, r: s3.r, u: s3.u })}${prBeat(b2.exId, s3, d3, pr)}`;
+    return `${pr === "Best" ? isCompound(ex) ? "New best estimate" : "PR" : pr}: ${exName(b2.exId)}, ${setShort(ex, { w: +(s3.w ?? 0) || 0, r: s3.r, u: s3.u })}${prBeat(b2.exId, s3, d3, pr, earlierSets(b2, si))}`;
   }
   function prRetell(said2, bi, si) {
     const now2 = prSaid(bi, si);
@@ -17743,6 +17812,7 @@ ${more}`;
       for (const p3 of list) if (p3.w > 0) p3.w = -p3.w;
     }
     let far = -1;
+    const ticked = [];
     act(
       () => {
         let si = b2.sets.findIndex((x2) => !x2.done && !x2.warm);
@@ -17757,13 +17827,18 @@ ${more}`;
           x2.warm = false;
           x2.drop = false;
           x2.done = !oddLoad(b2, si, d3.date) && !oddReps(b2, x2);
-          if (x2.done) noteAsked(d3, b2, si);
+          if (x2.done) {
+            noteAsked(d3, b2, si);
+            assessSet(bi, si);
+            ticked.push(x2);
+          }
           if (!x2.done && far < 0) far = si;
           si++;
         }
       },
       { inProgress: true }
     );
+    prOfBatch(bi, ticked);
     if (far >= 0) {
       rerenderKeepScroll();
       setDone(bi, far, true);
@@ -19185,6 +19260,10 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
   <div id="libList">${libCards()}</div>`;
   }
   var num2 = (v3) => +(v3 ?? NaN);
+  function namesLift(data, id) {
+    const named2 = (xs) => (arr(xs) || []).some((b2) => rec(b2)?.["exId"] === id);
+    return named2(data["ex"]) || (arr(data["days"]) || []).some((d3) => named2(rec(d3)?.["items"]));
+  }
   var PLAN_ACTS = {
     toggleItem(t4) {
       ui.openItem = ui.openItem === t4.dataset.uid ? null : t4.dataset.uid;
@@ -19409,10 +19488,13 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       });
       if (changed) rerenderKeepScroll();
     },
+    /* An exercise any record still names (a routine, a session, the workout open or set aside, or anything in Recently
+       deleted, which can come back) is hidden from the library, never removed: removed, a session restored later would
+       name a lift the log no longer holds. */
     exDel(t4) {
       const id = t4.dataset.ex || "";
       const e5 = EX(id);
-      const used = state.routines.some((r4) => r4.days.some((d3) => d3.items.some((i5) => i5.exId === id))) || state.sessions.some((s3) => s3.ex.some((b2) => b2.exId === id)) || !!state.draft && state.draft.ex.some((b2) => b2.exId === id);
+      const used = state.routines.some((r4) => r4.days.some((d3) => d3.items.some((i5) => i5.exId === id))) || state.sessions.some((s3) => s3.ex.some((b2) => b2.exId === id)) || !!state.draft && state.draft.ex.some((b2) => b2.exId === id) || parkedNames(id) || state.trash.some((x2) => namesLift(x2.data, id));
       confirmBox(
         "Delete exercise?",
         used ? `${e5.name} is used in your routines or history. It will be hidden from the library, and past data stays intact.` : `${e5.name} will be removed.`,
@@ -19475,12 +19557,12 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
         else if (k2 === "inc") {
           const e5 = state.exercises.find((x2) => x2.id === f3.it.exId);
           const v3 = typedBoundOf(e5, Math.max(n3, 0), LIMITS.step);
-          f3.it.inc = v3;
           if (e5) {
-            e5.inc = v3 > 0 ? v3 : null;
+            e5.inc = v3;
             if (v3 > 0) e5.incU = liftU(e5);
             else delete e5.incU;
-          }
+            stepOnPlans(state.routines, e5.id, v3);
+          } else f3.it.inc = v3;
         } else if (k2 === "rir") f3.it.rir = clamp(effIn(n3), 0, EFFORT_TOP);
         else if (k2 === "sets") f3.it.sets = clamp(Math.round(n3), 1, LIMITS.sets);
         else if (k2 === "rest") f3.it.rest = clamp(Math.round(n3), 0, LIMITS.restS);
@@ -19828,19 +19910,13 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       );
     }
     if (ex.timed) {
-      let best = null;
-      for (const x2 of liftRead(exId))
-        for (const p3 of x2.pts)
-          if (!best || p3.pl > best.pl + EPS_SAME || Math.abs(p3.pl - best.pl) < EPS_SAME && p3.r > best.r) best = p3;
+      const best = bestSet(exId);
       return line(
         `${best ? `Best hold ${setShort(ex, best)}. ` : ""}${st.stalled ? `No longer hold or more load in ${STALL.noProgress} sessions: try a harder variation or add load.` : "Progress is longer holds or more load."}`
       );
     }
     if (noE1(ex)) {
-      let best = null;
-      for (const x2 of liftRead(exId))
-        for (const p3 of x2.pts)
-          if (!best || p3.w > best.w + EPS_SAME || Math.abs(p3.w - best.w) < EPS_SAME && p3.r > best.r) best = p3;
+      const best = bestSet(exId);
       return line(
         `${best ? `Best set ${setShort(ex, best)}. ` : ""}${st.stalled ? `No rep or load PR in the last ${STALL.noProgress} sessions.` : "Progress is reps and added load."}`,
         "No 1RM is estimated for a lift that turns about a joint."
@@ -20013,24 +20089,10 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
   function nextLine(exId) {
     if (EX(exId).archived) return "";
     const R2 = activeRoutine();
-    const d3 = nextDayWith(exId, R2);
+    const d3 = nextDueWith(R2, exId);
     const sg = suggest(exId, d3 ? planFor(exId, R2, d3.id) : planFor(exId, R2), { deload: isDeloadWeek() });
     const why = whyTarget(sg);
     return sg && sg.target ? b`<p class="small u-m6-0-0" id="nextLine"><b>Next session</b>: ${sg.target}${why ? b` ${tipButton(why, "Why this target")}` : A}</p>` : "";
-  }
-  function nextDayWith(exId, R2) {
-    const n3 = R2.days.length;
-    if (!n3) return null;
-    let start2;
-    if (R2.schedule === "weekly") {
-      const wd = dayOfWeek(today());
-      start2 = state.sessions.some((x2) => x2.date === today() && x2.routineId === R2.id && sessDayIdx(R2, x2) === wd) ? (wd + 1) % n3 : wd;
-    } else start2 = cycleState(R2).next;
-    for (let k2 = 0; k2 < n3; k2++) {
-      const d3 = R2.days[(start2 + k2) % n3];
-      if (d3 && !d3.rest && d3.items.some((it) => it.exId === exId)) return d3;
-    }
-    return null;
   }
   function goalLine(exId) {
     const ex = EX(exId);
@@ -20086,7 +20148,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     <table class="t"><tr><th>${ex.assist ? "Load" : loadHead(ex)}</th><th class="r">${ex.timed ? "Seconds" : "Reps"}</th><th class="r">First done</th></tr>${r4.front.map(
           (f3) => b`<tr><td class="num">${listLabel(ex, f3.p.w, f3.p.u)}</td><td class="r num">${f3.p.r}</td><td class="r">${when(f3.date)}</td></tr>`
         )}</table></details>`;
-      })}</div>${rows2.length > shown2.length ? b`<button class="btn sm u-mt8" data-act="bestsAll">Show all ${rows2.length} lifts</button>` : A}<p class="small muted hastip u-m8-0-0" data-tip="Most reps at each weight, unless a heavier set matched it. Beat a line with a set at least 90% as strong as your best: a rep PR. Best estimate (compound lifts): the highest one-rep max any set gives, in the terms you log it (total, per side or per dumbbell). Warm-ups and drop sets left out.">How to read this</p>${oldBest}`
+      })}</div>${rows2.length > shown2.length ? b`<button class="btn sm u-mt8" data-act="bestsAll">Show all ${rows2.length} lifts</button>` : A}<p class="small muted hastip u-m8-0-0" data-tip="Most reps at each weight, unless a heavier set matched it. Beat a line with a set at least ${pctOf(REP_PR_SHARE)}% as strong as your best: a rep PR. Best estimate (compound lifts): the highest one-rep max any set gives, in the terms you log it (total, per side or per dumbbell). Warm-ups and drop sets left out.">How to read this</p>${oldBest}`
     };
   }
   function readinessBody() {
@@ -20326,7 +20388,7 @@ ${extraKpis()}</div>`;
     const lw = lastLighterWeek();
     const stl = b`${stalled.length ? b`${stalled.map(
       ([id, s3]) => b`<div class="row spread u-p6-0_bb1-solid-line"><span><span class="plate yellow u-h14_van2"></span> ${exName(id)}</span><span class="muted small">last ${fmtDate(s3.last.date)}</span></div>`
-    )}${tired ? b`<p class="small hastip u-cred_mt8" data-tip="Several main lifts flat together often points to fatigue. Check sleep, food, and stress; Deload week is under More options on Today (half the sets, about 90% loads, kept out of your trends). Isolation and core lifts are not counted here.">${bigN} main lifts stalled at once: likely fatigue</p>` : A}` : b`<p class="muted">No stalls detected.</p>`}${lw ? b`<p class="small muted u-mt8">${lw.weeks == null ? "No lighter week in the last 12." : `Last lighter week: ${lw.weeks} week${lw.weeks === 1 ? "" : "s"} ago${lw.kind === "rest" ? " (a rest week)" : lw.kind === "off" ? " (a week off)" : ""}.`} ${tipButton(LIGHTER_WEEK_TIP, "Lighter week")}</p>` : A}`;
+    )}${tired ? b`<p class="small hastip u-cred_mt8" data-tip="Several main lifts flat together often points to fatigue. Check sleep, food, and stress; Deload week is under More options on Today (${shareWords(LIGHTER_SET_SHARE)} the sets, about ${pctOf(LIGHT_SHARE)}% loads, kept out of your trends). Isolation and core lifts are not counted here.">${bigN} main lifts stalled at once: likely fatigue</p>` : A}` : b`<p class="muted">No stalls detected.</p>`}${lw ? b`<p class="small muted u-mt8">${lw.weeks == null ? "No lighter week in the last 12." : `Last lighter week: ${lw.weeks} week${lw.weeks === 1 ? "" : "s"} ago${lw.kind === "rest" ? " (a rest week)" : lw.kind === "off" ? " (a week off)" : ""}.`} ${tipButton(LIGHTER_WEEK_TIP, "Lighter week")}</p>` : A}`;
     return { stl, tired };
   }
   function liftsSec(I2, stalled, prs4) {
@@ -21877,17 +21939,6 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
   function moreBtn(deload) {
     return b`<button class="btn sm" data-act="heroMore" aria-expanded=${String(!!ui.heroMore)}>${ui.heroMore ? "Fewer options" : "More options"}</button>${deload && !ui.heroMore ? b`<span class="tag blue">Deload week on</span>` : A}`;
   }
-  function weekOffer(R2, wd) {
-    const slots = weekSlots(R2);
-    const todo = slots.filter((x2) => !x2.doneOn);
-    const behind = todo.find((x2) => x2.di < wd);
-    if (behind) return { di: behind.di, part: behind.part, kind: "behind" };
-    const mine = todo.find((x2) => x2.di === wd);
-    if (mine) return { di: wd, part: mine.part, kind: "today" };
-    if (!slots.some((x2) => x2.di === wd)) return null;
-    const next2 = todo.find((x2) => x2.di > wd);
-    return next2 ? { di: next2.di, part: next2.part, kind: "ahead" } : null;
-  }
   function doneWhen(d3) {
     const t4 = today();
     return d3 === t4 ? "today" : d3 === addDays(t4, -1) ? "yesterday" : DAYS[dayOfWeek(d3)] || d3;
@@ -21913,7 +21964,7 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
     const rw = isRestWeek(weekStart(t4)) || isRestWeek(addDays(weekStart(t4), -WEEK_DAYS));
     return b`<div class="row u-mt8"><button class=${`btn sm ${deload ? "noted" : ""}`} data-act="deloadToggle" aria-pressed=${String(deload)}>${deload ? "Deload week: on" : "Deload week"}</button>${playable ? b`<button class="btn sm" data-act="eqOpen" data-day=${di} data-part=${part === 2 ? "2" : A}>Limited equipment</button>` : A}<button class=${`btn sm ${rw ? "noted" : ""}`} data-act="restWkOpen">Rest week</button><button class="btn sm" data-act="injAdd">Flag an injury</button><button class="btn sm" data-act="cardioNew">Log cardio</button></div>`;
   }
-  var STARTS_HELP = b`In <b>Change</b>: <b>Lighter day</b>: every exercise on the day, half the sets (rounded up), about ${pctOf(LIGHT_SHARE)}% of the loads, ${LIGHT_RIR} or more reps in reserve, and no target to beat: a one-day deload. For a day you are run down or sore, or slept badly. It does not count against your trends. <b>Short on time</b>: tell it your minutes; it keeps priority and lagging muscles and your main lifts at full effort and trims the rest. <b>Pick for me</b>: ranks your routine's days for today from what each muscle got in the last ${PICK_DAYS} days, how recently it was trained hard, injuries, and where you are in the cycle, then says why. <b>Blank session</b>: log anything; your cycle stays put. <b>Deload week</b> (More options): a whole week of half sets at about ${pctOf(LIGHT_SHARE)}% loads. <b>Limited equipment</b> (More options): today's workout with each exercise your gym cannot do swapped for the closest match it can.`;
+  var STARTS_HELP = b`In <b>Change</b>: <b>Lighter day</b>: every exercise on the day, ${shareWords(LIGHTER_SET_SHARE)} the sets (rounded up), about ${pctOf(LIGHT_SHARE)}% of the loads, ${LIGHT_RIR} or more reps in reserve, and no target to beat: a one-day deload. For a day you are run down or sore, or slept badly. It does not count against your trends. <b>Short on time</b>: tell it your minutes; it keeps priority and lagging muscles and your main lifts at full effort and trims the rest. <b>Pick for me</b>: ranks your routine's days for today from what each muscle got in the last ${PICK_DAYS} days, how recently it was trained hard, injuries, and where you are in the cycle, then says why. <b>Blank session</b>: log anything; your cycle stays put. <b>Deload week</b> (More options): a whole week of ${shareWords(LIGHTER_SET_SHARE)} the sets at about ${pctOf(LIGHT_SHARE)}% loads. <b>Limited equipment</b> (More options): today's workout with each exercise your gym cannot do swapped for the closest match it can.`;
   function parkLine() {
     return `Set aside while you fixed an earlier one.${keptUntil()}`;
   }
@@ -21925,8 +21976,9 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
     const cs = weekly ? null : cycleState(R2);
     if (typeof ui.todayDay === "number" && ui.todayDay >= R2.days.length) ui.todayDay = null;
     const chosen = typeof ui.todayDay === "number" ? ui.todayDay : null;
-    const offer = weekly && chosen == null && !isRestWeek(weekStart(today())) ? weekOffer(R2, wd) : null;
-    const di = chosen == null ? offer ? offer.di : weekly ? wd : cs ? cs.next : 0 : chosen;
+    const off = offeredDay(R2);
+    const offer = chosen == null ? off.offer : null;
+    const di = chosen == null ? off.di : chosen;
     const day0 = R2.days[di] || { id: "", name: "", rest: true, items: [] };
     const t4 = today();
     const at2 = ui.todayAt;
@@ -22113,9 +22165,10 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     });
   }
   var TODAY_OFFER = {
+    // The day the card shows: the one picked, else the one Today offers (offeredDay).
     "today:session": () => {
       const R2 = activeRoutine();
-      const di = typeof ui.todayDay === "number" && ui.todayDay < R2.days.length ? ui.todayDay : R2.schedule === "weekly" ? dayOfWeek(today()) : cycleState(R2).next;
+      const di = typeof ui.todayDay === "number" && ui.todayDay < R2.days.length ? ui.todayDay : offeredDay(R2).di;
       const d3 = R2.days[di];
       return !!d3 && !d3.rest && d3.items.length > 0;
     },
@@ -22611,10 +22664,10 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     const open = d3.ex.some((b2) => !b2.light && !b2.sets.some((x2) => !x2.warm && !rowBlank(b2, x2)));
     const left = remainMin(d3);
     if (low >= 2 && !open && d3.ex.some((b2) => b2.light))
-      return b`<p class="callout u-m8-0-0" id="readyCard">Made lighter: the exercises not started are half the sets at about ${pctOf(LIGHT_SHARE)}% loads.</p>`;
+      return b`<p class="callout u-m8-0-0" id="readyCard">Made lighter: the exercises not started are ${shareWords(LIGHTER_SET_SHARE)} the sets at about ${pctOf(LIGHT_SHARE)}% loads.</p>`;
     if (low < 2)
       return b`<p class="callout u-m8-0-0" id="readyCard">Keep the loads. Leave an extra rep in reserve if it feels heavy.</p>`;
-    return b`<div class="callout yellow u-m8-0-0" id="readyCard"><p class="u-m0">Low readiness today. ${tipButton(`A lighter or shorter session fits a low day better than pushing. Make it lighter changes only the exercises not started: half the sets, about ${pctOf(LIGHT_SHARE)}% loads, nothing to beat.`)}</p><div class="row u-mt8">${open ? b`<button class="btn sm" data-act="makeLight">Make it lighter</button>` : ""}${left > 0 ? b`<button class="btn sm" data-act="shortOpen">Short on time</button>` : ""}</div></div>`;
+    return b`<div class="callout yellow u-m8-0-0" id="readyCard"><p class="u-m0">Low readiness today. ${tipButton(`A lighter or shorter session fits a low day better than pushing. Make it lighter changes only the exercises not started: ${shareWords(LIGHTER_SET_SHARE)} the sets, about ${pctOf(LIGHT_SHARE)}% loads, nothing to beat.`)}</p><div class="row u-mt8">${open ? b`<button class="btn sm" data-act="makeLight">Make it lighter</button>` : ""}${left > 0 ? b`<button class="btn sm" data-act="shortOpen">Short on time</button>` : ""}</div></div>`;
   }
   function bwAskCard(d3) {
     if (d3.editingId || d3.past || state.bodyweights.length || !d3.ex.some((b2) => EX(b2.exId).bw)) return "";
@@ -24241,10 +24294,12 @@ ${JSON.stringify(ctx, null, 1)}`;
     for (const m3 of MK) D2[m3] = defBand(m3);
     const foc = new Set(prof().focus || []);
     const fitOf = (r4) => {
-      const p3 = plannedSets(r4);
+      const fit2 = fitFloors(r4);
       const o3 = {};
-      for (const m3 of MK)
-        o3[m3] = TRACK_ONLY.has(m3) || foc.has(m3) ? D2[m3] : [Math.min(D2[m3][0], Math.floor(p3[m3] || 0)), D2[m3][1]];
+      for (const m3 of MK) {
+        const lo = fit2[m3];
+        o3[m3] = lo != null && !foc.has(m3) ? [lo, D2[m3][1]] : D2[m3];
+      }
       return o3;
     };
     if (!same(D2) && ![starterRoutine(), defaultRoutine()].some((r4) => same(fitOf(r4)))) return false;
@@ -25505,8 +25560,16 @@ ${JSON.stringify(ctx, null, 1)}`;
     } catch (e5) {
       log("export", e5);
     }
+    const asText2 = () => openModal({
+      kind: "text",
+      title: fallbackTitle,
+      help: fallbackHelp,
+      text: data,
+      readonly: true,
+      ...onSaved2 ? { backup: true } : {}
+    });
     if (!clicked) {
-      openModal({ kind: "text", title: fallbackTitle, help: fallbackHelp, text: data, readonly: true });
+      asText2();
       return;
     }
     confirmBox(
@@ -25520,7 +25583,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       false,
       {
         label: "Show the text instead",
-        fn: () => openModal({ kind: "text", title: fallbackTitle, help: fallbackHelp, text: data, readonly: true })
+        fn: asText2
       }
     );
   }
@@ -25898,19 +25961,26 @@ ${JSON.stringify(ctx, null, 1)}`;
         title: "Backup text",
         help: "Select all and copy. Paste it into Import on any device to restore.",
         text: JSON.stringify({ app: STORAGE_ID, exported: (/* @__PURE__ */ new Date()).toISOString(), state }),
-        readonly: true
+        readonly: true,
+        backup: true
       });
     },
+    /* Copy on a text sheet. Only the backup's text, copied, is a backup made: Diagnostics, a report, feedback or the CSV
+       copied record nothing, so Backup due stays as it was (the full review's L4-13). */
     copyText() {
       const ta = document.getElementById("mText");
       if (!(ta instanceof HTMLTextAreaElement)) return;
+      const backup = ui.modal && ui.modal.kind === "text" && ui.modal.backup === true;
+      const made = () => {
+        if (backup) markExported();
+      };
       ta.select();
       let ok = false;
       try {
         if (navigator.clipboard) {
           navigator.clipboard.writeText(ta.value).then(
             () => {
-              markExported();
+              made();
               toast("Copied");
             },
             () => {
@@ -25923,7 +25993,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       } catch (e5) {
         log("copy", e5);
       }
-      if (ok) markExported();
+      if (ok) made();
       toast(ok ? "Copied" : "Select the text and copy it manually");
     }
   };
@@ -26528,11 +26598,13 @@ ${JSON.stringify(ctx, null, 1)}`;
       const was = m3.isNew ? void 0 : state.exercises.find((x2) => x2.id === e5.id);
       const sh = was ? shownNumbers(was) : null;
       const u4 = liftU(e5);
+      let stepEntered = false;
       if (sh && e5.incRaw === sh.inc) delete e5.incRaw;
       else {
+        stepEntered = true;
         const n3 = numIn(e5.incRaw);
-        e5.inc = n3 != null && n3 > 0 ? typedBoundOf(e5, n3, LIMITS.step) : null;
-        if (e5.inc != null) e5.incU = u4;
+        e5.inc = n3 != null && n3 >= 0 ? typedBoundOf(e5, n3, LIMITS.step) : null;
+        if (e5.inc != null && e5.inc > 0) e5.incU = u4;
         else delete e5.incU;
         delete e5.incRaw;
       }
@@ -26594,6 +26666,7 @@ ${JSON.stringify(ctx, null, 1)}`;
           const i5 = state.exercises.findIndex((x2) => x2.id === e5.id);
           if (i5 >= 0) state.exercises[i5] = saved;
         }
+        if (stepEntered) stepOnPlans(state.routines, saved.id, saved.inc ?? null);
       });
       if (!m3.isNew) refreshEx(e5.id);
       const back2 = m3.back;
@@ -27531,8 +27604,8 @@ ${JSON.stringify(ctx, null, 1)}`;
     incSave() {
       const m3 = ui.modal;
       const n3 = numIn(fieldText("incVal"));
-      if (n3 == null || n3 <= 0) {
-        toast("Enter a step above 0");
+      if (n3 == null || n3 < 0) {
+        toast("Enter a step, or 0 to keep the load");
         return;
       }
       const sheet = m3 && m3.kind === "inc" ? m3 : null;
@@ -27549,7 +27622,9 @@ ${JSON.stringify(ctx, null, 1)}`;
       closeModal();
       act(() => {
         e5.inc = inc;
-        e5.incU = liftU(e5);
+        if (inc > 0) e5.incU = liftU(e5);
+        else delete e5.incU;
+        stepOnPlans(state.routines, e5.id, inc);
       });
       refreshEx(e5.id);
       rerenderKeepScroll();
@@ -28093,9 +28168,10 @@ ${JSON.stringify(ctx, null, 1)}`;
     );
     const prs = prAll.filter((p3) => p3.big);
     const heavier = prAll.flatMap((p3) => {
-      if (p3.big || p3.type !== "Weight PR") return [];
+      const set = p3.big ? p3.heavy : p3.type === "Weight PR" ? p3 : null;
+      if (!set) return [];
       const e5 = EX(p3.exId);
-      return [`${e5.name} ${setShort(e5, p3)}`];
+      return [`${e5.name} ${setShort(e5, set)}`];
     });
     const backBest = backBests(ex, prAll, sess.id);
     const { work, miss, hard } = setCounts(ex, sess.date);
@@ -28575,6 +28651,10 @@ ${JSON.stringify(ctx, null, 1)}`;
         );
         after2();
         toast(`${sets} logged as shown`, true);
+        prOfBatch(
+          bi,
+          shown2.map((x2) => x2.s)
+        );
       };
       if (blocked)
         confirmBox(
@@ -29511,7 +29591,7 @@ ${JSON.stringify(ctx, null, 1)}`;
    <p><b>Trends</b> read each session's working sets the same way, averaged, up to ${TREND_MAX_RTF} reps to failure (so high-rep work has a trend too, never shown as a 1RM). RIR is used in a trend only when it is rated on ${pctOf(RIR_TREND.share)}% or more of the lift's sets; otherwise loads and reps alone, so tapping RIR on some days and not others cannot bend it. The ${TREND_WEEKS} weeks are counted back from the lift's own last session, and a trend needs ${TREND_MIN.sessions} sessions spread over ${TREND_MIN.days / WEEK_DAYS} weeks or more (and, on a bodyweight lift, a weigh-in, since it is read at your bodyweight); it says how many weeks it covers. A muscle's trend counts a lift once it has ${MUSCLE_TREND_MIN.sessions} sessions over ${MUSCLE_TREND_MIN.days / WEEK_DAYS} weeks or more, and says the weeks too. A trend shows how many sessions it rests on and its weekly rate with the range an 80% interval allows (about +1.5% a week, likely +1.2% to +1.8%). <b>Weight lifted</b> is load times reps; it falls when the load goes up and reps come down, so it is shown as a number, not as progress.</p>
    <p><b>A lift on Stats</b> says its change in what was lifted: the change in its estimated 1RM on a compound lift you load as a total (a barbell, a plate-loaded machine), the top set at each end on anything else. A number shows only when it points the same way as the trend. The percentages are behind its i. <b>Next session</b> is the target its next workout will show; there are no predictions of where a lift will be.</p>
    <p><b>Goals</b>: on Stats, Lifts, set a goal for a lift as a load for a number of reps (100 x 5). It is reached when a working set matches it, that load or more for those reps or more. Until then it shows how close your best estimate from the last ${BEST_WEEKS} weeks is to what the goal takes done to failure, and, on a compound lift you load as a total, about how much load is left for those reps. It gives no date: your session targets are the steps toward it. On a bodyweight lift the load is the added load.</p>
-   <p><b>PRs</b>: a <b>weight PR</b> is more weight than any earlier set of the lift (less help on an assisted one); a <b>best estimate</b> beats every earlier estimate of the lift; a <b>best for its reps</b> beats the earlier best in the same band of reps to failure (${BAND_RANGES.join(", ")}); a <b>rep PR</b> is more reps at a load than ever before, counted only when the set is at least ${pctOf(REP_PR_SHARE)}% as strong as your strongest before it (a rule of thumb: 40 x 10 after 95 x 5 is not a PR). A set that is more than one shows the first of these. A load in the other unit, after a change of units or gyms, is read as the earlier load it stands for when it is the nearest load over it on its own spacing (a rule of thumb: 155 lb after 70 kg, which is 154.3 lb, is not a weight PR; 157.5 lb is). PRs count on any day, a lighter day, a deload, and an exercise made lighter included, and are announced as you log the set. Only a set stronger than every earlier one is announced and counted: a higher estimate, or, past ${E1_MAX_REPS} reps to failure where the estimate stops, more reps at a load (on a lift with no estimate, or a bodyweight lift before any weigh-in, any of them). A heavier set that is not stronger is named in the recap as heaviest yet. Counting them all made each load step a PR. On a bodyweight lift, PRs, estimates, trends, and charts are all read at your latest weigh-in for every session, so progress is more reps or more added load, never a change on the scale. Weight lifted uses each day's weigh-in, the work actually done. With no weigh-in they count only the weight you add. Estimates and trends wait for one.</p>
+   <p><b>PRs</b>: a <b>weight PR</b> is more weight than any earlier set of the lift (less help on an assisted one); a <b>best estimate</b> beats every earlier estimate of the lift; a <b>best for its reps</b> beats the earlier best in the same band of reps to failure (${BAND_RANGES.join(", ")}); a <b>rep PR</b> is more reps at a load than ever before, counted only when the set is at least ${pctOf(REP_PR_SHARE)}% as strong as your strongest before it (a rule of thumb: 40 x 10 after 95 x 5 is not a PR). A set that is more than one shows the first of these. A load in the other unit, after a change of units or gyms, is read as the earlier load it stands for when it is the nearest load over it on its own spacing (a rule of thumb: 155 lb after 70 kg, which is 154.3 lb, is not a weight PR; 157.5 lb is). PRs count on any day, a lighter day, a deload, and an exercise made lighter included, and are announced as you log the set. Only a set stronger than every earlier one (this workout's sets included) is announced and counted: a higher estimate, or, past ${E1_MAX_REPS} reps to failure where the estimate stops, more reps at a load (on a lift with no estimate, or a bodyweight lift before any weigh-in, any of them). A heavier set that is not stronger is named in the recap as heaviest yet. Counting them all made each load step a PR. On a bodyweight lift, PRs, estimates, trends, and charts are all read at your latest weigh-in for every session, so progress is more reps or more added load, never a change on the scale. Weight lifted uses each day's weigh-in, the work actually done. With no weigh-in they count only the weight you add. Estimates and trends wait for one.</p>
    <p><b>Moving</b>: up ${GROW_PCT}% or more with a trend clearly above zero. <b>Falling</b>: down ${GROW_PCT}% or more with a trend clearly below zero, in each rep range you train it in; a lift on a heavy day and a light day falls only when it falls in both, and its line says which range is down. <b>Stalled</b>: flat or falling over the last ${STALL.sessions} sessions (by the middle of the changes between every pair of them, so one good or bad day does not decide it) in each rep range you train it in, or ${STALL.days / WEEK_DAYS} weeks if that covers more (at least ${STALL.min} sessions); a lift on a heavy day and a light day is stalled only when it is stalled in both. With no PR in the last ${STALL.noProgress} of them, nor, in a session of that range done lighter since the third-last, a set stronger than any before it, the load no heavier than at the start of that stretch, and no more reps at that load than any session before it in the stretch, and only while you still train the lift (outside Freestyle, one taken out of your routine is no longer read) and no injury it loads is flagged (the app holds its load then). A session with sets skipped is left out, since its target repeated. Adding load and dropping reps for a while, or adding reps to later sets, as double progression does, is not a stall. A deload is suggested when ${FATIGUE_STALLS} or more main lifts (compound lifts with an estimate) stall together in a week that is not Progressing, and not within ${DELOAD_GAP_DAYS / WEEK_DAYS} weeks of a lighter week (more than half its sessions done lighter, counted once it ends or from the second, or a deload begun mid-week, once its last two or more deload sessions were done lighter), a rest week, or a week with nothing trained in it, a week marked as a deload included; isolation and core lifts are listed but not counted for it.</p>
    <p><b>The week's word</b> opens Stats and heads Today's Coach: <b>Progressing</b> while the lifts rising outnumber those stalled and falling together, <b>Regressing</b> while more are falling than rising, and <b>Stalled</b> otherwise. Only the lifts you train now count; one skipped, on a break, taken out of your routine, or too new for a trend counts for none. No word in a rest or deload week.</p>
    <p><b>Weekly averages</b> use the weeks you trained of the last ${AVG_WEEKS}, starting the week after your first, or after your first back from over ${BACK_DAYS / WEEK_DAYS} weeks off (${FIRST_WEEK_REASON}). Weeks before that break are not counted as missed. A lighter week (${LIGHTER_WEEK_WORDS}) or a rest week is swapped for an earlier one. A week with no training is left out rather than counted as zero, and when ${MISSED_WEEKS_SAID} or more of the ${AVG_WEEKS} were missed the Coach says so first.</p>
@@ -30080,7 +30160,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       lead = b`<p class="small u-m0">${best.day.name} fits today better than ${plan.day.name}, next in your plan: ${plan.ready < 1 ? `${plan.day.name} leans on muscles that may still be recovering.` : "it trains what is furthest behind this week."} ${tipButton("Starting it moves your cycle on from there, the same as choosing it under Change day.", "About the cycle")}</p>`;
     const sameDay = sessionsOn(today()).length > 0;
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Pick for me</h3>${closeX()}</div>
-    ${lead}${sameDay ? b`<p class="small muted u-m8-0-0">Includes the session logged today.</p>` : ""}${rk.deload ? b`<p class="small muted u-m8-0-0">Deload week: counted at half the sets.</p>` : ""}
+    ${lead}${sameDay ? b`<p class="small muted u-m8-0-0">Includes the session logged today.</p>` : ""}${rk.deload ? b`<p class="small muted u-m8-0-0">Deload week: counted at ${shareWords(LIGHTER_SET_SHARE)} the sets.</p>` : ""}
     ${top.map(
       (x2, k2) => b`<div class=${"pcard" + (k2 === 0 ? " best" : "")}><div class="row spread"><b>${dayLabel(rk.R, x2.i)}: ${x2.day.name}</b>${k2 === 0 ? b`<span class="tag green">Best fit</span>` : ""}</div>
       <ul>${dayReasons(x2, rk.r7).map((r4) => b`<li>${r4}</li>`)}</ul>
@@ -30189,7 +30269,12 @@ ${JSON.stringify(ctx, null, 1)}`;
       opts.push(opt("startSession", `Plan: ${day.name}`, `${day.items.length} exercises from your plan`, { day: di }));
     if (!m3.free && playable && !deload)
       opts.push(
-        opt("startSession", "Lighter day", "Every exercise, half the sets, about 90% loads", { day: di, light: true })
+        opt(
+          "startSession",
+          "Lighter day",
+          `Every exercise, ${shareWords(LIGHTER_SET_SHARE)} the sets, about ${pctOf(LIGHT_SHARE)}% loads`,
+          { day: di, light: true }
+        )
       );
     if (!m3.free && playable)
       opts.push(opt("startShort", "Short on time", "Your minutes; the main work stays at full effort", { day: di }));
@@ -30805,6 +30890,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       makeDemo,
       invalidate,
       normalize,
+      bestSet,
       // The log as it is saved and sent (units its numbers give left out), for checks that read the save back.
       storedJson,
       snapshot,
@@ -30873,6 +30959,8 @@ ${JSON.stringify(ctx, null, 1)}`;
       dropStarter,
       trainOn,
       planItemOf,
+      nextTrainIdx,
+      pmNameOf,
       fatigueStalls,
       avgWeeksTxt,
       routineFromLog,
