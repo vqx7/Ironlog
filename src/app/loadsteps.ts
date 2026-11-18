@@ -7,7 +7,7 @@ import type { Plan } from './types';
 import type { ExerciseLike, Model, Suggestion } from './model';
 
 import { UIn, liftModelIn } from './model';
-import { IDXIn, liftReadIn } from './analytics';
+import { IDXIn, liftReadIn, loadUnitIn } from './analytics';
 import { capOfIn, gymRackIn, gymStepIn, loadFloorIn, loadsFloorAt, plateGridIn, rackGapIn, rackTolIn } from './gym';
 import {
   EQUIP_STEP,
@@ -18,9 +18,11 @@ import {
   inUnitIn,
   kgOfIn,
   onStep,
+  planStepUnit,
   stepReadIn,
   toDIn,
-  typedOtherIn,
+  otherUnitIn,
+  unitOnGrid,
   unitStepIn
 } from './units';
 import { fmtWIn, loadLabelIn, loadNote, roundLoadIn, swapWIn } from './loads';
@@ -36,6 +38,19 @@ const OFF_STEP = 0.02;
 export const BIG_STEP_REPS = 1.5;
 /** A rack's spacing fits a load within this share of a step. */
 const RACK_FIT = 0.01;
+/* The unit a load handed to these rules is in. One of the lift's history (last time's, a load in hand that was done
+   before) is read with the unit stored with its set (loadUnitIn), none read in the lift's unit; any other is a load the
+   engine made, on its equipment's steps in that equipment's unit (unitOnGrid). */
+/** The unit load `w` (kg) of lift `ex` is in: as stored with its set (null: none, the lift's), else the one the engine made it in. */
+export function unitOfIn(M: Model, ex: ExerciseLike, w: number): 'kg' | 'lb' | null {
+  const u = ex.id ? loadUnitIn(M, ex.id, w) : undefined;
+  return u === undefined ? unitOnGrid(w) : u;
+}
+/** Whether load `w` (kg) of lift `ex` is in the other unit from the one on screen (unitOfIn). */
+const otherIn = (M: Model, ex: ExerciseLike, w: number): boolean => otherUnitIn(M, unitOfIn(M, ex, w));
+/** Whether load `w` (kg) of lift `ex` is in the unit on screen (unitOfIn): 0 is in every unit. */
+const hereIn = (M: Model, ex: ExerciseLike, w: number): boolean => w === 0 || unitOfIn(M, ex, w) === UIn(M);
+
 /** The newest sessions of a lift its rack spacing is read from. */
 const RACK_READ_N = 12;
 
@@ -166,8 +181,7 @@ export function unitGridIn(
     const k = (inUnitIn(M, v) - o) / st;
     return Math.abs(k - Math.round(k)) > OFF_STEP;
   };
-  const typed = (v: number): boolean => onStep(inUnitIn(M, v), TYPED_STEP);
-  if (!off(top) || !off(w) || typed(top)) return null;
+  if (!off(top) || !off(w) || hereIn(M, ex, top)) return null;
   /* Which step. A lighter day, a deload or a return after a break takes
      the step below; anything else the nearest. Never under the floor (the
      empty bar on a full-bar lift typed as the total, else one step on a
@@ -344,7 +358,8 @@ function stepOfIn(
   at: number | null | undefined,
   byEquip: boolean
 ): number {
-  const v = stepReadIn(M, ex && ex.inc != null ? ex.inc : plan && isNum(+plan.inc) ? +plan.inc : STEP_LB);
+  const pinc = plan && isNum(+plan.inc) ? +plan.inc : STEP_LB;
+  const v = ex && ex.inc != null ? stepReadIn(M, ex.inc, ex.incU) : stepReadIn(M, pinc, planStepUnit(pinc));
   if (ex && ex.inc == null && Math.abs(v - unitStepIn(M)) < EPS_SAME) {
     const L = gymRackIn(M, ex, plan);
     // From a load in hand, the next weight up by the one list (loadsForIn), as on a rack read from its spacing below.
@@ -415,7 +430,7 @@ function listSnapIn(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion): Su
      5s). Typed in the other unit it was another rack's weight (24 kg at a rack in 5 lb steps, 52.9 lb): the nearest
      weight this rack has, a tie going lighter, with the reps aimed at it (moveIn). */
   const again = top != null && Math.abs(w - top) < EPS_SAME;
-  if (again && !typedOtherIn(M, w)) return res;
+  if (again && !otherIn(M, ex, w)) return res;
   const f = Ls.floor(w);
   let nw: number | null;
   if (again) {
@@ -519,7 +534,8 @@ function rackGridIn(
   at?: number | null
 ): number | null {
   if (!ex || ex.assist || ex.inc != null || !rackKind(ex) || gymRackIn(M, ex, plan)) return null;
-  if (Math.abs(stepReadIn(M, plan && isNum(+plan.inc) ? +plan.inc : STEP_LB) - unitStepIn(M)) > EPS_SAME) return null;
+  const pinc = plan && isNum(+plan.inc) ? +plan.inc : STEP_LB;
+  if (Math.abs(stepReadIn(M, pinc, planStepUnit(pinc)) - unitStepIn(M)) > EPS_SAME) return null;
   return rackStepIn(M, ex, at) || (UIn(M) === 'lb' && rackKind(ex) === 'dumbbell' ? RACK.dumbbell.lb[0] * LB : null);
 }
 
@@ -639,7 +655,7 @@ function loadsForIn(
        (52.9 lb) for the 55 lb bell and step it to 60. BELL_TOL stays for a load typed in the unit on screen, a bell's
        label converted (35 lb for a 16 kg dumbbell). A load that is one of this rack's own weights is a bell the lifter
        has, whatever unit the app shows, so its next weight is the rack's next (45 kg on 1 kg steps goes to 46). */
-    const conv = at != null && typedOtherIn(M, at) && !L.some(x => Math.abs(x - at) < EPS_SAME),
+    const conv = at != null && otherIn(M, ex, at) && !L.some(x => Math.abs(x - at) < EPS_SAME),
       jump = jumpPct(ex, plan);
     const next = (w: number): number | null => L.find(x => x > w + tl) ?? null;
     return {
@@ -669,7 +685,6 @@ function loadsForIn(
        the plan's) under that weight, so 49.6 goes to 55, never 50, while 17.6 (8 kg) goes to 20 and 8.8 (4 kg)
        to 10. A load typed in the unit on screen is a weight the lifter has, so its next weight is never skipped (8 lb
        to 10). Going down is always from the weight lifted: a Lighter day from 12.1 lb (5.5 kg) is 10, never 5. */
-    const typed = (w: number): boolean => onStep(inUnitIn(M, w), TYPED_STEP);
     const jump = jumpPct(ex, plan);
     return {
       kind: 'grid',
@@ -684,7 +699,7 @@ function loadsForIn(
       },
       above: w => {
         const u = gridStep(M, og, w, 1);
-        return !typed(w) && u - w < jump * w ? gridStep(M, og, u, 1) : u;
+        return !hereIn(M, ex, w) && u - w < jump * w ? gridStep(M, og, u, 1) : u;
       },
       has: w => Math.abs(gridFloor(M, og, w, t) - w) <= t
     };
@@ -749,7 +764,7 @@ function loadsForIn(
 /** The nearest load in the lift's unit, on its step, to a load `at` typed in the other unit (kg), or null where the load is its own. */
 function unitAnchorIn(M: Model, ex: ExerciseLike, at: number, step: number): number | null {
   const su = inUnitIn(M, step);
-  if (ex.timed || !typedOtherIn(M, at) || !(su > 0) || !onStep(su, TYPED_STEP)) return null;
+  if (ex.timed || !otherIn(M, ex, at) || !(su > 0) || !onStep(su, TYPED_STEP)) return null;
   const o = inUnitIn(M, loadFloorIn(M, ex));
   return kgOfIn(M, o + Math.round((inUnitIn(M, at) - o) / su) * su);
 }
@@ -783,7 +798,7 @@ export function lighterLoadIn(
      it and then put on this unit's loads again, 135 lb on a bench now in kg (61.2) gave a Lighter day of 51.2, then 50,
      82% where the rule asks 90%. The rule's load is put on this unit's loads once instead: the heaviest at or under
      it (55 kg). A load in hand (minus and plus, a drop set, the next sets) counts from its nearest load (loadsForIn). */
-  const once = !inHand && typedOtherIn(M, from) ? unitFloorIn(M, ex, plan, Math.min(to, from)) : null;
+  const once = !inHand && otherIn(M, ex, from) ? unitFloorIn(M, ex, plan, Math.min(to, from)) : null;
   if (once != null) return once < from - EPS_SAME ? once : Math.max(0, from);
   // Whole steps from `from`: at least one, as many as reach `to`; with no step, rounded down to the unit's.
   const dn = Ls.below(from);

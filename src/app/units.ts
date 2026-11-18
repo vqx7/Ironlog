@@ -47,26 +47,34 @@ export const onStep = (v: number, step: number): boolean => Math.abs(v / step - 
     from the other unit almost never is, so a number on it reads as typed. */
 export const TYPED_STEP = 0.05;
 
-/* The unit a load was typed in, read from the number kept (kilograms, every
-   set as typed): one typed in kilograms is a whole number of TYPED_STEP kg,
-   one typed in pounds a whole number of TYPED_STEP lb, and no other load is
-   both. 0, or a load on neither (a number not typed as such, as the engine
-   reads one too), says nothing. Help on an assisted lift is read by its
-   size. */
-/** The unit a load was typed in, from its number, or null when the number does not say. */
-export function typedUnit(w: number): 'kg' | 'lb' | null {
-  const a = Math.abs(w);
+/* Which unit's 0.05 steps a load in kilograms lies on: a number typed in kilograms is a whole number of TYPED_STEP kg,
+   one typed in pounds a whole number of TYPED_STEP lb, and no load from 0.05 to 1,000 kg or 2,200 lb is both. 0, or a
+   load on neither, says nothing; help on an assisted lift is read by its size. It says what a number is made of, never
+   what was typed: a load the lifter enters is stored with its unit (types.ts LoggedSet's u). Read for two kinds of
+   number only: a load the engine makes, which it makes on its equipment's steps in that equipment's unit (a 24 kg
+   dumbbell on a rack in kg, the 45 lb bar and 10 lb plates), so a load the app puts in a row is stored with the unit
+   it was made in (session.ts madeLoad) and a rule handed one reads it so (loadsteps.ts unitOfIn); and a load stored
+   before units were stored, which takes the one every build before then read from its number, once (normalize.ts
+   unitField). */
+/** The unit whose 0.05 steps a load in kilograms lies on, or null when it lies on neither or both. */
+export function unitOnGrid(kg: number): 'kg' | 'lb' | null {
+  const a = Math.abs(kg);
   if (!(a > 0)) return null;
-  const kg = onStep(a, TYPED_STEP),
-    lb = onStep(a / LB, TYPED_STEP);
-  return kg === lb ? null : kg ? 'kg' : 'lb';
+  const k = onStep(a, TYPED_STEP),
+    l = onStep(a / LB, TYPED_STEP);
+  return k === l ? null : k ? 'kg' : 'lb';
 }
 
-/** Whether a load in kilograms was typed in the other unit from the one on screen, as its number says. */
-export function typedOtherIn(M: Model, kg: number): boolean {
-  const u = typedUnit(kg);
-  return u != null && u !== UIn(M);
+/** How many TYPED_STEP make one: the 0.05 steps of a unit counted in whole numbers. */
+const PER_ONE = Math.round(1 / TYPED_STEP);
+/** A load in kilograms put on the nearest of unit `u`'s 0.05 steps, exactly as that number typed in `u` is stored. */
+export function onUnitSteps(kg: number, u: 'kg' | 'lb'): number {
+  const k = u === 'lb' ? LB : 1;
+  return (Math.round((kg / k) * PER_ONE) / PER_ONE) * k;
 }
+
+/** Whether a load entered in unit `u` (as stored with it) was entered in the other unit from the one on screen. */
+export const otherUnitIn = (M: Model, u: 'kg' | 'lb' | null | undefined): boolean => u != null && u !== UIn(M);
 
 /** The plates a gym usually has, heaviest first, in each unit: what the plate
     count for a barbell load is made from unless Your gym lists its own. */
@@ -88,9 +96,9 @@ export const inUnitIn = (M: Model, kg: number): number => (UIn(M) === 'lb' ? kg 
 export const kgOfIn = (M: Model, v: number): number => (UIn(M) === 'lb' ? v * LB : v);
 
 /* A number typed in the unit on screen, kept in kilograms within a bound (a step's 500 kg, a bar's 50 kg) that a save
-   keeps: at most the largest number typed in that unit not past the bound, so it still reads as typed in it
-   (typedUnit). Bounded at the kilograms themselves, 1,200 lb typed as a step was kept as 500 kg, read as typed in kg,
-   and shown as lb's matching step (stepReadIn) or a bar's nearest load (loadReadAs) instead of the bound. */
+   keeps: at most the largest number typed in that unit not past the bound, so it is still a number typed in it.
+   Bounded at the kilograms themselves, 1,200 lb typed as a step was kept as 500 kg, a number no one types in lb, and
+   shown as lb's matching step (stepReadIn) or a bar's nearest load (loadReadAs) instead of the bound. */
 /** A number typed in the unit on screen, in kilograms, at most the largest typed number within a bound in kilograms. */
 function typedBoundIn(M: Model, v: number, most: number): number {
   return kgOfIn(M, Math.min(v, Math.floor(inUnitIn(M, most) / TYPED_STEP + EPS_SAME) * TYPED_STEP));
@@ -110,9 +118,13 @@ export const toDIn = (M: Model, kg: number | null | undefined): number | null =>
 /** A load in the unit on screen in kilograms (null stays null). */
 export const fromDIn = (M: Model, v: number | null | undefined): number | null => (v == null ? null : kgOfIn(M, v));
 
-/** A step as stored (kg), read for a lift in its unit (stepReadIn). */
-export const stepReadOfIn = (M: Model, ex: Pick<Exercise, 'unit'> | null | undefined, v: number): number =>
-  stepReadIn(liftModelIn(M, ex), v);
+/** A step as stored (kg, and the unit it was entered in), read for a lift in its unit (stepReadIn). */
+export const stepReadOfIn = (
+  M: Model,
+  ex: Pick<Exercise, 'unit'> | null | undefined,
+  v: number,
+  u: 'kg' | 'lb' | null | undefined
+): number => stepReadIn(liftModelIn(M, ex), v, u);
 
 /** A load in kilograms in a lift's unit (null stays null): what its fields and lines show. */
 export const toDOfIn = (
@@ -144,8 +156,8 @@ export const toDBodyIn = (M: Model, kg: number | null | undefined): number | nul
 export const fromDBodyIn = (M: Model, v: number | null | undefined): number | null => fromDOfIn(M, bodyIn(M), v);
 
 /* Load step: the exercise's own setting wins, so one change applies on every
-   day and routine the lift appears in. A step is kept as typed, in kilograms, like a load, so its number says which unit
-   it was typed in (typedUnit). Read in that unit it is used as typed. Read in the other unit it is the step of the
+   day and routine the lift appears in. A step is kept in kilograms, like a load, with the unit it was entered in
+   (incU), a plan's read from its number (planStepUnit). Read in that unit it is used as entered. Read in the other unit it is the step of the
    equipment marked in that unit that matches it: the unit's default step (5 lb, 2.5 kg) doubled or halved to the
    nearest by ratio, so 10 lb is 5 kg, 5 kg is 10 lb, 5 lb is 2.5 kg, 2.5 lb is 1.25 kg and a dumbbell's 2 kg is 5 lb.
    Used as a mass instead, a 10 lb step seen in kg added 4.5 kg to a bar no plates make. The default step is stored as
@@ -156,10 +168,9 @@ export function unitStepIn(M: Model): number {
   return UIn(M) === 'kg' ? DEFAULT_STEP.kg : STEP_LB;
 }
 
-/** A step as stored (kg), read in the unit on screen: as typed when typed in it, else the matching step of that unit. */
-export function stepReadIn(M: Model, v: number): number {
-  const u = UIn(M),
-    t = typedUnit(v);
+/** A step as stored (kg, and `t`, the unit it was entered in), read in the unit on screen: as entered when entered in it, else the matching step of that unit. */
+export function stepReadIn(M: Model, v: number, t: 'kg' | 'lb' | null | undefined): number {
+  const u = UIn(M);
   if (t == null || t === u || !(v > 0)) return v;
   const k = u === 'lb' ? LB : 1,
     d = DEFAULT_STEP[u];
@@ -171,18 +182,28 @@ export function stepReadIn(M: Model, v: number): number {
    100 kg is 220 lb and a 20 kg bar the 45 lb bar. Used as a mass instead, 100 kg set as the heaviest available asked
    for 220.5 lb ("add 0.5 lb, which is the heaviest available"), a goal of 100 kg x 5 was not reached at 220 lb x 5, and
    a Lighter day at the bar was 44.1 lb. */
-/** A load set in kilograms, read in a unit: as typed when typed in it, else the nearest load of that unit's own step. */
-export function loadReadAs(kg: number, u: 'kg' | 'lb'): number {
-  const t = typedUnit(kg);
+/** A load set in kilograms and entered in unit `t`, read in unit `u`: as entered when entered in it, else the nearest load of that unit's own step. */
+export function loadReadAs(kg: number, t: 'kg' | 'lb' | null | undefined, u: 'kg' | 'lb'): number {
   if (t == null || t === u) return kg;
   const k = u === 'lb' ? LB : 1,
     d = DEFAULT_STEP[u];
   return Math.max(1, Math.round(kg / k / d)) * d * k;
 }
 
-/** A load set on a lift (kg), read in the unit on screen (loadReadAs). */
-export const loadReadIn = (M: Model, kg: number): number => loadReadAs(kg, UIn(M));
+/** A load set on a lift (kg, entered in `t`), read in the unit on screen (loadReadAs). */
+export const loadReadIn = (M: Model, kg: number, t: 'kg' | 'lb' | null | undefined): number =>
+  loadReadAs(kg, t, UIn(M));
 
-/** A load set on a lift (kg), read in that lift's unit (loadReadAs). */
-export const loadReadOfIn = (M: Model, ex: Pick<Exercise, 'unit'> | null | undefined, kg: number): number =>
-  loadReadIn(liftModelIn(M, ex), kg);
+/** A load set on a lift (kg, entered in `t`), read in that lift's unit (loadReadAs). */
+export const loadReadOfIn = (
+  M: Model,
+  ex: Pick<Exercise, 'unit'> | null | undefined,
+  kg: number,
+  t: 'kg' | 'lb' | null | undefined
+): number => loadReadIn(liftModelIn(M, ex), kg, t);
+
+/* A plan's step carries no unit of its own: it moves onto the lift, where its unit is stored, with the step's one
+   owner. Until then it is read from its number as it always was: a step the app sets is one of a unit's own (STEP_LB,
+   5 lb), and one typed in Plan is a whole number of 0.05 in the unit it was typed in. */
+/** The unit a plan's step (kg) was set in, read from its number. */
+export const planStepUnit = (v: number): 'kg' | 'lb' | null => unitOnGrid(v);

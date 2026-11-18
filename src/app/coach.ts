@@ -3,10 +3,9 @@
    trend in words, the size check's sites, and the check-in against how
    sessions went (readiness). */
 
-import type { ExerciseLike, Model, Score } from './model';
+import type { ExPoint, ExerciseLike, Exposure, Model, Score } from './model';
 import {
   EXIn,
-  UIn,
   activeRoutineIn,
   exInjuryIn,
   exNameIn,
@@ -14,8 +13,8 @@ import {
   injuredSetIn,
   isDeloadWeekIn,
   isRestWeekIn,
-  liftModelIn,
-  sortedSessionsIn
+  sortedSessionsIn,
+  unitAt
 } from './model';
 import { IDXIn, stallWordsIn } from './analytics';
 import { trendScope, trendW } from './trend';
@@ -27,8 +26,7 @@ import { effScale, LIGHT_RIR } from './format';
 import { belowMin } from './volume';
 import { plannedPerWeek, plannedSetsIn } from './routines';
 import { planForIn } from './plans';
-import { loadLabelIn, typedLabelIn } from './loads';
-import { typedOtherIn } from './units';
+import { saidLoadIn } from './loads';
 import { CHECKIN_TOP } from './records';
 
 /** The coach's one line: its colour, the advice, the reason behind an i, the action it offers, and whether it says why no weekly average shows yet (`wait`, which Stats' summary shows once, as its Volume line). */
@@ -65,12 +63,12 @@ export function moversIn(M: Model): { id: string; pct: number | null; wk: number
     .map(([id, x]) => ({ id, pct: x!.pct, wk: x!.spanW || 2 }));
 }
 
-/** One row of Today's Lifts moving: the lift, the weeks its trend covers, its line, and its latest heaviest set (kg). */
+/** One row of Today's Lifts moving: the lift, the weeks its trend covers, its line, and its latest heaviest set (kg, with the unit it was entered in). */
 interface Mover {
   id: string;
   wk: number;
   line: number[];
-  top: { w: number; r: number } | null;
+  top: Pick<ExPoint, 'w' | 'r' | 'u'> | null;
 }
 /* Today's Lifts moving (V 2026-11-03: "if they're accurate and
    not distracting"): the lifts Stats' summary and the coach call clearly
@@ -98,7 +96,7 @@ export function liftsMovingIn(M: Model): Mover[] {
     const last = all[all.length - 1];
     let top: Mover['top'] = null;
     for (const p of last ? last.pts : [])
-      if (!top || p.w > top.w || (p.w === top.w && p.r > top.r)) top = { w: p.w, r: p.r };
+      if (!top || p.w > top.w || (p.w === top.w && p.r > top.r)) top = { w: p.w, r: p.r, u: p.u };
     return { id, wk, line, top };
   });
 }
@@ -430,16 +428,13 @@ export function coachIn(M: Model): CoachLine {
        3 weeks" of a lift flat for ten, nor of its whole stretch at the top of
        the range, which nothing checks). */
     const flat = stallWordsIn(M, id);
-    // Its load as it was typed, in its unit (typedLabelIn names the unit when it is not the lift's).
-    const atTop = (ex: ExerciseLike, w: number): string => {
-      const L = liftModelIn(M, ex);
-      return typedOtherIn(L, w) ? typedLabelIn(L, ex, w) : `${loadLabelIn(L, ex, w)}${ex.bw ? '' : ' ' + UIn(L)}`;
-    };
+    // Its last session's load as it was entered, in its unit (saidLoadIn).
+    const atTop = (ex: ExerciseLike, x: Exposure): string => saidLoadIn(M, ex, x.topW, unitAt(x.pts, x.topW));
     // A last session at the top of its range means st was there to read it from, as the ! says.
     if (atRangeTopIn(M, id))
       return {
         tone: 'yellow',
-        text: `${exNameIn(M, id)} is at the top of its range at ${atTop(EXIn(M, id), st!.last.topW)} and has stalled ${flat}: it is due a step up, not a new range. The session's target says how.`,
+        text: `${exNameIn(M, id)} is at the top of its range at ${atTop(EXIn(M, id), st!.last)} and has stalled ${flat}: it is due a step up, not a new range. The session's target says how.`,
         why: 'Every set reached the top of the range. The next step is more load, or, when one step is large for the load, a few more reps first.',
         act: { label: 'See the lift', sec: 'exercise', ex: id }
       };

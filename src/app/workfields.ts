@@ -9,7 +9,7 @@ import { today, numIn, isDate, EPS } from './util';
 import { LOAD_MAX, LOAD_MIN } from './normalize';
 
 import { log } from './storage';
-import { EX, fromDOf } from './live';
+import { EX, fromDOf, liftU } from './live';
 import { state, ui } from './store';
 
 import { drawing, fieldShown } from './view';
@@ -51,7 +51,7 @@ import { rerenderKeepScroll } from './page';
 
 import { toast } from './toast';
 import { drawNow } from './workout';
-import { onDayMoved } from './session';
+import { onDayMoved, setLoad } from './session';
 /** A touch this many milliseconds ago is where the lifter went (an iPhone's buttons never take focus). */
 const TOUCH_MS = 700;
 /** With the effort strip about to open, an auto-mark waits this long for it before it marks the set. */
@@ -121,13 +121,14 @@ export function workoutInput(t: Field): boolean {
           /* fromD of a number is a number (null only for no number), so 0 never
              stands in. Within the bounds a save keeps, in kilograms (until
              then 660 of help and 20000 in the unit typed). */
-          s.w =
+          const kg =
             n == null
               ? null
               : as
                 ? -Math.min(fromDOf(bx && EX(bx.exId), Math.abs(n)) ?? 0, -LOAD_MIN)
                 : Math.min(fromDOf(bx && EX(bx.exId), Math.max(n, 0)) ?? 0, LOAD_MAX);
-          if (s.w === 0) s.w = 0;
+          // Typed in the lift's unit, which the field shows it in (fromDOf), and kept with it.
+          setLoad(s, kg === 0 ? 0 : kg, bx ? liftU(EX(bx.exId)) : null);
           carried.delete(s);
         } else s.r = n == null ? null : Math.min(Math.max(Math.floor(n + EPS), 0), LIMITS.reps);
       },

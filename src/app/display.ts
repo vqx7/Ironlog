@@ -64,7 +64,7 @@ import {
 import { state, ui } from './store';
 import { NEW_MACHINE } from './analytics';
 import type { ExPoint, Exposure, ExerciseLike, Pr } from './model';
-import type { Day, Exercise, LoggedSet, Measurement, PlanItem, Routine, Session } from './types';
+import type { Day, Exercise, LoggedSet, Measurement, PlanItem, Routine, Session, Unit } from './types';
 
 /** The words on an Undo button (Settings, and the first page after Erase everything): the change it takes back, named as its message named it, not "Undo last delete or reset (N available)". */
 export function undoLabel(): string {
@@ -96,27 +96,26 @@ export const distU = (): 'km' | 'mi' => (appU() === 'kg' ? 'km' : 'mi');
 export const distShow = (km: number): number =>
   Math.round((appU() === 'kg' ? km : km / KM_MI) * HUNDREDTHS) / HUNDREDTHS;
 
-/** One set, short: the load and reps (185×8), or the hold (BW for 45s); with `named`, the load's unit said in any unit. */
+/** One set, short: the load and reps (185×8), or the hold (BW for 45s), its load as entered in its unit; with `named`, the load's unit said in any unit. */
 export function setShort(
   ex: Pick<Exercise, 'bw' | 'timed' | 'unit'>,
-  w: number | string | null | undefined,
-  r: number | string | null,
+  x: { w: number | string | null | undefined; r: number | string | null; u: Unit | null | undefined },
   named?: boolean
 ): string {
-  // A set is quoted as typed (225 lb), its unit named when it is not the app's (listLabelIn), in any screen's list.
-  const l = listLabel(ex, +(w ?? 0) || 0, named);
-  return ex.timed ? `${l} for ${r}s` : `${l}×${r}`;
+  // A set is quoted as entered (225 lb), its unit named when it is not the app's (listLabelIn), in any screen's list.
+  const l = listLabel(ex, +(x.w ?? 0) || 0, x.u, named);
+  return ex.timed ? `${l} for ${x.r}s` : `${l}×${x.r}`;
 }
 
 /** One saved set as History lists it: its mark, load and reps, missed, the effort called and a calibration set. */
 export function setStr(
   ex: Pick<Exercise, 'bw' | 'timed'>,
-  x: Pick<LoggedSet, 'w' | 'warm' | 'drop' | 'cal'> & {
+  x: Pick<LoggedSet, 'w' | 'warm' | 'drop' | 'cal' | 'u'> & {
     r: number | string | null;
     rir?: number | string | null | undefined;
   }
 ): string {
-  return `${x.warm ? '(W) ' : x.drop ? '(D) ' : ''}${setShort(ex, x.w, x.r)}${missedTag(x)}${!ex.timed && x.rir != null && x.rir !== '' ? (rirScale() === 'rpe' ? ' @RPE ' + effShow(x.rir) : ' @' + effShow(x.rir)) : ''}${x.cal ? ' (RIR check)' : ''}`;
+  return `${x.warm ? '(W) ' : x.drop ? '(D) ' : ''}${setShort(ex, { w: x.w, r: x.r, u: x.u })}${missedTag(x)}${!ex.timed && x.rir != null && x.rir !== '' ? (rirScale() === 'rpe' ? ' @RPE ' + effShow(x.rir) : ' @' + effShow(x.rir)) : ''}${x.cal ? ' (RIR check)' : ''}`;
 }
 
 /* ---------- moved with Plan and Stats ---------- */
@@ -226,16 +225,16 @@ export function topSetPt(ex: ExerciseLike, x: Exposure): { v: number; txt: strin
     const v = trendE(p.load, p.r, 0) || 0;
     if (!q || v > q.v) q = { v, p };
   }
-  return q ? { v: q.v, txt: setShort(ex, q.p.w, q.p.r) } : { v: 0, txt: '' };
+  return q ? { v: q.v, txt: setShort(ex, q.p) } : { v: 0, txt: '' };
 }
 
 /** A lift's strongest working set by reps alone, with its date; at one score, the one with more reps. */
-export function bestSet(exId: string): { v: number; w: number; r: number; date: string } | null {
-  let b: { v: number; w: number; r: number; date: string } | null = null;
+export function bestSet(exId: string): { v: number; w: number; r: number; u: Unit | null; date: string } | null {
+  let b: { v: number; w: number; r: number; u: Unit | null; date: string } | null = null;
   for (const x of liftRead(exId))
     for (const p of x.pts) {
       const v = trendE(p.load, p.r, 0) || p.load;
-      if (!b || v > b.v + EPS || (v > b.v - EPS && p.r > b.r)) b = { v, w: p.w, r: p.r, date: x.date };
+      if (!b || v > b.v + EPS || (v > b.v - EPS && p.r > b.r)) b = { v, w: p.w, r: p.r, u: p.u, date: x.date };
     }
   return b;
 }
@@ -243,13 +242,13 @@ export function bestSet(exId: string): { v: number; w: number; r: number; date: 
 /* An isolation lift's best-estimate PR is shown as the set that set it, not
    as a 1RM: the strongest set of that lift in that session. */
 /** The set with the best estimate in a lift's session (by the session's id: two on one day are two sessions), or null. */
-export function prSet(exId: string, sid: string): { v: number; w: number; r: number } | null {
+export function prSet(exId: string, sid: string): { v: number; w: number; r: number; u: Unit | null } | null {
   const x = (IDX().byEx[exId] || []).find(q => q.sid === sid);
   if (!x) return null;
-  let b: { v: number; w: number; r: number } | null = null;
+  let b: { v: number; w: number; r: number; u: Unit | null } | null = null;
   for (const p of x.pts) {
     const v = e1(p.load, p.r, p.rq);
-    if (v != null && (!b || v > b.v)) b = { v, w: p.w, r: p.r };
+    if (v != null && (!b || v > b.v)) b = { v, w: p.w, r: p.r, u: p.u };
   }
   return b;
 }
@@ -449,7 +448,7 @@ export function bestLine(exId: string, upTo?: string): string {
   const last = exps[exps.length - 1];
   // Its year when not this one, as the board says it.
   const when = last && r.heavy.date === last.date ? '' : `, ${fmtDate(r.heavy.date)}`;
-  return `Heaviest ${setShort(ex, r.heavy.p.w, r.heavy.p.r)}${loadNote(ex)}${when}`;
+  return `Heaviest ${setShort(ex, r.heavy.p)}${loadNote(ex)}${when}`;
 }
 
 /* Each lift's best on Today's Workout preview (379, V 2026-11-03: "PR/best
@@ -473,11 +472,9 @@ export function bestSetLine(exId: string): string {
       .filter(f => f.p.pl >= e.p.pl - EPS_SAME && f.p.r >= e.p.r && (f.p.pl > e.p.pl + EPS_SAME || f.p.r > e.p.r))
       .sort((a, b) => b.p.pl - a.p.pl || b.p.r - a.p.r)[0];
     const best = over || e;
-    return `Best ${setShort(r.ex, best.p.w, best.p.r)}${loadNote(r.ex)}, ${fmtDate(best.date)}`;
+    return `Best ${setShort(r.ex, best.p)}${loadNote(r.ex)}, ${fmtDate(best.date)}`;
   }
-  return r.heavy
-    ? `Heaviest ${setShort(r.ex, r.heavy.p.w, r.heavy.p.r)}${loadNote(r.ex)}, ${fmtDate(r.heavy.date)}`
-    : '';
+  return r.heavy ? `Heaviest ${setShort(r.ex, r.heavy.p)}${loadNote(r.ex)}, ${fmtDate(r.heavy.date)}` : '';
 }
 
 /* A goal is a load for a number of reps (225 x 5), as lifters say it. Where
@@ -500,7 +497,7 @@ export function goalState(exId: string): {
   const g0 = ex && ex.goal;
   if (!g0 || !goalOk(ex)) return null;
   // Set in the other unit, the goal is the load of this unit's equipment it reads as (loadReadIn): 100 kg is 220 lb.
-  const g = { w: loadReadOf(ex, g0.w), r: g0.r };
+  const g = { w: loadReadOf(ex, g0.w, ex.goalU), r: g0.r };
   // Since a new machine or gym (liftRead): a goal reached at another machine is not reached here.
   const exps = liftRead(exId);
   const bw = bwRefLoad(ex);
@@ -527,9 +524,13 @@ export function goalState(exId: string): {
   const pct = !noBw && need && cur ? Math.min(PERCENT, (cur / need) * PERCENT) : null;
   return { g, hit, pct, cur, need, noBw };
 }
-/** A goal in words: "225 lb × 5", in the lift's own frame. */
-export function goalWords(ex: ExerciseLike, g: { w: number; r: number }): string {
-  return `${loadLabel(ex, loadReadOf(ex, g.w))}${ex.bw ? '' : ' ' + liftU(ex)}${loadNote(ex)} × ${g.r}`;
+/** A goal in words: "225 lb × 5", in the lift's own frame (its load entered in `u`, the lift's goal's unit unless given). */
+export function goalWords(
+  ex: ExerciseLike,
+  g: { w: number; r: number },
+  u: Unit | null | undefined = ex.goalU
+): string {
+  return `${loadLabel(ex, loadReadOf(ex, g.w, u))}${ex.bw ? '' : ' ' + liftU(ex)}${loadNote(ex)} × ${g.r}`;
 }
 
 /* ---------- Volume by region: what it reads ---------- */

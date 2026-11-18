@@ -76,8 +76,13 @@ const PATHS = (s, k) => {
   // Sorted keys, undefined left out: the same reading the sync's fingerprints use, written here.
   const canon = v => v === undefined ? 'null' : v === null || typeof v !== 'object' ? JSON.stringify(v) : Array.isArray(v) ? '[' + v.map(canon).join(',') + ']' : '{' + Object.keys(v).filter(x => v[x] !== undefined).sort().map(x => JSON.stringify(x) + ':' + canon(v[x])).join(',') + '}';
   const norm = Pg => Pg.evaluate(raw => JSON.stringify(window.__ironlog.normalize(JSON.parse(raw))), plain);
-  const canonNew = canon(JSON.parse(await norm(P.page))), canonOld = canon(JSON.parse(await norm(O.page)));
-  ok(canonNew === canonOld && canonNew.length > 1000, 'a save with nothing unknown comes out exactly as r42 made it', [canonNew.length, canonOld.length]);
+  /* Since 2.73 each load is stored with the unit it was entered in, given once to a save without units (a set's u, a
+     lift's incU, maxLoadU, barU and goalU, the settings' barU): the one thing this build adds. */
+  const UNIT_KEYS = ['incU', 'maxLoadU', 'barU', 'goalU'];
+  const noUnits = v => Array.isArray(v) ? v.map(noUnits) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).filter(([k, x]) => !(((k === 'u' && 'w' in v && 'r' in v) || UNIT_KEYS.includes(k)) && (x === 'kg' || x === 'lb'))).map(([k, x]) => [k, noUnits(x)])) : v;
+  const fresh = JSON.parse(await norm(P.page));
+  const canonNew = canon(noUnits(fresh)), canonOld = canon(JSON.parse(await norm(O.page)));
+  ok(canonNew === canonOld && canonNew.length > 1000 && canon(fresh) !== canonNew, 'a save with nothing unknown comes out exactly as r42 made it, but for each load\'s unit (2.73)', [canonNew.length, canonOld.length]);
   await O.ctx.close();
 
   // A field this build knows but finds invalid is dropped, never kept as if it were new.
@@ -94,7 +99,7 @@ const PATHS = (s, k) => {
     const n = L.normalize(JSON.parse(raw)); const e = n.exercises.find(x => x.id === 'bench');
     L.state = n; L.invalidate(); const seen = [];
     for (const t of ['today', 'program', 'dash', 'history', 'settings']) { L.ui.tab = t; L.render(); seen.push(document.getElementById('view').innerHTML.includes('onerror')); }
-    return { polluted: ({}).polluted, proto: Object.getPrototypeOf(e) === Object.prototype, keys: Object.keys(e).filter(x => !['id', 'name', 'primary', 'secondary', 'equip', 'bw', 'rare', 'perSide', 'note', 'custom', 'archived', 'inc', 'plates', 'load', 'timed', 'kind', 'assist', 'bwf', 'maxLoad', 'barKg', 'goal', 'unit', 'machines'].includes(x)), size: JSON.stringify(e).length, shown: seen.some(Boolean) }; });
+    return { polluted: ({}).polluted, proto: Object.getPrototypeOf(e) === Object.prototype, keys: Object.keys(e).filter(x => !['id', 'name', 'primary', 'secondary', 'equip', 'bw', 'rare', 'perSide', 'note', 'custom', 'archived', 'inc', 'plates', 'load', 'timed', 'kind', 'assist', 'bwf', 'maxLoad', 'barKg', 'goal', 'unit', 'machines', 'incU', 'maxLoadU', 'barU', 'goalU'].includes(x)), size: JSON.stringify(e).length, shown: seen.some(Boolean) }; });
   await wait(300);
   const pwn = await ev(() => window.__pwn);
   ok(hos.polluted === undefined && hos.proto, 'a "__proto__" field reaches no prototype', hos);

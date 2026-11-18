@@ -1,4 +1,4 @@
-// The session screen, checked against its written rules (CA-1; the spec "The session screen", L-1 to L-44, in the
+// The session screen, checked against its written rules (CA-1; the spec "The session screen", L-1 to L-45, in the
 // project's claude/ironlog-spec-session.md, built from the code: workout.ts, worksets.ts, worktaps.ts, workfields.ts,
 // workfinish.ts, timer.ts, actsstart.ts, actspick.ts and session.ts, V's rulings deciding, and where neither does, what a lifter
 // expects). A feature suite: each section is one rule, a lifter's log seeded, the workout started from Today's card
@@ -1286,7 +1286,7 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     while (await P.modal()) { const mm = await P.modal(); if (mm.kind === 'confirm') await mOk(P); else { await P.ev(() => window.__ironlog.ACT.mClose()); await wait(150); } }
     const saved = await P.ev(() => window.__ironlog.state.sessions.find(x => x.id !== 'last'));
     const bench = saved && saved.ex.find(b => b.exId === 'bench');
-    ok(bench && JSON.stringify(bench.sets.map(x => x.sg || null)) === JSON.stringify([[sw, 8], [sw, 8], [sw, 7]]) && bench.sets.every(x => Object.keys(x).pop() === 'sg'), 'L-36: Finish saves it with each set, last among its fields', bench && bench.sets);
+    ok(bench && JSON.stringify(bench.sets.map(x => x.sg || null)) === JSON.stringify([[sw, 8], [sw, 8], [sw, 7]]) && bench.sets.every(x => Object.keys(x).filter(k => k !== 'u').pop() === 'sg' && (x.u === undefined || Object.keys(x).pop() === 'u')), 'L-36: Finish saves it with each set, last among its fields but its load\'s unit, which goes last (2.73)', bench && bench.sets);
     // History: not shown until asked for in Settings.
     await P.tap('#tabs [data-tab="history"]', 200); await P.tap(`#view [data-act="histToggle"][data-id="${saved.id}"]`, 200);
     let h = await P.ev(() => document.getElementById('view').innerText.replace(/\s+/g, ' '));
@@ -2056,8 +2056,10 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
         await settingsUndo(P);
         const first = { toast: await P.toast(), marks: await marksOf(P) };
         for (let i = 0; i < 3 && (await P.ev(() => window.__ironlog.state.sessions.every(q => q.id !== 'g3'))); i++) await settingsUndo(P);
-        const out = await marksOf(P), past = out.find(x => !/^g/.test(x[0]));
-        ok(JSON.stringify(out.filter(x => /^g/.test(x[0])).map(x => [x[0], x[2]])) === '[["g1","0"],["g3","g3"],["g4","g3"],["g5","g3"]]' && past && past[2] === past[0], 'L-41: the delete of the session that began a machine undone after a past workout on a machine added before the sessions after it: those sessions stay on the machine they were on, the past workout on its own (REV26-3)', { saved, out });
+        // The seeded sessions by their ids; the past workout's id is the app's own, which may begin with any letter, g too.
+        const SEEDED = ['g1', 'g3', 'g4', 'g5'];
+        const out = await marksOf(P), past = out.find(x => !SEEDED.includes(x[0]));
+        ok(JSON.stringify(out.filter(x => SEEDED.includes(x[0])).map(x => [x[0], x[2]])) === '[["g1","0"],["g3","g3"],["g4","g3"],["g5","g3"]]' && past && past[2] === past[0], 'L-41: the delete of the session that began a machine undone after a past workout on a machine added before the sessions after it: those sessions stay on the machine they were on, the past workout on its own (REV26-3)', { saved, out });
         ok(/^Nothing to undo/.test(first.toast) && JSON.stringify(first.marks) === JSON.stringify(saved), 'L-41: Undo of a machine added in a past workout already saved says there is nothing to undo, and changes nothing (REV26-4)', first);
         await P.close();
       }
@@ -2264,6 +2266,160 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     const rated = await due(Q);
     ok(/^Due for an RIR check: take one set here to failure\./.test(rated), 'L-44: (guard) a lifter who rated his sets in 3 sessions is offered it, as before', rated);
     await Q.close();
+  }
+
+  /* ---------- L-45: a load is stored with the unit it was entered in, on every way a load gets into a row, and every
+     screen quotes it as entered, in that unit (2.73; the full review's L01-1, L4-4 and L4-15 b) ---------- */
+  if (run('L-45')) {
+    const near = (a, b) => Math.abs(a - b) < 1e-9;
+    const finish = async X => { await X.tap('#view [data-act="finish"]', 300); for (let k = 0; k < 6; k++) { const m = await X.modal(); if (!m) break; if (m.kind === 'confirm') await mOk(X); else { await X.ev(() => window.__ironlog.ACT.mClose()); await wait(150); } } };
+    // What a set holds: its load in the unit it names (kg, or lb), that unit, and its marks.
+    const held = q => ({ v: q.w == null ? null : Math.round((q.u === 'lb' ? q.w / LB : q.w) * 1e6) / 1e6, u: q.u === undefined ? null : q.u, warm: !!q.warm, drop: !!q.drop, cal: !!q.cal, r: q.r });
+    /* Typed in a row, from 0.05 to 1,000 in each unit, on the bench in lb and then marked kg: kept as typed with the
+       field's unit, and the field shows the number typed when the screen is drawn again. Shown to a tenth, 61.25 read
+       61.3 there and in every list, and 0.05 read 0.1; with no unit stored, the unit was read back from the number. */
+    {
+      const SWEEP = [0.05, 0.25, 1.25, 2.35, 12.5, 61.25, 102.5, 225, 999.95, 1000];
+      const P = await lifter();
+      await start(P);
+      const got = [];
+      for (const u of ['lb', 'kg']) {
+        if (u === 'kg') await toUnit(P, 0, 'kg');
+        for (const v of SWEEP) {
+          await P.page.fill(field('w', 0, 0), String(v)); await wait(80);
+          await P.ev(() => window.__ironlog.render()); await wait(40);
+          got.push(await P.ev(([u, v]) => { const s = window.__ironlog.state.draft.ex[0].sets[0]; const f = document.querySelector('#view input[data-f="w"][data-b="0"][data-s="0"]'); return { u, v, w: s.w, su: s.u === undefined ? null : s.u, shown: f ? f.value : null }; }, [u, v]));
+        }
+      }
+      const bad = got.filter(x => x.su !== x.u || !near(x.w, x.u === 'lb' ? x.v * LB : x.v) || x.shown !== String(x.v));
+      ok(!bad.length, 'L-45: a load typed in a row, 0.05 to 1,000, on the bench in lb and then in kg: stored as typed, with the field\'s unit, and the field shows the number typed', bad);
+      await P.close();
+    }
+    // The same loads through Type or dictate sets, each named in its unit on the bench in lb: stored as typed, with the
+    // unit typed.
+    {
+      const SWEEP = [0.05, 0.25, 1.25, 2.35, 12.5, 61.25, 102.5, 225, 999.95, 1000];
+      const got = [];
+      const P = await lifter();
+      await start(P);
+      for (const u of ['lb', 'kg'])
+        for (const v of SWEEP) {
+          // Its rows all done, the bench folds; opened again, as a lifter opens it.
+          if (await P.ev(() => !!document.querySelector('#view [data-act="bOpen"][data-b="0"]'))) await P.tap('#view [data-act="bOpen"][data-b="0"]', 200);
+          await P.tap('#view [data-act="bMenu"][data-b="0"]', 120); await P.tap('#modal [data-act="bMenuDo"][data-op="bQuick"]', 150);
+          await P.page.fill('#qTxt', `${v} ${u} x 5`); await P.tap('#modal [data-act="qFill"]', 200);
+          // A load far off from last time is asked about before it is ticked; answered as typed.
+          for (let k = 0; k < 3; k++) { const m = await P.modal(); if (!m) break; if (m.kind === 'confirm') await mOk(P); else { await P.ev(() => window.__ironlog.ACT.mClose()); await wait(100); } }
+          // Each fills the next row (the rows before it are done), so the k-th typed is row k.
+          got.push(await P.ev(([u, v, k]) => { const L = window.__ironlog; const b = L.state.draft.ex[0]; const q = b.sets[k]; const out = q && q.r === 5 ? { u, v, w: q.w, su: q.u === undefined ? null : q.u } : { u, v, none: true, at: b.sets.map(x => [x.w, x.r, x.done]) };
+            L.act(() => { for (const x of b.sets) if (x.r === 5) x.done = true; }, { inProgress: true });
+            return out; }, [u, v, got.length]));
+          await wait(100);
+        }
+      const bad = got.filter(x => x.none || x.su !== x.u || !near(x.w, x.u === 'lb' ? x.v * LB : x.v));
+      ok(!bad.length, 'L-45: the same loads, 0.05 to 1,000, typed with their unit in Type or dictate sets on the bench in lb: stored as typed, with the unit typed', bad);
+      await P.close();
+    }
+    /* Every other way a load gets into a row, on the bench marked kg in the lb app and on the raises in lb: a grey load
+       ticked, Type or dictate sets, the RIR check, a warm-up and a drop set added, minus and plus, Log them as shown,
+       and an edit from History; then History, the next workout's Last column, a switch of the bench's unit and its Undo
+       quote every set as entered. */
+    {
+      const P = await lifter({ movable: true, settings: { autoDone: false } });
+      // An exercise with every set done folds; opened again, as a lifter opens it.
+      const unfold = async b => { if (await P.ev(b => !!document.querySelector(`#view [data-act="bOpen"][data-b="${b}"]`), b)) await P.tap(`#view [data-act="bOpen"][data-b="${b}"]`, 250); };
+      await start(P);
+      await toUnit(P, 0, 'kg');
+      await P.page.fill(field('w', 0, 0), '83.75'); await P.page.fill(field('r', 0, 0), '8'); await P.tap(tick(0, 0));
+      await P.page.fill(field('r', 0, 1), '8'); await P.tap(tick(0, 1));
+      await P.tap('#view [data-act="bMenu"][data-b="0"]', 150); await P.tap('#modal [data-act="bMenuDo"][data-op="bQuick"]', 200);
+      await P.page.fill('#qTxt', '185 lb x 6'); await P.tap('#modal [data-act="qFill"]', 300);
+      await unfold(0);
+      await P.tap('#view [data-act="bMenu"][data-b="0"]', 150); await P.tap('#modal [data-act="bMenuDo"][data-op="bCal"]', 200);
+      await P.page.fill('#calW', '81.25'); await P.page.fill('#calAt', '8'); await P.page.selectOption('#calPred', '2'); await P.page.fill('#calTot', '10');
+      await P.tap('#modal [data-act="calSave"]', 300);
+      await unfold(0);
+      await P.tap('#view [data-act="bMenu"][data-b="0"]', 150); await P.tap('#modal [data-act="bMenuDo"][data-op="wAdd"]', 300);
+      await unfold(0);
+      const wi = await P.ev(() => window.__ironlog.state.draft.ex[0].sets.findIndex(x => x.warm));
+      await P.page.fill(field('r', 0, wi), '8'); await P.tap(tick(0, wi));
+      await unfold(0);
+      await P.tap(btn('dropAdd', 0), 300);
+      await unfold(0);
+      const di = await P.ev(() => window.__ironlog.state.draft.ex[0].sets.findIndex(x => x.drop));
+      await P.page.fill(field('r', 0, di), '10'); await P.tap(tick(0, di));
+      await unfold(1);
+      await P.tap(`${btn('sStep', 1, 0)}[data-sf="w"][data-d="1"]`, 250);
+      const plus = await P.ev(() => { const q = window.__ironlog.state.draft.ex[1].sets[0]; return { w: q.w, u: q.u }; });
+      await P.page.fill(field('r', 1, 0), '12'); await P.tap(tick(1, 0));
+      await unfold(1);
+      await P.tap(btn('bDoneAll', 1), 250); await mOk(P);
+      const draft = await P.ev(() => window.__ironlog.state.draft.ex.map(b => b.sets.map(q => ({ w: q.w, u: q.u, warm: q.warm, drop: q.drop, cal: q.cal, r: q.r, done: q.done }))));
+      await finish(P);
+      const saved = await P.ev(() => window.__ironlog.state.sessions.find(x => x.date === '2026-11-11'));
+      const bench = saved ? saved.ex[0].sets.map(held) : [], raise = saved ? saved.ex[1].sets.map(held) : [];
+      const has = (xs, o) => xs.some(x => Object.entries(o).every(([k, v]) => x[k] === v));
+      ok(saved && has(bench, { v: 83.75, u: 'kg', r: 8, warm: false }) && bench.filter(x => x.v === 83.75 && x.u === 'kg').length === 2 && has(bench, { v: 185, u: 'lb', r: 6 }) && has(bench, { v: 81.25, u: 'kg', cal: true, r: 10 }) &&
+        bench.filter(x => x.warm).length === 1 && bench.filter(x => x.warm).every(x => x.u === 'kg' && x.v > 0) && bench.filter(x => x.drop).length === 1 && bench.filter(x => x.drop).every(x => x.u === 'kg' && x.v > 0),
+        'L-45: on the bench in kg, 83.75 typed, the next set ticked at its grey 83.75, "185 lb x 6" typed in Type or dictate sets, the RIR check at 81.25, a warm-up and a drop set added: each saved with its load as entered and its unit (kg, kg, lb, kg, kg, kg)', { bench, draft: draft[0] });
+      ok(near(plus.w, 25 * LB) && plus.u === 'lb' && raise.length === 2 && raise.every(x => x.u === 'lb') && has(raise, { v: 25, u: 'lb', r: 12 }),
+        'L-45: on the raises in lb, plus from the grey 20 is the 25 lb dumbbell, kept as 25 lb, and the set Log them as shown takes is kept in lb too', { plus, raise });
+      const histText = X => X.ev(sid => { const L = window.__ironlog; L.ui.tab = 'history'; L.ui.histOpen = sid; L.render(); const el = [...document.querySelectorAll('#view .hitem')].find(x => x.classList.contains('open')); return el ? el.innerText.replace(/\s+/g, ' ') : ''; }, saved && saved.id);
+      const h1 = await histText(P);
+      ok(/83\.75 kg×8/.test(h1) && /185 lb×6/.test(h1) && /81\.25 kg×10/.test(h1) && !/83\.8|81\.3/.test(h1), 'L-45: History quotes each as entered, in its unit: 83.75 kg×8, 185 lb×6, 81.25 kg×10 (the RIR check)', h1);
+      // An edit from History: the first set's load changed to 82.5 in the bench's unit, kg; every other set keeps its unit.
+      await P.tap(`#view [data-act="histEdit"][data-id="${saved.id}"]`, 300);
+      const ei = await P.ev(() => window.__ironlog.state.draft.ex[0].sets.findIndex(x => !x.warm && Math.abs(x.w - 83.75) < 1e-9));
+      await unfold(0);
+      await P.page.fill(field('w', 0, ei), '82.5'); await wait(100);
+      await finish(P);
+      const ed = await P.ev(id => window.__ironlog.state.sessions.find(x => x.id === id), saved.id);
+      const eb = ed ? ed.ex[0].sets.map(held) : [];
+      ok(ed && has(eb, { v: 82.5, u: 'kg', r: 8 }) && has(eb, { v: 83.75, u: 'kg', r: 8 }) && has(eb, { v: 185, u: 'lb', r: 6 }) && has(eb, { v: 81.25, u: 'kg', cal: true }) && ed.ex[1].sets.every(q => q.u === 'lb'),
+        'L-45: edited from History, the set changed to 82.5 is kept in kg, the field\'s unit, and every set left alone keeps its own unit, 185 lb too', eb);
+      // The next day: the bench's Last line quotes last time's sets as entered, in the bench's unit or with theirs named.
+      await P.ev(() => window.__setClock('2026-11-12T10:00:00'));
+      await start(P);
+      const cells = X => X.ev(() => window.__ironlog.state.draft.ex[0].last || '');
+      const kgCells = await cells(P);
+      await toUnit(P, 0, 'lb');
+      const lbCells = await cells(P);
+      const stored = await P.ev(id => window.__ironlog.state.sessions.find(x => x.id === id).ex[0].sets.map(q => [q.w, q.u]), saved.id);
+      await P.tap('#toast [data-act="undo"]', 300);
+      const backCells = await cells(P);
+      const unit = await P.ev(() => window.__ironlog.state.exercises.find(x => x.id === 'bench').unit || null);
+      ok(/ 82\.5×8/.test(kgCells) && / 83\.75×8/.test(kgCells) && / 185 lb×6/.test(kgCells) && !/83\.8/.test(kgCells), 'L-45: the next day, on the bench in kg, Last quotes 82.5×8, 83.75×8 and 185 lb×6', kgCells);
+      ok(/ 82\.5 kg×8/.test(lbCells) && / 83\.75 kg×8/.test(lbCells) && / 185×6/.test(lbCells) && JSON.stringify(stored) === JSON.stringify(ed.ex[0].sets.map(q => [q.w, q.u])),
+        'L-45: the bench switched to lb, Last quotes 82.5 kg×8, 83.75 kg×8 and 185×6, each set stored as it was', { lbCells, stored });
+      ok(unit === 'kg' && JSON.stringify(backCells) === JSON.stringify(kgCells), 'L-45: Undo puts the bench back in kg, and Last as it was', { unit, backCells });
+      await P.close();
+    }
+    /* A load far from last time's says last time's as it was entered: 100 kg last week on the bench, now in lb, and 45
+       typed: "45 lb is well below last time's 100 kg", never "220.5". */
+    {
+      const P = await lifter({ seed: `(S, L) => { S.sessions[0].ex[0].sets.forEach(q => { q.w = 100; q.u = 'kg'; }); }`, settings: { autoDone: false } });
+      await start(P);
+      await P.page.fill(field('w', 0, 0), '45'); await P.page.fill(field('r', 0, 0), '8'); await P.tap(tick(0, 0), 300);
+      const said = (await P.toasts()).find(t => /last time/.test(t)) || '';
+      ok(/^45 lb is well below last time's 100 kg\./.test(said), 'L-45: a load far from last time\'s quotes last time\'s as entered, in its unit: "45 lb is well below last time\'s 100 kg"', await P.toasts());
+      await P.close();
+    }
+    /* Minus and plus on the dumbbells of Your gym in the other unit from the lift's (the full review's L4-4): each step is
+       one of the gym's dumbbells, kept as that dumbbell in its own unit (25 lb, never 11.34 kg; 12 kg, never 12.002 kg). */
+    for (const [app, gym, step] of [['kg', { u: 'lb', db: { lo: 5, hi: 100, st: 5 } }, 5], ['lb', { u: 'kg', db: { lo: 2, hi: 50, st: 2 } }, 2]]) {
+      const P = await lifter({ items: [['dbLateral', 3, 10, 15, REST_RAISE]], settings: { unit: app, autoDone: false, gym } });
+      await start(P);
+      const seen = [];
+      for (const d of [1, 1, -1, -1, -1]) {
+        await P.tap(`${btn('sStep', 0, 0)}[data-sf="w"][data-d="${d}"]`, 250);
+        seen.push(await P.ev(() => { const q = window.__ironlog.state.draft.ex[0].sets[0]; return { w: q.w, u: q.u === undefined ? null : q.u }; }));
+      }
+      const k = gym.u === 'lb' ? LB : 1;
+      const rungs = seen.map(x => x.w / k);
+      ok(seen.every(x => x.u === gym.u && near(x.w / k, Math.round(x.w / k)) && Math.round(x.w / k) % step === 0) && rungs[0] < rungs[1] && rungs[2] < rungs[1] && rungs[4] < rungs[3],
+        `L-45: the app in ${app}, Your gym's dumbbells in ${gym.u}: plus twice and minus three times on the raises, each load one of the gym's dumbbells, kept exactly in ${gym.u}`, seen);
+      await P.close();
+    }
   }
 
   console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS');

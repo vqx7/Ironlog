@@ -386,7 +386,11 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
     const raw = await ev(() => localStorage.getItem('ironlog.v1'));
     const O = await open(OLD, { browser, clock: '2026-10-15T10:00:00', state: JSON.parse(raw) });
     const jOld = await O.page.evaluate(() => JSON.stringify(window.__ironlog.state.sessions));
-    ok(jOld === jNew, '5. r60 opens the log with the mark kept as it came, every session the same bytes', [jOld.length, jNew.length]);
+    /* Since 2.73 a set with no unit stored is given the unit its number lies on when the log is opened (the one change
+       this build makes to a save without units; it is saved with the next change), so the sessions are compared with
+       each set's unit taken out. The sets of this session were put in their rows directly, with no unit. */
+    const noU = j => JSON.stringify(JSON.parse(j).map(x => ({ ...x, ex: x.ex.map(b => ({ ...b, sets: b.sets.map(q => { const { u, ...rest } = q; return rest; }) })) })));
+    ok(noU(jOld) === noU(jNew), '5. r60 opens the log with the mark kept as it came, every session the same bytes but the units this build gives a set when the log is opened', [jOld.length, jNew.length]);
     await O.ctx.close();
     // An edit from History keeps the mark, and can take it off: then 280 x 11 reads against the old gym, a PR.
     const ed = await ev(async () => {

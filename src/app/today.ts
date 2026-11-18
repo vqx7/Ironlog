@@ -1042,7 +1042,7 @@ function movingCard(): TemplateResult | null {
   };
   const rows = all.slice(0, MOVING_ROWS).map((m, k) => {
     const ex = EX(m.id);
-    const set = m.top && ex ? setShort(ex, m.top.w, m.top.r) : '';
+    const set = m.top && ex ? setShort(ex, m.top) : '';
     return html`<button type="button" class="mvrow" data-act="goDash" data-sec="exercise" data-ex=${m.id} aria-label=${`${exName(m.id)}, rising${set ? `, last best set ${set}` : ''}. Open on Stats`}><span class="mvname">${exName(m.id)}</span>${m.line.length > 1 ? spark(m.line, k) : nothing}<span class="mvset">${set}</span></button>`;
   });
   return section({

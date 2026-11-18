@@ -5,9 +5,9 @@
 import type { Exercise } from './types';
 import type { ExerciseLike, Model, Suggestion } from './model';
 import { loadMode, PLATE_SIDE_IDS, isCompound, noE1 } from './library';
-import { r1, EPS } from './util';
+import { r1, EPS, HUNDREDTHS } from './util';
 import { UIn, appModelIn, appUIn, bodyIn, liftModelIn, liftUIn } from './model';
-import { DEFAULT_STEP, LB, fromDIn, toDIn, typedUnit } from './units';
+import { DEFAULT_STEP, LB, TYPED_STEP, fromDIn, onStep, toDIn } from './units';
 
 /** The load meanings a lifter can choose in the exercise editor. */
 export const LOAD_MODES: readonly (readonly [string, string])[] = [
@@ -54,11 +54,18 @@ export const emptyLoad = (ex: Pick<Exercise, 'bw' | 'assist'>): string => (ex.bw
 
 /* ---------- loads in words, in the unit on screen ---------- */
 
-/** A load in kilograms as shown, rounded to a tenth; empty for none. toD of a number is a number, as the ! says. */
-export const fmtWIn = (M: Model, kg: number | null | undefined): string =>
-  kg == null || isNaN(kg) ? '' : String(r1(toDIn(M, kg)!));
+/* A load is shown as a number of the unit it is read in. One typed or made in that unit lies on its 0.05 steps
+   (TYPED_STEP) and is shown as typed, to the hundredth (61.25, 0.05); a number converted from the other unit lies on
+   none and is shown to a tenth (225 lb is 102.1 kg). Every load shown to a tenth, a typed 61.25 read 61.3 in the field
+   and every list, and 0.05 read 0.1. */
+/** A number of a unit (a load in it) as shown: on its 0.05 steps to the hundredth, as typed, else to a tenth. */
+const shownNum = (v: number): string => String(onStep(v, TYPED_STEP) ? Math.round(v * HUNDREDTHS) / HUNDREDTHS : r1(v));
 
-/** A load in kilograms as a lift shows it, in its unit, rounded to a tenth; empty for none. */
+/** A load in kilograms as shown in the unit on screen (shownNum); empty for none. toD of a number is a number, as the ! says. */
+export const fmtWIn = (M: Model, kg: number | null | undefined): string =>
+  kg == null || isNaN(kg) ? '' : shownNum(toDIn(M, kg)!);
+
+/** A load in kilograms as a lift shows it, in its unit (shownNum); empty for none. */
 export const fmtWOfIn = (
   M: Model,
   ex: Pick<Exercise, 'unit'> | null | undefined,
@@ -68,7 +75,7 @@ export const fmtWOfIn = (
 /** A load in kilograms as the app's own numbers show it (totals, settings), in the app's unit; empty for none. */
 export const fmtWAppIn = (M: Model, kg: number | null | undefined): string => fmtWIn(appModelIn(M), kg);
 
-/** A bodyweight in kilograms as weigh-ins show it, in the scale's unit, rounded to a tenth; empty for none. */
+/** A bodyweight in kilograms as weigh-ins show it, in the scale's unit (shownNum); empty for none. */
 export const fmtBodyIn = (M: Model, kg: number | null | undefined): string => fmtWOfIn(M, bodyIn(M), kg);
 
 /** A load as shown on an exercise: BW+10 or BW−40 on a bodyweight lift, else the number. */
@@ -80,31 +87,56 @@ export function loadLabelIn(M: Model, ex: Pick<Exercise, 'bw' | 'unit'>, kg: num
   return fmtWIn(M, kg);
 }
 
-/* A load already lifted is quoted as it was typed: the lifter did 225 lb, so "Every set at 225 lb", never the 102.1 kg
-   it converts to, which no plate shows. In the unit on screen that is the number as shown; typed in the other unit it is
-   its number in that unit with the unit named, since the screen's unit would read it as its own. */
-/** A past load as it was typed: as shown when typed in the unit on screen, else in its own unit, named ("225 lb", "BW+10 kg"). */
-export function typedLabelIn(M: Model, ex: Pick<Exercise, 'bw' | 'unit'>, kg: number): string {
+/* A load already lifted is quoted as it was entered: the lifter did 225 lb, so "Every set at 225 lb", never the 102.1
+   kg it converts to, which no plate shows. In the unit on screen that is the number as shown; entered in the other unit
+   it is its number in that unit with the unit named, since the screen's unit would read it as its own. */
+/** A past load (kg, entered in `u`) as it was entered: as shown when entered in the unit on screen, else in its own unit, named ("225 lb", "BW+10 kg"). */
+export function typedLabelIn(
+  M: Model,
+  ex: Pick<Exercise, 'bw' | 'unit'>,
+  kg: number,
+  u: 'kg' | 'lb' | null | undefined
+): string {
   M = liftModelIn(M, ex);
-  const u = typedUnit(kg);
   if (u == null || u === UIn(M)) return loadLabelIn(M, ex, kg);
-  const n = (v: number): string => String(r1(u === 'lb' ? v / LB : v));
+  const n = (v: number): string => shownNum(u === 'lb' ? v / LB : v);
   const num = ex.bw ? (kg > 0 ? `BW+${n(kg)}` : `BW−${n(-kg)}`) : n(kg);
   return `${num} ${u}`;
 }
 
 /* A set's load as a line quotes it outside the lift's own column (History, the recap, All-time bests, the heaviest
-   line, a close variation named in another lift's words): as typed, in its lift's unit when its number says none, its
-   unit named when it is not the app's, not the lift's, or not the unit the line is read in, so a number with no unit
-   means one thing whichever screen or lift it is read beside (390's Release B); `named` names it in any unit. A
+   line, a close variation named in another lift's words): as entered, in its lift's unit when it was stored with none,
+   its unit named when it is not the app's, not the lift's, or not the unit the line is read in, so a number with no
+   unit means one thing whichever screen or lift it is read beside (390's Release B); `named` names it in any unit. A
    bodyweight set with nothing added is "BW" with no number, so it names no unit. */
-/** A load as a line quotes it: as typed, its unit named unless it is the app's, the lift's and the line's (or always), or the set is bodyweight alone. */
-export function listLabelIn(M: Model, ex: Pick<Exercise, 'bw' | 'unit'>, kg: number, named?: boolean): string {
+/** A load (kg, entered in `t`) as a line quotes it: as entered, its unit named unless it is the app's, the lift's and the line's (or always), or the set is bodyweight alone. */
+export function listLabelIn(
+  M: Model,
+  ex: Pick<Exercise, 'bw' | 'unit'>,
+  kg: number,
+  t: 'kg' | 'lb' | null | undefined,
+  named?: boolean
+): string {
   const lift = liftUIn(M, ex),
-    u = typedUnit(kg) ?? lift;
+    u = t ?? lift;
   const label = loadLabelIn(M, { bw: ex.bw, unit: u }, kg);
   if (ex.bw && kg === 0) return label;
   return named || u !== UIn(M) || u !== lift || u !== appUIn(M) ? `${label} ${u}` : label;
+}
+
+/* A load already lifted, said in a sentence beside the lift's own numbers (the coach's line, a confirm, the sets ahead,
+   the last sessions): as entered, its unit always said, the other unit's by typedLabelIn. */
+/** A past load (kg, entered in `u`) in a sentence: "225 lb", "100 kg" on a lift in lb, "BW+10" (typedLabelIn). */
+export function saidLoadIn(
+  M: Model,
+  ex: Pick<Exercise, 'bw' | 'unit'>,
+  kg: number,
+  u: 'kg' | 'lb' | null | undefined
+): string {
+  M = liftModelIn(M, ex);
+  return u != null && u !== UIn(M)
+    ? typedLabelIn(M, ex, kg, u)
+    : `${loadLabelIn(M, ex, kg)}${ex.bw ? '' : ' ' + UIn(M)}`;
 }
 
 // Puts a new load into a suggestion, its words included.
@@ -122,8 +154,9 @@ export function swapWIn(M: Model, ex: Pick<Exercise, 'bw' | 'unit'>, res: Sugges
 }
 
 /* Round a load to something you can actually put on a bar or pick off a rack:
-   nearest 5 lb, or nearest 2.5 kg. Used for suggested warm-up loads only;
-   anything the user types is left exactly as typed. */
+   nearest 5 lb, or nearest 2.5 kg. Its one reader is a lighter load on plain
+   steps, when the steps from the load in hand reach no load under it
+   (lighterLoadIn); anything the user types is left exactly as typed. */
 /* down: round toward lighter. A deload rounded to nearest could land back on
    the full load (90% of 25 lb is 22.5, which rounded up to 25). toD of a
    number is a number, and so is fromD's, as the two ! say. */

@@ -15,7 +15,7 @@
 
 import { APP_NAME, STORAGE_ID } from './config';
 import { addDays, andList, daysBetween, isDate, median, today, uid, WEEK_DAYS } from './util';
-import { KM_MI, LB } from './units';
+import { KM_MI, LB, TYPED_STEP } from './units';
 import { LIB_NAMES_BEFORE, ML, onMachines } from './library';
 import { dropStarter, routineSig } from './routines';
 import { offTarget } from './formulas';
@@ -41,10 +41,10 @@ import { arr, fixId, parseJson, rec } from './records';
 import { assemble, cloudStop } from './sync';
 import { isChunkId, realCount } from './chunks';
 import type { Rec } from './records';
-import { activeRoutine, actualAvg4, appU, EX, fmtWOf, IDX, invalidate, liftU } from './live';
+import { activeRoutine, actualAvg4, appU, EX, IDX, invalidate, saidLoad } from './live';
 import { acct, cloud, setState, state, ui } from './store';
 import type { ImpPreviewModal, ImpTable } from './modals';
-import type { CardioEntry, Exercise } from './types';
+import type { CardioEntry, Exercise, Unit } from './types';
 import type { State } from './store';
 import { AUTH, codeOf } from './providers';
 import { NO_ANSWER } from './report';
@@ -284,6 +284,8 @@ interface BuiltSet {
   rir: number | null | undefined;
   warm: boolean;
   drop: boolean;
+  /** The unit the file wrote its load in. */
+  u?: Unit | undefined;
 }
 /** A session as an import would save it (normalize completes it). */
 interface BuiltSession {
@@ -344,14 +346,21 @@ function newExercises(m: ImpPreviewModal): Record<string, NewExercise> {
 
 /** The built sessions not in the log yet, and how many were (below). */
 function notInLog(out: BuiltSession[]): { fresh: BuiltSession[]; dup: number } {
-  /* Date, lifts and reps, not loads: the same file imported again with
-     the other unit choice converted every load differently and added every
-     session a second time. */
-  const fp = (ss: { date: string; ex: { exId: string; sets: { r: number | null }[] }[] }) =>
+  /* Date, lifts, reps and each load as written, in its own unit: the same file imported again with the other unit
+     choice has the same numbers in another unit, so it is the same sessions, and not added a second time; read in
+     kilograms every load differed, so loads were left out, and a second session on one day with the same lifts and reps
+     and other loads was taken for the first and skipped. */
+  // A load as written: how many of its unit's 0.05 steps it is.
+  const asWritten = (q: { w: number; u?: Unit | undefined }): number =>
+    Math.round((q.u === 'lb' ? q.w / LB : q.w) / TYPED_STEP);
+  const fp = (ss: {
+    date: string;
+    ex: { exId: string; sets: { r: number | null; w: number; u?: Unit | undefined }[] }[];
+  }): string =>
     ss.date +
     '|' +
     ss.ex
-      .map(b => b.exId + ':' + b.sets.map(q => q.r).join(','))
+      .map(b => b.exId + ':' + b.sets.map(q => `${q.r}@${asWritten(q)}`).join(','))
       .sort()
       .join(';');
   const have = new Set(state.sessions.map(fp));
@@ -429,7 +438,7 @@ export function impBuild(m: ImpPreviewModal): ImpBuilt {
       // A set timed in seconds on a lift that counts reps would turn seconds into reps: left out and counted.
       if (!it.setsText && !exo.timed && fileSets.some(q => q.timed)) timedOff += fileSets.filter(q => q.timed).length;
       const sets: BuiltSet[] | null = it.setsText
-        ? impTextSets(it, exo, conv)
+        ? impTextSets(it, exo, conv, m.unit)
         : fileSets
             .filter(q => exo.timed || !q.timed)
             .map(s => ({
@@ -437,7 +446,9 @@ export function impBuild(m: ImpPreviewModal): ImpBuilt {
               r: s.r,
               rir: s.rir,
               warm: s.warm,
-              drop: s.drop && !s.warm
+              drop: s.drop && !s.warm,
+              // The row's unit, else the file's: the unit the load was written in.
+              u: s.u ?? m.unit
             }));
       if (!sets || !sets.length) {
         if (!bad.includes(it.name)) bad.push(it.name);
@@ -454,7 +465,8 @@ export function impBuild(m: ImpPreviewModal): ImpBuilt {
       if (!exo.bw && !exo.timed)
         for (const q of sets)
           if ((q.w > 0 && q.w < ODD.kg) || q.r > ODD.reps) {
-            odd.push(`${exo.name} ${fmtWOf(exo, q.w)} ${liftU(exo)} x ${q.r}${x.date ? `, ${fmtDate(x.date)}` : ''}`);
+            // As read from the file, in the unit it was read in (saidLoad).
+            odd.push(`${exo.name} ${saidLoad(exo, q.w, q.u)} x ${q.r}${x.date ? `, ${fmtDate(x.date)}` : ''}`);
             break;
           }
       // A lift's sets across rows of the same exercise stay together.

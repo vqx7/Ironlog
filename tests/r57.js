@@ -80,7 +80,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const okb = document.querySelector('#modal [data-act="mOk"]'); if (okb) { okb.click(); await new Promise(r => setTimeout(r, 80)); }
     await new Promise(r => setTimeout(r, 950));
     const s1 = JSON.stringify(L.state);
-    return { name, changed: s1 !== s0, saved: localStorage.getItem(KEY) === s1, undo: L.undoStack.length - u0, wantUndo: undo, dropped: L.IDX() !== idx0, noted: JSON.stringify(L.cloud.editAt) !== e0 };
+    return { name, changed: s1 !== s0, saved: localStorage.getItem(KEY) === L.storedJson(L.state), undo: L.undoStack.length - u0, wantUndo: undo, dropped: L.IDX() !== idx0, noted: JSON.stringify(L.cloud.editAt) !== e0 };
   }, [name, tab, sel, undo, prep || '']);
   const cases = [
     ['accent', 'settings', '[data-act="accent"][data-v="volt"]', 0],
@@ -118,7 +118,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     el.dispatchEvent(new Event('change', { bubbles: true }));
     await new Promise(r => setTimeout(r, 950));
     const s1 = JSON.stringify(L.state);
-    return { key, changed: s1 !== s0, saved: localStorage.getItem(KEY) === s1, dropped: L.IDX() !== idx0, noted: JSON.stringify(L.cloud.editAt) !== e0 };
+    return { key, changed: s1 !== s0, saved: localStorage.getItem(KEY) === L.storedJson(L.state), dropped: L.IDX() !== idx0, noted: JSON.stringify(L.cloud.editAt) !== e0 };
   }, [key, value, tab, prep || '']);
   // smallPlates is not here: its toggle is gone (2.42, NEW-103: V removed the plates line and its Small plates toggle; tests/r88.js holds that neither is drawn).
   // The Name field is gone since r69 (V, 2026-11-03: it drove only Today's greeting, also gone), so userName is not here (tests/r69.js section 1).

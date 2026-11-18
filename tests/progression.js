@@ -977,6 +977,24 @@ const barLoads = (plates, most = 600) => { let set = new Set([0]); for (const p 
     const own = await P.page.evaluate(() => { const L = window.__ironlog; return +(L.exBarKg(L.EX('bench')) / 0.45359237).toFixed(3); });
     ok(shown === '25' && own === 25, 'P-42 the app in lb, Your gym in kg: 25 typed as the lift\'s own bar reads 25 lb, as typed', { shown, own });
     await P.ctx.close(); await P.browser.close();
+    /* A heaviest load and a goal set in kg, on a bench in lb, shown in their sheets as their match on lb's weights (220):
+       saved without a change, each keeps the number and unit it was set in, 100 kg, never 220 lb; a number typed is
+       kept as typed, in the field's unit (2.73: the unit stored, the sheets' check of the number shown kept for this). */
+    {
+      const Q = await lifter(DAY_BENCH, weeks('A', [[185, 8, 2], [185, 8, 2], [185, 7, 2]]), { exSet: { bench: { maxLoad: 100, maxLoadU: 'kg', goal: { w: 100, r: 5 }, goalU: 'kg' } } });
+      await startOn(Q, 0);
+      const held = () => Q.page.evaluate(() => { const e = window.__ironlog.state.exercises.find(x => x.id === 'bench'); return { max: e.maxLoad, maxU: e.maxLoadU || null, goal: e.goal && e.goal.w, goalU: e.goalU || null }; });
+      const before = await held();
+      const shownMax = await Q.page.evaluate(async () => { const L = window.__ironlog; L.ACT.bMax({ dataset: { b: '0' } }); await new Promise(r => setTimeout(r, 80)); const v = document.getElementById('maxVal').value; L.ACT.maxSave(); await new Promise(r => setTimeout(r, 80)); return v; });
+      const shownGoal = await Q.page.evaluate(async () => { const L = window.__ironlog; L.ACT.goalOpen({ dataset: { ex: 'bench' } }); await new Promise(r => setTimeout(r, 80)); const v = document.getElementById('goalW').value; L.ACT.goalSave(); await new Promise(r => setTimeout(r, 80)); return v; });
+      const same = await held();
+      await Q.page.evaluate(async () => { const L = window.__ironlog; L.ACT.bMax({ dataset: { b: '0' } }); await new Promise(r => setTimeout(r, 80)); document.getElementById('maxVal').value = '225'; L.ACT.maxSave(); await new Promise(r => setTimeout(r, 80)); L.ACT.goalOpen({ dataset: { ex: 'bench' } }); await new Promise(r => setTimeout(r, 80)); document.getElementById('goalW').value = '205'; L.ACT.goalSave(); await new Promise(r => setTimeout(r, 80)); });
+      const typed = await held();
+      ok(before.maxU === 'kg' && shownMax === '220' && shownGoal === '220' && same.max === 100 && same.maxU === 'kg' && same.goal === 100 && same.goalU === 'kg',
+        'P-42 a heaviest load and a goal of 100 kg on a bench in lb show as 220 in their sheets, and saved without a change stay 100 kg, in kg', { before, shownMax, shownGoal, same });
+      ok(Math.abs(typed.max - 225 * LBK) < 1e-9 && typed.maxU === 'lb' && Math.abs(typed.goal - 205 * LBK) < 1e-9 && typed.goalU === 'lb', 'P-42 typed in them, 225 and 205 are kept as typed, in lb', typed);
+      await Q.ctx.close(); await Q.browser.close();
+    }
   }
 
   if (run('P-43')) {
@@ -1017,6 +1035,28 @@ const barLoads = (plates, most = 600) => { let set = new Set([0]); for (const p 
     await startOn(P, 0);
     s = await shows(P, 'bench');
     ok(s.rows.every(x => x.w === 105) && s.hint.includes('add 5 kg'), 'P-43 bench marked kg at Your gym in lb, the app in kg as well: 105 kg on kg plates, never 102.06 kg (225 lb on the gym\'s plates)', s);
+    await P.ctx.close(); await P.browser.close();
+    /* With the app in kg and Your gym in lb, a bench following the app is on the gym's lb plates: after 100 kg x 10 x 3,
+       225 lb (102.06 kg). kg picked in its sheet marks it kg and puts it on kg's own plates, 105 kg, so a kg machine in an
+       lb gym can be marked kg with the app in kg (V's decision 3, 2026-11-17); kg picked again changes nothing; lb, then
+       kg again, it is back on kg's plates. Picking the app's unit used to take the mark off, so it stayed on lb plates. */
+    P = await lifter(DAY2, two([[100 / LBK, 10, 2], [100 / LBK, 10, 2], [100 / LBK, 10, 2]], [[20, 13, 2], [20, 13, 2], [20, 13, 2]]), { unit: 'kg', logUnit: 'lb', gym });
+    await startOn(P, 0);
+    const pick = async to => { await P.page.click('#view [data-act="unitOpen"][data-b="0"]'); await wait(200); await P.page.click(`#modal [data-act="liftUnit"][data-v="${to}"]`); await wait(300); };
+    const mark = () => P.page.evaluate(() => window.__ironlog.state.exercises.find(e => e.id === 'bench').unit || null);
+    s = await shows(P, 'bench');
+    ok(s.rows.every(x => Math.abs(x.w - 102.1) < 0.051) && (await mark()) === null, 'P-43 (guard) the app in kg, Your gym in lb, bench unmarked: on the gym\'s lb plates, 225 lb shown as 102.1 kg', s);
+    await pick('kg');
+    const k1 = { s: await shows(P, 'bench'), unit: await mark() };
+    await pick('kg');
+    const k2 = { s: await shows(P, 'bench'), unit: await mark() };
+    await pick('lb');
+    const l1 = { s: await shows(P, 'bench'), unit: await mark() };
+    await pick('kg');
+    const k3 = { s: await shows(P, 'bench'), unit: await mark() };
+    ok(k1.unit === 'kg' && k1.s.rows.every(x => x.w === 105) && k1.s.hint.includes('add 5 kg'), 'P-43 kg picked on that bench with the app in kg: marked kg, on kg\'s own plates, 105 kg (NEW-151)', k1);
+    ok(k2.unit === 'kg' && k2.s.rows.every(x => x.w === 105), 'P-43 kg picked again changes nothing', k2);
+    ok(l1.unit === 'lb' && l1.s.rows.every(x => x.w === 225) && k3.unit === 'kg' && k3.s.rows.every(x => x.w === 105), 'P-43 lb picked, it is on the gym\'s lb plates in lb (225); kg again, kg\'s plates (105)', { l1, k3 });
     await P.ctx.close(); await P.browser.close();
     /* A lift with no sessions borrows its start from a close variation (DB curl for a hammer curl); with the two in
        different units the start is put on the new lift's own equipment, as when every lift is in its unit: hammer curls

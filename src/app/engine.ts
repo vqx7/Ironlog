@@ -11,8 +11,8 @@ import type { LiftBests } from './bests';
 import { EXIn, UIn, exInjuryIn, liftModelIn, liftUIn } from './model';
 import { IDXIn, brokeAfterIn, lastOf, liftOffIn, liftReadIn, sinceLongBreakOnIn } from './analytics';
 import { atCapOfIn, capOfIn, gymRackIn, loadFloorIn } from './gym';
-import { DEFAULT_STEP, fromDIn, loadReadIn, toDIn, typedOtherIn } from './units';
-import { fmtWIn, listLabelIn, loadLabelIn, loadNote, typedLabelIn } from './loads';
+import { DEFAULT_STEP, fromDIn, loadReadIn, toDIn, otherUnitIn } from './units';
+import { fmtWIn, listLabelIn, loadLabelIn, loadNote, saidLoadIn, typedLabelIn } from './loads';
 import { addDays, daysBetween, isDate, r1, EPS, EPS_SAME, WEEK_DAYS, pctOf } from './util';
 import {
   BACK_DAYS,
@@ -49,7 +49,8 @@ import {
   progStepIn,
   rackStepIn,
   snapUnitIn,
-  unitGridIn
+  unitGridIn,
+  unitOfIn
 } from './loadsteps';
 import { bwRefLoadIn } from './setread';
 import { triedAt } from './usual';
@@ -184,9 +185,13 @@ function pastWordsIn(
   top: number,
   lbl: (w: number) => string
 ): { was: (w: number) => string; upTo: (nw: number) => string } {
-  const other = typedOtherIn(M, top);
+  // In the unit it was entered in, as stored with its set (unitOfIn).
+  const other = otherUnitIn(M, unitOfIn(M, ex, top));
   return {
-    was: w => (typedOtherIn(M, w) ? `${typedLabelIn(M, ex, w)}${loadNote(ex)}` : lbl(w)),
+    was: w => {
+      const u = unitOfIn(M, ex, w);
+      return otherUnitIn(M, u) ? `${typedLabelIn(M, ex, w, u)}${loadNote(ex)}` : lbl(w);
+    },
     upTo: nw => (other ? `go to ${lbl(nw)}` : `add ${fmtWIn(M, nw - top)} ${UIn(M)}`)
   };
 }
@@ -379,7 +384,7 @@ function sgSameDayIn(M: Model, C: SuggestCtx): Suggestion | null {
   /* Earlier that day in another rep range (a heavy morning, a light evening), or in one not on record (an import):
      that range's own rules read it. */
   if (!(last.rr && sameRR(last.rr, [+plan.repMin, +plan.repMax]))) return null;
-  const sets = last.pts.map(p => `${typedLabelIn(M, ex, p.w)}×${p.r}`).join(', ');
+  const sets = last.pts.map(p => `${typedLabelIn(M, ex, p.w, p.u)}×${p.r}`).join(', ');
   return {
     top,
     w: top,
@@ -485,7 +490,7 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
      (tp, below): a set past the plan's count is left out (else 80 x 10 x 4
      and a fifth set of 8 hold the load and ask 41+ reps over 4). */
   const planPts = topPts.slice(0, Math.max(1, +plan.sets || topPts.length));
-  const L0 = lastOf(seen, last, p => `${typedLabelIn(M, ex, p.w)}×${p.r}`, M.today(), +plan.repMin);
+  const L0 = lastOf(seen, last, p => `${typedLabelIn(M, ex, p.w, p.u)}×${p.r}`, M.today(), +plan.repMin);
   const lastR = L0.lastR,
     lastS = L0.line,
     basis = L0.basis;
@@ -1013,7 +1018,7 @@ function sgTopOfRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
       return {
         top,
         w: aw,
-        text: `${lastS} Every set at ${was(top)} hit ${plan.repMax}: ${aw === 0 ? 'try it without help' : typedOtherIn(M, top) ? upTo(aw) : `take ${fmtWIn(M, aw - top)} ${UIn(M)} of help off`} and aim for ${plan.repMin}+ reps.`,
+        text: `${lastS} Every set at ${was(top)} hit ${plan.repMax}: ${aw === 0 ? 'try it without help' : otherUnitIn(M, unitOfIn(M, ex, top)) ? upTo(aw) : `take ${fmtWIn(M, aw - top)} ${UIn(M)} of help off`} and aim for ${plan.repMin}+ reps.`,
         lastR,
         basis,
         last: lastS,
@@ -1078,7 +1083,7 @@ function sgTopOfRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
         return {
           top,
           w: top,
-          text: `${lastS} Every set at ${was(top)} hit ${plan.repMax}. ${typedOtherIn(M, top) ? `The next load up, ${lbl(nw)}, is a large step` : `The next step, ${fmtWIn(M, nw - top)} ${UIn(M)}, is large`} for this load, so build every set to ${Z} here first; then the new load starts inside your range.`,
+          text: `${lastS} Every set at ${was(top)} hit ${plan.repMax}. ${otherUnitIn(M, unitOfIn(M, ex, top)) ? `The next load up, ${lbl(nw)}, is a large step` : `The next step, ${fmtWIn(M, nw - top)} ${UIn(M)}, is large`} for this load, so build every set to ${Z} here first; then the new load starts inside your range.`,
           lastR,
           basis,
           last: lastS,
@@ -1255,7 +1260,8 @@ function kinStartIn(
   const floor = loadFloorIn(M, ex);
   if (floor > 0 && w < floor - EPS) w = floor;
   if (!(w > 0)) return null;
-  return { ex: k.ex, date: x.date, w, set: `${listLabelIn(M, k.ex, set!.w)}×${set!.r}` };
+  const s0 = set!;
+  return { ex: k.ex, date: x.date, w, set: `${listLabelIn(M, k.ex, s0.w, s0.u)}×${s0.r}` };
 }
 
 /* Timed holds: double progression on seconds. Beat the total time at the same
@@ -1301,10 +1307,10 @@ function suggestTimedIn(
   const topPts = ws.filter(p => Math.abs(p.w - top) < EPS_SAME);
   /* The load held, read on the equipment of the lift's unit as any lift's is (P-42): 50 lb a hand held, the lift in
      kg, is 22.5 kg, never 22.7; typed in the lift's unit it is as typed. Last time is still quoted as typed. */
-  const at = loadReadIn(M, top);
+  const at = loadReadIn(M, top, unitOfIn(M, ex, top));
   const lbl = (w: number): string => `${loadLabelIn(M, ex, w)}${ex.bw ? '' : ' ' + UIn(M)}${loadNote(ex)}`;
   const { was, upTo } = pastWordsIn(M, ex, top, lbl);
-  const L0 = lastOf(all, last, p => `${typedLabelIn(M, ex, p.w)} for ${p.r}s`, M.today());
+  const L0 = lastOf(all, last, p => `${typedLabelIn(M, ex, p.w, p.u)} for ${p.r}s`, M.today());
   const lastR = L0.lastR,
     lastS = L0.line,
     basis = L0.basis;
@@ -1341,7 +1347,7 @@ function suggestTimedIn(
       prev: L0.prev,
       prevOff: L0.prevOff,
       w: at,
-      text: `${opts.before === M.today() ? 'Earlier today' : 'Earlier that day'}: ${ws.map(p => `${loadLabelIn(M, ex, p.w)} for ${p.r}s`).join(', ')}. The same again: no step up within one day.`,
+      text: `${opts.before === M.today() ? 'Earlier today' : 'Earlier that day'}: ${ws.map(p => `${typedLabelIn(M, ex, p.w, p.u)} for ${p.r}s`).join(', ')}. The same again: no step up within one day.`,
       lastR,
       basis,
       last: lastS,
@@ -1420,5 +1426,5 @@ export function easierTextIn(M: Model, ex: ExerciseLike, e: Drift): string {
   M = liftModelIn(M, ex);
   // In the lifter's effort scale.
   const sc = effScale(M.s.settings.rirScale);
-  return `Getting easier at ${loadLabelIn(M, ex, e.w)}${ex.bw ? '' : ' ' + UIn(M)}: ${sc === 'rpe' ? 'RPE' : 'RIR'} ${effAt(sc, e.from)} → ${effAt(sc, e.to)} at the same reps. Adding load today is reasonable.`;
+  return `Getting easier at ${saidLoadIn(M, ex, e.w, e.u)}: ${sc === 'rpe' ? 'RPE' : 'RIR'} ${effAt(sc, e.from)} → ${effAt(sc, e.to)} at the same reps. Adding load today is reasonable.`;
 }

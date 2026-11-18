@@ -16,7 +16,12 @@ type Effort = { rir?: Rir; cal?: unknown };
 type CountedSet = Effort & { r: number | string | null; warm?: boolean | undefined; drop?: boolean | undefined };
 
 /** A set's load and reps as typed, as the load and tonnage read them. */
-export type LoadedSet = { w?: number | string | null | undefined; r?: number | string | null | undefined };
+export type LoadedSet = {
+  w?: number | string | null | undefined;
+  r?: number | string | null | undefined;
+  /** The unit `w` was entered in (LoggedSet's u). */
+  u?: 'kg' | 'lb' | null | undefined;
+};
 
 /** The bodyweight logged on or before a date, or null. */
 function bwKnownAtIn(M: Model, date: string): number | null {

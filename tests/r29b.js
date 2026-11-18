@@ -335,7 +335,8 @@ const sess = (id, date, exId, sets) => ({ id, date, dayIdx: 0, dayId: null, dayN
       return { type: p && p.type, value: p && p.value, big: p && p.big, lab, style: ch.data.datasets[0].pointStyle[i] }; });
     ok(tt.type === 'Weight PR' && tt.value == null && tt.big === false && tt.lab === '' && tt.style === 'circle', '5. a heavier set that did not raise the estimate (Heaviest yet, no PR) has no PR mark or label on the chart', tt);
     // 9. The radar draws at most 200%; the tooltip and the table keep the real share.
-    const rc = await ev(() => { const L = window.__ironlog; const b = L.state.settings.bands; b.abs = [1, 26]; b.obliques = [1, 10];
+    // Obliques, with no target by default, given one as Set a target gives it (since 2.73 a target is the lifter's by its record, not its number).
+    const rc = await ev(() => { const L = window.__ironlog; const b = L.state.settings.bands; b.abs = [1, 26]; b.obliques = [1, 10]; L.state.settings.ownTargets = ['obliques'];
       const out = []; for (let k = 1; k <= 4; k++) { const d = new Date(2026, 9, 3 - 7 * k - 4).toISOString().slice(0, 10); out.push({ id: 'r' + k, date: d, dayIdx: 0, dayId: null, dayName: 'A', routineId: '', free: true, notes: '', ex: [{ exId: 'cableCrunch', sets: Array.from({ length: 10 }, () => ({ w: 50, r: 12, rir: 2, warm: false })) }] }); }
       L.state.sessions = out; L.invalidate(); L.ui.tab = 'dash'; L.ui.volMode = 'region'; L.ui.folds['dash:volume'] = true; L.render();
       const ch = window.Chart.getChart(document.getElementById('chRadar')); const i = ch.data.labels.indexOf('Core'); const ds = ch.data.datasets[0];
