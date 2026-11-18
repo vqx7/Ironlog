@@ -739,6 +739,28 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     }
     ok(hits.length === 0, 'localStorage and IndexedDB are named only in storage.ts and sync.ts, and JSON is parsed only by records.ts (every stored value comes through one reader)', hits);
   }
+  // The unit a load was entered in is stored with it (2.73, the full review's L01-1): no module reads it back from
+  // the number. A load's unit is read from its number (`unitOnGrid`) only where that is the rule: a load the app made
+  // is in the unit its equipment's steps are in (session.ts, worktaps.ts, worksets.ts, loadsteps.ts, and history.ts
+  // for the load the app asked), a plan item's step has no unit field (units.ts), a save from before units were stored
+  // takes its units once at load (normalize.ts), a comparison of two copies reads that unit as absent (merge.ts canon),
+  // and the suites' hook quotes a number the way the app quotes a load it made (main.ts). The guess every reader used before, `typedUnit`, and the readers built on it are gone. Read from the
+  // syntax tree's identifiers, so a mention in a comment is not one.
+  {
+    const hits = [];
+    const GRID = ['units', 'session', 'worktaps', 'worksets', 'loadsteps', 'history', 'normalize', 'merge', 'main'];
+    const GONE = new Set(['typedUnit', 'typedOtherIn', 'typedOther', 'typedIn']);
+    for (const id of MODS) {
+      const f = id + '.ts', txt = fs.readFileSync(path.join(APP, f), 'utf8');
+      const sf = ts.createSourceFile(f, txt, ts.ScriptTarget.Latest, true);
+      const walk = n => {
+        if (ts.isIdentifier(n) && ((n.text === 'unitOnGrid' && !GRID.includes(id)) || GONE.has(n.text))) hits.push(`${f}:${sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1} ${n.text}`);
+        ts.forEachChild(n, walk);
+      };
+      walk(sf);
+    }
+    ok(hits.length === 0, 'no module reads the unit a load was entered in back from its number: unitOnGrid is named only where a load the app made, a plan step or a save from before units were stored is read, and typedUnit is gone', hits);
+  }
   // Every module is laid out by Prettier from the committed .prettierrc.json,
   // so layout is never a matter of taste or of hand (layout never changes
   // code). A data table may keep its rows on

@@ -1,8 +1,9 @@
 /* What a PR is called and the rep bands estimates are judged in, and the PR scorer. */
 
 import { EPS_SAME, EPS } from './util';
-import { PR_BANDS, REP_PR_SHARE, prSameLoad, e1, rtfBand, rtfOf, prScoreOf } from './formulas';
+import { PR_BANDS, REP_PR_SHARE, prSameLoad, e1, rtfBand, rtfOf, prScoreOf, seeLoads } from './formulas';
 import type { ExPoint, Exposure, ExerciseLike, Model, Pr } from './model';
+import type { Unit } from './types';
 import { noE1 } from './library';
 import { EXIn } from './model';
 
@@ -53,21 +54,31 @@ interface PrSoFar {
   front: ExPoint[];
   /** The strongest set so far by the rep PR score. */
   topSc: number;
-  /** The heaviest load done so far, as logged. */
+  /** The heaviest load done so far, as logged, and the unit it was entered in. */
   prevMaxW: number;
+  prevMaxU: Unit | null;
   /** The best estimate so far in each band of reps to failure. */
   byBand: Record<number, number>;
   /** The best estimate so far in any band. */
   maxPb: number | null;
-  /** Every load logged so far, for prSameLoad. */
-  seen: Set<number>;
+  /** Every load logged so far, with the unit it was entered in, for prSameLoad. */
+  seen: Map<number, Unit | null>;
   /** Whether no session has been added yet: a lift's first session makes no PR. */
   none: boolean;
 }
 
 /** A lift with nothing logged yet, to judge sets against. */
 export function prSoFar(): PrSoFar {
-  return { front: [], topSc: 0, prevMaxW: -Infinity, byBand: {}, maxPb: null, seen: new Set(), none: true };
+  return {
+    front: [],
+    topSc: 0,
+    prevMaxW: -Infinity,
+    prevMaxU: null,
+    byBand: {},
+    maxPb: null,
+    seen: new Map<number, Unit | null>(),
+    none: true
+  };
 }
 
 /* The rep PR score: the estimate, or Epley where the estimate gives none
@@ -80,7 +91,11 @@ export function prAdd(h: PrSoFar, x: Pick<Exposure, 'pts' | 'pb' | 'pbb'>): void
   if (x.pb != null) h.maxPb = h.maxPb == null ? x.pb : Math.max(h.maxPb, x.pb);
   // A session with an estimate at the PR load has its band.
   if (x.pb != null && x.pbb != null) h.byBand[x.pbb] = Math.max(h.byBand[x.pbb] ?? -Infinity, x.pb);
-  for (const p of x.pts) if (p.r > 0) h.prevMaxW = Math.max(h.prevMaxW, p.w);
+  for (const p of x.pts)
+    if (p.r > 0 && p.w > h.prevMaxW) {
+      h.prevMaxW = p.w;
+      h.prevMaxU = p.u ?? null;
+    }
   for (const p of x.pts) h.topSc = Math.max(h.topSc, prScore(p));
   /* A rep PR is a set no earlier set matched on both load and reps. Keeping
      every earlier set to test that was O(exposures^2 x sets^2) and became
@@ -93,7 +108,7 @@ export function prAdd(h: PrSoFar, x: Pick<Exposure, 'pts' | 'pb' | 'pbb'>): void
       if (p.pl >= h.front[k].pl - EPS_SAME && p.r >= h.front[k].r) h.front.splice(k, 1);
     h.front.push(p);
   }
-  for (const p of x.pts) h.seen.add(p.w);
+  seeLoads(h.seen, x.pts);
   h.none = false;
 }
 
@@ -140,7 +155,7 @@ export function prJudge(
      shows. The earlier sets stay as logged: a set is only ever judged
      lighter, so this can take a PR away and never make one. */
   const judged = x.pts.map(p => {
-    const w = prSameLoad(p.w, h.seen);
+    const w = prSameLoad(p.w, p.u ?? null, h.seen);
     return { p: w === p.w ? p : { ...p, w, pl: p.pl + (w - p.w) }, at: p };
   });
   const pts = judged.map(j => j.p);
@@ -232,8 +247,10 @@ export function prJudge(
       pr: {
         type: 'Weight PR',
         w: wPR.w,
+        u: wPR.u ?? null,
         r: wPR.r,
         prevW: h.prevMaxW,
+        prevU: h.prevMaxU,
         value: e1PR ? shown : null,
         prev: e1PR ? pb : null,
         prevAll: h.maxPb,
@@ -249,6 +266,7 @@ export function prJudge(
       pr: {
         type: 'Rep PR',
         w: asLogged(rp).w,
+        u: asLogged(rp).u ?? null,
         r: rp.r,
         prevR: h.front.filter(q => q.pl >= rp.pl - EPS_SAME).reduce((a, q) => Math.max(a, q.r), 0),
         big

@@ -79,9 +79,9 @@ export function swapPlan<P extends Partial<Plan>>(
 /** An exercise's step, heaviest load and bar as the editor shows them, each set in the other unit read as its match. */
 function shownNumbers(x: Exercise): { inc: string; max: string; bar: string } {
   return {
-    inc: x.inc != null ? fmtWOf(x, stepReadOf(x, x.inc)) : '',
+    inc: x.inc != null ? fmtWOf(x, stepReadOf(x, x.inc, x.incU)) : '',
     max: x.maxLoad != null ? fmtWOf(x, liftMax(x) ?? 0) : '',
-    bar: x.barKg != null ? fmtWOf(x, barReadOf(x, x.barKg)) : ''
+    bar: x.barKg != null ? fmtWOf(x, barReadOf(x, x.barKg, x.barU)) : ''
   };
 }
 
@@ -574,25 +574,38 @@ export const PICK_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     // match on this unit's equipment, and saved as that it would move on every switch of units (100 kg, 220 lb, 97.5 kg).
     const was = m.isNew ? undefined : state.exercises.find(x => x.id === e.id);
     const sh = was ? shownNumbers(was) : null;
+    // A number entered is kept with the unit its field shows it in, the lift's; one left as shown keeps its own.
+    const u = liftU(e);
     if (sh && e.incRaw === sh.inc) delete e.incRaw;
     else {
       const n = numIn(e.incRaw);
       e.inc = n != null && n > 0 ? typedBoundOf(e, n, LIMITS.step) : null;
+      if (e.inc != null) e.incU = u;
+      else delete e.incU;
       delete e.incRaw;
     }
     if (sh && e.maxRaw === sh.max) delete e.maxRaw;
     else {
       const n = numIn(e.maxRaw);
-      if (n != null && n > 0)
-        e.maxLoad = Number(fromDOf(e, Math.min(n, liftU(e) === 'lb' ? MAX_LOAD.lb : MAX_LOAD.kg)));
-      else delete e.maxLoad;
+      if (n != null && n > 0) {
+        e.maxLoad = Number(fromDOf(e, Math.min(n, u === 'lb' ? MAX_LOAD.lb : MAX_LOAD.kg)));
+        e.maxLoadU = u;
+      } else {
+        delete e.maxLoad;
+        delete e.maxLoadU;
+      }
       delete e.maxRaw;
     }
     if (sh && e.barRaw === sh.bar && platesMode(e) === 'bar') delete e.barRaw;
     else {
       const n = numIn(e.barRaw);
-      if (n != null && n > 0 && platesMode(e) === 'bar') e.barKg = typedBoundOf(e, n, LIMITS.barKg);
-      else delete e.barKg;
+      if (n != null && n > 0 && platesMode(e) === 'bar') {
+        e.barKg = typedBoundOf(e, n, LIMITS.barKg);
+        e.barU = u;
+      } else {
+        delete e.barKg;
+        delete e.barU;
+      }
       delete e.barRaw;
     }
     {

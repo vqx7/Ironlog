@@ -703,7 +703,12 @@ function itemInput(t: Field): void {
         // Within the step's bound in kilograms, the one a save keeps, not 500 in the unit typed (typedBoundIn).
         const v = typedBoundOf(e, Math.max(n, 0), LIMITS.step);
         f.it.inc = v;
-        if (e) e.inc = v > 0 ? v : null;
+        if (e) {
+          e.inc = v > 0 ? v : null;
+          // Kept with the unit its field shows it in, the lift's.
+          if (v > 0) e.incU = liftU(e);
+          else delete e.incU;
+        }
       } else if (k === 'rir') f.it.rir = clamp(effIn(n), 0, EFFORT_TOP);
       else if (k === 'sets') f.it.sets = clamp(Math.round(n), 1, LIMITS.sets);
       else if (k === 'rest') f.it.rest = clamp(Math.round(n), 0, LIMITS.restS);

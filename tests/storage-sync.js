@@ -2217,7 +2217,9 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
     /* A built-in lift's own settings, set on one side only, survive the sign-in (L3-3): every log holds a record for
        every library lift, so the two logs always both have bench, and the whole record of the side with more sessions
        used to win, dropping the other side's kg/lb, step, heaviest load, goal and bar. Joined field by field, a setting
-       made on one side is kept; set on both, the side with more sessions keeps its own, as before. */
+       made on one side is kept; set on both, the side with more sessions keeps its own, as before. A number and the
+       unit it was entered in join as one (2.73): the side with more sessions keeps its goal of 110.123 kg, a number on
+       neither unit's steps and so stored with no unit, and never takes the other side's unit for it. */
     for (const phoneHasMore of [false, true]) {
       const C9 = cloudOf(), uid = phoneHasMore ? 'u13s2' : 'u13s1';
       const sess = (id, date) => ({ id, date, dayIdx: 0, dayName: 'Day 1', notes: '', ex: [{ exId: 'bench', sets: [{ w: 100, r: 8, rir: 2, done: true }] }] });
@@ -2225,18 +2227,21 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       const phoneLog = phoneHasMore ? [sess('b1', '2026-10-20'), sess('b2', '2026-10-27'), sess('b3', '2026-11-05')] : [sess('b1', '2026-11-05')];
       // The side with fewer sessions set its own bench; the other set only its rows' grip note, and both set a goal.
       const fewer = { unit: 'lb', inc: 1.25, maxLoad: 140, barKg: 15, goal: { w: 120, r: 5 } };
-      const more = { note: 'Grip at the rings', goal: { w: 110, r: 5 } };
+      const more = { note: 'Grip at the rings', goal: { w: 110.123, r: 5 } };
       const O = await phone({ cloud: C9, uid, arg: [acctLog, phoneHasMore ? fewer : more], seed: (S, L, [xs, set]) => { S.sessions.push(...xs); Object.assign(S.exercises.find(e => e.id === 'bench'), set); S.settings.lastExport = '2026-11-11'; } });
       ok(await O.settled(), `S-13: (setup) an account with ${acctLog.length} session(s) and its own settings on bench`);
       const R = await phone({ cloud: C9, uid: null, who: 'R', browser: O.browser, clock: await clockOf(O), arg: [phoneLog, phoneHasMore ? more : fewer], seed: (S, L, [xs, set]) => { S.sessions.push(...xs); Object.assign(S.exercises.find(e => e.id === 'bench'), set); S.settings.lastExport = '2026-11-11'; } });
       await R.ev(uid => { window.__uid = uid; window.__ironlog.cloudInit(); }, uid);
       ok(await R.settled(), `S-13: the phone with ${phoneLog.length} session(s) signs in`);
       await O.sync(); await O.settled();
-      const benchOf = P => P.ev(() => { const e = window.__ironlog.state.exercises.find(x => x.id === 'bench'); return { unit: e.unit || null, inc: e.inc || null, maxLoad: e.maxLoad || null, barKg: e.barKg || null, goal: e.goal ? `${e.goal.w}x${e.goal.r}` : null, note: e.note }; });
+      const read = e => ({ unit: e.unit || null, inc: e.inc || null, maxLoad: e.maxLoad || null, barKg: e.barKg || null, goal: e.goal ? `${e.goal.w}x${e.goal.r}` : null, note: e.note, units: [e.incU || null, e.maxLoadU || null, e.barU || null, e.goalU || null] });
+      const benchOf = P => P.ev(() => window.__ironlog.state.exercises.find(x => x.id === 'bench'));
       const acctBench = (C9.doc(uid, 'core').exercises || []).find(x => x.id === 'bench') || {};
-      const got = { phone: await benchOf(R), other: await benchOf(O), account: { unit: acctBench.unit || null, inc: acctBench.inc || null, maxLoad: acctBench.maxLoad || null, barKg: acctBench.barKg || null, goal: acctBench.goal ? `${acctBench.goal.w}x${acctBench.goal.r}` : null, note: acctBench.note } };
-      const want = { unit: 'lb', inc: 1.25, maxLoad: 140, barKg: 15, goal: '110x5', note: 'Grip at the rings' };
-      ok(['phone', 'other', 'account'].every(k => JSON.stringify(got[k]) === JSON.stringify(want)), `S-13: a first sign-in where the ${phoneHasMore ? 'phone' : 'account'} has more sessions: bench keeps the kg/lb, step, heaviest load and bar set only on the other side, the note set only on its own, and its own goal where both set one, on both phones and in the account (L3-3)`, got);
+      const got = { phone: read(await benchOf(R)), other: read(await benchOf(O)), account: read(acctBench) };
+      const want = { unit: 'lb', inc: 1.25, maxLoad: 140, barKg: 15, goal: '110.123x5', note: 'Grip at the rings', units: ['kg', 'kg', 'kg', null] };
+      // The account holds each unit its number does not give; these all give theirs (kg), read so on each phone.
+      const inAccount = { ...want, units: [null, null, null, null] };
+      ok(['phone', 'other'].every(k => JSON.stringify(got[k]) === JSON.stringify(want)) && JSON.stringify(got.account) === JSON.stringify(inAccount), `S-13: a first sign-in where the ${phoneHasMore ? 'phone' : 'account'} has more sessions: bench keeps the kg/lb, step, heaviest load and bar set only on the other side, each with its unit (in the account, as its number gives it), the note set only on its own, and its own goal where both set one, with no unit, as its own was stored, on both phones and in the account (L3-3)`, got);
       await O.close();
     }
   }

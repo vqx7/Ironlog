@@ -98,7 +98,7 @@ import {
   lastLighterWeek,
   liftRead,
   liftU,
-  loadLabel,
+  listLabel,
   logBack,
   movers,
   muscleStatus,
@@ -107,6 +107,7 @@ import {
   plannedSets,
   readiness,
   regionBalance,
+  saidLoad,
   sinceBack,
   sortedSessions,
   stalledIds,
@@ -152,7 +153,7 @@ import { pageTitle, helpButton, howText, section, slotted, subsection, tabFoot, 
 import type { Field } from './view';
 import type { Part } from './view';
 import type { Routine } from './types';
-import type { ExStat, Idx } from './model';
+import type { ExPoint, ExStat, Idx } from './model';
 import type { Block } from './weeks';
 import { rangeKey, weekWindow } from './graphs';
 import { rerenderKeepScroll } from './page';
@@ -278,21 +279,21 @@ export function exHeadline(exId: string): Part {
     );
   }
   if (ex.timed) {
-    let best: { pl: number; r: number; w: number } | null = null;
+    let best: Pick<ExPoint, 'pl' | 'r' | 'w' | 'u'> | null = null;
     for (const x of liftRead(exId))
       for (const p of x.pts)
         if (!best || p.pl > best.pl + EPS_SAME || (Math.abs(p.pl - best.pl) < EPS_SAME && p.r > best.r)) best = p;
     return line(
-      `${best ? `Best hold ${setShort(ex, best.w, best.r)}. ` : ''}${st.stalled ? `No longer hold or more load in ${STALL.noProgress} sessions: try a harder variation or add load.` : 'Progress is longer holds or more load.'}`
+      `${best ? `Best hold ${setShort(ex, best)}. ` : ''}${st.stalled ? `No longer hold or more load in ${STALL.noProgress} sessions: try a harder variation or add load.` : 'Progress is longer holds or more load.'}`
     );
   }
   if (noE1(ex)) {
-    let best: { r: number; w: number } | null = null;
+    let best: Pick<ExPoint, 'r' | 'w' | 'u'> | null = null;
     for (const x of liftRead(exId))
       for (const p of x.pts)
         if (!best || p.w > best.w + EPS_SAME || (Math.abs(p.w - best.w) < EPS_SAME && p.r > best.r)) best = p;
     return line(
-      `${best ? `Best set ${setShort(ex, best.w, best.r)}. ` : ''}${st.stalled ? `No rep or load PR in the last ${STALL.noProgress} sessions.` : 'Progress is reps and added load.'}`,
+      `${best ? `Best set ${setShort(ex, best)}. ` : ''}${st.stalled ? `No rep or load PR in the last ${STALL.noProgress} sessions.` : 'Progress is reps and added load.'}`,
       'No 1RM is estimated for a lift that turns about a joint.'
     );
   }
@@ -379,7 +380,7 @@ export function exHeadline(exId: string): Part {
     parts.push(`${(be.v / bw).toFixed(2)}× bodyweight.`);
   if (!(be && isCompound(ex))) {
     const bs = bestSet(exId);
-    if (bs) parts.unshift(`Best set ${setShort(ex, bs.w, bs.r)}.`);
+    if (bs) parts.unshift(`Best set ${setShort(ex, bs)}.`);
   }
   return line(parts.join(' '), more.join(' '));
 }
@@ -696,11 +697,11 @@ export function bestsBoard(): { n: number; html: TemplateResult } {
       const when = fmtDate;
       const line = (
         e: { v: number; date: string } | null,
-        h: { p: { w: number; r: number }; date: string } | null
+        h: { p: Pick<ExPoint, 'w' | 'r' | 'u'>; date: string } | null
       ): string =>
         [
           e ? `best est ${fmtE(ex, e.v)}${u(ex)}${loadNote(ex)}, ${when(e.date)}` : '',
-          h ? `heaviest ${setShort(ex, h.p.w, h.p.r)}${loadNote(ex)}, ${when(h.date)}` : ''
+          h ? `heaviest ${setShort(ex, h.p)}${loadNote(ex)}, ${when(h.date)}` : ''
         ]
           .filter(Boolean)
           .join(' · ');
@@ -713,10 +714,10 @@ export function bestsBoard(): { n: number; html: TemplateResult } {
       return html`<details class="bx" data-ex=${ex.id}><summary><span class="bn">${ex.name}</span><span class="bs">${since ? `All time: ${top}` : top}</span>${
         since && b ? html`<span class="bs">Since you came back on ${when(b.from)}: ${since}</span>` : nothing
       }</summary>
-    ${est ? html`<p class="small u-m0-0-6">Best estimate from ${setShort(ex, est.p.w, est.p.r)}.</p>` : nothing}
+    ${est ? html`<p class="small u-m0-0-6">Best estimate from ${setShort(ex, est.p)}.</p>` : nothing}
     <table class="t"><tr><th>${ex.assist ? 'Load' : loadHead(ex)}</th><th class="r">${ex.timed ? 'Seconds' : 'Reps'}</th><th class="r">First done</th></tr>${r.front.map(
       f =>
-        html`<tr><td class="num">${loadLabel(ex, f.p.w)}</td><td class="r num">${f.p.r}</td><td class="r">${when(f.date)}</td></tr>`
+        html`<tr><td class="num">${listLabel(ex, f.p.w, f.p.u)}</td><td class="r num">${f.p.r}</td><td class="r">${when(f.date)}</td></tr>`
     )}</table></details>`;
     })}</div>${rows.length > shown.length ? html`<button class="btn sm u-mt8" data-act="bestsAll">Show all ${rows.length} lifts</button>` : nothing}<p class="small muted hastip u-m8-0-0" data-tip="Most reps at each weight, unless a heavier set matched it. Beat a line with a set at least 90% as strong as your best: a rep PR. Best estimate (compound lifts): the highest one-rep max any set gives, in the terms you log it (total, per side or per dumbbell). Warm-ups and drop sets left out.">How to read this</p>${oldBest}`
   };
@@ -1165,10 +1166,10 @@ function liftsSec(I: Idx, stalled: readonly (readonly [string, ExStat])[], prs4:
           p.type === 'e1RM'
             ? iso
               ? ps
-                ? setShort(ex, ps.w, ps.r)
+                ? setShort(ex, ps)
                 : ''
               : fmtE(ex, p.value) + ' ' + liftU(ex)
-            : setShort(ex, p.w, p.r);
+            : setShort(ex, p);
         return html`<div class="row spread u-p6-0_bb1-solid-line"><span>${ex.name} <span class=${`tag ${p.type === 'Rep PR' ? 'blue' : 'green'}`}>${tag}</span></span><span class="num">${val} <span class="muted small">${fmtDate(p.date)}</span></span></div>`;
       })}`
     : html`<p class="muted">No PRs yet. Your first session of an exercise sets the baseline.</p>`;
@@ -1303,7 +1304,7 @@ function liftCard(exId: string, withData: readonly string[]): TemplateResult {
     }<div class="kpis" style=${`margin-top:8px${n0 ? ';display:none' : ''}`}>${
       e1Mode
         ? html`<div class="kpi"><div class="v">${be ? (ex.bw ? '≈' : '') + fmtE(ex, be.v) : 'n/a'}</div><div class="l">Best estimate (${liftU(ex)}${loadNote(ex)}) ${tipButton(BEST_EST_TIP, 'About the best estimate')}</div></div>`
-        : html`<div class="kpi"><div class="v">${bs ? setShort(ex, bs.w, bs.r) : 'n/a'}</div><div class="l">Best set${loadNote(ex)}</div></div>`
+        : html`<div class="kpi"><div class="v">${bs ? setShort(ex, bs) : 'n/a'}</div><div class="l">Best set${loadNote(ex)}</div></div>`
     }<div class="kpi"><div class="v">${nSess}</div><div class="l">Sessions logged</div></div></div>
     ${
       n0 || !f0
@@ -1314,7 +1315,7 @@ function liftCard(exId: string, withData: readonly string[]): TemplateResult {
     ${st && st.easier ? html`<p class="small u-cblue_mt6"><b>${easierText(ex, st.easier)}</b></p>` : ''}
     ${
       st && st.fade
-        ? html`<p class="small u-cyellow_mt6"><b>Drop-off growing at ${loadLabel(ex, st.fade.w)}${ex.bw ? '' : ' ' + liftU(ex)}: ${st.fade.from} → ${st.fade.to} reps lost first set to last, last three sessions.</b> Likely fatigue or short rest, not lost strength.</p>`
+        ? html`<p class="small u-cyellow_mt6"><b>Drop-off growing at ${saidLoad(ex, st.fade.w, st.fade.u)}: ${st.fade.from} → ${st.fade.to} reps lost first set to last, last three sessions.</b> Likely fatigue or short rest, not lost strength.</p>`
         : ''
     }
     ${ex.bw && !state.bodyweights.length ? html`<p class="small u-cyellow">Log your bodyweight to see a trend here.</p>` : bwBackfillNote(exId)}
@@ -1323,7 +1324,7 @@ function liftCard(exId: string, withData: readonly string[]): TemplateResult {
       .reverse()
       .map(x => {
         const tag = sessionWord(x);
-        return html`<tr><td>${fmtDate(x.date)}${I.prs.some(p => p.big && p.sid === x.sid && p.exId === exId) ? html` <span class="tag gold">PR</span>` : nothing}${tag ? html` <span class="tag">${tag}</span>` : nothing}</td><td>${x.pts.map(p => setShort(ex, p.w, p.r)).join(', ')}</td>${e1Mode ? html`<td class="r num">${x.best ? (ex.bw ? '≈' : '') + fmtE(ex, x.best) : ''}</td>` : nothing}</tr>`;
+        return html`<tr><td>${fmtDate(x.date)}${I.prs.some(p => p.big && p.sid === x.sid && p.exId === exId) ? html` <span class="tag gold">PR</span>` : nothing}${tag ? html` <span class="tag">${tag}</span>` : nothing}</td><td>${x.pts.map(p => setShort(ex, p)).join(', ')}</td>${e1Mode ? html`<td class="r num">${x.best ? (ex.bw ? '≈' : '') + fmtE(ex, x.best) : ''}</td>` : nothing}</tr>`;
       })}</table></div>`;
 }
 

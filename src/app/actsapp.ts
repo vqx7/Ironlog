@@ -13,7 +13,7 @@ import { photoRemove, photoSet, photoUrl } from './photo';
 import { photoSyncSoon } from './sync';
 import { plainTemplate } from './normalize';
 import { appU, EX, fmtWApp, IDX, liftMachines, liftU, loadOf, noBody, rirEst, sortedSessions } from './live';
-import { LB, typedUnit } from './units';
+import { LB } from './units';
 import { e1 } from './formulas';
 import { state, ui } from './store';
 import { act, undoStep } from './act';
@@ -166,9 +166,9 @@ function exportBackup(): Promise<void> {
     'Copy all of this and keep it somewhere safe. Paste it into Import on any device to restore.'
   );
 }
-/* One row per set, in display units, for anyone who wants this in a spreadsheet.
-   This is not a backup: it cannot be imported, and it carries no routines or
-   settings. The JSON export remains the thing that restores the app. */
+/* One row per set, in display units, for anyone who wants this in a spreadsheet. Import reads it back as sessions,
+   each load as it was entered in its own unit (typed_load and typed_unit); it carries no routines or settings, so the
+   JSON export remains the thing that restores the app. */
 /** Hundredths: a load typed in steps of 0.05 is a whole number of them. */
 const TYPED_CENTS = 100;
 
@@ -225,11 +225,11 @@ export function exportCSV(): Promise<void> | undefined {
       for (const x of xs) if (x.mk === mk) machineOf.set(`${x.sid}|${id}`, name);
     }
   }
-  /* Each set's load as it was typed, and the unit it was typed in (390's Release B: lifts are marked in kg or lb each),
-     beside the columns in the app's unit that add up across lifts: a load whose number says no unit is in its lift's. */
-  const typed = (ex: Parameters<typeof liftU>[0], w: number): [number, string] => {
-    const u = typedUnit(w) ?? liftU(ex);
-    return [Math.round((u === 'lb' ? w / LB : w) * TYPED_CENTS) / TYPED_CENTS, u];
+  /* Each set's load as it was entered, and the unit it was entered in, as stored with it (lifts are marked in kg or lb
+     each), beside the columns in the app's unit that add up across lifts: a load stored with no unit is in its lift's. */
+  const typed = (ex: Parameters<typeof liftU>[0], s: { w: number; u?: 'kg' | 'lb' | undefined }): [number, string] => {
+    const u = s.u ?? liftU(ex);
+    return [Math.round((u === 'lb' ? s.w / LB : s.w) * TYPED_CENTS) / TYPED_CENTS, u];
   };
   for (const ss of sortedSessions()) {
     for (const b of ss.ex) {
@@ -259,7 +259,7 @@ export function exportCSV(): Promise<void> | undefined {
           '',
           ex.timed ? 'seconds' : 'reps',
           s.cal ? `stop at ${s.cal.at}, called ${s.cal.pred} left` : '',
-          ...typed(ex, +s.w || 0),
+          ...typed(ex, { w: +s.w || 0, u: s.u }),
           machineOf.get(`${ss.id}|${b.exId}`) || ''
         ]);
       });

@@ -68,7 +68,7 @@ function backBests(ex: readonly { exId: string }[], prAll: readonly Pr[], sid: s
     const r = sinceBack(id);
     if (!r || r.first) continue;
     const set = r.heavy && r.heavy.sid === sid ? r.heavy.p : r.est && r.est.sid === sid ? r.est.p : null;
-    if (set) out.push(`${EX(id).name} ${setShort(EX(id), set.w, set.r)}`);
+    if (set) out.push(`${EX(id).name} ${setShort(EX(id), set)}`);
   }
   return out;
 }
@@ -219,7 +219,7 @@ function askRamps(d: Draft): boolean {
         !appSet(x, si) &&
         easy(x)
       )
-        ramps.push({ bi, si, name: e.name, txt: setShort(e, +(x.w ?? 0) || 0, x.r) });
+        ramps.push({ bi, si, name: e.name, txt: setShort(e, { w: +(x.w ?? 0) || 0, r: x.r, u: x.u }) });
     });
   }
   if (ramps.length) {
@@ -445,16 +445,16 @@ function recapPr(pr: Pr): { name: string; what: string; was: string } {
     const own = pr.value != null && isCompound(e) && !(top && top.v > pr.value + EPS_SAME);
     return {
       name: e.name,
-      what: `Weight PR, ${setShort(e, pr.w, pr.r)}${own && pr.value != null ? `, best estimate ${fmtE(e, pr.value)} ${liftU(e)}${loadNote(e)}` : ''}`,
+      what: `Weight PR, ${setShort(e, pr)}${own && pr.value != null ? `, best estimate ${fmtE(e, pr.value)} ${liftU(e)}${loadNote(e)}` : ''}`,
       was: e.assist
         ? 'less help than ever'
         : isFinite(pr.prevW ?? NaN)
-          ? `heaviest before ${listLabel(e, pr.prevW ?? 0, !e.bw)}`
+          ? `heaviest before ${listLabel(e, pr.prevW ?? 0, pr.prevU, !e.bw)}`
           : ''
     };
   }
   const ps = pr.type === 'e1RM' && !isCompound(e) ? prSet(pr.exId, pr.sid) : null;
-  if (ps) return { name: e.name, what: `PR, ${setShort(e, ps.w, ps.r)}`, was: 'your best for that number of reps' };
+  if (ps) return { name: e.name, what: `PR, ${setShort(e, ps)}`, was: 'your best for that number of reps' };
   return pr.type === 'e1RM'
     ? {
         name: e.name,
@@ -469,7 +469,7 @@ function recapPr(pr: Pr): { name: string; what: string; was: string } {
       }
     : {
         name: e.name,
-        what: `${e.timed ? 'Time' : 'Rep'} PR, ${setShort(e, pr.w, pr.r)}`,
+        what: `${e.timed ? 'Time' : 'Rep'} PR, ${setShort(e, pr)}`,
         was: pr.prevR ? `was ${pr.prevR} ${e.timed ? 's' : 'reps'} at this load or heavier` : 'heaviest yet'
       };
 }
@@ -611,7 +611,7 @@ function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioE
   const heavier = prAll.flatMap(p => {
     if (p.big || p.type !== 'Weight PR') return [];
     const e = EX(p.exId);
-    return [`${e.name} ${setShort(e, p.w, p.r)}`];
+    return [`${e.name} ${setShort(e, p)}`];
   });
   const backBest = backBests(ex, prAll, sess.id);
   // Read with the session saved, as of its day, as the week counts it.

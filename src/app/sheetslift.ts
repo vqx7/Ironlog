@@ -83,7 +83,7 @@ export function goalSheet(m: { exId: string }): TemplateResult {
   const e = EX(m.exId);
   const g = e.goal;
   return html`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="goalH"><div class="sheet-h"><h3 id="goalH">Goal: ${e.name}</h3>${closeX()}</div>
-    <div class="grid2"><label class="field">${e.bw ? `Added load (${liftU(e)})` : `Load (${liftU(e)}${loadNote(e)})`}<input type="text" inputmode="decimal" id="goalW" value=${g ? fmtWOf(e, loadReadOf(e, g.w)) : ''} placeholder=${e.bw ? '0' : ''}></label>
+    <div class="grid2"><label class="field">${e.bw ? `Added load (${liftU(e)})` : `Load (${liftU(e)}${loadNote(e)})`}<input type="text" inputmode="decimal" id="goalW" value=${g ? fmtWOf(e, loadReadOf(e, g.w, e.goalU)) : ''} placeholder=${e.bw ? '0' : ''}></label>
     <label class="field">Reps<input type="text" inputmode="numeric" id="goalR" value=${g ? String(g.r) : ''}></label></div>
     <div class="row u-mt12"><button class="btn primary" data-act="goalSave">Save</button>${g ? html`<button class="btn danger" data-act="goalClear">Remove goal</button>` : ''}<button class="btn" data-act="mClose">Cancel</button></div></div>`;
 }
@@ -108,7 +108,7 @@ export function maxSheet(m: { exId: string }): TemplateResult {
 }
 
 /* The exercise's badge opens this: what its load column holds, in a few words, and the unit its weights are marked in
-   (390's Release B). A lift marked in the app's unit follows the app's (liftUnit takes the mark off). */
+   (390's Release B). A unit picked is kept on the lift, the app's unit too (liftUnit). */
 /** What a session's exercise holds in its load column, and its weights' unit, lb or kg. */
 export function unitSheet(m: { b: number }): TemplateResult | null {
   const b = blockAt(m.b);
@@ -143,7 +143,7 @@ export function machineSheet(m: { b: number; naming?: string | undefined }): Tem
     html`<div class="mcitem"><button class=${'mcrow' + (k === now ? ' on' : '')} data-act="machinePick" data-b=${m.b} data-k=${k} aria-pressed=${String(k === now)}><span class="mcdot"></span><span class="mcl">${
       name ? html`<b>${name}</b>${last ? html`<span class="mcsub">${last}</span>` : nothing}` : (last ?? 'New machine')
     }</span></button><button type="button" class="ib mcpen" data-act="machineNaming" data-b=${m.b} data-k=${k} aria-label=${`Name ${name || last || 'the new machine'}`}>✎</button></div>`;
-  const lastOf = (x: (typeof ms)[number]): string => `${fmtDate(x.date)} · ${listLabel(ex, x.w, true)} × ${x.r}`;
+  const lastOf = (x: (typeof ms)[number]): string => `${fmtDate(x.date)} · ${listLabel(ex, x.w, x.u, true)} × ${x.r}`;
   // A lift never done is on its first machine, listed so its pencil can name it.
   const unlisted = now && !ms.some(x => x.key === now) ? row(now, machineName(b.exId, now), null) : nothing;
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${ex.name}</h3>${closeX()}</div>

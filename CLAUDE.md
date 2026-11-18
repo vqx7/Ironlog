@@ -134,7 +134,14 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
 ## Invariants (never break these; each was a ruling or a bug, and `docs/ARCHIVE.md` says which)
 
 - **Data:** never lose or overwrite what the lifter typed: loads, reps, targets, settings. A saved set never has an
-  empty load. What is stored is always RIR, and every set stores the number exactly as typed. A migration only adds;
+  empty load. What is stored is always RIR. Every load is kept in exact kilograms with the unit it was entered in
+  (a set's `u`; a lift's `incU`, `maxLoadU`, `barU`, `goalU`; the bar's `barU` in settings), and every screen quotes it
+  as entered, in that unit. A number typed or made in a unit lies on that unit's 0.05 steps and no other's, so it gives
+  its unit: the log is saved and sent with each such unit left out (`storedJson`, merge.ts), read back from the number
+  at load (`unitField`, normalize.ts), and compared as absent (`canon`), so a log saved before units were stored is the
+  same log, and a unit its number does not give is saved. A unit is also read from a number for a load the app made
+  (`unitOnGrid`, units.ts) and for a plan item's step, which has no unit field (`planStepUnit`); `tests/hygiene.js`
+  holds the modules that may. A migration only adds;
   it never overwrites a value the lifter set. A new optional field stays absent when unset, so record hashes and
   sync are unchanged. A change to stored shape needs a `normalize()` default, a migration if it changes meaning,
   and cases in `tests/migration.js`.

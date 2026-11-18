@@ -631,7 +631,9 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
                 cal: x.cal ? { ...x.cal } : undefined,
                 rid: x.rid,
                 // What the app asked of it when it was first ticked (391): an edit keeps it.
-                ...(x.sg ? { sg: [...x.sg] } : {})
+                ...(x.sg ? { sg: [...x.sg] } : {}),
+                // The unit its load was entered in: an edit keeps it.
+                ...(x.u ? { u: x.u } : {})
               })
             ),
             ...(b.nw ? { nw: true as const } : {}),

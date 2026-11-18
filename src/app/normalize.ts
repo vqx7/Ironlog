@@ -25,7 +25,8 @@ import type {
   Routine,
   Session,
   SessionEx,
-  Settings
+  Settings,
+  Unit
 } from './types';
 import type { DraftLike } from './session';
 import { sameExOnce } from './session';
@@ -33,7 +34,7 @@ import { isWork } from './formulas';
 import { machineKeys } from './model';
 import type { State } from './store';
 import { clampN, hashStr, isDate, isNum, numOr, r1, r3, HUNDREDTHS, WEEK_DAYS, SUNDAY } from './util';
-import { LB } from './units';
+import { LB, unitOnGrid } from './units';
 import {
   BANDS,
   CARDIO,
@@ -360,7 +361,9 @@ export function cleanSess(raw: unknown, si: number): Session {
                         // The row's own id, last, where a build before it kept the unknown field.
                         ...(typeof x.rid === 'string' ? { rid: fixId(x.rid) } : {}),
                         // What the app asked of it, after the id, where a build before 2.61 keeps it.
-                        ...(sg ? { sg } : {})
+                        ...(sg ? { sg } : {}),
+                        // The unit its load was entered in, last, where a build that stores none keeps it.
+                        ...unitField(clampN(x.w, LOAD_MIN, LOAD_MAX, 0), x.u)
                       },
                       KNOWN_SETF
                     )
@@ -689,6 +692,8 @@ function cleanSettings(s: Rec, f: Fresh): Settings {
     tb = numOr(st.timeBudget, NaN),
     bk = numOr(st.barKg, NaN),
     bg = numOr(st.bwGoalPct, NaN);
+  const barKept = isNum(bk) && bk > 0 ? Math.min(bk, LIMITS.barKg) : null,
+    barUnit = unitField(barKept, st.barU).u;
   // Built-in exercises the user deleted. Without this the library list silently puts every one of them back on the next load.
   const removedLib = (arr(sIn.removedLib) || []).filter(x => typeof x === 'string').map(fixId);
   const inBands = spread(sIn.bands || {});
@@ -764,7 +769,9 @@ function cleanSettings(s: Rec, f: Fresh): Settings {
     dashFolded: df ? strings(df, k => oneOf(k, DSEC_KEYS)) : DSEC_FOLDED.slice(),
     lastExport: typeof st.lastExport === 'string' && isDate(st.lastExport) ? st.lastExport : null,
     removedLib,
-    barKg: isNum(bk) && bk > 0 ? Math.min(bk, LIMITS.barKg) : null,
+    barKg: barKept,
+    // The unit the bar's weight was entered in (unitField), absent with it.
+    ...(barUnit ? { barU: barUnit } : {}),
     bwGoalPct: isNum(bg) ? Math.min(Math.max(bg, -LIMITS.bwRatePct), LIMITS.bwRatePct) : null,
     bands
   };
@@ -790,7 +797,8 @@ const OPTIONAL_SETTINGS = [
   'profile',
   'bandsFit',
   'ownTargets',
-  'bwUnit'
+  'bwUnit',
+  'barU'
 ] as const satisfies readonly (keyof Settings)[];
 
 /* An exercise, cleaned: called only on one whose id and name are strings
@@ -807,6 +815,13 @@ function cleanExercise(e0: unknown, e: Rec, name: string): Exercise {
     gr = g ? Math.round(numOr(g.r, NaN)) : NaN;
   // The main muscle as read (an unknown one as chest), and the helpers without it, so a second read changes nothing.
   const primary = typeof e.primary === 'string' && isMuscle(e.primary) ? e.primary : 'chest';
+  const incK = isNum(inc) && inc > 0 ? Math.min(inc, LIMITS.step) : null,
+    maxK = isNum(ml) && ml > 0 ? Math.min(ml, LOAD_MAX) : undefined,
+    barK = isNum(bar) && bar > 0 ? Math.min(bar, LIMITS.barKg) : undefined;
+  const goal =
+    g && isNum(gw) && gw >= 0 && gw <= LOAD_MAX && gr >= 1 && gr <= LIMITS.goalReps && !e.timed && !e.assist
+      ? { w: gw, r: gr }
+      : undefined;
   return keepExtra(e0, {
     id: fixId(e.id),
     name,
@@ -820,7 +835,7 @@ function cleanExercise(e0: unknown, e: Rec, name: string): Exercise {
     custom: !!e.custom,
     archived: !!e.archived,
     // Load step for this exercise everywhere it appears; null falls back to the routine item.
-    inc: isNum(inc) && inc > 0 ? Math.min(inc, LIMITS.step) : null,
+    inc: incK,
     plates: pick(e.plates, ['bar', 'side', 'sleeve', 'none'] as const) ?? null,
     // How the load number reads; absent means the exercise's default.
     load: pick(e.load, ['each', 'total', 'side', 'stack'] as const),
@@ -833,21 +848,23 @@ function cleanExercise(e0: unknown, e: Rec, name: string): Exercise {
     // Assisted: the load number is the machine's help, stored below 0.
     assist: e.assist === true && !!e.bw ? true : undefined,
     bwf: isNum(bwf) && bwf > 0 && bwf <= LIMITS.bwShare ? Math.round(bwf * HUNDREDTHS) / HUNDREDTHS : undefined,
-    maxLoad: isNum(ml) && ml > 0 ? Math.min(ml, LOAD_MAX) : undefined,
+    maxLoad: maxK,
     // This lift's own bar: a trap or EZ bar instead of the bar in Settings. Absent when unset.
-    barKg: isNum(bar) && bar > 0 ? Math.min(bar, LIMITS.barKg) : undefined,
+    barKg: barK,
     // A lift goal: a load (added load on a bodyweight lift) for a number of reps. Absent when unset.
-    goal:
-      g && isNum(gw) && gw >= 0 && gw <= LOAD_MAX && gr >= 1 && gr <= LIMITS.goalReps && !e.timed && !e.assist
-        ? { w: gw, r: gr }
-        : undefined,
+    goal,
     /* The unit the lift's equipment is marked in, set by a tap on the unit beside its load: kg or lb. Absent when unset,
        so the lift follows the app's unit and a record saved before this existed hashes as before; a build without it
        keeps it among the fields it does not know (keepExtra). */
     unit: e.unit === 'kg' || e.unit === 'lb' ? e.unit : undefined,
     /* The names given to the machines the lift was done on, by each machine's key: absent until one is named, so a
        record saved before names existed hashes as before, and a build without them keeps them (keepExtra). */
-    machines: machineNames(e.machines)
+    machines: machineNames(e.machines),
+    // The units its step, heaviest load, bar and goal were entered in (unitField), last, where an older build keeps them.
+    incU: unitField(incK, e.incU).u,
+    maxLoadU: unitField(maxK ?? null, e.maxLoadU).u,
+    barU: unitField(barK ?? null, e.barU).u,
+    goalU: unitField(goal ? goal.w : null, e.goalU).u
   });
 }
 
@@ -864,6 +881,11 @@ function cleanExercise(e0: unknown, e: Rec, name: string): Exercise {
    still holding the old value would read here as one the lifter set. */
 /** The fields a lift of the lifter's own is made with (actspick.ts newEx, importflow.ts): never unset. */
 const CUSTOM_MADE_WITH: ReadonlySet<string> = new Set(['name', 'primary', 'equip']);
+/* A number set on a lift and the unit it was entered in are one setting: joined from the side its number comes from,
+   so a step kept from one log never takes the other log's unit. */
+/** Each number set on a lift, by field, with the field of the unit it was entered in. */
+const UNIT_OF: Readonly<Record<string, string>> = { inc: 'incU', maxLoad: 'maxLoadU', barKg: 'barU', goal: 'goalU' };
+const UNIT_FIELDS: ReadonlySet<string> = new Set(Object.values(UNIT_OF));
 /** Two logs' exercises joined field by field (above): every one of both, by id. */
 export function joinExercises(base: readonly Exercise[], other: readonly Exercise[]): Exercise[] {
   const lib = new Map(libExercises().map(e => [e.id, e]));
@@ -879,8 +901,12 @@ export function joinExercises(base: readonly Exercise[], other: readonly Exercis
       oR: Rec = { ...o };
     const joined: Rec = { ...bR };
     for (const k of Object.keys(oR)) {
-      if (k === 'id' || k === 'machines' || (!L && CUSTOM_MADE_WITH.has(k))) continue;
-      if (canon(bR[k]) === canon(untouched[k]) && canon(oR[k]) !== canon(untouched[k])) joined[k] = oR[k];
+      if (k === 'id' || k === 'machines' || UNIT_FIELDS.has(k) || (!L && CUSTOM_MADE_WITH.has(k))) continue;
+      if (canon(bR[k]) === canon(untouched[k]) && canon(oR[k]) !== canon(untouched[k])) {
+        joined[k] = oR[k];
+        const u = UNIT_OF[k];
+        if (u) joined[u] = oR[u];
+      }
     }
     if (o.machines) {
       const mine = b.machines || {};
@@ -1001,7 +1027,22 @@ function askedOf(x: Rec): Asked | null {
   return w === undefined || r === undefined || (w == null && r == null) ? null : [w, r];
 }
 /** A set's fields this build reads, so one it drops as unreadable is not kept as a field it does not know. */
-const KNOWN_SETF: ReadonlySet<string> = new Set(['sg']);
+const KNOWN_SETF: ReadonlySet<string> = new Set(['sg', 'u']);
+
+/* The unit a load was entered in, kept beside it. A load of 0 (or none) has none. A number typed or made in a unit lies
+   on that unit's 0.05 steps and on no other's (unitOnGrid), so its number gives its unit, and the log is saved and sent
+   with each such unit left out (merge.ts storedJson): read here, it takes that unit again. A set saved before units
+   were stored, or by a build that stores none, is read the same way, and has none when its number lies on neither
+   unit's steps, as every build read it. A unit its number does not give is saved, and kept unless the number lies on
+   the other unit's steps and not on its own: a build that stores no unit changed the load and kept the old one. */
+/** The unit field of a set or setting whose number is `kg` (kilograms) and whose stored unit is `u`: { u } or nothing. */
+function unitField(kg: number | null, u: unknown): { u?: Unit } {
+  if (kg == null || !(Math.abs(kg) > 0)) return {};
+  const on = unitOnGrid(kg);
+  const kept = u === 'kg' || u === 'lb' ? u : null;
+  const v = kept && (on == null || on === kept) ? kept : on;
+  return v ? { u: v } : {};
+}
 
 /** A set row of the workout in progress as normalize reads it, or none when it is not one. */
 function cleanDraftSet(x0: unknown): DraftSet[] {
@@ -1022,7 +1063,9 @@ function cleanDraftSet(x0: unknown): DraftSet[] {
         // The row's own id, last, where a build before it kept the unknown field.
         ...(typeof x.rid === 'string' ? { rid: fixId(x.rid) } : {}),
         // What the app asked of it once ticked (391), after the id.
-        ...(sg ? { sg } : {})
+        ...(sg ? { sg } : {}),
+        // The unit its load was entered in, last.
+        ...unitField(x.w == null ? null : clampN(x.w, LOAD_MIN, LOAD_MAX, 0), x.u)
       },
       KNOWN_SETF
     )

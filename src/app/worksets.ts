@@ -10,10 +10,10 @@ import { act } from './act';
 import { isCompound } from './library';
 import { planItemOf, move, fixSupersets, partOf, DEFAULT_PLAN } from './routines';
 import { min5, rangeWords, MISSED_SAID } from './format';
-import { e1, prSameLoad, BACK_DAYS, isMissed, longBreak, prScoreOf } from './formulas';
+import { e1, prSameLoad, BACK_DAYS, isMissed, longBreak, prScoreOf, seeLoads } from './formulas';
 import type { ReadDay } from './setread';
 import { dayOf } from './setread';
-import { KM_MI } from './units';
+import { KM_MI, unitOnGrid } from './units';
 import { addDays, today, uid, numIn, EPS, EPS_SAME, WEEK_DAYS, r3 } from './util';
 import { loadWords } from './loads';
 import { BAND_WORDS, prAdd, prBestOf, prJudge, prSoFar } from './prs';
@@ -46,13 +46,15 @@ import {
   suggest,
   suggestCore,
   trimPlan,
+  typedLabel,
   listLabel
 } from './live';
 import { sessionShown, state, ui } from './store';
-import { lastDup, effTarget, newRow, greyW, effW, blockDone } from './session';
+import { lastDup, effTarget, newRow, greyW, greyU, effW, effU, blockDone, madeLoad, setLoad } from './session';
 import type { BlkRef } from './session';
-import type { DraftBlock, DraftSet, Routine, PlanItem, NextSetsAdj, Session } from './types';
+import type { DraftBlock, DraftSet, Routine, PlanItem, NextSetsAdj, Session, Unit } from './types';
 import type { ExPoint, ExerciseLike } from './model';
+import { unitAt } from './model';
 import { fmtE, setShort, rirShow, wasE } from './display';
 import { drawing } from './view';
 import {
@@ -303,7 +305,8 @@ function liveMade(
     r: +(s.r ?? 0),
     w: Number(s.w) || 0,
     rir: rirEff(s, ex, at),
-    rq: rirEst(s, ex, at)
+    rq: rirEst(s, ex, at),
+    u: s.u ?? null
   };
   const { pb, pbb } = prBestOf(ex, [p], noBody(ex));
   return { ex, pr: prJudge(ex, h, { pts: [p], pb, pbb }).pr };
@@ -397,7 +400,7 @@ export function prBeat(exId: string, s: DraftSet, at: ReadDay, pr: string): stri
       : ` (your best for ${bandW}, ${fmtE(ex, j.value)} ${liftU(ex)})`;
   }
   if (pr === 'Weight PR' && j.type === 'Weight PR') {
-    const was = ex.assist ? `less help than ever` : `heaviest before ${listLabel(ex, j.prevW, !ex.bw)}`;
+    const was = ex.assist ? `less help than ever` : `heaviest before ${listLabel(ex, j.prevW, j.prevU, !ex.bw)}`;
     return ` (${was}${isCompound(ex) && j.value != null ? `; best estimate for ${bandW} now ${fmtE(ex, j.value)}` : ''})`;
   }
   if (j.type === 'Rep PR') return j.prevR ? ` (was ${j.prevR} ${ex.timed ? 's' : 'reps'})` : ' (heaviest yet)';
@@ -443,11 +446,15 @@ export function blockProgress(b: DraftBlock): { text: string; beat: boolean } | 
   if (heavier.length && t.prevBest != null && !ex.timed) {
     let best: number | null = null,
       bs: DraftSet | null = null;
-    const seen = new Set<number>();
-    for (const x of liftRead(b.exId)) for (const p of x.pts) seen.add(p.w);
+    const seen = new Map<number, Unit | null>();
+    for (const x of liftRead(b.exId)) seeLoads(seen, x.pts);
     for (const s of heavier) {
       // Read as a row of the workout open, as once saved; a block with none open, as of today.
-      const v = e1(bw + prSameLoad(+(s.w ?? 0) || 0, seen), +(s.r ?? 0), rirEst(s, ex, state.draft || today()));
+      const v = e1(
+        bw + prSameLoad(+(s.w ?? 0) || 0, s.u ?? null, seen),
+        +(s.r ?? 0),
+        rirEst(s, ex, state.draft || today())
+      );
       if (v != null && (best == null || v > best)) {
         best = v;
         bs = s;
@@ -458,7 +465,7 @@ export function blockProgress(b: DraftBlock): { text: string; beat: boolean } | 
          when it reads differently, as the recap and the PR message say it (wasE). */
       heavyBeat = best > t.prevBest + EPS_SAME;
       const iso = !isCompound(ex);
-      const setW = bs ? setShort(ex, +(bs.w ?? 0) || 0, +(bs.r ?? 0)) : '';
+      const setW = bs ? setShort(ex, { w: +(bs.w ?? 0) || 0, r: +(bs.r ?? 0), u: bs.u }) : '';
       heavyTxt = iso
         ? heavyBeat
           ? `Beaten by load: ${setW}, your best yet`
@@ -619,7 +626,11 @@ export function newBlock(
     lastR: sg.lastR,
     basis: sg.basis || undefined,
     sw: sg.w == null ? null : sg.w,
-    sets: Array.from({ length: +plan.sets || DEFAULT_PLAN.sets }, () => newRow({ w: fillLoads() ? sg.w : null }))
+    sets: Array.from({ length: +plan.sets || DEFAULT_PLAN.sets }, () => {
+      const row = newRow();
+      madeLoad(row, fillLoads() ? (sg.w ?? null) : null);
+      return row;
+    })
   };
 }
 
@@ -681,7 +692,7 @@ export function refreshBlock(b: DraftBlock): void {
     sw: sg.w == null ? null : sg.w
   });
   for (const x of b.sets)
-    if (!x.done && !x.warm && !x.drop && x.r == null && x.w === oldW && !carried.has(x)) x.w = sg.w;
+    if (!x.done && !x.warm && !x.drop && x.r == null && x.w === oldW && !carried.has(x)) madeLoad(x, sg.w ?? null);
 }
 
 /* A workout set aside comes back to a log that may have changed while it waited: the session edited saved, a past
@@ -805,11 +816,11 @@ export function adjRows(b: DraftBlock, prev: NextSetsAdj | null, next: NextSetsA
     });
   if (prev && (!next || next.at !== prev.at || next.w !== prev.w))
     rows(prev.at, x => {
-      if (x.w != null && Math.abs(x.w - prev.w) < EPS) x.w = prev.from;
+      if (x.w != null && Math.abs(x.w - prev.w) < EPS) madeLoad(x, prev.from);
     });
   if (next)
     rows(next.at, x => {
-      if (x.w != null && Math.abs(x.w - next.from) < EPS && (x.w === b.sw || carried.has(x))) x.w = next.w;
+      if (x.w != null && Math.abs(x.w - next.from) < EPS && (x.w === b.sw || carried.has(x))) madeLoad(x, next.w);
     });
 }
 
@@ -899,7 +910,8 @@ export function settleLoad(b: DraftBlock | null | undefined, si: number): void {
   if (!s || s.w != null) return;
   const g = greyW(b, si);
   if (g == null) return;
-  s.w = g;
+  // Taken as it is shown, with the unit of the row it is carried from or the one the app made it in.
+  setLoad(s, g, greyU(b, si));
 }
 
 /* One place that marks a set done or not done, so the checkmark and
@@ -944,7 +956,7 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean, t
     const ex = EX(b.exId);
     const fix = far ? 'w' : 'r';
     confirmBox(
-      `${setShort(ex, effW(b, si), s.r, !ex.bw)}?`,
+      `${setShort(ex, { w: effW(b, si), r: s.r, u: effU(b, si) }, !ex.bw)}?`,
       lz
         ? `0 ${ex.timed ? 'seconds' : 'reps'} at a weight well under today's working weight. Log it as missed, or go back and fix it.`
         : `${far || `${s.r} ${ex.timed ? 'seconds' : 'reps'} is far past your ${rangeWords(b.plan)} and anything logged on this exercise.`} Log it as typed, or go back and fix it.`,
@@ -1086,7 +1098,7 @@ export function prSaid(bi: number, si: number): string | null {
   const pr = rowPR(b, si, d);
   if (!pr) return null;
   const ex = EX(b.exId);
-  return `${pr === 'Best' ? (isCompound(ex) ? 'New best estimate' : 'PR') : pr}: ${exName(b.exId)}, ${setShort(ex, +(s.w ?? 0) || 0, s.r)}${prBeat(b.exId, s, d, pr)}`;
+  return `${pr === 'Best' ? (isCompound(ex) ? 'New best estimate' : 'PR') : pr}: ${exName(b.exId)}, ${setShort(ex, { w: +(s.w ?? 0) || 0, r: s.r, u: s.u })}${prBeat(b.exId, s, d, pr)}`;
 }
 
 /* A ticked set changed after its PR was said (its effort rated, its load or reps typed again) is told again as it now
@@ -1301,8 +1313,12 @@ export function mixCheck(bi: number, si: number): void {
   const key = d.id + ':' + bi;
   if (mixSeen.has(key)) return;
   mixSeen.add(key);
+  // Each load as entered, in its unit: one entered in the other unit from the lift's says its own (typedLabel).
+  const said = (w: number, u: Unit | null | undefined): string =>
+    u && u !== liftU(ex) ? typedLabel(ex, w, u) : fmtWOf(ex, w);
+  const lu = unitAt(lastX.pts, last);
   toast(
-    `${fmtWOf(ex, +(s.w ?? 0))} ${liftU(ex)} is ${r > 1 ? 'well above' : 'well below'} last time's ${fmtWOf(ex, last)}. This one is logged as ${loadWords(ex)}.`,
+    `${s.u && s.u !== liftU(ex) ? said(+(s.w ?? 0), s.u) : `${fmtWOf(ex, +(s.w ?? 0))} ${liftU(ex)}`} is ${r > 1 ? 'well above' : 'well below'} last time's ${said(last, lu)}. This one is logged as ${loadWords(ex)}.`,
     false,
     MIX_TOAST_MS
   );
@@ -1316,7 +1332,7 @@ export function carryLoad(b: DraftBlock, si: number): void {
   for (let j = si + 1; j < b.sets.length; j++) {
     const x = b.sets[j];
     if (x.warm || x.drop || x.done || !(x.w == null || carried.has(x))) continue;
-    x.w = s.w;
+    setLoad(x, s.w, s.u);
     carried.add(x);
   }
 }
@@ -1590,10 +1606,21 @@ export function parseSets(
   ex: { bw?: boolean | undefined; unit?: 'kg' | 'lb' | undefined },
   defW: number | null | undefined,
   conv?: ((v: number) => number) | null,
-  rpe?: boolean
+  rpe?: boolean,
+  defU?: Unit | null
 ): TypedSet[] | null {
-  // A load typed is a number, which fromD always turns into one; a load typed with its unit is read in that unit.
-  return readSets(text, ex, defW, conv || ((v: number) => Number(fromDOf(ex, v))), rpe, true);
+  /* A load typed is a number, which fromD always turns into one, in the lift's unit (kept as its unit); a load typed
+     with its unit is read in that unit; a set with no load takes the default load with its unit (defU). */
+  return readSets(
+    text,
+    ex,
+    defW,
+    conv || ((v: number) => Number(fromDOf(ex, v))),
+    rpe,
+    true,
+    conv ? null : liftU(ex),
+    defU
+  );
 }
 /* Sets typed for a lift fill its rows from the first one not done, each
    ticked; a set far off is left for setDone's question, as a tick asks it
@@ -1614,7 +1641,8 @@ export function fillSets(bi: number, list: TypedSet[]): number {
         if (si >= b.sets.length) b.sets.push(newRow());
         const x = b.sets[si];
         if (!x) break;
-        x.w = p.w;
+        // With the unit it was typed in (parseSets), else the one the app made it in.
+        setLoad(x, p.w, p.u ?? (p.w ? unitOnGrid(p.w) : null));
         x.r = p.r;
         x.rir = p.rir;
         x.warm = false;

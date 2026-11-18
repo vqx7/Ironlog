@@ -191,12 +191,12 @@ export function exHistSheet(m: { exId: string }): TemplateResult {
     be && isCompound(ex)
       ? `Best estimate ${fmtE(ex, be.v)} ${liftU(ex)}${loadNote(ex)}`
       : bs
-        ? `Best set ${setShort(ex, bs.w, bs.r, !ex.bw)}`
+        ? `Best set ${setShort(ex, bs, !ex.bw)}`
         : '';
   const setsOf = (x: (typeof all)[number]): string => {
     const ss = state.sessions.find(q => q.id === x.sid);
     const bl = ss && ss.ex.find(q => q.exId === exId);
-    return bl ? bl.sets.map(q => setStr(ex, q)).join(', ') : x.pts.map(q => setShort(ex, q.w, q.r)).join(', ');
+    return bl ? bl.sets.map(q => setStr(ex, q)).join(', ') : x.pts.map(q => setShort(ex, q)).join(', ');
   };
   const rows = all
     .slice(-HIST_ROWS)

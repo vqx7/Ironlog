@@ -24,7 +24,7 @@ import { loadNote, emptyLoad } from './loads';
 import { CHK_Q, chkWord } from './coach';
 import { rirScale, effShow, effName } from './effort';
 import { prefGet, BWASK_KEY } from './storage';
-import { bodyU, draftMachine, EX, exName, liftU, loadLabel, stepLoad } from './live';
+import { bodyU, draftMachine, EX, exName, liftU, saidLoad, stepLoad } from './live';
 import { sessionShown, state } from './store';
 import {
   effW,
@@ -151,7 +151,10 @@ function adjLine(b: DraftBlock, bi: number): Part {
   const a = b.adj;
   if (!a || !b.sets.some((x, i) => i > a.at && !x.done && !x.warm && !x.drop)) return '';
   const ex = EX(b.exId);
-  const lb = (w: number): string => `${loadLabel(ex, w)}${ex.bw ? '' : ' ' + liftU(ex)}${loadNote(ex)}`;
+  // Each load as entered, in the unit stored with the rows that hold it: the set ticked holds the one it came from,
+  // the sets ahead the one they were given.
+  const lb = (w: number): string =>
+    `${saidLoad(ex, w, b.sets.find(x => x.w != null && Math.abs(x.w - w) < EPS && x.u)?.u)}${loadNote(ex)}`;
   if (Math.abs(a.w - a.from) < EPS)
     return html`<p class="adjline small" id=${`adj-${bi}`}><span><b>Next sets: ${a.r} reps at ${lb(a.w)}</b>, because ${a.why}.</span><button class="linkbtn" data-act="adjKeep" data-b=${bi}>Keep as it was</button></p>`;
   return html`<p class="adjline small" id=${`adj-${bi}`}><span><b>Next sets: ${lb(a.w)}</b>, ${a.up ? 'up' : 'down'} because ${a.why}.</span><button class="linkbtn" data-act="adjKeep" data-b=${bi}>Keep ${lb(a.from)}</button></p>`;
@@ -416,7 +419,7 @@ function blockPart(
     // Not done (folded by hand): the sets it has done of its sets, and an empty ring where the tick goes.
     const work = b.sets.filter(x => !x.warm && !x.drop);
     const line = done
-      ? ws.map(x => setShort(ex, x.w, x.r) + missedTag(x)).join(', ')
+      ? ws.map(x => setShort(ex, { w: x.w, r: x.r, u: x.u }) + missedTag(x)).join(', ')
       : `${work.filter(x => x.done).length} of ${work.length} sets`;
     return html`<section class=${'block folded' + ssCls} id=${`blk-${bi}`} data-bi=${bi}>${bgrip(bi, ex.name)}<button class="bfold" data-act="bOpen" data-b=${bi} aria-expanded="false" aria-label=${done ? `${ex.name}, done. Open to edit` : `${ex.name}, ${line} done. Open`}><span class=${done ? 'bf-ck' : 'bf-ck bf-todo'} aria-hidden="true">${done ? '✓' : ''}</span><span class="bf-t"><b>${ssLbl}${ex.name}</b><span>${line}</span></span>${prs ? html`<span class="bf-pr">PR</span>` : ''}<span class="chev" aria-hidden="true"></span></button></section>`;
   }

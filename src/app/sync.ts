@@ -38,7 +38,7 @@ import {
   stripDemo,
   unionById
 } from './chunks';
-import { Hx, canon, merge3List, merge3Val, mergeSession, mergeWorkout, sameRecord } from './merge';
+import { Hx, canon, merge3List, merge3Val, mergeSession, mergeWorkout, sameRecord, storedJson } from './merge';
 import { keptOnSession, unname } from './machines';
 import { draftCardio, draftSession } from './session';
 import type { DraftLike } from './session';
@@ -191,7 +191,7 @@ export function saveNow(): void {
      as one succeeds, rather than stopping for the rest of the visit. */
   if (device.boot) {
     try {
-      writeLocal(JSON.stringify(state));
+      writeLocal(storedJson(state));
       device.ok = true;
     } catch (e) {
       device.ok = false;
@@ -215,7 +215,7 @@ export function saveNow(): void {
 function writeTakenIn(): boolean {
   if (!device.boot) return false;
   try {
-    writeLocal(JSON.stringify(state));
+    writeLocal(storedJson(state));
     device.ok = true;
   } catch (e) {
     device.ok = false;
@@ -817,7 +817,7 @@ function trackEdits(): void {
     let moved = false;
     for (const id of new Set([...Object.keys(ch), ...Object.keys(cloud.localH)])) {
       // Same-device change detection: key order is stable here, so the fast hash is enough.
-      const h = hashStr(JSON.stringify(ch[id] || emptyChunk(id)));
+      const h = hashStr(storedJson(ch[id] || emptyChunk(id)));
       if (cloud.localH[id] !== h) {
         if (cloud.localH[id] !== undefined) {
           cloud.editAt[id] = now;
@@ -841,8 +841,8 @@ function resyncLocalH(): void {
   try {
     const ch = chunksOf(state);
     cloud.localH = {};
-    for (const id in ch) cloud.localH[id] = hashStr(JSON.stringify(ch[id]));
-    for (const id in cloud.meta) if (!(id in cloud.localH)) cloud.localH[id] = hashStr(JSON.stringify(emptyChunk(id)));
+    for (const id in ch) cloud.localH[id] = hashStr(storedJson(ch[id]));
+    for (const id in cloud.meta) if (!(id in cloud.localH)) cloud.localH[id] = hashStr(storedJson(emptyChunk(id)));
   } catch (e) {
     log('sync-track', e);
   }
@@ -1028,7 +1028,7 @@ async function sessionFromCloud(d: DraftLike, legB: Base | null): Promise<void> 
     h = hashStr(sb.json);
   if (m && m.h === h) return;
   const mine = chunksOf(state)[id] || emptyChunk(id);
-  const localDirty = !m || hashStr(JSON.stringify(mine)) !== m.h;
+  const localDirty = !m || hashStr(storedJson(mine)) !== m.h;
   const et = Number(sb.et) || Number(sb.at) || 0;
   if (!localDirty) applyChunk(id, rec(data));
   else applyChunk(id, mergeChunk(id, baseFor(id, m, legB), mine, data, et > (cloud.editAt[id] || 0), { conflicts: 0 }));
@@ -1176,7 +1176,7 @@ export function hasUnsent(): boolean {
       const data = ch[id] || emptyChunk(id);
       if (!data) continue;
       const m = cloud.meta[id];
-      if (!m || m.h !== hashStr(JSON.stringify(data))) return true;
+      if (!m || m.h !== hashStr(storedJson(data))) return true;
     }
   } catch (e) {
     log('sync-unsent', e);
@@ -1204,7 +1204,7 @@ function changedDocs(): { id: string; json: string; h: string }[] {
     if (!isChunkId(id)) continue;
     const data = ch[id] || emptyChunk(id);
     if (!data) continue;
-    const json = JSON.stringify(data);
+    const json = storedJson(data);
     const h = hashStr(json);
     const m = cloud.meta[id];
     // Synced by an older build: identical to the cloud copy, so it is its own base.
@@ -1285,7 +1285,7 @@ export async function cloudFlush(): Promise<void> {
         /* Sets logged while that read was in flight are in state, not in the
            copy taken before it. Work from the current document, or the merge
            below would write the older copy back and lose them. */
-        let json = JSON.stringify(chunksOf(state)[x.id] || emptyChunk(x.id));
+        let json = storedJson(chunksOf(state)[x.id] || emptyChunk(x.id));
         const b = snap && snap.exists ? rec(snap.data()) : null;
         // The write below goes through only while the account's copy is still this one.
         const seen = seenOf(b);
@@ -1331,7 +1331,7 @@ export async function cloudFlush(): Promise<void> {
             // What was taken in is taken as seen at once, so an edit made at the next wait is all the tracker finds
             // (the rule above resyncLocalH).
             resyncLocalH();
-            json = JSON.stringify(chunksOf(state)[x.id] || emptyChunk(x.id));
+            json = storedJson(chunksOf(state)[x.id] || emptyChunk(x.id));
             if (hashStr(json) === hashStr(b.json)) {
               cloud.meta[x.id] = took;
               saveMeta();
@@ -1590,7 +1590,7 @@ function mergeChanged(
     // Unchanged in the cloud since we last agreed. Content, not clocks, decides.
     if (m && r.h === m.h) continue;
     if (id === 'draft') draftIn = true;
-    const lJson = JSON.stringify(local[id] || emptyChunk(id));
+    const lJson = storedJson(local[id] || emptyChunk(id));
     const localDirty = !m || hashStr(lJson) !== m.h;
     if (!localDirty) {
       parts[id] = rec(r.data);
@@ -1953,9 +1953,9 @@ function joinLogs(base: State, here: State): State {
 async function keepHere(from: string): Promise<'kept' | 'room' | 'busy'> {
   const notes = { meta: cloud.meta, editAt: cloud.editAt, last: cloud.last };
   for (let i = 0; i < KEEP_TRIES; i++) {
-    const text = JSON.stringify(state);
+    const text = storedJson(state);
     if (!(await keepAside(from, text, notes))) return 'room';
-    if (JSON.stringify(state) === text) return 'kept';
+    if (storedJson(state) === text) return 'kept';
   }
   // Changed under every copy, which taps cannot do.
   log('aside', new Error('the log kept changing while it was being kept aside'));

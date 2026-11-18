@@ -87,7 +87,7 @@ import { sessionWord } from './analytics';
 import { avgWeeksTxt } from './weeks';
 import { musTrend } from './coach';
 import { chunksOf } from './chunks';
-import { Hx } from './merge';
+import { Hx, storedJson } from './merge';
 import { acct, cloud, setFx, setState, state, ui } from './store';
 import {
   activeRoutine,
@@ -196,6 +196,8 @@ import {
   recentExIds,
   recentLighter,
   recovery,
+  oldOwnTargets,
+  saidLoad,
   refit,
   regionBalance,
   rirEff,
@@ -338,6 +340,7 @@ import { parkTidy } from './park';
 import { applyPick, swapPlan } from './actspick';
 import type { State } from './store';
 import { workoutStart } from './workfields';
+import { onUnitSteps, unitOnGrid } from './units';
 
 declare global {
   interface Window {
@@ -426,6 +429,22 @@ function oldLogFixes(): void {
       );
   } catch (e) {
     log('refit', e);
+  }
+  // Targets typed on a build that recorded none as the lifter's, recorded so (oldOwnTargets, src/app/profile.ts).
+  try {
+    const add = oldOwnTargets();
+    // The app's own fix, no edit (act's `app`).
+    if (add)
+      act(
+        () => {
+          const o = state.settings.ownTargets || [];
+          // In the muscles' order, as Set a target keeps them.
+          state.settings.ownTargets = MK.filter(x => o.includes(x) || add.includes(x));
+        },
+        { app: true }
+      );
+  } catch (e) {
+    log('ownTargets', e);
   }
 }
 
@@ -673,6 +692,8 @@ function exposeForTests(): void {
     makeDemo,
     invalidate,
     normalize,
+    // The log as it is saved and sent (units its numbers give left out), for checks that read the save back.
+    storedJson,
     snapshot,
     saveNow,
     timer,
@@ -781,6 +802,11 @@ function exposeForTests(): void {
     fromDBody,
     typedLabel,
     listLabel,
+    // A load already lifted in a sentence, the targets an older build typed to record, and a load put on a unit's 0.05 steps,
+    // so tests/engine.js compares the page's answers with Node's.
+    saidLoad,
+    oldOwnTargets,
+    onUnitSteps,
     stepReadOf,
     loadLabel,
     exName,
@@ -816,7 +842,8 @@ function exposeForTests(): void {
     picsTidy,
     risingWords,
     // A set as the app writes it, by the lift's id: Today's Lifts moving is checked against it.
-    setShortOf: (id: string, w: number, r: number): string => setShort(EX(id), w, r),
+    // A suite gives a number alone: read in the unit its 0.05 steps say, as a load the app made is.
+    setShortOf: (id: string, w: number, r: number): string => setShort(EX(id), { w, r, u: unitOnGrid(w) }),
     // Today's Lifts moving, so tests/engine.js compares the page's answer with the engine's in Node.
     liftsMoving,
     // Whether a bodyweight lift has no weigh-in to read, so tests/engine.js compares it with Node's.

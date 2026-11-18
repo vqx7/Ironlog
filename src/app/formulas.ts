@@ -5,7 +5,7 @@
 
 import type { Exercise, Point, Rir } from './types';
 import { daysBetween, isNum, pct1, EPS, EPS_SAME, PERCENT, WEEK_DAYS } from './util';
-import { LB, TYPED_STEP, onStep, typedUnit } from './units';
+import { LB, TYPED_STEP, onStep } from './units';
 import { LOAD_STEPS, isCompound } from './library';
 
 /* ---------- the 1RM estimate ---------- */
@@ -162,6 +162,18 @@ function halfStep(a: number, u: 'kg' | 'lb'): number {
   return st ? (st / 2) * k : 0;
 }
 
+/** Adds each load of `pts` with the unit it was entered in to `seen` (prSameLoad's earlier loads), a load logged twice keeping the first: the same number is the same load either way. */
+export function seeLoads(
+  seen: Map<number, 'kg' | 'lb' | null>,
+  pts: readonly { w: number | string | null; u?: 'kg' | 'lb' | null | undefined }[]
+): Map<number, 'kg' | 'lb' | null> {
+  for (const p of pts) {
+    const w = Number(p.w) || 0;
+    if (!seen.has(w)) seen.set(w, p.u ?? null);
+  }
+  return seen;
+}
+
 /* The load a set is judged at for its PRs against earlier sets (155 lb
    after 70 kg, which is 154.3 lb, is no weight PR, nor a new best estimate
    with it, made of unit rounding, the lifter having changed units or
@@ -175,19 +187,18 @@ function halfStep(a: number, u: 'kg' | 'lb'): number {
    more reps at the same weight are still more reps. A convention: on a
    spacing finer than the load shows (70 kg on 1 kg plates), one step past
    the nearest can read as the same load (70 kg after 152.5 lb, 69.2 kg). */
-/** A set's load for its PRs: the earlier load typed in the other unit that it stands for, else its own. */
-export function prSameLoad(w: number, earlier: ReadonlySet<number>): number {
-  const u = typedUnit(w);
+/** A set's load for its PRs (kg, entered in `u`): the earlier load entered in the other unit that it stands for (`earlier`: each earlier load and the unit stored with it), else its own. */
+export function prSameLoad(w: number, u: 'kg' | 'lb' | null, earlier: ReadonlyMap<number, 'kg' | 'lb' | null>): number {
   if (!u) return w;
-  /* Or within half the last digit the screens show a load to (a tenth, so
-     0.05 in the unit it was typed in, TYPED_STEP): 100 kg is shown in lb as
-     220.5, and 220.5 typed as the Last column shows it is that load, not a
-     heavier one (a Weight PR made of rounding). */
+  /* Or within half the last digit the screens show a load from the other
+     unit to (a tenth, so 0.05 in the unit it was typed in, TYPED_STEP): 100 kg
+     is shown in lb as 220.5, and 220.5 typed as the Last column shows it is
+     that load, not a heavier one (a Weight PR made of rounding). */
   const k = u === 'lb' ? LB : 1;
   const lo = w - Math.max(halfStep(Math.abs(w), u), TYPED_STEP * k) - EPS;
   let best = w;
-  for (const e of earlier)
-    if (e < w - EPS && e >= lo && (best === w || e > best) && typedUnit(e) === (u === 'kg' ? 'lb' : 'kg')) best = e;
+  for (const [e, eu] of earlier)
+    if (e < w - EPS && e >= lo && (best === w || e > best) && eu === (u === 'kg' ? 'lb' : 'kg')) best = e;
   return best;
 }
 

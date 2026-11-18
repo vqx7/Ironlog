@@ -8,6 +8,7 @@
    Merging whole documents (mergeChunk) is sync.ts's. */
 
 import { hashStr } from './util';
+import { unitOnGrid } from './units';
 import { arr, rec } from './records';
 import { keptOn, keptOnSession, unkept } from './machines';
 import type { Rec } from './records';
@@ -20,11 +21,49 @@ type Stat = { conflicts: number };
 /** A plain object read by its own keys. */
 type Fields = Record<string, unknown>;
 
+/* A unit field and the number it is the unit of: a set's load (`w`, `u`), a lift's step, heaviest load, bar and goal,
+   and the bar in settings (normalize.ts unitField). */
+/** Each unit field, by the field of the number it is the unit of (the goal's is its load, `w`). */
+const UNIT_FIELD: Readonly<Record<string, string>> = {
+  u: 'w',
+  incU: 'inc',
+  maxLoadU: 'maxLoad',
+  barU: 'barKg',
+  goalU: 'goal'
+};
+/* A unit that is the one its number lies on the 0.05 steps of says nothing the number does not: it is the unit a save
+   from before units were stored is given once, at load, from its number (unitField). Read as absent wherever two copies
+   are compared, as a key's order is, so a copy given its units is the same record as the copy an older build holds,
+   which has none: a delete, a correction or a machine picked there stands against it, and no clash is said. A unit its
+   number does not lie on (a number on neither unit's steps) is the lifter's alone, and is compared. */
+/** Whether field `k` of record `f` is a unit its number lies on the steps of (above). */
+function givenUnit(f: Readonly<Fields>, k: string): boolean {
+  const of = UNIT_FIELD[k];
+  if (!of) return false;
+  const v = f[k],
+    n0 = f[of];
+  const n = of === 'goal' ? rec(n0)?.w : n0;
+  return (v === 'kg' || v === 'lb') && typeof n === 'number' && unitOnGrid(n) === v;
+}
+
+/* The log as it is saved and sent: as it is, with each unit its number gives left out (givenUnit). Read back, every build
+   that stores units gives a set its unit again from its number (normalize.ts unitField), so nothing is lost; a document that
+   only gained the units its numbers give is the same document, written and sent as before, so a phone still on an
+   older build never takes such a copy for an edit that beats its own delete or correction; and a unit its number does
+   not give is kept and sent. */
+/** A log, or any part of it, as JSON for the phone's storage and the account: each unit its number gives left out. */
+export function storedJson(x: unknown): string {
+  return JSON.stringify(x, function (this: unknown, k: string, v: unknown): unknown {
+    const f = rec(this);
+    return f && givenUnit(f, k) ? undefined : v;
+  });
+}
+
 /* Record fingerprint that ignores key order. A record saved straight from the
    logger and the same record after normalize() list their fields in a
    different order; a plain JSON hash called that an edit, and a deleted
    session could come back. A field holding undefined is left out, as JSON
-   leaves it out. By here x is an object and not an array; the casts let
+   leaves it out, and so is a unit its number gives (givenUnit). By here x is an object and not an array; the casts let
    TypeScript read it by key. */
 export function canon(x: unknown): string {
   if (x === undefined) return 'null';
@@ -36,7 +75,7 @@ export function canon(x: unknown): string {
   return (
     '{' +
     Object.keys(f)
-      .filter(k => f[k] !== undefined)
+      .filter(k => f[k] !== undefined && !givenUnit(f, k))
       .sort()
       .map(k => JSON.stringify(k) + ':' + canon(f[k]))
       .join(',') +
