@@ -101,7 +101,7 @@ import type { Rec, Trashed } from './records';
 import { gymClean } from './gym';
 import { profClean } from './profile';
 import { canon, oneSession, sameRecord } from './merge';
-import { cleanName, keptName, named } from './machines';
+import { cleanName, keptName } from './machines';
 import {
   DEFAULT_HIDDEN,
   DSEC_FOLDED,
@@ -864,7 +864,9 @@ function cleanExercise(e0: unknown, e: Rec, name: string): Exercise {
     incU: unitField(incK, e.incU).u,
     maxLoadU: unitField(maxK ?? null, e.maxLoadU).u,
     barU: unitField(barK ?? null, e.barU).u,
-    goalU: unitField(goal ? goal.w : null, e.goalU).u
+    goalU: unitField(goal ? goal.w : null, e.goalU).u,
+    // The unit each machine's weights are in, as picked while the lift was on it: absent until one is, last.
+    machineU: machineUnits(e.machineU)
   });
 }
 
@@ -874,7 +876,7 @@ function cleanExercise(e0: unknown, e: Rec, name: string): Exercise {
    the other side's own kg or lb, step, heaviest load, goal and bar. Set means other than what the field holds on a lift
    nobody has changed: the library's record for a built-in; for a lift of the lifter's own, the empty record, except
    the name, main muscle and equipment it is made with (CUSTOM_MADE_WITH), where `base`'s stands. Set on both sides,
-   `base`'s stands, as the whole record did. Machine names join machine by machine, `base`'s first.
+   `base`'s stands, as the whole record did. Machine names and units join machine by machine, `base`'s first.
    Since the library became its own module (library.ts) it has changed only names and notes of its lifts, each
    rewritten where a log holds the old one (cleanExercises: LIB_NAMES_BEFORE, LIB_NOTES_BEFORE), so both logs hold the
    library's values as this build has them. A library change to any other field needs the same rewrite, or a log
@@ -901,19 +903,20 @@ export function joinExercises(base: readonly Exercise[], other: readonly Exercis
       oR: Rec = { ...o };
     const joined: Rec = { ...bR };
     for (const k of Object.keys(oR)) {
-      if (k === 'id' || k === 'machines' || UNIT_FIELDS.has(k) || (!L && CUSTOM_MADE_WITH.has(k))) continue;
+      if (k === 'id' || k === 'machines' || k === 'machineU' || UNIT_FIELDS.has(k) || (!L && CUSTOM_MADE_WITH.has(k)))
+        continue;
       if (canon(bR[k]) === canon(untouched[k]) && canon(oR[k]) !== canon(untouched[k])) {
         joined[k] = oR[k];
         const u = UNIT_OF[k];
         if (u) joined[u] = oR[u];
       }
     }
-    if (o.machines) {
-      const mine = b.machines || {};
-      joined.machines = {
-        ...mine,
-        ...Object.fromEntries(Object.entries(o.machines).filter(([k]) => !(k in mine)))
-      };
+    // A machine's name and its unit join machine by machine, `base`'s first.
+    for (const f of ['machines', 'machineU'] as const) {
+      const theirs = o[f];
+      if (!theirs) continue;
+      const mine: Rec = { ...(b[f] || {}) };
+      joined[f] = { ...mine, ...Object.fromEntries(Object.entries(theirs).filter(([k]) => !(k in mine))) };
     }
     return cleanExercise(joined, joined, typeof joined.name === 'string' ? joined.name : b.name);
   });
@@ -936,6 +939,21 @@ function machineNames(v: unknown): Record<string, string> | undefined {
     const name = typeof x === 'string' ? x.replace(/\s+/g, ' ').trim().slice(0, LIMITS.name) : '';
     if (!MACHINE_KEY.test(k) || !name) continue;
     out[k] = name;
+    n++;
+  }
+  return n ? out : undefined;
+}
+/** A lift's machines' units as stored: kg or lb under a key a machine can have, in the order they came, as many as it
+    may name (LIMITS.machineNames); undefined when none is left. */
+function machineUnits(v: unknown): Record<string, Unit> | undefined {
+  const r = rec(v);
+  if (!r || Array.isArray(v)) return undefined;
+  const out: Record<string, Unit> = {};
+  let n = 0;
+  for (const [k, x] of Object.entries(r)) {
+    if (n >= LIMITS.machineNames) break;
+    if (!MACHINE_KEY.test(k) || (x !== 'kg' && x !== 'lb')) continue;
+    out[k] = x;
     n++;
   }
   return n ? out : undefined;
@@ -1161,8 +1179,8 @@ function cleanDraftBlock(b0: unknown): DraftBlock[] {
         sets: (arr(b.sets) || []).flatMap(cleanDraftSet),
         // Done at a new machine or gym, last, where the menu adds it; absent unless marked.
         ...(b.nw === true ? { nw: true as const } : {}),
-        // The machine picked for it, after it, the lifter's; absent until one is picked.
-        ...named(typeof b.mc === 'string' && b.mc ? fixId(b.mc) : null),
+        // The machine it is on, after it: one picked, or in an edit the session's as saved, kept or given (cleanName).
+        ...cleanName(b),
         // The pictures on its note, by id, last; absent unless there are any.
         ...picsField(b.pics)
       } satisfies DraftBlock,

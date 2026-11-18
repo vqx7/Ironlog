@@ -208,6 +208,8 @@ interface LiftMachine {
   /** The unit `w` was entered in, as stored with its set. */
   u: Unit | null;
   r: number;
+  /** The unit the machine's weights are in: the one picked for the lift while on it (Exercise.machineU), else `u`. */
+  mu: Unit | null;
 }
 
 /* A load of a lift's history is read with the unit its set was entered in, as stored with it. A rule handed only the
@@ -232,16 +234,19 @@ export function loadUnitIn(M: Model, exId: string, w: number): Unit | null | und
 
 /** The machines a lift was done on, the one used most lately first, each known by the heaviest set of its last session. */
 export function liftMachinesIn(M: Model, exId: string): LiftMachine[] {
+  const own = EXIn(M, exId).machineU || {};
   return machinesOf(IDXIn(M).byEx[exId] || [])
     .map(g => {
       const x = g[g.length - 1];
       const at = x.pts.filter(p => Math.abs(p.w - x.topW) < EPS_SAME);
+      const u = unitAt(x.pts, x.topW);
       return {
         key: g[0].mk,
         date: x.date,
         w: x.topW,
-        u: unitAt(x.pts, x.topW),
-        r: at.length ? Math.max(...at.map(p => p.r)) : x.topReps
+        u,
+        r: at.length ? Math.max(...at.map(p => p.r)) : x.topReps,
+        mu: own[g[0].mk] ?? u
       };
     })
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));

@@ -9,7 +9,7 @@ import { uid, today, iso, PERCENT, pctOf, shareWords } from './util';
 import { isMissed, isWork, LIGHTER_SET_SHARE, LIGHT_SHARE, RIR_CALL_TOP } from './formulas';
 import { fmtDate, LIGHT_RIR } from './format';
 import { cleanChk, picIds, LIMITS } from './records';
-import { copyName, named } from './machines';
+import { copyName, savedName } from './machines';
 
 /* ---------- loads and targets ---------- */
 
@@ -451,17 +451,21 @@ export function markedNew(d: { ex: readonly { exId: string; nw?: true | undefine
   return d.ex.some(b => b.exId === exId && !!b.nw);
 }
 
-/** Saved exercises with the mark on each lift the session marks and the machine each was done on (`mcOf`, the key to save or null; machineToSaveIn), last, in that order. */
+/** Saved exercises with the mark on each lift the session marks and the machine each was done on (`mcOf`, the key to save or null; machineToSaveIn), last, in that order. A name the app kept stays so through an edit in which no machine was picked (savedName). */
 export function withNew<B extends { exId: string }>(
   ex: readonly B[],
-  d: Parameters<typeof markedNew>[0],
+  d: { ex: readonly { exId: string; nw?: true | undefined; mc?: string | undefined; kp?: true | undefined }[] },
   mcOf: (exId: string) => string | null
 ): B[] {
   return ex.map(b => {
     const mc = mcOf(b.exId);
     // An edit can name a machine on a session marked new (machinePick): both are saved, the mark first.
     const nw = markedNew(d, b.exId) ? { nw: true as const } : {};
-    return mc || markedNew(d, b.exId) ? { ...b, ...nw, ...named(mc) } : b;
+    const name = savedName(
+      mc,
+      d.ex.filter(x => x.exId === b.exId)
+    );
+    return mc || markedNew(d, b.exId) ? { ...b, ...nw, ...name } : b;
   });
 }
 

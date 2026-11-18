@@ -1,4 +1,4 @@
-// The session screen, checked against its written rules (CA-1; the spec "The session screen", L-1 to L-45, in the
+// The session screen, checked against its written rules (CA-1; the spec "The session screen", L-1 to L-46, in the
 // project's claude/ironlog-spec-session.md, built from the code: workout.ts, worksets.ts, worktaps.ts, workfields.ts,
 // workfinish.ts, timer.ts, actsstart.ts, actspick.ts and session.ts, V's rulings deciding, and where neither does, what a lifter
 // expects). A feature suite: each section is one rule, a lifter's log seeded, the workout started from Today's card
@@ -2418,6 +2418,128 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
       const rungs = seen.map(x => x.w / k);
       ok(seen.every(x => x.u === gym.u && near(x.w / k, Math.round(x.w / k)) && Math.round(x.w / k) % step === 0) && rungs[0] < rungs[1] && rungs[2] < rungs[1] && rungs[4] < rungs[3],
         `L-45: the app in ${app}, Your gym's dumbbells in ${gym.u}: plus twice and minus three times on the raises, each load one of the gym's dumbbells, kept exactly in ${gym.u}`, seen);
+      await P.close();
+    }
+  }
+
+  /* ---------- L-46: a session's machine changes only by a pick, on every way the log changes (2.74; the full
+     review's L3-5, L4-5 and L4-12) ---------- */
+  /* One log, one lift on three machines, as logs hold them: Oct 1 and 8 saved before sessions named their machine (the
+     first machine, "Cybex"), Oct 15 marked New machine with Oct 22 after it unnamed (the second, no name), Oct 29 a
+     machine added and named "Hammer" with Nov 5 on it, then Nov 8 back on the second and Nov 10 on the first, each by
+     name. Every change below is made as a lifter makes it; after each, every session is on the machine it was on, but
+     the one a pick moved. */
+  if (run('L-46')) {
+    const LBk = 0.45359237;
+    const sweepSeed = `(S, L) => { const LB = ${LBk}; const mk = (id, date, w, x, more) => ({ id, date, dayIdx: 0, dayId: 'A', dayName: 'Push', routineId: 'R1', notes: '', ex: [{ exId: 'machPress', rr: [8, 12], ps: 3, sets: [11, 11, 10].map(r => ({ w: w * LB, r, rir: 2, done: true })), ...(x || {}) }, ...(more ? [{ exId: 'bench', rr: [6, 10], ps: 3, sets: [8, 8, 7].map(r => ({ w: 185 * LB, r, rir: 2, done: true })) }] : [])] }); S.sessions = [mk('a1', '2026-10-01', 200), mk('a2', '2026-10-08', 205, null, true), mk('b1', '2026-10-15', 120, { nw: true }, true), mk('b2', '2026-10-22', 125), mk('c1', '2026-10-29', 60, { nw: true, mc: 'c1' }), mk('c2', '2026-11-05', 65, { mc: 'c1' }), mk('b3', '2026-11-08', 130, { mc: 'b1' }), mk('a3', '2026-11-10', 210, { mc: '0' })]; S.exercises.find(e => e.id === 'machPress').machines = { 0: 'Cybex', c1: 'Hammer' }; }`;
+    const BASE = { a1: '0', a2: '0', b1: 'b1', b2: 'b1', c1: 'c1', c2: 'c1', b3: 'b1', a3: '0' };
+    // Each session of the lift with the machine every screen reads it on (the index's key), and its stored name and kind.
+    const machinesNow = P => P.ev(() => { const L = window.__ironlog; const on = {}; for (const x of L.IDX().byEx.machPress || []) on[x.sid] = x.mk; const kept = {}; for (const q of L.state.sessions) for (const b of q.ex) if (b.exId === 'machPress') kept[q.id] = [b.mc || null, b.kp === true]; return { on, kept }; });
+    // The sessions whose machine differs from what is expected: the base log, less what is gone, plus what is new.
+    const moved = (got, want) => Object.keys({ ...got, ...want }).filter(k => got[k] !== want[k]).map(k => `${k}: ${want[k] || 'none'} -> ${got[k] || 'none'}`);
+    const sw = P => {
+      const ev = P.ev;
+      return {
+        edit: async id => { await ev(() => { const L = window.__ironlog; L.ui.tab = 'history'; L.render(); }); await wait(150); if (!(await ev(id => !!document.querySelector(`#view [data-act="histEdit"][data-id="${id}"]`), id))) await P.tap(`#view [data-act="histToggle"][data-id="${id}"]`, 150); await P.tap(`#view [data-act="histEdit"][data-id="${id}"]`, 300); },
+        finish: async () => { await ev(() => { const t = document.getElementById('toast'); if (t) t.hidden = true; }); await P.tap('#view [data-act="finish"]', 300); for (let k = 0; k < 6; k++) { const m = await P.modal(); if (!m) break; if (m.kind === 'confirm') await mOk(P); else { await ev(() => window.__ironlog.ACT.mClose()); await wait(150); } } },
+        date: async t => { await ev(t => { const el = document.querySelector('input[data-bind="draftDate"]'); el.value = t; el.dispatchEvent(new Event('change', { bubbles: true })); }, t); await wait(200); },
+        reps: async (b, rs) => { for (let i = 0; i < rs.length; i++) { await P.page.fill(field('r', b, i), String(rs[i])); await ev(() => { const a = document.activeElement; if (a && a.blur) a.blur(); }); await wait(60); } },
+        del: async id => { await ev(() => { const L = window.__ironlog; L.ui.tab = 'history'; L.render(); }); await wait(150); if (!(await ev(id => !!document.querySelector(`#view [data-act="histDel"][data-id="${id}"]`), id))) await P.tap(`#view [data-act="histToggle"][data-id="${id}"]`, 150); await P.tap(`#view [data-act="histDel"][data-id="${id}"]`, 250); if (await P.modal()) await mOk(P); },
+        restore: async id => { await ev(() => { const L = window.__ironlog; L.ui.tab = 'history'; L.render(); }); await wait(150); await ev(() => { const x = document.querySelector('[data-sk="history:trash"]'); if (x) x.open = true; }); await wait(100); await P.tap(`#view [data-act="restore"][data-id="${id}"][data-k="session"]`, 300); },
+        undo: async () => { await ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); L.ui.tab = 'settings'; L.render(); }); await wait(150); await ev(() => document.querySelectorAll('#view details').forEach(x => { x.open = true; })); await wait(100); await P.tap('#view [data-act="undo"]', 350); },
+        sheet: async (b = 0) => { await P.tap(`#view [data-act="bMenu"][data-b="${b}"]`, 200); await P.tap('#modal [data-act="bMenuDo"][data-op="machineOpen"]', 250); },
+        pick: async k => { await P.tap(`#modal [data-act="machinePick"][data-k="${k}"]`, 300); if ((await P.modal()) && (await P.modal()).kind === 'machine') { await ev(() => window.__ironlog.ACT.mClose()); await wait(120); } },
+        past: async (t, sets) => { await ev(() => { const L = window.__ironlog; L.ui.tab = 'history'; L.render(); }); await wait(150); await P.tap('#view [data-act="pastOpen"]', 250); await ev(t => { const el = document.querySelector('#modal input[data-pbind="date"]'); el.value = t; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); }, t); await wait(200); await P.tap('#modal [data-act="pastGo"][data-day="0"]', 350); },
+        sets: async (b, w, rs) => { for (let i = 0; i < rs.length; i++) { await P.page.fill(field('w', b, i), String(w)); await P.page.fill(field('r', b, i), String(rs[i])); await ev(() => { const a = document.activeElement; if (a && a.blur) a.blur(); }); await wait(60); if (!(await ev(([b, i]) => window.__ironlog.state.draft.ex[b].sets[i].done, [b, i]))) await P.tap(tick(b, i), 120); } }
+      };
+    };
+    const open = () => lifter({ items: [['machPress', 3, 8, 12, 120]], fresh: true, seed: sweepSeed, settings: { autoDone: false } });
+    const without = (...ids) => Object.fromEntries(Object.entries(BASE).filter(([k]) => !ids.includes(k)));
+    const results = [];
+    // One change path: run it on a fresh copy of the log, then compare every session's machine with what is expected.
+    const path = async (name, fn, want) => {
+      const P = await open(); const X = sw(P);
+      const before = await machinesNow(P);
+      let out;
+      try { out = await fn(P, X); } catch (e) { out = { error: String(e && e.message || e).slice(0, 200) }; }
+      const after = await machinesNow(P);
+      const w = typeof want === 'function' ? want(after, out) : want;
+      results.push({ name, start: moved(before.on, BASE), moved: moved(after.on, w), out });
+      await P.close();
+      return after;
+    };
+    await path('a session edited (its reps) and saved', async (P, X) => { await X.edit('b2'); await X.reps(0, [12, 11, 11]); await X.finish(); }, BASE);
+    await path('a session unnamed moved before the mark of its machine', async (P, X) => { await X.edit('b2'); await X.date('2026-10-12'); await X.finish(); }, BASE);
+    await path('a session of the first machine moved past the second\'s mark', async (P, X) => { await X.edit('a2'); await X.date('2026-10-25'); await X.finish(); }, BASE);
+    await path('the session that began the second machine deleted', async (P, X) => { await X.del('b1'); }, without('b1'));
+    await path('that delete, and the toast\'s Undo', async (P, X) => { await X.del('b1'); await P.tap('#toast [data-act="undo"]', 300); }, BASE);
+    await path('that delete, and Restore from Recently deleted', async (P, X) => { await X.del('b1'); await X.restore('b1'); }, BASE);
+    await path('that delete, and Settings\' Undo', async (P, X) => { await X.del('b1'); await X.undo(); }, BASE);
+    await path('the first machine\'s first session deleted', async (P, X) => { await X.del('a1'); }, without('a1'));
+    await path('the session that added the third machine deleted', async (P, X) => { await X.del('c1'); }, without('c1'));
+    await path('the lift taken out of the session that began the second machine', async (P, X) => { await X.edit('b1'); await P.tap('#view [data-act="bMenu"][data-b="0"]', 200); await P.tap('#modal [data-act="bMenuDo"][data-op="bDel"]', 300); if (await P.modal()) await mOk(P); await X.finish(); }, without('b1'));
+    await path('a past workout dated before the second machine\'s mark', async (P, X) => { await X.past('2026-10-12'); await X.sets(0, 205, [11, 11, 10]); await X.finish(); const s = await P.ev(() => window.__ironlog.state.sessions.find(q => q.date === '2026-10-12')); return s ? s.id : null; }, (a, id) => ({ ...BASE, ...(id ? { [id]: '0' } : {}) }));
+    await path('a past workout with a machine added, dated between the second machine\'s sessions', async (P, X) => { await X.past('2026-10-18'); await X.sheet(); await addMachine(P, ''); await X.sets(0, 90, [11, 11, 10]); await X.finish(); const s = await P.ev(() => window.__ironlog.state.sessions.find(q => q.date === '2026-10-18')); return s ? s.id : null; }, (a, id) => ({ ...BASE, ...(id ? { [id]: id } : {}) }));
+    await path('two sessions imported, naming no machine, dated into the first and second machines\' weeks', async (P) => P.ev(async () => {
+      const L = window.__ironlog;
+      const row = (d, w, n) => `${d} 10:00:00,"W",1h,"Machine Chest Press",${n},${w},11,0,0,"","",`;
+      const csv = ['Date,Workout Name,Duration,Exercise Name,Set Order,Weight,Reps,Distance,Seconds,Notes,Workout Notes,RPE', row('2026-10-05', 200, 1), row('2026-10-05', 200, 2), row('2026-10-19', 120, 1), row('2026-10-19', 120, 2)].join('\n') + '\n';
+      L.impStart({ text: csv }); await new Promise(r => setTimeout(r, 300));
+      if (L.ui.modal && L.ui.modal.unit !== 'lb') L.ACT.impUnit({ dataset: { v: 'lb' } });
+      await new Promise(r => setTimeout(r, 100)); L.ACT.impGo(); await new Promise(r => setTimeout(r, 400)); if (L.ui.modal) L.ACT.mClose();
+      return L.state.sessions.filter(q => q.date === '2026-10-05' || q.date === '2026-10-19').map(q => [q.id, q.date]);
+    }), (a, got) => ({ ...BASE, ...Object.fromEntries((got || []).map(([id, d]) => [id, d === '2026-10-05' ? '0' : 'b1'])) }));
+    await path('those imported, then taken back by Settings\' Undo', async (P, X) => { await P.ev(async () => { const L = window.__ironlog; L.impStart({ text: 'Date,Workout Name,Duration,Exercise Name,Set Order,Weight,Reps,Distance,Seconds,Notes,Workout Notes,RPE\n2026-10-19 10:00:00,"W",1h,"Machine Chest Press",1,120,11,0,0,"","",\n' }); await new Promise(r => setTimeout(r, 300)); if (L.ui.modal && L.ui.modal.unit !== 'lb') L.ACT.impUnit({ dataset: { v: 'lb' } }); await new Promise(r => setTimeout(r, 100)); L.ACT.impGo(); await new Promise(r => setTimeout(r, 400)); if (L.ui.modal) L.ACT.mClose(); }); await X.undo(); }, BASE);
+    await path('a machine picked in a session\'s edit: that session alone moves', async (P, X) => { await X.edit('b2'); await X.sheet(); await X.pick('0'); await X.finish(); }, { ...BASE, b2: '0' });
+    // A saved edit is no Undo step (Settings' Undo says there is nothing to undo): the pick stands, and nothing else moves.
+    await path('that pick, then Settings\' Undo', async (P, X) => { await X.edit('b2'); await X.sheet(); await X.pick('0'); await X.finish(); await X.undo(); }, { ...BASE, b2: '0' });
+    await path('the log closed and opened again after a delete', async (P, X) => { await X.del('b1'); await P.page.reload(); await wait(700); }, without('b1'));
+    const bad = results.filter(r => r.start.length || r.moved.length || (r.out && r.out.error));
+    ok(!bad.length, `L-46: on a lift done on three machines, ${results.length} ways of changing the log (edits, a date moved either way, deletes of each machine's first session with the toast's Undo, Restore and Settings' Undo, the lift taken out of a session, past workouts, an import and its Undo, the app opened again) move no session to another machine; a pick in an edit moves that session alone`, bad.length ? bad : results.map(r => r.name));
+
+    /* A name the app kept, on a session the lifter then edits and saves without picking a machine, stays one the app
+       kept (L4-12): the lifter gave no name, so a comparison with another copy still reads it as absent. */
+    {
+      const P = await open(); const X = sw(P);
+      await X.del('b1');
+      const keptAfterDelete = (await machinesNow(P)).kept.b2;
+      await X.edit('b2'); await X.reps(0, [12, 12, 11]); await X.finish();
+      const afterEdit = (await machinesNow(P)).kept.b2;
+      await X.edit('b2'); await X.sheet(); await X.pick('b1'); await X.finish();
+      const afterSame = (await machinesNow(P)).kept.b2;
+      await X.edit('b2'); await X.sheet(); await X.pick('0'); await X.finish();
+      const afterPick = (await machinesNow(P)).kept.b2;
+      ok(JSON.stringify([keptAfterDelete, afterEdit, afterSame, afterPick]) === '[["b1",true],["b1",true],["b1",true],["0",false]]',
+        'L-46: the name the app kept on Oct 22 when the session that began its machine was deleted stays one it kept through an edit of its reps, and through a tap on the machine it is on; a machine picked is the lifter\'s (L4-12)', { keptAfterDelete, afterEdit, afterSame, afterPick });
+      await P.close();
+    }
+
+    /* Each machine keeps its own kg or lb (L4-5, the Guide's "Each machine keeps its own ... kg or lb"): the unit
+       picked for the lift while on a machine is that machine's, and picking the machine again brings it, though the
+       sets logged there before were entered in lb. */
+    {
+      const P = await open(); const X = sw(P);
+      const unitNow = () => P.ev(() => { const e = window.__ironlog.state.exercises.find(x => x.id === 'machPress'); return e.unit || null; });
+      await start(P);
+      await X.sheet(); await X.pick('c1');
+      const hammer0 = await unitNow();
+      await toUnit(P, 0, 'kg');
+      const hammerKg = await unitNow();
+      await X.sheet(); await X.pick('0');
+      const cybex = await unitNow();
+      await X.sheet(); await X.pick('c1');
+      const hammerAgain = await unitNow();
+      await X.sheet(); await X.pick('b1');
+      const second = await unitNow();
+      const rec = await P.ev(() => { const e = window.__ironlog.state.exercises.find(x => x.id === 'machPress'); return e.machineU ? JSON.parse(JSON.stringify(e.machineU)) : null; });
+      ok(hammer0 === 'lb' && hammerKg === 'kg' && cybex === 'lb' && hammerAgain === 'kg' && second === 'lb' && rec && rec.c1 === 'kg',
+        'L-46: kg picked on Hammer, then Cybex picked: back in lb; Hammer picked again: kg, as it was set there, though its earlier sets were entered in lb; the second machine: lb (L4-5)', { hammer0, hammerKg, cybex, hammerAgain, second, rec });
+      // Saved, closed and opened again: Hammer still brings kg.
+      await X.sheet(); await X.pick('c1'); await X.sets(0, 30, [11]); await X.finish();
+      await P.page.reload(); await wait(700);
+      await start(P); await X.sheet(); await X.pick('0'); await X.sheet(); await X.pick('c1');
+      const kept = await unitNow();
+      ok(kept === 'kg', 'L-46: after a workout on Hammer in kg, the app opened again: Cybex then Hammer picked brings kg back', kept);
       await P.close();
     }
   }

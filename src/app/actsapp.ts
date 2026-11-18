@@ -12,14 +12,14 @@ import { PHOTO_ASKED, log, prefSet } from './storage';
 import { photoRemove, photoSet, photoUrl } from './photo';
 import { photoSyncSoon } from './sync';
 import { plainTemplate } from './normalize';
-import { appU, EX, fmtWApp, IDX, liftMachines, liftU, loadOf, noBody, rirEst, sortedSessions } from './live';
+import { appU, EX, fmtWApp, IDX, liftU, loadOf, noBody, rirEst, sortedSessions } from './live';
 import { LB } from './units';
 import { e1 } from './formulas';
 import { state, ui } from './store';
 import { act, undoStep } from './act';
 import { draftBack } from './worksets';
 import { isStandalone, installKind } from './env';
-import { distShow, distU } from './display';
+import { distShow, distU, machineLabels, machineName } from './display';
 import { closeModal, confirmBox, openModal, render, renderModal, rerenderKeepScroll, setSaveState } from './page';
 import { stopTimer, timerAdd, timerSub } from './timer';
 import { toast, toastHide } from './toast';
@@ -207,23 +207,15 @@ export function exportCSV(): Promise<void> | undefined {
       'machine'
     ]
   ];
-  /* The machine a set was done on, for a lift done on more than one (390 C): named by the day it was first used, the
-     same on every row of it, so a file read back keeps each machine's sessions together; empty for any other lift. */
+  /* The machine a set was done on (390 C), the same on every row of it, so a file read back keeps each machine's sessions
+     together: by the name the lifter gave it, else by the day it was first used (machineLabels), for a lift done on more
+     than one, or on one with a name; empty for any other lift. */
   const machineOf = new Map<string, string>();
   const byEx = IDX().byEx;
   for (const id of Object.keys(byEx)) {
-    const xs = byEx[id] || [];
-    const ms = liftMachines(id);
-    if (ms.length < 2) continue;
-    const first = new Map<string, string>();
-    for (const x of xs) if (!first.has(x.mk)) first.set(x.mk, x.date);
-    const used = new Set<string>();
-    for (const [mk, date] of first) {
-      let name = date;
-      for (let n = 2; used.has(name); n++) name = `${date}-${n}`;
-      used.add(name);
-      for (const x of xs) if (x.mk === mk) machineOf.set(`${x.sid}|${id}`, name);
-    }
+    const labels = machineLabels(id);
+    if (labels.size < 2 && ![...labels.keys()].some(k => machineName(id, k))) continue;
+    for (const x of byEx[id] || []) machineOf.set(`${x.sid}|${id}`, labels.get(x.mk) || '');
   }
   /* Each set's load as it was entered, and the unit it was entered in, as stored with it (lifts are marked in kg or lb
      each), beside the columns in the app's unit that add up across lifts: a load stored with no unit is in its lift's. */

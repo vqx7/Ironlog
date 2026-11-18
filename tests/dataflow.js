@@ -81,6 +81,41 @@ ok(JSON.stringify(got.col)==='["2026-10-01","2026-10-08"]'&&JSON.stringify(got.b
 ok(got.by[0]&&got.by[0]===got.by[2]&&got.by[1]&&got.by[1]!==got.by[0]&&got.mks.length===3&&got.mks[0]===got.mks[2]&&got.mks[1]!==got.mks[0],'CSV read back into an empty log: the two 200 lb sessions on one machine, the 140 lb one on the other',got);
 await P2.ctx.close();
 }
+/* The machine column names each machine by the name the lifter gave it, a machine with none by the day it was first
+   used, and a lift on one named machine by that name (2.74, the full review's L4-14). Read back into an empty log, the
+   names come with the machines; into a log whose lift has machines of those names, each session joins its machine. */
+{
+const LB=0.45359237;
+const seedQ=LB=>{const L=window.__ironlog;L.state.settings.onboarded=true;const mk=(id,date,exId,w,more)=>({id,date,dayIdx:0,dayId:null,dayName:'Push',routineId:'',free:true,notes:'',ex:[{exId,note:'',rr:[8,12],sets:[11,11,10].map(r=>({w:w*LB,r,rir:2,done:true})),...more}]});
+  L.state.sessions=[mk('a1','2026-10-01','machPress',200,{}),mk('a2','2026-10-08','machPress',140,{nw:true,mc:'a2'}),mk('a3','2026-10-15','machPress',200,{mc:'0'}),mk('a4','2026-10-17','machPress',90,{nw:true,mc:'a4'}),mk('p1','2026-10-02','pecDeck',120,{}),mk('p2','2026-10-09','pecDeck',125,{})];
+  const nm=(id,m)=>{L.state.exercises.find(e=>e.id===id).machines=m;};nm('machPress',{0:'Cybex',a2:'Hammer'});nm('pecDeck',{0:'Life Fitness'});
+  L.state=L.normalize(L.state);L.invalidate();L.saveNow();};
+const P1=await open('index.html',{browser,clock:'2026-10-20T10:00:00'});
+await P1.page.evaluate(seedQ,LB);
+const [dl4]=await Promise.all([P1.page.waitForEvent('download'),P1.page.evaluate(()=>window.__ironlog.exportCSV())]);
+const text4=require('fs').readFileSync(await dl4.path(),'utf8');
+await P1.ctx.close();
+const cols=await (async()=>{const P=await open('index.html',{browser,clock:'2026-10-20T10:00:00'});const c=await P.page.evaluate(t=>{const L=window.__ironlog;const rows=L.impRows(t);const m=rows[0].indexOf('machine'),e=rows[0].indexOf('exercise'),d=rows[0].indexOf('date');const of=n=>[...new Set(rows.slice(1).filter(r=>r[e]===n).map(r=>r[d]+' '+r[m]))];return {press:of('Machine Chest Press'),pec:of('Pec Deck Fly')};},text4);await P.ctx.close();return c;})();
+ok(JSON.stringify(cols.press)==='["2026-10-01 Cybex","2026-10-08 Hammer","2026-10-15 Cybex","2026-10-17 2026-10-17"]'&&JSON.stringify(cols.pec)==='["2026-10-02 Life Fitness","2026-10-09 Life Fitness"]','CSV: each machine named by the name given it (Cybex, Hammer), one with none by the day it was first used, and a lift on its one named machine by that name (L4-14)',cols);
+// Read back into an empty log: the machines come with their names, each machine's sessions together.
+const P2=await open('index.html',{browser,clock:'2026-10-20T10:00:00',realStarter:true});
+const named=async P=>P.page.evaluate(()=>{const L=window.__ironlog;const out={};for(const id of ['machPress','pecDeck']){const e=L.state.exercises.find(x=>x.id===id);const nm=(e&&e.machines)||{};out[id]=(L.IDX().byEx[id]||[]).map(x=>x.date+' '+(nm[x.mk]||'-'));}return out;});
+await P2.page.evaluate(async t=>{const L=window.__ironlog;L.state.settings.onboarded=true;L.saveNow();L.impStart({text:t});await new Promise(r=>setTimeout(r,300));L.ACT.impGo();await new Promise(r=>setTimeout(r,300));if(L.ui.modal)L.ACT.mClose();},text4);
+const empty=await named(P2);
+ok(JSON.stringify(empty.machPress)==='["2026-10-01 Cybex","2026-10-08 Hammer","2026-10-15 Cybex","2026-10-17 -"]'&&JSON.stringify(empty.pecDeck)==='["2026-10-02 Life Fitness","2026-10-09 Life Fitness"]','CSV read back into an empty log: each session on its machine, by the name the file gives it; the machine with none has none',empty);
+await P2.ctx.close();
+// Read back into a log whose chest press has a Cybex and a Hammer of its own (other keys) and whose pec deck has its Life Fitness.
+const P3=await open('index.html',{browser,clock:'2026-10-20T10:00:00',realStarter:true});
+await P3.page.evaluate(LB=>{const L=window.__ironlog;L.state.settings.onboarded=true;const mk=(id,date,exId,w,more)=>({id,date,dayIdx:0,dayId:null,dayName:'Push',routineId:'',free:true,notes:'',ex:[{exId,note:'',rr:[8,12],sets:[11,11,10].map(r=>({w:w*LB,r,rir:2,done:true})),...more}]});
+  L.state.sessions=[mk('r1','2026-09-20','machPress',190,{}),mk('r2','2026-09-25','machPress',130,{nw:true,mc:'r2'}),mk('q1','2026-09-21','pecDeck',110,{})];
+  const nm=(id,m)=>{L.state.exercises.find(e=>e.id===id).machines=m;};nm('machPress',{0:'Hammer',r2:'Cybex'});nm('pecDeck',{0:'Life Fitness'});
+  L.state=L.normalize(L.state);L.invalidate();L.saveNow();},LB);
+await P3.page.evaluate(async t=>{const L=window.__ironlog;L.impStart({text:t});await new Promise(r=>setTimeout(r,300));L.ACT.impGo();await new Promise(r=>setTimeout(r,300));if(L.ui.modal)L.ACT.mClose();},text4);
+const joined=await P3.page.evaluate(()=>{const L=window.__ironlog;const out={};for(const id of ['machPress','pecDeck'])out[id]=(L.IDX().byEx[id]||[]).map(x=>x.date+' '+x.mk);out.names=JSON.parse(JSON.stringify(L.state.exercises.find(x=>x.id==='machPress').machines));return out;});
+const keyOf=d=>(joined.machPress.find(x=>x.startsWith(d))||'').split(' ')[1];
+ok(keyOf('2026-10-01')==='r2'&&keyOf('2026-10-15')==='r2'&&keyOf('2026-10-08')==='0'&&keyOf('2026-10-17')&&!['0','r2'].includes(keyOf('2026-10-17'))&&JSON.stringify(joined.pecDeck)==='["2026-09-21 0","2026-10-02 0","2026-10-09 0"]'&&Object.keys(joined.names).length===2,'CSV read into a log whose lift has machines of those names: Cybex\'s sessions join its Cybex, Hammer\'s its Hammer, the pec deck\'s its Life Fitness; the machine with no name is one of its own, and no name is added (L4-14)',joined);
+await P3.ctx.close();
+}
 // Every set's unit through the CSV (2.73): written as stored, never read back from the number, and read back by an
 // import into an empty log as it was entered: a load and its unit, on a lift in the app's unit and on one marked in
 // the other, a load typed to the hundredth included. And import's check for a session already in the log compares

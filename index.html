@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.17-r119">
+<meta name="app-build" content="2026.11.17-r120">
 <title>Ironlog</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2185,8 +2185,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.73";
-  var APP_VERSION = "2026.11.17-r119";
+  var DISPLAY_VERSION = "2.74";
+  var APP_VERSION = "2026.11.17-r120";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -2781,11 +2781,15 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var effLeastShort = (scale, rir) => scale === "rpe" ? `RPE ${effAt(scale, rir)} or less` : `${effAt(scale, rir)}+ RIR`;
 
   // src/app/machines.ts
-  function named(key) {
-    return key ? { mc: key } : {};
-  }
   function keptName(key) {
     return { mc: key, kp: true };
+  }
+  function nameAsIs(b2) {
+    return b2.mc ? b2.kp ? keptName(b2.mc) : { mc: b2.mc } : {};
+  }
+  function savedName(key, from) {
+    if (!key) return {};
+    return from.some((b2) => b2.mc === key && b2.kp) ? keptName(key) : { mc: key };
   }
   function pickName(b2, key) {
     b2.mc = key;
@@ -3075,7 +3079,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return ex.map((b2) => {
       const mc = mcOf(b2.exId);
       const nw = markedNew(d3, b2.exId) ? { nw: true } : {};
-      return mc || markedNew(d3, b2.exId) ? { ...b2, ...nw, ...named(mc) } : b2;
+      const name = savedName(
+        mc,
+        d3.ex.filter((x2) => x2.exId === b2.exId)
+      );
+      return mc || markedNew(d3, b2.exId) ? { ...b2, ...nw, ...name } : b2;
     });
   }
   function setLoad(x2, kg2, u4) {
@@ -4644,13 +4652,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   function keepMachines(st, before2, beforeWrite) {
     if (!before2.size) return false;
-    const named3 = /* @__PURE__ */ new Map();
+    const named2 = /* @__PURE__ */ new Map();
     for (const [k2, now2] of machineReadings(st)) {
       const was = before2.get(k2);
       if (!was || was.key === now2.key) continue;
-      const at2 = named3.get(now2.ss) || /* @__PURE__ */ new Map();
+      const at2 = named2.get(now2.ss) || /* @__PURE__ */ new Map();
       for (const i5 of now2.at) at2.set(i5, was.key);
-      named3.set(now2.ss, at2);
+      named2.set(now2.ss, at2);
     }
     const here = new Set(st.sessions.map((q) => q.id));
     const puts = [];
@@ -4665,15 +4673,15 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       });
       if (put.some((b2, i5) => b2 !== ex[i5])) puts.push({ t: t4, ex: put });
     }
-    if (!named3.size && !puts.length) return false;
+    if (!named2.size && !puts.length) return false;
     if (beforeWrite) beforeWrite();
-    nameSessions(st, named3);
+    nameSessions(st, named2);
     for (const { t: t4, ex } of puts) t4.data = { ...t4.data, ex };
     return true;
   }
-  function nameSessions(st, named3) {
+  function nameSessions(st, named2) {
     st.sessions.forEach((ss, k2) => {
-      const at2 = named3.get(ss);
+      const at2 = named2.get(ss);
       if (at2)
         st.sessions[k2] = cleanSess(
           {
@@ -4927,7 +4935,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       incU: unitField(incK, e5.incU).u,
       maxLoadU: unitField(maxK ?? null, e5.maxLoadU).u,
       barU: unitField(barK ?? null, e5.barU).u,
-      goalU: unitField(goal ? goal.w : null, e5.goalU).u
+      goalU: unitField(goal ? goal.w : null, e5.goalU).u,
+      // The unit each machine's weights are in, as picked while the lift was on it: absent until one is, last.
+      machineU: machineUnits(e5.machineU)
     });
   }
   var CUSTOM_MADE_WITH = /* @__PURE__ */ new Set(["name", "primary", "equip"]);
@@ -4946,19 +4956,19 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const bR = { ...b2 }, oR = { ...o3 };
       const joined2 = { ...bR };
       for (const k2 of Object.keys(oR)) {
-        if (k2 === "id" || k2 === "machines" || UNIT_FIELDS.has(k2) || !L2 && CUSTOM_MADE_WITH.has(k2)) continue;
+        if (k2 === "id" || k2 === "machines" || k2 === "machineU" || UNIT_FIELDS.has(k2) || !L2 && CUSTOM_MADE_WITH.has(k2))
+          continue;
         if (canon(bR[k2]) === canon(untouched[k2]) && canon(oR[k2]) !== canon(untouched[k2])) {
           joined2[k2] = oR[k2];
           const u4 = UNIT_OF[k2];
           if (u4) joined2[u4] = oR[u4];
         }
       }
-      if (o3.machines) {
-        const mine = b2.machines || {};
-        joined2.machines = {
-          ...mine,
-          ...Object.fromEntries(Object.entries(o3.machines).filter(([k2]) => !(k2 in mine)))
-        };
+      for (const f3 of ["machines", "machineU"]) {
+        const theirs2 = o3[f3];
+        if (!theirs2) continue;
+        const mine = { ...b2[f3] || {} };
+        joined2[f3] = { ...mine, ...Object.fromEntries(Object.entries(theirs2).filter(([k2]) => !(k2 in mine))) };
       }
       return cleanExercise(joined2, joined2, typeof joined2.name === "string" ? joined2.name : b2.name);
     });
@@ -4976,6 +4986,19 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const name = typeof x2 === "string" ? x2.replace(/\s+/g, " ").trim().slice(0, LIMITS.name) : "";
       if (!MACHINE_KEY.test(k2) || !name) continue;
       out[k2] = name;
+      n3++;
+    }
+    return n3 ? out : void 0;
+  }
+  function machineUnits(v3) {
+    const r4 = rec(v3);
+    if (!r4 || Array.isArray(v3)) return void 0;
+    const out = {};
+    let n3 = 0;
+    for (const [k2, x2] of Object.entries(r4)) {
+      if (n3 >= LIMITS.machineNames) break;
+      if (!MACHINE_KEY.test(k2) || x2 !== "kg" && x2 !== "lb") continue;
+      out[k2] = x2;
       n3++;
     }
     return n3 ? out : void 0;
@@ -5145,8 +5168,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           sets: (arr(b2.sets) || []).flatMap(cleanDraftSet),
           // Done at a new machine or gym, last, where the menu adds it; absent unless marked.
           ...b2.nw === true ? { nw: true } : {},
-          // The machine picked for it, after it, the lifter's; absent until one is picked.
-          ...named(typeof b2.mc === "string" && b2.mc ? fixId(b2.mc) : null),
+          // The machine it is on, after it: one picked, or in an edit the session's as saved, kept or given (cleanName).
+          ...cleanName(b2),
           // The pictures on its note, by id, last; absent unless there are any.
           ...picsField(b2.pics)
         },
@@ -6321,7 +6344,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     await picsRefresh();
     return { id: row.id };
   }
-  function named2() {
+  function named() {
     const out = /* @__PURE__ */ new Set();
     const add = (v3) => {
       for (const x2 of arr(v3) || []) if (typeof x2 === "string" && isPicId(x2)) out.add(x2);
@@ -6339,7 +6362,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   async function picsTidy(now2 = Date.now()) {
     if (!ready) return;
-    const live2 = named2();
+    const live2 = named();
     const me = owner();
     const seen = [], gone2 = [];
     for (const r4 of rows.values()) {
@@ -7330,15 +7353,18 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return m3.has(k2) ? m3.get(k2) : void 0;
   }
   function liftMachinesIn(M3, exId) {
+    const own2 = EXIn(M3, exId).machineU || {};
     return machinesOf(IDXIn(M3).byEx[exId] || []).map((g2) => {
       const x2 = g2[g2.length - 1];
       const at2 = x2.pts.filter((p3) => Math.abs(p3.w - x2.topW) < EPS_SAME);
+      const u4 = unitAt(x2.pts, x2.topW);
       return {
         key: g2[0].mk,
         date: x2.date,
         w: x2.topW,
-        u: unitAt(x2.pts, x2.topW),
-        r: at2.length ? Math.max(...at2.map((p3) => p3.r)) : x2.topReps
+        u: u4,
+        r: at2.length ? Math.max(...at2.map((p3) => p3.r)) : x2.topReps,
+        mu: own2[g2[0].mk] ?? u4
       };
     }).sort((a2, b2) => a2.date < b2.date ? 1 : a2.date > b2.date ? -1 : 0);
   }
@@ -7974,11 +8000,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const num3 = ex.bw ? kg2 > 0 ? `BW+${n3(kg2)}` : `BW−${n3(-kg2)}` : n3(kg2);
     return `${num3} ${u4}`;
   }
-  function listLabelIn(M3, ex, kg2, t4, named3) {
+  function listLabelIn(M3, ex, kg2, t4, named2) {
     const lift = liftUIn(M3, ex), u4 = t4 ?? lift;
     const label = loadLabelIn(M3, { bw: ex.bw, unit: u4 }, kg2);
     if (ex.bw && kg2 === 0) return label;
-    return named3 || u4 !== UIn(M3) || u4 !== lift || u4 !== appUIn(M3) ? `${label} ${u4}` : label;
+    return named2 || u4 !== UIn(M3) || u4 !== lift || u4 !== appUIn(M3) ? `${label} ${u4}` : label;
   }
   function saidLoadIn(M3, ex, kg2, u4) {
     M3 = liftModelIn(M3, ex);
@@ -12076,7 +12102,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   function nameJoined(st, unnamed, own2) {
     const rd = machineReadings(st);
-    const named3 = /* @__PURE__ */ new Map();
+    const named2 = /* @__PURE__ */ new Map();
     for (const [exId, ids] of unnamed)
       for (const light of [0, 1]) {
         let to;
@@ -12085,13 +12111,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           if (!r4) continue;
           if (to === void 0) to = r4.key;
           else if (own2.has(r4.key) && !own2.has(to)) {
-            const at2 = named3.get(q) || /* @__PURE__ */ new Map();
+            const at2 = named2.get(q) || /* @__PURE__ */ new Map();
             for (const i5 of r4.at) at2.set(i5, to);
-            named3.set(q, at2);
+            named2.set(q, at2);
           }
         }
       }
-    nameSessions(st, named3);
+    nameSessions(st, named2);
   }
   function mergeFirstLink(mine, rState, rids, remote) {
     const base = realCount(mine) > realCount(rState) ? mine : rState, other = base === mine ? rState : mine;
@@ -12706,7 +12732,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     fx.undoToastHide();
     const readings = opts.inProgress || opts.whole ? null : machineReadings(state);
-    let named3 = false;
+    let named2 = false;
     const top0 = undoStack[undoStack.length - 1];
     if (opts.undo) snapshot(typeof opts.undo === "function" ? opts.undo : null);
     const top = undoStack[undoStack.length - 1];
@@ -12728,8 +12754,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     try {
       change();
       const was = readings || (logBefore && !opts.whole ? machineReadings(logBefore) : null);
-      if (was) named3 = keepMachines(state, was, editsNoted);
-      if (named3) {
+      if (was) named2 = keepMachines(state, was, editsNoted);
+      if (named2) {
         seenAsIs();
         seen = true;
       }
@@ -12754,7 +12780,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       dropInside = false;
       logBefore = null;
     }
-    if (!opts.inProgress || inside || named3) invalidate();
+    if (!opts.inProgress || inside || named2) invalidate();
     if (opts.soon && !opts.app) saveSoon();
     else saveNow();
     if (opts.app) seenAsIs();
@@ -12901,8 +12927,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   var distU = () => appU() === "kg" ? "km" : "mi";
   var distShow = (km) => Math.round((appU() === "kg" ? km : km / KM_MI) * HUNDREDTHS) / HUNDREDTHS;
-  function setShort(ex, x2, named3) {
-    const l4 = listLabel(ex, +(x2.w ?? 0) || 0, x2.u, named3);
+  function setShort(ex, x2, named2) {
+    const l4 = listLabel(ex, +(x2.w ?? 0) || 0, x2.u, named2);
     return ex.timed ? `${l4} for ${x2.r}s` : `${l4}×${x2.r}`;
   }
   function setStr(ex, x2) {
@@ -13347,6 +13373,21 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const k2 = key === NEW_MACHINE ? newMachineKey() : key;
     return k2 && e5 && e5.machines && e5.machines[k2] || null;
   }
+  function machineLabels(exId) {
+    const e5 = state.exercises.find((x2) => x2.id === exId);
+    const out = /* @__PURE__ */ new Map();
+    const used = /* @__PURE__ */ new Set();
+    for (const x2 of IDX().byEx[exId] || []) {
+      if (out.has(x2.mk)) continue;
+      const base = e5 && e5.machines && e5.machines[x2.mk] || x2.date;
+      let label = base;
+      for (let n3 = 2; used.has(label); n3++) label = `${base}-${n3}`;
+      used.add(label);
+      out.set(x2.mk, label);
+    }
+    return out;
+  }
+  var isDayLabel = (label) => /^\d{4}-\d{2}-\d{2}(-\d+)?$/.test(label);
   var MACHINE_CHOICES = 6;
   function machineNameChoices(exId) {
     const e0 = state.exercises.find((x2) => x2.id === exId);
@@ -16440,7 +16481,7 @@ ${more}`;
     const lines = String(text).split(/\r?\n/);
     const S4 = [];
     let cur2 = null, ex = null, pend = null, hint = null;
-    const named3 = { kg: false, lb: false };
+    const named2 = { kg: false, lb: false };
     const unread = [];
     const day = (date, name, line) => {
       if (pend) unread.push(pend.raw);
@@ -16465,10 +16506,10 @@ ${more}`;
       const under = li > 0 && !!(lines[li - 1] || "").trim();
       if (/\bkgs?\b|\dkg/i.test(L2)) {
         hint = hint || "kg";
-        named3.kg = true;
+        named2.kg = true;
       } else if (/\blbs?\b|\dlb|#/i.test(L2)) {
         hint = hint || "lb";
-        named3.lb = true;
+        named2.lb = true;
       }
       const words = L2.split(/\s+/);
       let dt = impDate(L2);
@@ -16546,8 +16587,8 @@ ${more}`;
     }
     return {
       sessions: S4.filter((x2) => x2.items.length).map((x2) => ({ date: x2.date, name: x2.name, items: x2.items })),
-      unit: named3.kg && named3.lb ? null : hint,
-      ...named3.kg && named3.lb ? { mixed: true } : {},
+      unit: named2.kg && named2.lb ? null : hint,
+      ...named2.kg && named2.lb ? { mixed: true } : {},
       skipped: 0,
       cardio: 0,
       unread: unread.slice(0, UNREAD_SHOWN),
@@ -24456,6 +24497,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     const odd = [];
     let timedOff = 0;
     const newEx2 = newExercises(m3);
+    const labelled = /* @__PURE__ */ new Map();
     for (const x2 of m3.res.sessions) {
       const date = x2.date || m3.date;
       const ex = [];
@@ -24490,14 +24532,11 @@ ${JSON.stringify(ctx, null, 1)}`;
         }
         const prev = ex.find((b2) => b2.exId === exo.id);
         if (prev) prev.sets.push(...sets);
-        else
-          ex.push({
-            exId: exo.id,
-            note: it.note || "",
-            rr: null,
-            sets,
-            ...named(it.machine && onMachines(exo) ? fixId(it.machine) : null)
-          });
+        else {
+          const b2 = { exId: exo.id, note: it.note || "", rr: null, sets };
+          ex.push(b2);
+          if (it.machine && onMachines(exo)) labelled.set(b2, it.machine);
+        }
         if (it.ss) grp[exo.id] = it.ss;
       }
       if (ex.length && Object.keys(grp).length) ssOf[sid] = grp;
@@ -24518,6 +24557,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         });
     }
     const { fresh, dup: dupSessions } = notInLog(out);
+    const machineNames2 = fileMachines(fresh, labelled);
     const { cardio, cardioNoTime, dup: dupCardio } = fileCardio(m3);
     const dup = dupSessions + dupCardio;
     return {
@@ -24529,8 +24569,31 @@ ${JSON.stringify(ctx, null, 1)}`;
       bad,
       odd,
       timedOff,
-      newEx: Object.values(newEx2).filter((e5) => fresh.some((ss) => ss.ex.some((b2) => b2.exId === e5.id)))
+      newEx: Object.values(newEx2).filter((e5) => fresh.some((ss) => ss.ex.some((b2) => b2.exId === e5.id))),
+      machineNames: machineNames2
     };
+  }
+  function fileMachines(out, labelled) {
+    const names = {};
+    const keys = /* @__PURE__ */ new Map();
+    for (const ss of [...out].sort((a2, b2) => a2.date < b2.date ? -1 : a2.date > b2.date ? 1 : 0))
+      for (const b2 of ss.ex) {
+        const label = labelled.get(b2);
+        if (!label) continue;
+        let byLabel = keys.get(b2.exId);
+        if (!byLabel) {
+          byLabel = new Map([...machineLabels(b2.exId)].map(([k2, l4]) => [l4, k2]));
+          keys.set(b2.exId, byLabel);
+        }
+        let key = byLabel.get(label);
+        if (!key) {
+          key = ss.id;
+          byLabel.set(label, key);
+          if (!isDayLabel(label)) names[b2.exId] = { ...names[b2.exId] || {}, [key]: label };
+        }
+        pickName(b2, key);
+      }
+    return names;
   }
   var FROM_LOG = {
     sameAt: 0.5,
@@ -24579,10 +24642,10 @@ ${JSON.stringify(ctx, null, 1)}`;
       }
     return (x2) => x2.deload || x2.light || (tot[x2.id] || 0) > 0 && (off[x2.id] || 0) * 2 >= (tot[x2.id] || 0);
   }
-  function groupSessions(rec2, named3, offS) {
+  function groupSessions(rec2, named2, offS) {
     const groups = [];
     let pop;
-    if (named3) {
+    if (named2) {
       pop = rec2;
       const by = /* @__PURE__ */ new Map();
       for (const x2 of rec2) {
@@ -24692,9 +24755,9 @@ ${JSON.stringify(ctx, null, 1)}`;
     });
     return cyc;
   }
-  function dayFinder(named3, days) {
+  function dayFinder(named2, days) {
     return (x2) => {
-      if (named3) {
+      if (named2) {
         const k2 = nameOf(x2).slice(0, FROM_LOG.name).toLowerCase();
         const d3 = days.find((q) => q.g.name.toLowerCase() === k2);
         return d3 ? d3.day : null;
@@ -24718,8 +24781,8 @@ ${JSON.stringify(ctx, null, 1)}`;
     const newest = all.reduce((m3, x2) => x2.date > m3 ? x2.date : m3, first.date);
     const rec2 = all.filter((x2) => x2.date >= addDays(newest, 1 - IMPORT_DAYS)).sort(byDate2);
     const offS = offSessions();
-    const named3 = !rec2.some((x2) => GENERIC_WORKOUT.test(nameOf(x2)));
-    const grouped = groupSessions(rec2, named3, offS);
+    const named2 = !rec2.some((x2) => GENERIC_WORKOUT.test(nameOf(x2)));
+    const grouped = groupSessions(rec2, named2, offS);
     let groups = grouped.groups;
     const pop = grouped.pop;
     groups = groups.filter((g2) => g2.list.length >= IMPORT_REPEATS);
@@ -24727,7 +24790,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       return null;
     const lastOf2 = (g2) => g2.list[g2.list.length - 1] || first;
     groups.sort((a2, b2) => byDate2(lastOf2(a2), lastOf2(b2)));
-    if (!named3)
+    if (!named2)
       groups.forEach((g2, i5) => {
         g2.name = "Day " + String.fromCharCode(LETTER_A + i5);
       });
@@ -24740,7 +24803,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     return {
       routine: { id: uid(), name: "From your log", schedule: "cycle", days: cyc },
       perWeek,
-      dayFor: dayFinder(named3, days)
+      dayFor: dayFinder(named2, days)
     };
   }
   async function liveLogFetch() {
@@ -24883,7 +24946,10 @@ ${JSON.stringify(ctx, null, 1)}`;
           setState(
             normalize({
               ...state,
-              exercises: [...state.exercises, ...b2.newEx],
+              // The machines the file adds, named as it names them (fileMachines).
+              exercises: [...state.exercises, ...b2.newEx].map(
+                (e5) => b2.machineNames[e5.id] ? { ...e5, machines: { ...e5.machines || {}, ...b2.machineNames[e5.id] } } : e5
+              ),
               sessions: [...state.sessions, ...b2.sessions],
               cardio: [...state.cardio, ...b2.cardio],
               settings: { ...state.settings, onboarded: true }
@@ -25496,18 +25562,9 @@ ${JSON.stringify(ctx, null, 1)}`;
     const machineOf = /* @__PURE__ */ new Map();
     const byEx = IDX().byEx;
     for (const id of Object.keys(byEx)) {
-      const xs = byEx[id] || [];
-      const ms = liftMachines(id);
-      if (ms.length < 2) continue;
-      const first = /* @__PURE__ */ new Map();
-      for (const x2 of xs) if (!first.has(x2.mk)) first.set(x2.mk, x2.date);
-      const used = /* @__PURE__ */ new Set();
-      for (const [mk, date] of first) {
-        let name = date;
-        for (let n3 = 2; used.has(name); n3++) name = `${date}-${n3}`;
-        used.add(name);
-        for (const x2 of xs) if (x2.mk === mk) machineOf.set(`${x2.sid}|${id}`, name);
-      }
+      const labels = machineLabels(id);
+      if (labels.size < 2 && ![...labels.keys()].some((k2) => machineName(id, k2))) continue;
+      for (const x2 of byEx[id] || []) machineOf.set(`${x2.sid}|${id}`, labels.get(x2.mk) || "");
     }
     const typed = (ex, s3) => {
       const u4 = s3.u ?? liftU(ex);
@@ -27090,8 +27147,8 @@ ${JSON.stringify(ctx, null, 1)}`;
                 })
               ),
               ...b2.nw ? { nw: true } : {},
-              // The machine it was saved on, the lifter's in the edit (machines.ts), saved as theirs.
-              ...named(b2.mc),
+              // The machine it was saved on, given or kept as it was (machines.ts): a name the app kept stays so unless a machine is picked.
+              ...nameAsIs(b2),
               ...b2.pics && b2.pics.length ? { pics: [...b2.pics] } : {}
             };
           })
@@ -27132,7 +27189,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     if (k2 !== NEW_MACHINE && !was) return;
     const ed = d3.editingId;
     if (ed && k2 === NEW_MACHINE && draftMachine(b0.exId) === ed) return;
-    const u4 = was && !ed ? was.u : null;
+    const u4 = was && !ed ? was.mu : null;
     const key = k2 === NEW_MACHINE ? newMachineKey() : k2;
     act(
       () => {
@@ -27156,10 +27213,10 @@ ${JSON.stringify(ctx, null, 1)}`;
       { undo: true }
     );
     rerenderKeepScroll();
-    const named3 = k2 === NEW_MACHINE ? name : machineName(e5.id, k2);
+    const named2 = k2 === NEW_MACHINE ? name : machineName(e5.id, k2);
     toast(
       // The machine's label is one thing to read, so it is kept on one line (no-break spaces) when the message wraps.
-      named3 ? `${e5.name}: ${named3.replace(/ /g, " ")}` : was ? `${e5.name}: ${`${fmtDate(was.date)} · ${listLabel(e5, was.w, was.u, true)} × ${was.r}`.replace(/ /g, " ")}` : `${e5.name}: new machine`,
+      named2 ? `${e5.name}: ${named2.replace(/ /g, " ")}` : was ? `${e5.name}: ${`${fmtDate(was.date)} · ${listLabel(e5, was.w, was.u, true)} × ${was.r}`.replace(/ /g, " ")}` : `${e5.name}: new machine`,
       true
     );
   }
@@ -27266,9 +27323,17 @@ ${JSON.stringify(ctx, null, 1)}`;
       const to = t4.dataset.v === "kg" || t4.dataset.v === "lb" ? t4.dataset.v : liftU(e5) === "kg" ? "lb" : "kg";
       const g2 = state.settings.gym;
       if (to === e5.unit || !e5.unit && to === appU() && (!g2 || g2.u === to)) return;
+      const on = onMachines(e5) ? draftMachine(b2.exId) : null;
+      const key = on === NEW_MACHINE ? newMachineKey() : on;
+      const has = new Set(liftMachines(b2.exId).map((x2) => x2.key));
       act(
         () => {
           e5.unit = to;
+          if (key)
+            e5.machineU = {
+              ...Object.fromEntries(Object.entries(e5.machineU || {}).filter(([k2]) => has.has(k2) && k2 !== key)),
+              [key]: to
+            };
           for (const x2 of d3.ex)
             if (x2.exId === b2.exId) {
               if (!d3.editingId && !x2.sets.some((s3) => s3.done)) refreshBlock(x2);
@@ -30903,8 +30968,8 @@ ${JSON.stringify(ctx, null, 1)}`;
     });
     picsStart().then(
       () => {
-        const named3 = (x2) => !!(x2.pics && x2.pics.length) || x2.ex.some((b2) => !!(b2.pics && b2.pics.length));
-        if (state.draft && named3(state.draft) || state.sessions.some(named3)) rerenderKeepScroll();
+        const named2 = (x2) => !!(x2.pics && x2.pics.length) || x2.ex.some((b2) => !!(b2.pics && b2.pics.length));
+        if (state.draft && named2(state.draft) || state.sessions.some(named2)) rerenderKeepScroll();
       },
       (e5) => {
         log("pics-read", e5);
