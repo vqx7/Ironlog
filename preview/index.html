@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-ioI2Cb7Fa8P5QV/lT/YSAVc9RmnaIyZK8SKLcb49BHQ=' 'sha256-huPMTGr6cVObgHsnurSzS3VFHnVgOZK23rNVnZ1rNYI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-9ENbiDbkJYMk+fp/KxoDNhjJpLwCxOshfeF8LfCySAg=' 'sha256-huPMTGr6cVObgHsnurSzS3VFHnVgOZK23rNVnZ1rNYI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.18-r122">
+<meta name="app-build" content="2026.11.19-r123">
 <title>Ironlog Preview</title>
 <script>window.IRONLOG_APP=true;window.IRONLOG_ENV='preview';window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
@@ -2208,8 +2208,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.76";
-  var APP_VERSION = "2026.11.18-r122";
+  var DISPLAY_VERSION = "2.77";
+  var APP_VERSION = "2026.11.19-r123";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -11973,30 +11973,6 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     else if (kept === "cardio") fx.toast("Cardio logged on another device was saved in History.");
     else if (kept === "cardioJoined") fx.toast("Cardio logged on another device was added to the session saved here.");
   }
-  async function sessionFromCloud(d3, legB) {
-    if (d3.editingId || state.sessions.some((q) => q.id === d3.id)) return;
-    const id = chunkOf(d3.date);
-    const sn = await withTimeout(ref(id).get(), SYNC_MS.net, "sync-read");
-    trackEdits();
-    const sb = sn && sn.exists ? rec(sn.data()) : null;
-    ownWrite(id, sb);
-    if (!sb || typeof sb.json !== "string") return;
-    const data = parseJson(sb.json);
-    const m3 = cloud.meta[id], h3 = hashStr(sb.json);
-    if (m3 && m3.h === h3) return;
-    const mine = chunksOf(state)[id] || emptyChunk(id);
-    const localDirty = !m3 || hashStr(storedJson(mine)) !== m3.h;
-    const et = Number(sb.et) || Number(sb.at) || 0, rt = timesIn(sb.rt);
-    const merged = !localDirty ? rec(data) : mergeChunk(id, baseFor(id, m3, legB), mine, data, clashRule(id, rt, et > (cloud.editAt[id] || 0)), {
-      conflicts: 0
-    });
-    applyChunk(id, merged);
-    recordTimesAfter(id, mine, data, merged, rt);
-    cloud.editAt[id] = Math.max(cloud.editAt[id] || 0, et);
-    cloud.meta[id] = { h: h3, at: Number(sb.at), b: baseOf(id, data) };
-    saveMeta();
-    resyncLocalH();
-  }
   function conflictNote(stat, tabs = false) {
     const n3 = stat.conflicts;
     if (!n3) return;
@@ -12131,6 +12107,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   function tooBigSaid(tooBig) {
     return tooBig.includes("core") ? "Routines and settings are too large to sync. Export a backup." : tooBig.some((i5) => i5.startsWith("b-")) ? "A year of body data is too large to sync. Export a backup." : tooBig.includes("draft") ? "The workout in progress is too large to sync. Export a backup." : "One month of sessions is too large to sync. Export a backup.";
   }
+  var HAND_OVERS = 3;
+  var handedOver = 0;
   async function cloudFlush() {
     if (!cloud.on) return;
     notesCatchUp();
@@ -12139,6 +12117,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const todo = changedDocs();
     todo.sort((a2, b2) => +(a2.id === "draft") - +(b2.id === "draft"));
     if (!todo.length) {
+      handedOver = 0;
       if (cloud.status !== "synced") {
         cloud.last = Date.now();
         saveMeta();
@@ -12152,7 +12131,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     }
     setCloud("saving");
     try {
-      let adopted = false, moreBody2 = false, again = false;
+      let adopted = false, again = false;
       const stat = { conflicts: 0 };
       let dn = null;
       const tooBig = [];
@@ -12180,26 +12159,31 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
               const ret = Number(b2.et) || Number(b2.at);
               const remoteWins = ret > (cloud.editAt[x2.id] || 0), rt2 = timesIn(b2.rt);
               const mine = parseJson(json);
-              const merged = mergeChunk(x2.id, baseFor(x2.id, m3, legB), mine, rd, clashRule(x2.id, rt2, remoteWins), stat);
+              const merged = x2.id === "draft" ? mergeChunk(x2.id, baseFor(x2.id, m3, legB), mine, rd, clashRule(x2.id, rt2, remoteWins), stat) : null;
+              const prev = x2.id === "draft" ? state.draft : null;
+              const mergedDraft = merged ? draftOf(merged) : null;
+              if (!merged || prev && (!mergedDraft || mergedDraft.id !== prev.id)) {
+                if (++handedOver > HAND_OVERS) {
+                  handedOver = 0;
+                  log("sync-flush", { code: "raced", ids: [x2.id] });
+                  cloudFail({ code: "raced", message: "Another device was saving at the same moment." });
+                  return;
+                }
+                await cloudPull();
+                return;
+              }
               recordTimesAfter(x2.id, mine, rd, merged, rt2);
               cloud.editAt[x2.id] = Math.max(cloud.editAt[x2.id] || 0, ret);
-              const prev = x2.id === "draft" ? state.draft : null;
-              if (x2.id === "draft" && !dn) dn = { prev, sessions0: state.sessions, kept: null, lost: null };
-              const agreed = x2.id === "draft" && m3 && m3.b ? m3.b.draft : null;
-              const mergedDraft = x2.id === "draft" ? draftOf(merged) : null;
-              if (prev && (!mergedDraft || mergedDraft.id !== prev.id)) await sessionFromCloud(prev, legB);
+              if (!dn) dn = { sessions0: state.sessions, lost: null };
+              const agreed = m3 && m3.b ? m3.b.draft : null;
               applyChunk(x2.id, merged);
               adopted = true;
               writeTakenIn();
               took = { h: hashStr(b2.json), at: Number(b2.at), b: baseOf(x2.id, rd) };
-              if (x2.id === "draft" && dn) {
-                const remoteDraft = draftOf(rec(rd));
-                if (loggedSince(prev, agreed)) dn.kept = keepLost(prev, mergedDraft, agreed, remoteWins) || dn.kept;
-                if (loggedSince(remoteDraft, agreed))
-                  dn.lost = keepLost(remoteDraft, mergedDraft, agreed, remoteWins) || dn.lost;
-                if (dn.kept || dn.lost || canon(state.sessions) !== canon(dn.sessions0)) again = true;
-              }
-              if (x2.id === "core" && absorbLegacy(legacyBody(rec(rd)))) moreBody2 = true;
+              const remoteDraft = draftOf(rec(rd));
+              if (loggedSince(remoteDraft, agreed))
+                dn.lost = keepLost(remoteDraft, mergedDraft, agreed, remoteWins) || dn.lost;
+              if (dn.lost || canon(state.sessions) !== canon(dn.sessions0)) again = true;
               resyncLocalH();
               json = storedJson(chunksOf(state)[x2.id] || emptyChunk(x2.id));
               if (hashStr(json) === hashStr(b2.json)) {
@@ -12256,10 +12240,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         trackEdits();
         if (!ui.modal) fx.rerenderKeepScroll();
         conflictNote(stat);
-        if (dn) {
-          draftNote(dn.prev, dn.kept);
-          lostNote(dn.lost);
-        }
+        if (dn) lostNote(dn.lost);
       }
       if (raced.length) {
         log("sync-flush", { code: "raced", ids: raced });
@@ -12267,7 +12248,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         return;
       }
       cloud.retry = 0;
-      if (moreBody2 || again) cloudSoon();
+      handedOver = 0;
+      if (again) cloudSoon();
       if (tooBig.length) {
         saveMeta();
         setCloud("offline", tooBigSaid(tooBig));
