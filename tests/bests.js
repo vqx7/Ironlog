@@ -1,4 +1,4 @@
-// PRs and All-time bests, checked against their written rules (CA-1; the spec "PRs and All-time bests", B-1 to B-19,
+// PRs and All-time bests, checked against their written rules (CA-1; the spec "PRs and All-time bests", B-1 to B-20,
 // in the project's claude/ironlog-spec-prs-bests.md, built from the code: prs.ts, bests.ts, formulas.ts, worksets.ts
 // (livePR, rowPR, prBeat), workfinish.ts's recap, display.ts, stats.ts, today.ts and history.ts, V's rulings deciding,
 // and where neither does, what a lifter expects). A feature suite: each section is one rule, a lifter's log seeded, the

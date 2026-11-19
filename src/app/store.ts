@@ -257,7 +257,7 @@ export interface Base {
   draft?: DraftLike | null | undefined;
 }
 
-/** Where the sync stands: off (local), reading the account (connecting), writing to it (saving), everything agreed (synced), or waiting for the network (offline). One function moves it (setCloud, sync.ts). */
+/** Where the sync stands: off (local), reading the account (connecting), writing to it (saving, and while a write that lost its race to another device waits to try again), everything agreed (synced), or waiting for the network (offline). One function moves it (setCloud, sync.ts). */
 export type CloudStatus = 'local' | 'connecting' | 'saving' | 'synced' | 'offline';
 /** A sync note for one document: the fingerprint of the copy last agreed
     with the account, when that copy was written, and the merge base, absent
