@@ -5,7 +5,7 @@
 import type { DbRack, Exercise, Gym, Plan } from './types';
 import type { ExerciseLike, Model } from './model';
 import { isNum, r3, EPS_SAME } from './util';
-import { LB, STEP_LB, stepReadIn, unitStepIn, BAR, TYPED_STEP, loadReadAs, loadReadIn, typedUnit } from './units';
+import { LB, STEP_LB, stepReadIn, unitStepIn, BAR, TYPED_STEP, loadReadAs, loadReadIn, planStepUnit } from './units';
 import { ONE_DB, PLATE_SIDE_IDS, isCompound, loadMode, rackKind } from './library';
 import { UIn, gymOfIn, liftModelIn } from './model';
 import { arr } from './records';
@@ -226,7 +226,12 @@ export function gymRackIn(
   M = liftModelIn(M, ex);
   const g = gymOfIn(M);
   if (!g || !ex || ex.bw || ex.assist || ex.timed || ex.inc != null) return null;
-  if (plan && isNum(+plan.inc) && Math.abs(stepReadIn(M, +plan.inc) - unitStepIn(M)) > EPS_SAME) return null;
+  if (
+    plan &&
+    isNum(+plan.inc) &&
+    Math.abs(stepReadIn(M, +plan.inc, planStepUnit(+plan.inc)) - unitStepIn(M)) > EPS_SAME
+  )
+    return null;
   const k = rackKind(ex);
   if (!k) return null;
   const m = loadMode(ex);
@@ -332,7 +337,8 @@ export function plateGridIn(
   const g = gymOfIn(M);
   if (!ex || ex.inc != null || ex.timed || !g || !Array.isArray(g.plates) || !g.plates.length) return null;
   if (platesMode(ex) !== 'bar' || loadMode(ex) !== 'total') return null;
-  if (Math.abs(stepReadIn(M, plan && isNum(+plan.inc) ? +plan.inc : STEP_LB) - unitStepIn(M)) > EPS_SAME) return null;
+  const pinc = plan && isNum(+plan.inc) ? +plan.inc : STEP_LB;
+  if (Math.abs(stepReadIn(M, pinc, planStepUnit(pinc)) - unitStepIn(M)) > EPS_SAME) return null;
   const bar = loadFloorIn(M, ex);
   if (!(bar > 0)) return null;
   const key = `${g.u}|${g.plates.join(',')}|${bar}`;
@@ -408,12 +414,12 @@ export function atCapOfIn(
    own bar has none. */
 export function exBarKgIn(M: Model, ex: ExerciseLike | null | undefined): number {
   M = liftModelIn(M, ex);
-  return ex && ex.barKg !== undefined && ex.barKg > 0 ? barReadIn(M, ex.barKg) : barKgIn(M);
+  return ex && ex.barKg !== undefined && ex.barKg > 0 ? barReadIn(M, ex.barKg, ex.barU) : barKgIn(M);
 }
 
 /** The heaviest load set on a lift, read in its unit (loadReadIn), or null when none is set. */
-export function liftMaxIn(M: Model, ex: Pick<Exercise, 'maxLoad' | 'unit'>): number | null {
-  return ex.maxLoad != null ? loadReadIn(liftModelIn(M, ex), ex.maxLoad) : null;
+export function liftMaxIn(M: Model, ex: Pick<Exercise, 'maxLoad' | 'maxLoadU' | 'unit'>): number | null {
+  return ex.maxLoad != null ? loadReadIn(liftModelIn(M, ex), ex.maxLoad, ex.maxLoadU) : null;
 }
 
 /* The unit a bar is read in: a lift's own unit where it has one (its equipment is marked in it), else the unit the gym
@@ -424,23 +430,28 @@ function barUnitIn(M: Model): 'kg' | 'lb' {
   return (g && g.u) || UIn(M);
 }
 
-/* A bar typed in the unit its field shows (the one on screen, the lift's own for its bar) is the bar the lifter has, so
-   it reads as typed whatever unit Your gym is in: 45 typed in lb with Your gym in kg is a 45 lb bar, not the gym's 20 kg
-   one. One set in the other unit is read on the equipment of the unit a bar is read in. */
-/** A bar's weight as set (kg): as typed when typed in the unit on screen, else read in the unit a bar is read in (barUnitIn, loadReadAs). */
-function barReadIn(M: Model, kg: number): number {
-  return typedUnit(kg) === UIn(M) ? kg : loadReadAs(kg, barUnitIn(M));
+/* A bar entered in the unit its field shows (the one on screen, the lift's own for its bar) is the bar the lifter has,
+   so it reads as entered whatever unit Your gym is in: 45 entered in lb with Your gym in kg is a 45 lb bar, not the
+   gym's 20 kg one. One set in the other unit is read on the equipment of the unit a bar is read in. */
+/** A bar's weight as set (kg, entered in `t`): as entered when entered in the unit on screen, else read in the unit a bar is read in (barUnitIn, loadReadAs). */
+function barReadIn(M: Model, kg: number, t: 'kg' | 'lb' | null | undefined): number {
+  return t === UIn(M) ? kg : loadReadAs(kg, t, barUnitIn(M));
 }
 
-/** A lift's own bar as set (kg), read for that lift (barReadIn in its unit). */
-export function barReadOfIn(M: Model, ex: Pick<Exercise, 'unit'> | null | undefined, kg: number): number {
-  return barReadIn(liftModelIn(M, ex), kg);
+/** A lift's own bar as set (kg, entered in `t`), read for that lift (barReadIn in its unit). */
+export function barReadOfIn(
+  M: Model,
+  ex: Pick<Exercise, 'unit'> | null | undefined,
+  kg: number,
+  t: 'kg' | 'lb' | null | undefined
+): number {
+  return barReadIn(liftModelIn(M, ex), kg, t);
 }
 
 /* The default bar is the gym's: a 20 kg bar in a gym labelled in kg, 45 lb in one in lb,
    whatever unit the app shows (a kg gym with the app in lb is not given a 45 lb bar). */
 export function barKgIn(M: Model): number {
   const b = M.s.settings.barKg;
-  if (b != null) return barReadIn(M, b);
+  if (b != null) return barReadIn(M, b, M.s.settings.barU);
   return barUnitIn(M) === 'lb' ? BAR.lb * LB : BAR.kg;
 }

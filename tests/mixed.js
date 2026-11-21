@@ -28,6 +28,15 @@
 //   (7) the update from 2.69: a phone or tab that takes it reads the log as
 //       it is and writes nothing it did not change, so a delete, a correction
 //       or an Undo made on 2.69 stands, in two tabs and on two phones.
+//   (8) the update from 2.74, which refiles the Preacher Curl (2.75): the
+//       refile is no edit, so an edit of that lift made with no signal on
+//       another phone stands, and no clash is said.
+//   (9) each record's own edit time (2.76) beside a phone still on 2.75, which
+//       keeps none: a clash is decided by the documents' times, as on 2.75, and
+//       the two builds write nothing more once synced.
+//   (10) a record's time that stopped being known (a copy from 2.75 taken
+//       in) is not given back by the app's other tab, so the latest edit,
+//       made on 2.75, stands.
 // `node tests/mixed.js <older page>` runs it against another build (default
 // baselines/r55.html); this build is index.html, or IRONLOG_FILE.
 const { open, tab, engine } = require('./h');
@@ -320,6 +329,131 @@ const plain = rows => (rows || []).map(s => `${s.w}x${s.r}`).join(',');
       const g4 = { F: await mcOf(F), G: await mcOf(G), account: ((JSON.parse(inAcct).sessions || []).find(s => s.id === 'g4') || { ex: [{}] }).ex[0].mc || '-' };
       ok(g4.F === '0' && g4.G === '0' && g4.account === '0', `(7) a machine picked for a session with no signal (${how}) is kept on both phones and in the account, the other phone having taken the update and made a later edit in the same half month (REV25-1)`, g4);
     }
+  }
+
+  /* ---- (8) The update from 2.74 (baselines/r120.html), which refiles the Preacher Curl with the barbells (2.75). The
+     refile is read on each phone and never sent (merge.ts savedEquip), so it is no edit of the lift against the copy
+     the phones agreed. Two phones on 2.74; phone B, with no signal, writes a note on the Preacher Curl; phone A, later,
+     turns "Timer sound" off and syncs (core, the document both records are in, is then A's later). Both take the
+     update: B's note stands on both phones and in the account, A's timer too, and no clash is said (REV27-1). */
+  {
+    const R120 = 'baselines/r120.html', CP = cloudOf(), uid = 'u10';
+    // What the toast says on the updated page, each message once.
+    const said = () => {
+      window.__said = [];
+      const hook = () => {
+        const el = document.getElementById('toast');
+        if (!el) { setTimeout(hook, 20); return; }
+        new MutationObserver(() => { const t = el.hidden ? '' : el.innerText.replace(/\s+/g, ' ').trim(); if (t && window.__said[window.__said.length - 1] !== t) window.__said.push(t); }).observe(el, { childList: true, subtree: true, attributes: true, characterData: true });
+      };
+      hook();
+    };
+    const update = async P => { await P.ctx.addInitScript(said); await P.page.close(); const T = await tab(P, 'index.html', CP.setup(uid)); const Q = await phone.dress(T, P); await wait(600); return Q; };
+    const lift = P => P.ev(() => { const e = window.__ironlog.state.exercises.find(x => x.id === 'preacher'); return e ? `${e.equip}: ${e.note}` : '-'; });
+    const A0 = await phone(browser, CP, R120, uid); pages.push(A0);
+    await A0.ev(() => { const L = window.__ironlog; L.state.settings.lastExport = '2026-10-21'; L.saveNow(); });
+    await A0.settle();
+    const B0 = await phone(browser, CP, R120, uid); pages.push(B0);
+    await wait(900); await B0.settle(); await A0.settle();
+    const was = [await lift(A0), await lift(B0)];
+    await B0.ev(() => { window.__offline = true; const L = window.__ironlog; L.act(() => { L.state.exercises.find(x => x.id === 'preacher').note = 'Elbows on the pad'; }); });
+    await wait(1200);
+    await A0.ev(() => { const L = window.__ironlog; L.act(() => { L.state.settings.timerSound = false; }); });
+    await wait(1200); await A0.settle();
+    const A = await update(A0); pages.push(A);
+    await A.settle();
+    const B = await update(B0); pages.push(B);
+    await B.settle(); await A.settle(); await B.settle();
+    const core = JSON.parse((JSON.parse(CP.content()).find(([k]) => k === `data/users/${uid}/core`) || [null, '{}'])[1]);
+    const inAcct = ((core.exercises || []).find(x => x.id === 'preacher') || {});
+    const got = { was, A: await lift(A), B: await lift(B), account: `${inAcct.equip}: ${inAcct.note}`, timer: [await A.ev(() => window.__ironlog.state.settings.timerSound), await B.ev(() => window.__ironlog.state.settings.timerSound)].join(), said: [...(await A.ev(() => window.__said || [])), ...(await B.ev(() => window.__said || []))] };
+    ok(got.was.join() === 'machine: ,machine: ' && got.A === 'barbell: Elbows on the pad' && got.B === 'barbell: Elbows on the pad' && got.account === 'machine: Elbows on the pad' && got.timer === 'false,false',
+      '(8) a note written with no signal on the Preacher Curl on a phone on 2.74 stands after both phones take the update that refiles it, the other phone\'s later "Timer sound" too: read as a barbell lift on both, saved in the account as 2.74 saves it (REV27-1)', got);
+    ok(!got.said.some(t => /edited on two devices/i.test(t)), '(8) and no clash is said: the refile is no edit', got.said);
+    const w0 = CP.writes(), c0 = CP.content();
+    await A.settle(); await B.settle(); await A.settle();
+    ok(CP.writes() === w0 && CP.content() === c0, '(8) syncing back and forth after the update writes nothing more', { writes: CP.writes() - w0 });
+  }
+
+  /* (9) Each record's own edit time (2.76) beside a phone still on 2.75, which keeps none: a record both phones edit is
+     decided by the documents' times, as on 2.75, so the later edit stands whichever build made it; 2.75 writes the
+     documents without the times 2.76 sends beside them, so no time outlives an edit it does not describe; and once
+     synced the two builds write nothing more. */
+  {
+    const R121 = 'baselines/r121.html', LB = 0.45359237;
+    const C9 = cloudOf();
+    const seed9 = P => P.ev(LB => {
+      const L = window.__ironlog; const S = L.state;
+      S.settings.onboarded = true; S.settings.unit = 'lb'; S.settings.lastExport = '2026-10-21';
+      const mk = (id, date) => ({ id, date, dayIdx: 0, dayName: 'Day 1', notes: 'start', ex: [{ exId: 'bench', rr: [8, 12], sets: [10, 10, 9].map(r => ({ w: 185 * LB, r, rir: 2, done: true })) }] });
+      S.sessions = [mk('o3', '2026-10-03'), mk('o10', '2026-10-10')];
+      L.state = L.normalize(S); L.invalidate(); L.saveNow();
+    }, LB);
+    const note = (P, id, t) => P.ev(([id, t]) => { const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === id).notes = t; }); }, [id, t]);
+    const notesOf = P => P.ev(() => Object.fromEntries(window.__ironlog.state.sessions.map(s => [s.id, s.notes])));
+    const nowOf = async P => new Date(await P.ev(() => Date.now())).toISOString();
+    const N9 = await phone(browser, C9, 'index.html', 'u9'); pages.push(N9);
+    await seed9(N9); await N9.settle();
+    const O9 = await phone(browser, C9, R121, 'u9', await nowOf(N9)); pages.push(O9);
+    await wait(900); await O9.settle();
+    // Each page's clock starts when it opens: each edit below is later than the one before on either phone's clock.
+    const gap = Math.abs(Date.parse(await nowOf(N9)) - Date.parse(await nowOf(O9))) + 400;
+    // This build edits Oct 3 with no signal; the phone on 2.75 edits it later and syncs; this build's signal comes back.
+    await N9.ev(() => { window.__offline = true; });
+    await note(N9, 'o3', 'Oct 3, first, on 2.76'); await wait(gap);
+    await note(O9, 'o3', 'Oct 3, later, on 2.75'); await O9.settle(); await wait(gap);
+    await N9.ev(() => { window.__offline = false; }); await N9.settle(); await O9.settle(); await N9.settle();
+    const a = { N: (await notesOf(N9)).o3, O: (await notesOf(O9)).o3 };
+    ok(a.N === 'Oct 3, later, on 2.75' && a.O === a.N, "(9) a record edited on this build, then later on a phone still on 2.75: the later edit stands on both, by the documents' times", a);
+    // The reverse: 2.75 edits Oct 10 with no signal, this build later, and syncs; then 2.75's signal comes back.
+    await O9.ev(() => { window.__offline = true; });
+    await note(O9, 'o10', 'Oct 10, first, on 2.75'); await wait(gap);
+    await note(N9, 'o10', 'Oct 10, later, on 2.76'); await N9.settle(); await wait(gap);
+    await O9.ev(() => { window.__offline = false; }); await O9.settle(); await N9.settle(); await O9.settle();
+    const b = { N: (await notesOf(N9)).o10, O: (await notesOf(O9)).o10 };
+    ok(b.N === 'Oct 10, later, on 2.76' && b.O === b.N, '(9) the reverse: the later edit, made on this build, stands on both', b);
+    const n0 = C9.writes(); await N9.settle(); await O9.settle(); await N9.settle(); await O9.settle();
+    ok(C9.writes() === n0, '(9) synced, the two builds write nothing more', { before: n0, after: C9.writes() });
+  }
+
+  /* ---- (10) A record's time that stopped being known stays so (2.76, REV27-4). A laptop on this build with the app
+     open in two tabs, phone B on this build, phone C still on 2.75 (`baselines/r121.html`, which keeps no record
+     times). The laptop writes Nov 3's note; B, with no signal, writes it later; C, later still, writes it and syncs;
+     the laptop takes C's copy in (with no time), then writes Nov 10's note in the same half-month and syncs; B's
+     signal comes back. C's note, the latest edit, stands everywhere. On the build before this fix the laptop's other
+     tab gave back the time of the laptop's own first edit, which went out beside C's copy, so B's edit, later than
+     that time, was kept. */
+  {
+    const R121 = 'baselines/r121.html', C10 = cloudOf(), uid = 'u10t';
+    const note = (P, id, t) => P.ev(([id, t]) => { const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === id).notes = t; }); }, [id, t]);
+    const n3Of = P => P.ev(() => (window.__ironlog.state.sessions.find(s => s.id === 'n3') || {}).notes);
+    const nowOf = async P => new Date(await P.ev(() => Date.now())).toISOString();
+    const X1 = await phone(browser, C10, 'index.html', uid); pages.push(X1);
+    await X1.ev(() => {
+      const L = window.__ironlog; const S = L.state; S.settings.lastExport = '2026-10-21';
+      const mk = (id, date) => ({ id, date, dayIdx: 0, dayName: 'Day 1', notes: 'start', ex: [{ exId: 'bench', rr: [8, 12], sets: [{ w: 80, r: 8, rir: 2, done: true }] }] });
+      S.sessions = [mk('n3', '2026-11-03'), mk('n10', '2026-11-10')]; L.state = L.normalize(S); L.invalidate(); L.saveNow();
+    });
+    await X1.settle();
+    const X2 = await phone.dress(await tab(X1, 'index.html', C10.setup(uid)), X1); pages.push(X2);
+    await wait(900);
+    const B = await phone(browser, C10, 'index.html', uid, await nowOf(X1)); pages.push(B);
+    const C = await phone(browser, C10, R121, uid, await nowOf(X1)); pages.push(C);
+    await wait(900); await B.settle(); await C.settle(); await X1.settle();
+    // Each page's clock starts when it opens: each edit below is well after the one before on every clock.
+    const skewOf = async P => Math.abs(Date.parse(await nowOf(X1)) - Date.parse(await nowOf(P)));
+    const gap = Math.max(await skewOf(B), await skewOf(C)) + 1200;
+    await note(X1, 'n3', 'Nov 3, on the laptop'); await wait(gap); await X1.settle(); await B.settle(); await C.settle();
+    await B.ev(() => { window.__offline = true; });
+    await note(B, 'n3', 'Nov 3, on B, no signal'); await wait(gap);
+    await note(C, 'n3', 'Nov 3, on C, the latest'); await wait(gap); await C.settle();
+    // The laptop takes C's copy in; its other tab hears.
+    await X1.sync(); await wait(1500);
+    await note(X1, 'n10', 'Nov 10, on the laptop'); await wait(gap); await X1.settle(); await wait(600);
+    await B.ev(() => { window.__offline = false; }); await B.settle(); await X1.settle(); await C.settle(); await B.settle(); await X1.settle(); await wait(600);
+    const doc = JSON.parse((JSON.parse(C10.content()).find(([k]) => k === `data/users/${uid}/s-2026-11-1`) || [null, '{}'])[1]);
+    const got = { X1: await n3Of(X1), X2: await n3Of(X2), B: await n3Of(B), C: await n3Of(C), account: ((doc.sessions || []).find(s => s.id === 'n3') || {}).notes };
+    ok(Object.values(got).every(v => v === 'Nov 3, on C, the latest'), '(10) a laptop with two tabs takes in a copy from a phone on 2.75 with no time, then edits the half-month: the latest edit of Nov 3, made on 2.75, stands on every tab and phone and in the account over an earlier one made with no signal (REV27-4)', got);
   }
 
   const errors = pages.flatMap(P => P.errors);

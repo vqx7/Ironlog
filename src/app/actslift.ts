@@ -4,12 +4,12 @@
    `act`; one to the session in progress alone leaves the caches as they are
    (inProgress). */
 
-import type { Exercise } from './types';
+import type { DraftSet, Exercise } from './types';
 import { isDate, isNum, numIn, today, uid } from './util';
-import { JK, MK, injLabel } from './library';
+import { JK, MK, injLabel, onMachines } from './library';
 import { LIMITS, within } from './records';
 import { cleanCardio } from './normalize';
-import { effW, greyW } from './session';
+import { effU, effW, greyU, greyW, setLoad } from './session';
 import { rirScale } from './effort';
 import {
   appU,
@@ -28,7 +28,6 @@ import {
 } from './live';
 import { NEW_MACHINE } from './analytics';
 import { fmtDate } from './format';
-import { typedUnit } from './units';
 import { state, ui } from './store';
 import { act } from './act';
 import { goalWords, machineName, newMachineKey, pendingMachine } from './display';
@@ -38,6 +37,7 @@ import { carried } from './workstate';
 import type { Tap } from './workstate';
 import { blockWords, distIn, fillSets, parseSets, refreshBlock, refreshEx } from './worksets';
 import { pickName, unname } from './machines';
+import { stepOnPlans } from './routines';
 
 /** The heaviest load a lift's limit may be, by the unit typed in. */
 const MAX_LOAD = { lb: 4000, kg: 2000 } as const;
@@ -77,14 +77,13 @@ function pickMachine(bi: number, k: string | undefined, name: string): void {
   const ed = d.editingId;
   // A new machine in an edit is named by the session's own key, which is the machine it is on already when it began one.
   if (ed && k === NEW_MACHINE && draftMachine(b0.exId) === ed) return;
-  const u = was && !ed ? typedUnit(was.w) : null;
+  // The machine's unit: the one picked for the lift while on it, else the one its last session's heaviest set was entered in.
+  const u = was && !ed ? was.mu : null;
   const key = k === NEW_MACHINE ? newMachineKey() : k;
   act(
     () => {
-      if (u) {
-        if (u === appU()) delete e.unit;
-        else e.unit = u;
-      }
+      // Marked in it, the app's unit too (liftUnit).
+      if (u) e.unit = u;
       for (const b of d.ex)
         if (b.exId === b0.exId) {
           if (ed) pickName(b, k === NEW_MACHINE ? ed : k);
@@ -109,7 +108,7 @@ function pickMachine(bi: number, k: string | undefined, name: string): void {
     named
       ? `${e.name}: ${named.replace(/ /g, '\u00a0')}`
       : was
-        ? `${e.name}: ${`${fmtDate(was.date)} · ${listLabel(e, was.w, true)} × ${was.r}`.replace(/ /g, '\u00a0')}`
+        ? `${e.name}: ${`${fmtDate(was.date)} · ${listLabel(e, was.w, was.u, true)} × ${was.r}`.replace(/ /g, '\u00a0')}`
         : `${e.name}: new machine`,
     true
   );
@@ -147,11 +146,11 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
             if (fill && x.w == null) {
               const g = greyW(b, i);
               if (g != null) {
-                x.w = g;
+                setLoad(x, g, greyU(b, i));
                 if (g !== b.sw) carried.add(x);
               }
             } else if (!fill && (x.w === b.sw || carried.has(x))) {
-              x.w = null;
+              setLoad(x, null, null);
               carried.delete(x);
             }
           });
@@ -208,10 +207,12 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     rerenderKeepScroll();
     toast(name ? `Named ${name}` : 'Machine name taken off', true);
   },
-  /* The unit beside a lift's loads, tapped: the lift's equipment is marked in the other unit. Kept on the lift (back in
-     the app's unit it follows the app again, as one never switched does), so every screen and the next session read it;
-     the lift's blocks in the workout read their targets again in it, and a load already typed is converted, never read
-     as a number of the new unit. */
+  /* The unit beside a lift's loads, picked: the lift's equipment is marked in it and kept on the lift, so every screen
+     and the next session read it; the lift's blocks in the workout read their targets again in it, and a load already
+     typed keeps the unit it was typed in. A mark is kept in the app's unit too, so the lift is on that unit's own
+     weights whatever the app's or Your gym's unit (liftModelIn): a kg machine in a gym in lb is marked kg with the app
+     in kg. Taken off when it matched the app's unit, the mark put the lift back on Your gym's lb plates, and no pick
+     put it on kg's. */
   unitOpen(t) {
     const b = Number(t.dataset.b);
     if (state.draft && state.draft.ex[b]) openModal({ kind: 'unit', b });
@@ -222,14 +223,25 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const e = b && state.exercises.find(x => x.id === b.exId);
     if (ui.modal && ui.modal.kind === 'unit') closeModal();
     if (!d || !b || !e) return;
-    // The unit picked in the exercise's sheet; the one it is already in changes nothing.
+    // The unit picked in the exercise's sheet. One the lift's weights are in already changes nothing: the unit it is
+    // marked in, or the app's for a lift following it, with Your gym in that unit or none set.
     const to: 'kg' | 'lb' =
       t.dataset.v === 'kg' || t.dataset.v === 'lb' ? t.dataset.v : liftU(e) === 'kg' ? 'lb' : 'kg';
-    if (to === liftU(e)) return;
+    const g = state.settings.gym;
+    if (to === e.unit || (!e.unit && to === appU() && (!g || g.u === to))) return;
+    /* On a machine, cable or Smith lift the unit is that machine's too, so picking the machine again brings it
+       (pickMachine): kept beside those of the lift's other machines, a machine no session is on any more left out. */
+    const on = onMachines(e) ? draftMachine(b.exId) : null;
+    const key = on === NEW_MACHINE ? newMachineKey() : on;
+    const has = new Set(liftMachines(b.exId).map(x => x.key));
     act(
       () => {
-        if (to === appU()) delete e.unit;
-        else e.unit = to;
+        e.unit = to;
+        if (key)
+          e.machineU = {
+            ...Object.fromEntries(Object.entries(e.machineU || {}).filter(([k]) => has.has(k) && k !== key)),
+            [key]: to
+          };
         /* A block not started reads its target again in the new unit; one with a set done keeps what it started
            with, as for a change of the app's unit, its words said again in the new unit, so the sets done at the
            load asked still count; an edit of a saved session reads nothing again of today's. */
@@ -292,8 +304,8 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (!(at >= 1)) return no('Enter the rep you would normally have stopped at.');
     if (!(tot >= at)) return no('Total reps to failure should be at least the rep you would have stopped at.');
     if (tot > CAL_MOST) return no('That is more than 100 reps. Check the number.');
-    const set = {
-      w: kg(ex, Math.max(0, w || 0)),
+    const set: DraftSet = {
+      w: null,
       r: tot,
       rir: 0,
       warm: false,
@@ -301,6 +313,8 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       done: true,
       cal: { at, pred }
     };
+    // Typed in the lift's unit, which the sheet asks it in, and kept with it.
+    setLoad(set, kg(ex, Math.max(0, w || 0)), liftU(ex));
     act(
       () => {
         let si = b.sets.findIndex(x => !x.done && !x.warm && x.r == null);
@@ -334,7 +348,8 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       return;
     }
     const n = numIn(fieldText('maxVal'));
-    // Saved as it was shown, it is kept as set: one set in the other unit is shown on this unit's equipment (liftMax).
+    /* Saved as it was shown, it is kept as set, with its unit: one set in the other unit is shown as its match on this
+       unit's equipment (liftMax), and saved as that match it would move with every switch of units. */
     if (e.maxLoad != null && n != null && String(numIn(fmtWOf(e, liftMax(e) ?? 0))) === String(n)) {
       closeModal();
       return;
@@ -344,9 +359,15 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       return;
     }
     closeModal();
+    // Kept as entered, in the lift's unit, which the field shows it in.
     act(() => {
-      if (n != null && n > 0) e.maxLoad = kg(e, Math.min(n, liftU(e) === 'lb' ? MAX_LOAD.lb : MAX_LOAD.kg));
-      else delete e.maxLoad;
+      if (n != null && n > 0) {
+        e.maxLoad = kg(e, Math.min(n, liftU(e) === 'lb' ? MAX_LOAD.lb : MAX_LOAD.kg));
+        e.maxLoadU = liftU(e);
+      } else {
+        delete e.maxLoad;
+        delete e.maxLoadU;
+      }
     });
     refreshEx(e.id);
     rerenderKeepScroll();
@@ -380,15 +401,17 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       toast('Enter a load of 0 or more');
       return;
     }
-    // A load saved as it was shown is kept as set: a goal set in the other unit is shown on this unit's equipment.
+    /* A load saved as it was shown is kept as set, with its unit: one set in the other unit is shown as its match on
+       this unit's equipment. Any other is kept as entered, in the lift's unit, which the field shows it in. */
     const was = e.goal;
-    const goal = {
-      w: was && w != null && String(numIn(fmtWOf(e, loadReadOf(e, was.w)))) === String(w) ? was.w : kg(e, w || 0),
-      r
-    };
+    const same = !!was && w != null && String(numIn(fmtWOf(e, loadReadOf(e, was.w, e.goalU)))) === String(w);
+    const goal = { w: same && was ? was.w : kg(e, w || 0), r };
+    const gu = same ? e.goalU : liftU(e);
     act(
       () => {
         e.goal = goal;
+        if (goal.w > 0 && gu) e.goalU = gu;
+        else delete e.goalU;
       },
       { undo: true }
     );
@@ -406,6 +429,7 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     act(
       () => {
         delete e.goal;
+        delete e.goalU;
       },
       { undo: true }
     );
@@ -421,8 +445,8 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   incSave() {
     const m = ui.modal;
     const n = numIn(fieldText('incVal'));
-    if (n == null || n <= 0) {
-      toast('Enter a step above 0');
+    if (n == null || n < 0) {
+      toast('Enter a step, or 0 to keep the load');
       return;
     }
     const sheet = m && m.kind === 'inc' ? m : null;
@@ -440,8 +464,12 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     }
     const inc = typedBoundOf(e, n, LIMITS.step);
     closeModal();
+    // Kept as entered, in the lift's unit, which the field shows it in; on every day of its plans (stepOnPlans).
     act(() => {
       e.inc = inc;
+      if (inc > 0) e.incU = liftU(e);
+      else delete e.incU;
+      stepOnPlans(state.routines, e.id, inc);
     });
     refreshEx(e.id);
     rerenderKeepScroll();
@@ -543,7 +571,7 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     }
     const fi = b.sets.findIndex(x => !x.done && !x.warm);
     const defW = fi >= 0 ? effW(b, fi) : null;
-    const got = parseSets(txt, EX(b.exId), defW, null, rirScale() === 'rpe');
+    const got = parseSets(txt, EX(b.exId), defW, null, rirScale() === 'rpe', fi >= 0 ? effU(b, fi) : null);
     if (got) {
       const n = fillSets(m.b, got);
       const now = ui.modal;

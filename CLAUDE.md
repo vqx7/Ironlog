@@ -3,7 +3,7 @@
 A hypertrophy and strength tracker for one lifter, V, used on a phone at the gym. It ships as a standalone
 installable web app: built from `src/` into one page, served by GitHub Pages at https://ironapp.org, working
 offline, with the log on the phone and an optional account that syncs it. Every pull request also publishes a
-preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r117, version 2.71, state schema v5.
+preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r123, version 2.77, state schema v5.
 
 The Claude artifact version was retired by V on 2026-09-27 (`OWNER.md` Done): never work on it or republish it.
 `cloudProvider()` still takes Claude's db when `window.claude` exists, because the sync suites use it as their
@@ -134,16 +134,30 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
 ## Invariants (never break these; each was a ruling or a bug, and `docs/ARCHIVE.md` says which)
 
 - **Data:** never lose or overwrite what the lifter typed: loads, reps, targets, settings. A saved set never has an
-  empty load. What is stored is always RIR, and every set stores the number exactly as typed. A migration only adds;
+  empty load. What is stored is always RIR. Every load is kept in exact kilograms with the unit it was entered in
+  (a set's `u`; a lift's `incU`, `maxLoadU`, `barU`, `goalU`; the bar's `barU` in settings), and every screen quotes it
+  as entered, in that unit. A number typed or made in a unit lies on that unit's 0.05 steps and no other's, so it gives
+  its unit: the log is saved and sent with each such unit left out (`storedJson`, merge.ts), read back from the number
+  at load (`unitField`, normalize.ts), and compared as absent (`canon`), so a log saved before units were stored is the
+  same log, and a unit its number does not give is saved. A unit is also read from a number for a load the app made
+  (`unitOnGrid`, units.ts) and for a plan item's step, which has no unit field (`planStepUnit`); `tests/hygiene.js`
+  holds the modules that may. A migration only adds;
   it never overwrites a value the lifter set. A new optional field stays absent when unset, so record hashes and
   sync are unchanged. A change to stored shape needs a `normalize()` default, a migration if it changes meaning,
   and cases in `tests/migration.js`.
 - **Sync across builds:** settings keys keep one order across builds; records keep unknown fields in the order they
   came (`keepExtra`); a new field is relied on only once every device runs a build that keeps it. `normalize` writes
-  nothing that depends on the device: it also runs in the sync comparison, Undo and imports. A first sign-in keeps
-  everything the phone made (sessions, weigh-ins, cardio, a workout in progress, routines, custom exercises) beside the
-  account's, with no Undo; of two workouts in progress, the other device's ticked sets are saved; demo data never goes
-  into an account (r55).
+  nothing that depends on the device or the date it is read on: it also runs in the sync comparison, Undo and imports.
+  A first sign-in keeps everything the phone made (sessions, weigh-ins, cardio, a workout in progress, routines, custom
+  exercises) beside the account's, with no Undo; of two workouts in progress, the other device's ticked sets are saved;
+  demo data never goes into an account (r55). A lift both logs hold, there or when a log kept aside is joined, is joined
+  field by field: a setting made on one side only is kept (`joinExercises`, normalize.ts). A record changed on two
+  phones or in two tabs keeps the later edit by that record's own edit time, kept in the sync notes and sent beside
+  its document (`recAt`, `rt`), never in the record; where either copy has none (an older build), its document's edit
+  time decides, and between tabs the other tab's copy (2.76). Every time a phone writes is later than every time it
+  has seen (`laterThanSeen`). These times move only for the lifter's change: what the app writes on its own (a fix
+  made at start, its own bookkeeping, a name it keeps, a newer build's reading of an old log) is sent, but moves none
+  (`app` in act.ts, `editsNoted` and `seenAsIs` in sync.ts).
 - **Numbers:** no number without a source in `docs/EVIDENCE.md`; a convention is labelled as one there and as a rule of thumb on screen. Studies are named in the Guide's Sources, not in tips (V, 2026-11-08).
   Trends are never shown as a 1RM; a muscle with no clear lift reads unclear, never 0%; weight lifted is never a
   percentage against last week; no projections. Deloads and lighter loads are whole steps, never under the bar on a
@@ -164,24 +178,34 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   shown (`liftReadIn`, r61). A machine, cable or Smith lift is read per machine (V, 2026-11-14, 390 C): its ⋯ Machine
   sheet lists the machines it was done on, by the names the lifter gives them (one with none by its last session's
   date and weight; V, 2026-11-15, NEW-168), the name of the one in use on its card; its target, PRs, bests and readings come from the machine
-  it is on, the one last done on unless another is picked; its sets and volume count as one exercise; the app never
-  guesses a machine. A machine lift's session names the machine it was done on (`mc`) when it is saved or a machine is
-  picked for it; one that names none (a log saved before, an import, an older build's) is read on the machine of the
-  last session before it that began one. A change that would move a session it does not touch to another machine names
+  it is on, the one last done on unless another is picked; its sets and volume count as one exercise; its kg or lb is
+  the machine's own: the unit picked while the lift is on a machine is kept for that machine (`machineU`) and comes
+  back when it is picked again (the full review's L4-5). A machine lift's session names the machine it was done on
+  (`mc`) when it is saved or a machine is picked for it, and an import of the app's own file by the machine's name,
+  joining the lift's machine of that name (L4-14). A session that names none (saved before sessions named their
+  machine, or by a build or a file that names none) is read on the machine its New machine marks give: that of the
+  last session before it that began one, as every build since 2.70 reads it. Nothing is named as a log is read: naming
+  those sessions as the log opened made each one read as edited against the copies the sync, the other tab and Undo
+  hold, which brought deleted sessions back and lost corrections (REV24-1, REV24-2). A change that would move a session it does not touch to another machine names
   that session where it was, as part of the change, and a session the change puts in Recently deleted keeps the
   machine it was on (`keepMachines`, act.ts; V 2026-11-15, REV22; 2026-11-16): a session moves to another machine only
-  by a pick, never by another deleted, moved, restored or logged before it. Nothing is named as a log is read. A name
+  by a pick, never by another deleted, moved, restored or logged before it. A name
   the app keeps is marked kept and is no one's edit: every comparison of two copies (sync, Undo, a first sign-in,
   Recently deleted, duplicates) reads it as absent and keeps it where the copy kept names none, so it never beats a
-  lifter's correction or pick, and only `machines.ts` writes a machine's name (V, 2026-11-16, REV26; `tests/hygiene.js`). A ticked set
+  lifter's correction or pick; an edit in which no machine is picked keeps it one the app kept (L4-12); and only
+  `machines.ts` writes a machine's name (V, 2026-11-16, REV26; `tests/hygiene.js`). A ticked set
   of 0 reps is a missed set: kept and shown, counted toward no volume, PR, estimate or trend, read by the next target
   as a set short of the range and as 0 reps, so its session reads below its usual and the target repeats (V, 2026-11-04,
   387-B3), and sets missed never earn a step up (r56.2), and asked about first when its load is well
   under the session's working load (r55.1). With Your gym's plates set, a bar lift's loads are ones the bar and those
   plates make (r55.1). A past week is read against what its routine
   planned then (each session records it, `pw`), never the routine as it is now, and a lift's session by the sets its plan gave it then (`ps`, r58). A PR is a PR on any day, and a change of units or gyms is never one.
-  A PR is a set stronger than every earlier one, the same PR on every screen; a heavier set that is not one is
-  Heaviest yet (r58). A muscle has a weekly target by default only when lifters train it directly for size
+  A PR is a set stronger than every earlier one, this session's earlier sets included, the same PR on every screen
+  and said at the gym as the list counts it (prs.ts `prOfSet`, one rule for the row, its message and the list; V,
+  2026-11-17, decision 1); a heavier set that is not one is Heaviest yet (r58): 102.5 x 8 after 100 x 10 at the same
+  effort. A lift's load step is its own, set by any of its three editors, 0 a fixed load on every day (2.75). An
+  exercise any record still names (a routine, a session, the workout open or set aside, Recently deleted) is hidden
+  from the library, never removed, and a lift the log does not hold counts to no muscle. A muscle has a weekly target by default only when lifters train it directly for size
   (`TARGETED`); any other is tracked only until the lifter gives it one, which then counts everywhere (`hasTargetIn`, r58).
 - **V's rulings on screen:** Stats opens with the week's word, Progressing, Stalled or Regressing, and the coach's one
   change, the lines it rests on folded under it; lifts in none of its groups are never shown (V, 2026-11-15, NEW-156,

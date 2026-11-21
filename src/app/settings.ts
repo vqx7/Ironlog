@@ -1558,6 +1558,9 @@ export const SETTINGS_BINDS: Readonly<Record<string, (t: Field) => void>> = {
     act(() => {
       // Within the bar's bound in kilograms, the one a save keeps, not 110 in lb and 50 in kg as typed (typedBoundIn).
       state.settings.barKg = n == null || n <= 0 ? null : typedBoundApp(n, LIMITS.barKg);
+      // Kept with the unit its field shows it in, the app's.
+      if (state.settings.barKg != null) state.settings.barU = appU();
+      else delete state.settings.barU;
     });
     rerenderKeepScroll();
   },

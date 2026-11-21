@@ -97,9 +97,9 @@ jobs:
           t=$SECONDS; npm install --no-audit --no-fund; n=$((SECONDS-t))
           t=$SECONDS; npx playwright install webkit; echo "::notice title=install::npm $n s, webkit $((SECONDS-t)) s"
       - name: Every suite in shard ${{ matrix.shard }} of 4 in WebKit, source and standalone build
-        # 55 since 2.36 (NEW-94): every suite passed in shard 4 of 2.36's run (a7b9424), which reached the 40 that stood
-        # before with one suite left; the shard's suites add up to about 40 minutes, so 40 stopped a passing run.
-        timeout-minutes: 55
+        # 75 since 2.75 (NEW-187): every suite passed in shard 4 of 2.75's run (35b79191), which reached the 55 that
+        # stood since 2.36 (NEW-94) with suites left; WebKit's shard 4 now adds up to more than 50 minutes.
+        timeout-minutes: 75
         run: node tests/run.js --browser webkit --shard ${{ matrix.shard }}/4 --jobs 1
       - name: Screenshots from the run
         if: always()

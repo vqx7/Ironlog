@@ -130,7 +130,7 @@ const SCREENS = [
     const okb = document.querySelector('#modal [data-act="mOk"]'); if (okb) { okb.click(); await new Promise(r => setTimeout(r, 80)); }
     await new Promise(r => setTimeout(r, 950));
     const s1 = JSON.stringify(L.state);
-    return { name, changed: s1 !== s0, saved: localStorage.getItem(KEY) === s1, undo: L.undoStack.length - u0, wantUndo: undo, dropped: L.IDX() !== idx0, noted: JSON.stringify(L.cloud.editAt) !== e0 };
+    return { name, changed: s1 !== s0, saved: localStorage.getItem(KEY) === L.storedJson(L.state), undo: L.undoStack.length - u0, wantUndo: undo, dropped: L.IDX() !== idx0, noted: JSON.stringify(L.cloud.editAt) !== e0 };
   }, [name, sel, undo, prep || '']);
   const cases = [
     ['iUp', '#view .day:not(.rest) .dbody:not([hidden]) [data-act="iUp"]:not([disabled])', 0, OPEN],
@@ -169,7 +169,7 @@ const SCREENS = [
     el.dispatchEvent(new Event('change', { bubbles: true }));
     await new Promise(r => setTimeout(r, 950));
     const s1 = JSON.stringify(L.state);
-    return { name, changed: s1 !== s0, saved: localStorage.getItem(KEY) === s1, undo: L.undoStack.length - u0, wantUndo: undo, dropped: L.IDX() !== idx0, noted: JSON.stringify(L.cloud.editAt) !== e0 };
+    return { name, changed: s1 !== s0, saved: localStorage.getItem(KEY) === L.storedJson(L.state), undo: L.undoStack.length - u0, wantUndo: undo, dropped: L.IDX() !== idx0, noted: JSON.stringify(L.cloud.editAt) !== e0 };
   }, [name, sel, value, undo, prep || '']);
   const ITEM = OPEN + 'L.ui.openItem=d.items[0].uid;';
   for (const [name, sel, value, undo, prep] of [
@@ -498,12 +498,15 @@ const SCREENS = [
     ok(/of 12 on target/.test(traps.map), '9. the muscle map counts the 12 muscles with a target', traps.map);
     // A target typed before r58 for traps counts as it did on r57; one typed for serratus does not, as r57
     // never counted one on the four tracked since r29 (a log from before r29 can hold their old numbers),
-    // until Set a target gives it one, with those numbers.
+    // until Set a target gives it one, with those numbers. The log is saved with them and opened again, as one
+    // saved before r58 is: since 2.73 the app records such a target as the lifter's once, at start (the full
+    // review's L01-5), instead of reading it from its number at every read.
     await q(() => { const L = window.__ironlog; L.state.settings.bands.traps = [8, 14]; L.state.settings.bands.serratus = [3, 6]; L.saveNow(); L.invalidate(); });
+    await Q.page.reload(); await Q.page.waitForFunction(() => window.__ironlog && window.__ironlog.state); await Q.page.waitForTimeout(300);
     const tt = await look('traps'), ts = await look('serratus');
     ok(/\/8-14$/.test(tt.stats || '') && /\/8-14$/.test(tt.plan || '') && tt.st !== 'track' && /tracked$/.test(ts.stats || '') && ts.st === 'track' && /of 13 on target/.test(ts.map),
       '9. a target typed for traps (8 to 14) counts on Stats, Plan and the map; one typed for serratus before r58, which r57 never counted, does not', { tt, ts });
-    await q(() => { const L = window.__ironlog; L.state.settings.ownTargets = ['serratus']; L.saveNow(); L.invalidate(); });
+    await q(() => { const L = window.__ironlog; L.state.settings.ownTargets = [...(L.state.settings.ownTargets || []), 'serratus']; L.saveNow(); L.invalidate(); });
     const ts2 = await look('serratus');
     ok(/\/3-6$/.test(ts2.stats || '') && ts2.st !== 'track' && /of 14 on target/.test(ts2.map), '9. given a target (Set a target), serratus counts with the numbers it had, 3 to 6', ts2);
     await q(() => { const L = window.__ironlog; delete L.state.settings.ownTargets; L.saveNow(); L.invalidate(); });

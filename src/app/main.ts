@@ -40,6 +40,8 @@ import {
   planItemOf,
   plannedPerWeek,
   planSetsOf,
+  nextTrainIdx,
+  pmNameOf,
   pwOf,
   routineFromTemplate,
   routineSig,
@@ -87,7 +89,7 @@ import { sessionWord } from './analytics';
 import { avgWeeksTxt } from './weeks';
 import { musTrend } from './coach';
 import { chunksOf } from './chunks';
-import { Hx } from './merge';
+import { Hx, storedJson } from './merge';
 import { acct, cloud, setFx, setState, state, ui } from './store';
 import {
   activeRoutine,
@@ -196,6 +198,8 @@ import {
   recentExIds,
   recentLighter,
   recovery,
+  oldOwnTargets,
+  saidLoad,
   refit,
   regionBalance,
   rirEff,
@@ -294,7 +298,8 @@ import {
   sizeRows,
   sizeWhat,
   tonnageNow,
-  weekPlan
+  weekPlan,
+  bestSet
 } from './display';
 import { markupOf, viewStart } from './view';
 import { ask, closeModal, openModal, render, rerenderKeepScroll, setRoot, setSaveState, setSheets } from './page';
@@ -338,6 +343,7 @@ import { parkTidy } from './park';
 import { applyPick, swapPlan } from './actspick';
 import type { State } from './store';
 import { workoutStart } from './workfields';
+import { onUnitSteps, unitOnGrid } from './units';
 
 declare global {
   interface Window {
@@ -355,10 +361,14 @@ declare global {
 /** Records the floors of a fit made before r44 that are not recorded yet, inside `act`; whether it did (the suites' fitRecordOld). */
 function recordOldFloors(): boolean {
   const fit = oldFloors();
+  // The app's own fix, no edit (act's `app`).
   if (fit)
-    act(() => {
-      state.settings.bandsFit = fit;
-    });
+    act(
+      () => {
+        state.settings.bandsFit = fit;
+      },
+      { app: true }
+    );
   return !!fit;
 }
 /** Whether this page is inside another page's frame; a frame whose top cannot be read is read as framed. */
@@ -405,19 +415,39 @@ function oldLogFixes(): void {
   // Targets fitted to a cycle by the reading of its plan builds before r54 made follow the current one (refit, src/app/profile.ts).
   try {
     const rf = refit();
+    // The app's own fix, no edit (act's `app`).
     if (rf)
-      act(() => {
-        const b = state.settings.bands;
-        // In the muscles' order, the order refit gives them in.
-        for (const m of MK) {
-          const v = rf.bands[m];
-          if (v) b[m] = [v[0], v[1]];
-        }
-        if (Object.keys(rf.fit).length) state.settings.bandsFit = rf.fit;
-        else delete state.settings.bandsFit;
-      });
+      act(
+        () => {
+          const b = state.settings.bands;
+          // In the muscles' order, the order refit gives them in.
+          for (const m of MK) {
+            const v = rf.bands[m];
+            if (v) b[m] = [v[0], v[1]];
+          }
+          if (Object.keys(rf.fit).length) state.settings.bandsFit = rf.fit;
+          else delete state.settings.bandsFit;
+        },
+        { app: true }
+      );
   } catch (e) {
     log('refit', e);
+  }
+  // Targets typed on a build that recorded none as the lifter's, recorded so (oldOwnTargets, src/app/profile.ts).
+  try {
+    const add = oldOwnTargets();
+    // The app's own fix, no edit (act's `app`).
+    if (add)
+      act(
+        () => {
+          const o = state.settings.ownTargets || [];
+          // In the muscles' order, as Set a target keeps them.
+          state.settings.ownTargets = MK.filter(x => o.includes(x) || add.includes(x));
+        },
+        { app: true }
+      );
+  } catch (e) {
+    log('ownTargets', e);
   }
 }
 
@@ -665,6 +695,9 @@ function exposeForTests(): void {
     makeDemo,
     invalidate,
     normalize,
+    bestSet,
+    // The log as it is saved and sent (units its numbers give left out), for checks that read the save back.
+    storedJson,
     snapshot,
     saveNow,
     timer,
@@ -731,6 +764,8 @@ function exposeForTests(): void {
     dropStarter,
     trainOn,
     planItemOf,
+    nextTrainIdx,
+    pmNameOf,
     fatigueStalls,
     avgWeeksTxt,
     routineFromLog,
@@ -773,6 +808,11 @@ function exposeForTests(): void {
     fromDBody,
     typedLabel,
     listLabel,
+    // A load already lifted in a sentence, the targets an older build typed to record, and a load put on a unit's 0.05 steps,
+    // so tests/engine.js compares the page's answers with Node's.
+    saidLoad,
+    oldOwnTargets,
+    onUnitSteps,
     stepReadOf,
     loadLabel,
     exName,
@@ -808,7 +848,8 @@ function exposeForTests(): void {
     picsTidy,
     risingWords,
     // A set as the app writes it, by the lift's id: Today's Lifts moving is checked against it.
-    setShortOf: (id: string, w: number, r: number): string => setShort(EX(id), w, r),
+    // A suite gives a number alone: read in the unit its 0.05 steps say, as a load the app made is.
+    setShortOf: (id: string, w: number, r: number): string => setShort(EX(id), { w, r, u: unitOnGrid(w) }),
     // Today's Lifts moving, so tests/engine.js compares the page's answer with the engine's in Node.
     liftsMoving,
     // Whether a bodyweight lift has no weigh-in to read, so tests/engine.js compares it with Node's.

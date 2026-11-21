@@ -42,14 +42,16 @@ import {
   trainDaysOf,
   trainOn,
   linkToggle,
-  routineEmpty
+  routineEmpty,
+  stepOnPlans
 } from './routines';
 import { JUMP_TIP, SESSION_CAP, HELPER_CREDIT } from './formulas';
 import { repSpan } from './format';
 import { belowMin } from './volume';
 import { ON_PLAN_TIP } from './weeks';
 import { loadWords } from './loads';
-import { TRASH_DAYS, LIMITS, EFFORT_TOP, within } from './records';
+import { TRASH_DAYS, LIMITS, EFFORT_TOP, arr, rec, within } from './records';
+import type { Rec } from './records';
 import { andList, numIn, r1, uid, PERCENT, WEEK_DAYS } from './util';
 import { plainTemplate } from './normalize';
 import { effIn, effName, effShow } from './effort';
@@ -90,6 +92,7 @@ import { confirmBox, render, rerenderKeepScroll } from './page';
 import { toast } from './toast';
 import { bwWarn } from './bwnudge';
 import { refreshEx, syncDraftPlan } from './worksets';
+import { parkedNames } from './park';
 
 /** The fewest sets the volume bars' scale shows, so a light week's bars are not stretched. */
 const BAR_SCALE_MIN = 24;
@@ -388,6 +391,12 @@ export function viewLibrary(): TemplateResult {
 type Tap = { dataset: DOMStringMap };
 const num = (v: string | undefined): number => +(v ?? NaN);
 
+/** Whether a copy in Recently deleted (a session's exercises or a routine's days) names lift `id`. */
+function namesLift(data: Rec, id: string): boolean {
+  const named = (xs: unknown): boolean => (arr(xs) || []).some(b => rec(b)?.['exId'] === id);
+  return named(data['ex']) || (arr(data['days']) || []).some(d => named(rec(d)?.['items']));
+}
+
 /** Plan's actions, by the data-act their buttons carry; the page's action table takes them in. */
 export const PLAN_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   toggleItem(t) {
@@ -619,13 +628,18 @@ export const PLAN_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     });
     if (changed) rerenderKeepScroll();
   },
+  /* An exercise any record still names (a routine, a session, the workout open or set aside, or anything in Recently
+     deleted, which can come back) is hidden from the library, never removed: removed, a session restored later would
+     name a lift the log no longer holds. */
   exDel(t) {
     const id = t.dataset.ex || '';
     const e = EX(id);
     const used =
       state.routines.some(r => r.days.some(d => d.items.some(i => i.exId === id))) ||
       state.sessions.some(s => s.ex.some(b => b.exId === id)) ||
-      (!!state.draft && state.draft.ex.some(b => b.exId === id));
+      (!!state.draft && state.draft.ex.some(b => b.exId === id)) ||
+      parkedNames(id) ||
+      state.trash.some(x => namesLift(x.data, id));
     confirmBox(
       'Delete exercise?',
       used
@@ -702,8 +716,13 @@ function itemInput(t: Field): void {
         const e = state.exercises.find(x => x.id === f.it.exId);
         // Within the step's bound in kilograms, the one a save keeps, not 500 in the unit typed (typedBoundIn).
         const v = typedBoundOf(e, Math.max(n, 0), LIMITS.step);
-        f.it.inc = v;
-        if (e) e.inc = v > 0 ? v : null;
+        // The lift's own step, 0 a fixed load, on every day and routine (routines.ts stepOnPlans), kept with the unit its field shows it in.
+        if (e) {
+          e.inc = v;
+          if (v > 0) e.incU = liftU(e);
+          else delete e.incU;
+          stepOnPlans(state.routines, e.id, v);
+        } else f.it.inc = v;
       } else if (k === 'rir') f.it.rir = clamp(effIn(n), 0, EFFORT_TOP);
       else if (k === 'sets') f.it.sets = clamp(Math.round(n), 1, LIMITS.sets);
       else if (k === 'rest') f.it.rest = clamp(Math.round(n), 0, LIMITS.restS);

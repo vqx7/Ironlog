@@ -568,6 +568,9 @@ const stored = H => H.ev(async secret => {
     const ids = rows => rows.map(r => r.id).sort().join();
     // The new picture from the backup case, cleared off its note above, is unnamed too (D).
     const D = mine[0];
+    // B named again on the note of a workout set aside (the full review's L3-7): kept while that workout waits, which can
+    // be past 45 days, its 30 standing still while another workout is open.
+    await H.ev(b => { const L = window.__ironlog; localStorage.setItem(L.KEY + '.parked', JSON.stringify({ uid: '', at: Date.now(), draft: { id: 'pk1', date: L.today(), ex: [{ exId: 'bench', note: 'grip', pics: [b], sets: [] }] } })); }, B);
     // The phone's clock moved on, and the tidy it runs at start run now.
     const at = async days => { await H.ev(async t => { window.__setClock(t); await window.__ironlog.picsTidy(); }, addD(MON, days) + 'T09:00:00'); await wait(100); return (await stored(H)).rows; };
     let rows = await at(20);
@@ -575,7 +578,7 @@ const stored = H => H.ev(async secret => {
     rows = await at(44);
     ok(ids(rows) === [A, B, C, D].sort().join(), '7. at 44 days too', { have: ids(rows) });
     rows = await at(50);
-    ok(ids(rows) === [A, C].sort().join(), '7. after 45 days unnamed, the pictures taken off are dropped; the one on a saved session and the one in Recently deleted stay', { have: ids(rows), A, B, C, D });
+    ok(ids(rows) === [A, B, C].sort().join(), '7. after 45 days unnamed, the picture taken off is dropped; the one on a saved session, the one in Recently deleted and the one on a set-aside workout\'s note stay (L3-7)', { have: ids(rows), A, B, C, D });
     rows = await at(400);
     ok(rows.some(r => r.id === A), '7. a picture the log names is never dropped, however long', { have: ids(rows) });
     // A reload reads what the tidy left: the dropped are gone, the kept still show.

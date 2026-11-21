@@ -5,9 +5,10 @@ import type { ExPoint, ExStat, Exposure, ExerciseLike, Model } from './model';
 import { noE1 } from './library';
 import { EPS_SAME } from './util';
 import { EXIn } from './model';
-import { prSameLoad, e1, sameRR } from './formulas';
+import { prSameLoad, e1, sameRR, seeLoads } from './formulas';
 
 import type { LoadedSet } from './setread';
+import type { Unit } from './types';
 import { noBodyIn, prLoadIn } from './setread';
 import { IDXIn, liftReadIn } from './analytics';
 /* The bests a lift had up to a date, for a past session entered after later
@@ -70,15 +71,14 @@ export function prFrameIn(M: Model, exId: string, s: LoadedSet, date: string): P
   const exps = ed ? read.filter(x => x.sid !== ed) : read;
   if (!exps.length) return null;
   const ex = EXIn(M, exId);
-  const seen = new Set<number>();
+  const seen = new Map<number, Unit | null>();
   let heaviest = -Infinity;
-  for (const x of exps)
-    for (const p of x.pts) {
-      seen.add(p.w);
-      if (p.r > 0) heaviest = Math.max(heaviest, p.w);
-    }
+  for (const x of exps) {
+    seeLoads(seen, x.pts);
+    for (const p of x.pts) if (p.r > 0) heaviest = Math.max(heaviest, p.w);
+  }
   const typed = Number(s.w) || 0;
-  const w = prSameLoad(typed, seen);
+  const w = prSameLoad(typed, s.u ?? null, seen);
   const own = prLoadIn(M, ex, s, date);
   const st = exps.length < every.length ? statsUpToIn(M, exId, exps) : I.exStats[exId];
   return { ex, exps, st, heaviest, w, load: own + (w - typed), own };
@@ -145,14 +145,14 @@ function recordsOfIn(
   let est: (BestAt & { v: number }) | null = null,
     heavy: (BestAt & { j: number }) | null = null;
   const front: (BestAt & { j: number })[] = [];
-  const seen = new Set<number>();
+  const seen = new Map<number, Unit | null>();
   for (const x of exps) {
     // Drop sets are left out, as the board's help says, a block of drop sets alone too.
     if (x.dropOnly) continue;
     const fresh: { p: ExPoint; j: number }[] = [];
     for (const p of x.pts) {
       // Judged at the load it stands for: the same weight in the other unit is no heavier.
-      const d = prSameLoad(p.w, seen) - p.w,
+      const d = prSameLoad(p.w, p.u ?? null, seen) - p.w,
         j = p.pl + d;
       const v = noE1(ex) || noBodyIn(M, ex) ? null : e1(p.load + d, p.r, p.rq);
       if (v != null && (!est || v > est.v + EPS_SAME)) est = { v, p, date: x.date, sid: x.sid };
@@ -167,7 +167,7 @@ function recordsOfIn(
         if (j >= front[k].j - EPS_SAME && p.r >= front[k].p.r) front.splice(k, 1);
       front.push({ p, j, date: x.date, sid: x.sid });
     }
-    for (const p of x.pts) seen.add(p.w);
+    seeLoads(seen, x.pts);
   }
   front.sort((a, b) => b.j - a.j);
   const dates: string[] = front.map(f => f.date);

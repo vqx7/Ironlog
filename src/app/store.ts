@@ -217,6 +217,8 @@ export interface CloudDoc {
   et: number;
   w: string;
   json: string;
+  /** The time each of its records was last edited by the lifter, by the record's key, where a device knows it. */
+  rt?: Record<string, number>;
 }
 /** One document in the account, by path: read whole, and written whole only while it still holds what was read. */
 export interface CloudRef {
@@ -255,7 +257,7 @@ export interface Base {
   draft?: DraftLike | null | undefined;
 }
 
-/** Where the sync stands: off (local), reading the account (connecting), writing to it (saving), everything agreed (synced), or waiting for the network (offline). One function moves it (setCloud, sync.ts). */
+/** Where the sync stands: off (local), reading the account (connecting), writing to it (saving, and while a write that lost its race to another device waits to try again), everything agreed (synced), or waiting for the network (offline). One function moves it (setCloud, sync.ts). */
 export type CloudStatus = 'local' | 'connecting' | 'saving' | 'synced' | 'offline';
 /** A sync note for one document: the fingerprint of the copy last agreed
     with the account, when that copy was written, and the merge base, absent
@@ -278,8 +280,7 @@ export interface CloudSent {
 
 /* Where the sync is: on or not, the provider (db, uid), its status, each
    document's last sync note (meta: its hash, when, and the merge base) and
-   this device's hashes (localH), when each document was last edited here
-   (editAt) and sent, the queue of writes (chain), and the last error, typed
+   this device's hashes (localH), when each document and each record in it was last edited (editAt, recAt) and sent, the queue of writes (chain), and the last error, typed
    field by field. */
 interface Cloud {
   on: boolean;
@@ -291,6 +292,9 @@ interface Cloud {
   /** Writes sent and not yet answered, by document (CloudSent). */
   sent: Record<string, CloudSent>;
   editAt: Record<string, number>;
+  /** When each record was last edited by the lifter, as far as this device knows: by document, then by the record's key
+      in it (sync.ts recordKeys). */
+  recAt: Record<string, Record<string, number>>;
   localH: Record<string, string>;
   devId: string | null;
   /** The account the notes belong to, or null for notes saved before accounts existed. */
@@ -313,6 +317,7 @@ export const cloud: Cloud = {
   meta: {},
   sent: {},
   editAt: {},
+  recAt: {},
   localH: {},
   devId: null,
   acct: null,

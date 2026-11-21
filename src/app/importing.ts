@@ -7,6 +7,7 @@ import { today, isDate, yearOf, DAY_MS, isoDateOf, HOUR_MIN, MINUTE_S, SECOND_MS
 import { CARDIO, CWHEN } from './library';
 import { KM_MI, LB } from './units';
 import { EFFORT_TOP, LIMITS } from './records';
+import type { Unit } from './types';
 
 /** One set read from a table row, in the row's unit (u) when the row says it. */
 type ImpSet = {
@@ -50,7 +51,7 @@ interface ImpReadItem {
   setsText?: string[] | undefined;
   note?: string | undefined;
   ss?: string | undefined;
-  /** The machine it was done on, from the app's own file (its machine column), for a lift done on more than one. */
+  /** The machine it was done on, from the app's own file (its machine column): its name, or the day one with none was first used. */
   machine?: string | undefined;
 }
 /** A session as the reader found it: no date when the notes gave none (the preview asks for one). */
@@ -883,7 +884,7 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
       it = { name: ex, sets: [], note: '', ...(cell('ss') ? { ss: cell('ss') } : {}) };
       ss.items.set(ex, it);
     }
-    // The app's own file names the machine of a lift done on more than one (390 C), the same on each of its rows.
+    // The app's own file names the machine of a lift done on more than one or on a named one, the same on each of its rows.
     const machine = at(r, cMachine);
     if (machine && !it.machine) it.machine = machine;
     /* An exercise's note may sit on any of its rows (a set's note in another
@@ -1018,6 +1019,8 @@ export interface TypedSet {
   w: number;
   r: number;
   rir: number | null;
+  /** The unit the load was typed in, when the caller says which unit an unmarked number is in (readSets' convU). */
+  u?: Unit | undefined;
 }
 /* Typed or dictated sets. Examples it reads:
    "235x5, 5, 4 rir 1"   three sets at 235, RIR 1 on each
@@ -1035,7 +1038,9 @@ export function readSets(
   defW: number | null | undefined,
   conv: (v: number) => number,
   rpe?: boolean,
-  units?: boolean
+  units?: boolean,
+  convU?: Unit | null,
+  defU?: Unit | null
 ): TypedSet[] | null {
   const fromRpe = (v: number) => (v >= 1 && v <= EFFORT_TOP ? Math.round((EFFORT_TOP - v) * TENTHS) / TENTHS : NaN);
   let s = String(text || '')
@@ -1068,20 +1073,28 @@ export function readSets(
   const re = /^(?:(bw)(?:\+(\d+(?:\.\d+)?)([kp])?)?x|(\d+(?:\.\d+)?)([kp])?x)?(\d{1,3})(?:@(\d+(?:\.\d+)?))?$/;
   // A number marked with its unit is that many kilograms or pounds; one with none is in the lift's unit (conv).
   const read = (v: number, u: string | undefined): number => (u === 'k' ? v : u === 'p' ? v * LB : conv(v));
-  let w = defW == null ? null : defW;
+  // The unit of each load: the one named, else the one conv reads in (convU); the default load's own (defU).
+  const unitOf = (u: string | undefined): Unit | null => (u === 'k' ? 'kg' : u === 'p' ? 'lb' : (convU ?? null));
+  let w = defW == null ? null : defW,
+    wu: Unit | null = defW == null ? null : (defU ?? null);
   const out: TypedSet[] = [];
   for (const t of toks) {
     const g = t.match(re);
     if (!g) return null;
     const [, bw, added, addedU, load, loadU, reps, at] = g;
-    if (bw) w = added ? read(+added, addedU) : 0;
-    else if (load != null) w = read(+load, loadU);
+    if (bw) {
+      w = added ? read(+added, addedU) : 0;
+      wu = added ? unitOf(addedU) : null;
+    } else if (load != null) {
+      w = read(+load, loadU);
+      wu = unitOf(loadU);
+    }
     const r = +(reps || '');
     if (!(r >= 1 && r <= TYPED.reps)) return null;
     const rir = at != null ? (rpe ? fromRpe(+at) : +at) : allRir;
     if (rir != null && !(rir >= 0 && rir <= EFFORT_TOP)) return null;
     if (w == null && !ex.bw) return null;
-    out.push({ w: w == null ? 0 : w, r, rir });
+    out.push({ w: w == null ? 0 : w, r, rir, ...(w && wu ? { u: wu } : {}) });
   }
   return out.length && out.length <= TYPED.sets ? out : null;
 }
@@ -1288,10 +1301,13 @@ const BW_SETS_OF = 10;
 export function impTextSets(
   it: { setsText?: readonly string[] | undefined },
   exo: { bw?: boolean | undefined; assist?: boolean | undefined; timed?: boolean | undefined },
-  conv: (v: number) => number
-): { w: number; r: number; rir: number | null | undefined; warm: boolean; drop: boolean }[] | null {
-  const out: { w: number; r: number; rir: number | null | undefined; warm: boolean; drop: boolean }[] = [];
-  let defW: number | null = null;
+  conv: (v: number) => number,
+  convU: Unit
+): { w: number; r: number; rir: number | null | undefined; warm: boolean; drop: boolean; u?: Unit }[] | null {
+  const out: { w: number; r: number; rir: number | null | undefined; warm: boolean; drop: boolean; u?: Unit }[] = [];
+  // The load carried from the line above, and the unit it was written in.
+  let defW: number | null = null,
+    defU: Unit | null = null;
   for (const t of it.setsText || []) {
     let st = impSetsText(t);
     const lu = /(?:\b|\d)kgs?(?![a-wyz])/i.test(t) ? 'kg' : /(?:\b|\d)lbs?(?![a-wyz])|\d\s*#/i.test(t) ? 'lb' : null;
@@ -1320,14 +1336,23 @@ export function impTextSets(
         .toLowerCase()
         .matchAll(/([1-5])\s*[x×*]\s*(\d{1,3})/g))
         for (let k = 0; k < +(g[1] || 0); k++)
-          out.push({ w: defW, r: +(g[2] || 0), rir: undefined, warm: false, drop: false });
+          out.push({
+            w: defW,
+            r: +(g[2] || 0),
+            rir: undefined,
+            warm: false,
+            drop: false,
+            ...(defU ? { u: defU } : {})
+          });
       continue;
     }
-    const g = readSets(st, { bw: !!exo.bw || !!exo.timed }, defW, cv);
+    // A load on a line that names its unit is in that unit, else in the file's (convU).
+    const g = readSets(st, { bw: !!exo.bw || !!exo.timed }, defW, cv, false, false, lu ?? convU, defU);
     if (!g) return null;
-    out.push(...g.map(x => ({ w: x.w, r: x.r, rir: x.rir, warm: false, drop: false })));
+    out.push(...g.map(x => ({ w: x.w, r: x.r, rir: x.rir, warm: false, drop: false, ...(x.u ? { u: x.u } : {}) })));
     const lastSet = g[g.length - 1];
     defW = lastSet ? lastSet.w : defW;
+    defU = lastSet ? (lastSet.u ?? null) : defU;
   }
   return out;
 }

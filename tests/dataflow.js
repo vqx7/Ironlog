@@ -49,7 +49,7 @@ ok(csv[0].includes('load_entry')&&csv[1].includes('total, bar included'),'CSV ca
 // Each row says its load as typed and its unit (390's Release B): a set typed in kg in an lb app, bench marked kg, comes
 // back from the CSV as typed, 100 kg, not the 220.5 lb its load column rounds to.
 {
-await ev(()=>{const L=window.__ironlog;const s=L.state.sessions[0];const b=s.ex[0];L.state.exercises.find(e=>e.id===b.exId).unit='kg';b.sets=[{...b.sets[0],w:100},{...b.sets[0],w:135*0.45359237}];s.ex.push({exId:'assistPullup',rr:[6,10],ps:1,sets:[{w:-20,r:8,rir:2,done:true}]});L.invalidate();L.saveNow();});
+await ev(()=>{const L=window.__ironlog;const s=L.state.sessions[0];const b=s.ex[0];L.state.exercises.find(e=>e.id===b.exId).unit='kg';b.sets=[{...b.sets[0],w:100,u:'kg'},{...b.sets[0],w:135*0.45359237,u:'lb'}];s.ex.push({exId:'assistPullup',rr:[6,10],ps:1,sets:[{w:-20,r:8,rir:2,done:true,u:'kg'}]});L.invalidate();L.saveNow();});
 const [dl2]=await Promise.all([page.waitForEvent('download'),ev(()=>window.__ironlog.exportCSV())]);
 const text=require('fs').readFileSync(await dl2.path(),'utf8');
 await page.waitForTimeout(100);await page.click('[data-act="mClose"]');
@@ -80,6 +80,111 @@ const got=await P2.page.evaluate(async t=>{const L=window.__ironlog;L.state.sett
 ok(JSON.stringify(got.col)==='["2026-10-01","2026-10-08"]'&&JSON.stringify(got.bench)==='[""]','CSV: each chest press row names its machine by the day it was first used; the bench, on one, names none',got);
 ok(got.by[0]&&got.by[0]===got.by[2]&&got.by[1]&&got.by[1]!==got.by[0]&&got.mks.length===3&&got.mks[0]===got.mks[2]&&got.mks[1]!==got.mks[0],'CSV read back into an empty log: the two 200 lb sessions on one machine, the 140 lb one on the other',got);
 await P2.ctx.close();
+}
+/* The machine column names each machine by the name the lifter gave it, a machine with none by the day it was first
+   used, and a lift on one named machine by that name (2.74, the full review's L4-14). Read back into an empty log, the
+   names come with the machines; into a log whose lift has machines of those names, each session joins its machine. */
+{
+const LB=0.45359237;
+const seedQ=LB=>{const L=window.__ironlog;L.state.settings.onboarded=true;const mk=(id,date,exId,w,more)=>({id,date,dayIdx:0,dayId:null,dayName:'Push',routineId:'',free:true,notes:'',ex:[{exId,note:'',rr:[8,12],sets:[11,11,10].map(r=>({w:w*LB,r,rir:2,done:true})),...more}]});
+  L.state.sessions=[mk('a1','2026-10-01','machPress',200,{}),mk('a2','2026-10-08','machPress',140,{nw:true,mc:'a2'}),mk('a3','2026-10-15','machPress',200,{mc:'0'}),mk('a4','2026-10-17','machPress',90,{nw:true,mc:'a4'}),mk('p1','2026-10-02','pecDeck',120,{}),mk('p2','2026-10-09','pecDeck',125,{})];
+  const nm=(id,m)=>{L.state.exercises.find(e=>e.id===id).machines=m;};nm('machPress',{0:'Cybex',a2:'Hammer'});nm('pecDeck',{0:'Life Fitness'});
+  L.state=L.normalize(L.state);L.invalidate();L.saveNow();};
+const P1=await open('index.html',{browser,clock:'2026-10-20T10:00:00'});
+await P1.page.evaluate(seedQ,LB);
+const [dl4]=await Promise.all([P1.page.waitForEvent('download'),P1.page.evaluate(()=>window.__ironlog.exportCSV())]);
+const text4=require('fs').readFileSync(await dl4.path(),'utf8');
+await P1.ctx.close();
+const cols=await (async()=>{const P=await open('index.html',{browser,clock:'2026-10-20T10:00:00'});const c=await P.page.evaluate(t=>{const L=window.__ironlog;const rows=L.impRows(t);const m=rows[0].indexOf('machine'),e=rows[0].indexOf('exercise'),d=rows[0].indexOf('date');const of=n=>[...new Set(rows.slice(1).filter(r=>r[e]===n).map(r=>r[d]+' '+r[m]))];return {press:of('Machine Chest Press'),pec:of('Pec Deck Fly')};},text4);await P.ctx.close();return c;})();
+ok(JSON.stringify(cols.press)==='["2026-10-01 Cybex","2026-10-08 Hammer","2026-10-15 Cybex","2026-10-17 2026-10-17"]'&&JSON.stringify(cols.pec)==='["2026-10-02 Life Fitness","2026-10-09 Life Fitness"]','CSV: each machine named by the name given it (Cybex, Hammer), one with none by the day it was first used, and a lift on its one named machine by that name (L4-14)',cols);
+// Read back into an empty log: the machines come with their names, each machine's sessions together.
+const P2=await open('index.html',{browser,clock:'2026-10-20T10:00:00',realStarter:true});
+const named=async P=>P.page.evaluate(()=>{const L=window.__ironlog;const out={};for(const id of ['machPress','pecDeck']){const e=L.state.exercises.find(x=>x.id===id);const nm=(e&&e.machines)||{};out[id]=(L.IDX().byEx[id]||[]).map(x=>x.date+' '+(nm[x.mk]||'-'));}return out;});
+await P2.page.evaluate(async t=>{const L=window.__ironlog;L.state.settings.onboarded=true;L.saveNow();L.impStart({text:t});await new Promise(r=>setTimeout(r,300));L.ACT.impGo();await new Promise(r=>setTimeout(r,300));if(L.ui.modal)L.ACT.mClose();},text4);
+const empty=await named(P2);
+ok(JSON.stringify(empty.machPress)==='["2026-10-01 Cybex","2026-10-08 Hammer","2026-10-15 Cybex","2026-10-17 -"]'&&JSON.stringify(empty.pecDeck)==='["2026-10-02 Life Fitness","2026-10-09 Life Fitness"]','CSV read back into an empty log: each session on its machine, by the name the file gives it; the machine with none has none',empty);
+await P2.ctx.close();
+// Read back into a log whose chest press has a Cybex and a Hammer of its own (other keys) and whose pec deck has its Life Fitness.
+const P3=await open('index.html',{browser,clock:'2026-10-20T10:00:00',realStarter:true});
+await P3.page.evaluate(LB=>{const L=window.__ironlog;L.state.settings.onboarded=true;const mk=(id,date,exId,w,more)=>({id,date,dayIdx:0,dayId:null,dayName:'Push',routineId:'',free:true,notes:'',ex:[{exId,note:'',rr:[8,12],sets:[11,11,10].map(r=>({w:w*LB,r,rir:2,done:true})),...more}]});
+  L.state.sessions=[mk('r1','2026-09-20','machPress',190,{}),mk('r2','2026-09-25','machPress',130,{nw:true,mc:'r2'}),mk('q1','2026-09-21','pecDeck',110,{})];
+  const nm=(id,m)=>{L.state.exercises.find(e=>e.id===id).machines=m;};nm('machPress',{0:'Hammer',r2:'Cybex'});nm('pecDeck',{0:'Life Fitness'});
+  L.state=L.normalize(L.state);L.invalidate();L.saveNow();},LB);
+await P3.page.evaluate(async t=>{const L=window.__ironlog;L.impStart({text:t});await new Promise(r=>setTimeout(r,300));L.ACT.impGo();await new Promise(r=>setTimeout(r,300));if(L.ui.modal)L.ACT.mClose();},text4);
+const joined=await P3.page.evaluate(()=>{const L=window.__ironlog;const out={};for(const id of ['machPress','pecDeck'])out[id]=(L.IDX().byEx[id]||[]).map(x=>x.date+' '+x.mk);out.names=JSON.parse(JSON.stringify(L.state.exercises.find(x=>x.id==='machPress').machines));return out;});
+const keyOf=d=>(joined.machPress.find(x=>x.startsWith(d))||'').split(' ')[1];
+ok(keyOf('2026-10-01')==='r2'&&keyOf('2026-10-15')==='r2'&&keyOf('2026-10-08')==='0'&&keyOf('2026-10-17')&&!['0','r2'].includes(keyOf('2026-10-17'))&&JSON.stringify(joined.pecDeck)==='["2026-09-21 0","2026-10-02 0","2026-10-09 0"]'&&Object.keys(joined.names).length===2,'CSV read into a log whose lift has machines of those names: Cybex\'s sessions join its Cybex, Hammer\'s its Hammer, the pec deck\'s its Life Fitness; the machine with no name is one of its own, and no name is added (L4-14)',joined);
+await P3.ctx.close();
+}
+// The Preacher Curl, which the library refiled from the machines to the barbells (2.75), done on two machines (named
+// in its sessions, as 2.74 saved them): the file names each session's machine, and read back into an empty log each
+// machine's sessions stay together, as a machine lift's do, so the lift reads the same from it (REV27-5's rule: a
+// lift whose sessions name machines goes on naming them). On 2.75 the file's column was dropped for a lift filed
+// with free weights, and the two machines read as one.
+{
+const LB=0.45359237;
+const P4=await open('index.html',{browser,clock:'2026-11-10T10:00:00'});
+await P4.page.evaluate(LB=>{const L=window.__ironlog;const S=L.state;S.settings.onboarded=true;S.settings.unit='lb';
+  const mk=(id,date,lb,reps,more)=>({id,date,dayIdx:0,dayId:null,dayName:'Arms',routineId:'',free:true,notes:'',ex:[{exId:'preacher',note:'',rr:[8,12],sets:[reps,reps,reps].map(r=>({w:lb*LB,r,rir:2,done:true})),...more}]});
+  S.sessions=[mk('p1','2026-10-20',80,10,{mc:'0'}),mk('p2','2026-10-23',80,10,{mc:'0'}),mk('p3','2026-10-27',50,12,{nw:true,mc:'p3'}),mk('p4','2026-10-30',50,12,{mc:'p3'}),mk('p5','2026-11-03',80,10,{mc:'0'}),mk('p6','2026-11-06',80,10,{mc:'0'})];
+  L.state=L.normalize(S);L.invalidate();L.saveNow();},LB);
+const pcRead=P=>P.page.evaluate(()=>{const L=window.__ironlog;const k={};let n=0;return (L.IDX().byEx.preacher||[]).map(x=>x.date+':'+(k[x.mk]??=String.fromCharCode(65+n++))).join(' ');});
+const before=await pcRead(P4);
+const [dl4]=await Promise.all([P4.page.waitForEvent('download'),P4.page.evaluate(()=>window.__ironlog.exportCSV())]);
+const text4=require('fs').readFileSync(await dl4.path(),'utf8');
+await P4.ctx.close();
+const P5=await open('index.html',{browser,clock:'2026-11-10T10:00:00',realStarter:true});
+const col=await P5.page.evaluate(async t=>{const L=window.__ironlog;L.state.settings.onboarded=true;L.saveNow();L.impStart({text:t});await new Promise(r=>setTimeout(r,300));L.ACT.impGo();await new Promise(r=>setTimeout(r,300));
+  const rows=L.impRows(t);const m=rows[0].indexOf('machine'),e=rows[0].indexOf('exercise');return [...new Set(rows.slice(1).filter(r=>r[e]==='Preacher Curl').map(r=>r[m]))];},text4);
+const after=await pcRead(P5);
+const want='2026-10-20:A 2026-10-23:A 2026-10-27:B 2026-10-30:B 2026-11-03:A 2026-11-06:A';
+ok(before===want&&JSON.stringify(col)==='["2026-10-20","2026-10-27"]','CSV: the refiled Preacher Curl\'s rows name the machine each session was done on, by the day it was first used',{before,col});
+ok(after===want,'CSV read back into an empty log: the refiled Preacher Curl\'s two machines stay apart, each session on the one it was done on (REV27-5\'s rule, NEW-190)',{after,want});
+ok(!P5.errors.length,'no console errors reading back the refiled Preacher Curl\'s machines',P5.errors);
+await P5.ctx.close();
+}
+// Every set's unit through the CSV (2.73): written as stored, never read back from the number, and read back by an
+// import into an empty log as it was entered: a load and its unit, on a lift in the app's unit and on one marked in
+// the other, a load typed to the hundredth included. And import's check for a session already in the log compares
+// each load as written, in its own unit: a second session on the same day with the same lifts and reps and other loads
+// is added (the full review's L2-8), the same file imported again adds nothing, and so does the same file read with
+// the other unit choice.
+{
+const LB=0.45359237;
+const P1=await open('index.html',{browser,clock:'2026-10-20T10:00:00'});
+await P1.page.evaluate(LB=>{const L=window.__ironlog;const S=L.state;S.settings.onboarded=true;S.settings.unit='lb';S.exercises.find(e=>e.id==='bench').unit='kg';
+  const set=(w,u,r)=>({w,u,r,rir:2,done:true});
+  const mk=(id,date,bench,curl)=>({id,date,dayIdx:0,dayId:null,dayName:'Push',routineId:'',free:true,notes:'',ex:[{exId:'bench',note:'',rr:[6,10],sets:bench},{exId:'dbCurl',note:'',rr:[8,12],sets:curl}]});
+  // And every load of the sweep, 0.05 to 1,000, in each unit on each lift.
+  const SW=[0.05,0.25,1.25,2.35,12.5,61.25,102.5,225,999.95,1000],all=[...SW.map(v=>set(v,'kg',5)),...SW.map(v=>set(v*LB,'lb',5))];
+  S.sessions=[mk('a1','2026-10-01',[set(83.75,'kg',8),set(185*LB,'lb',6)],[set(25*LB,'lb',12),set(12.5,'kg',10)]),mk('a2','2026-10-08',[set(85,'kg',8),set(85,'kg',8)],[set(27.5*LB,'lb',10)]),mk('a3','2026-10-15',all,all)];
+  L.state=L.normalize(S);L.invalidate();L.saveNow();},LB);
+const sets1=await P1.page.evaluate(()=>window.__ironlog.state.sessions.map(s=>s.ex.map(b=>b.sets.map(q=>[q.w,q.u]))));
+const [d1]=await Promise.all([P1.page.waitForEvent('download'),P1.page.evaluate(()=>window.__ironlog.exportCSV())]);
+const t1=require('fs').readFileSync(await d1.path(),'utf8');
+await P1.ctx.close();
+const imp=async(P,t,unit)=>P.page.evaluate(async([t,unit])=>{const L=window.__ironlog;L.impStart({text:t});await new Promise(r=>setTimeout(r,300));if(unit&&L.ui.modal&&L.ui.modal.unit!==unit)L.ACT.impUnit({dataset:{v:unit}});await new Promise(r=>setTimeout(r,100));L.ACT.impGo();await new Promise(r=>setTimeout(r,400));if(L.ui.modal)L.ACT.mClose();return L.state.sessions.length;},[t,unit]);
+const P2=await open('index.html',{browser,clock:'2026-10-20T10:00:00',realStarter:true});
+await P2.page.evaluate(()=>{const L=window.__ironlog;L.state.settings.onboarded=true;L.state.settings.unit='lb';L.saveNow();});
+await imp(P2,t1);
+const sets2=await P2.page.evaluate(()=>window.__ironlog.state.sessions.slice().sort((a,b)=>a.date<b.date?-1:1).map(s=>s.ex.map(b=>b.sets.map(q=>[q.w,q.u]))));
+const near=(a,b)=>JSON.stringify(a.map(s=>s.map(b=>b.map(([w,u])=>[Math.round(w*1e6),u]))))===JSON.stringify(b.map(s=>s.map(b=>b.map(([w,u])=>[Math.round(w*1e6),u]))));
+ok(near(sets2,sets1)&&sets1[0][0][0][1]==='kg'&&sets1[0][0][1][1]==='lb'&&sets1[2][0].length===20,'CSV read back into an empty log: every set\'s load and unit as entered (83.75 kg and 185 lb on the bench marked kg, 25 lb and 12.5 kg on the curls in lb, and every load from 0.05 to 1,000 in each unit on each)',{sets1:sets1.slice(0,2),sets2:sets2.slice(0,2),diff:sets2[2]&&sets2[2].map((b,i)=>b.filter((q,j)=>!sets1[2][i][j]||Math.round(q[0]*1e6)!==Math.round(sets1[2][i][j][0]*1e6)||q[1]!==sets1[2][i][j][1]))});
+const again=await imp(P2,t1);
+ok(again===3,'the same file imported again adds nothing',again);
+const other=await imp(P2,t1,'kg');
+ok(other===3,'and read with the other unit choice, nothing either: the same numbers in another unit are the same sessions',other);
+await P2.ctx.close();
+// A log holding Oct 1's session with other loads: the file's Oct 1 is a second session that day, not the first again.
+const P3=await open('index.html',{browser,clock:'2026-10-20T10:00:00',realStarter:true});
+await P3.page.evaluate(LB=>{const L=window.__ironlog;const S=L.state;S.settings.onboarded=true;S.settings.unit='lb';S.exercises.find(e=>e.id==='bench').unit='kg';
+  const set=(w,u,r)=>({w,u,r,rir:2,done:true});
+  S.sessions=[{id:'x1',date:'2026-10-01',dayIdx:0,dayId:null,dayName:'Push',routineId:'',free:true,notes:'',ex:[{exId:'bench',note:'',rr:[6,10],sets:[set(60,'kg',8),set(135*LB,'lb',6)]},{exId:'dbCurl',note:'',rr:[8,12],sets:[set(15*LB,'lb',12),set(7.5,'kg',10)]}]}];
+  L.state=L.normalize(S);L.invalidate();L.saveNow();},LB);
+const n3=await imp(P3,t1);
+const oct1=await P3.page.evaluate(()=>window.__ironlog.state.sessions.filter(s=>s.date==='2026-10-01').length);
+ok(n3===4&&oct1===2,'a log with a lighter session on Oct 1, same lifts and reps: the file\'s Oct 1 is added beside it, two sessions that day',{n3,oct1});
+await P3.ctx.close();
 }
 // ---- 4. delete, trash, restore, undo
 await ev(()=>{const L=window.__ironlog;L.ui.tab='history';L.ui.histOpen=L.state.sessions[0].id;L.render();});

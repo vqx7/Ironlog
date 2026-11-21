@@ -4,7 +4,7 @@
 import { IN, KM_MI, FT_IN } from './units';
 import { NIL, fmtDate, fmtWith, missedTag } from './format';
 import { bestFit, e1, fitE, trendE, RECENT_DAYS, BEST_WEEKS, TAPE_WEEKS } from './formulas';
-import { MK, ML, isCommon, isCompound, loadMode, nameMatch } from './library';
+import { MK, ML, isCommon, isCompound, loadMode, nameMatch, noE1 } from './library';
 import { dayParts, dayWorkout, partOf, routineEmpty, routineSig, sessDayIdx } from './routines';
 import { rec } from './records';
 import { REGION_WKS, REGION_WK_DEFAULT } from './layout';
@@ -64,7 +64,7 @@ import {
 import { state, ui } from './store';
 import { NEW_MACHINE } from './analytics';
 import type { ExPoint, Exposure, ExerciseLike, Pr } from './model';
-import type { Day, Exercise, LoggedSet, Measurement, PlanItem, Routine, Session } from './types';
+import type { Day, Exercise, LoggedSet, Measurement, PlanItem, Routine, Session, Unit } from './types';
 
 /** The words on an Undo button (Settings, and the first page after Erase everything): the change it takes back, named as its message named it, not "Undo last delete or reset (N available)". */
 export function undoLabel(): string {
@@ -96,27 +96,26 @@ export const distU = (): 'km' | 'mi' => (appU() === 'kg' ? 'km' : 'mi');
 export const distShow = (km: number): number =>
   Math.round((appU() === 'kg' ? km : km / KM_MI) * HUNDREDTHS) / HUNDREDTHS;
 
-/** One set, short: the load and reps (185×8), or the hold (BW for 45s); with `named`, the load's unit said in any unit. */
+/** One set, short: the load and reps (185×8), or the hold (BW for 45s), its load as entered in its unit; with `named`, the load's unit said in any unit. */
 export function setShort(
   ex: Pick<Exercise, 'bw' | 'timed' | 'unit'>,
-  w: number | string | null | undefined,
-  r: number | string | null,
+  x: { w: number | string | null | undefined; r: number | string | null; u: Unit | null | undefined },
   named?: boolean
 ): string {
-  // A set is quoted as typed (225 lb), its unit named when it is not the app's (listLabelIn), in any screen's list.
-  const l = listLabel(ex, +(w ?? 0) || 0, named);
-  return ex.timed ? `${l} for ${r}s` : `${l}×${r}`;
+  // A set is quoted as entered (225 lb), its unit named when it is not the app's (listLabelIn), in any screen's list.
+  const l = listLabel(ex, +(x.w ?? 0) || 0, x.u, named);
+  return ex.timed ? `${l} for ${x.r}s` : `${l}×${x.r}`;
 }
 
 /** One saved set as History lists it: its mark, load and reps, missed, the effort called and a calibration set. */
 export function setStr(
   ex: Pick<Exercise, 'bw' | 'timed'>,
-  x: Pick<LoggedSet, 'w' | 'warm' | 'drop' | 'cal'> & {
+  x: Pick<LoggedSet, 'w' | 'warm' | 'drop' | 'cal' | 'u'> & {
     r: number | string | null;
     rir?: number | string | null | undefined;
   }
 ): string {
-  return `${x.warm ? '(W) ' : x.drop ? '(D) ' : ''}${setShort(ex, x.w, x.r)}${missedTag(x)}${!ex.timed && x.rir != null && x.rir !== '' ? (rirScale() === 'rpe' ? ' @RPE ' + effShow(x.rir) : ' @' + effShow(x.rir)) : ''}${x.cal ? ' (RIR check)' : ''}`;
+  return `${x.warm ? '(W) ' : x.drop ? '(D) ' : ''}${setShort(ex, { w: x.w, r: x.r, u: x.u })}${missedTag(x)}${!ex.timed && x.rir != null && x.rir !== '' ? (rirScale() === 'rpe' ? ' @RPE ' + effShow(x.rir) : ' @' + effShow(x.rir)) : ''}${x.cal ? ' (RIR check)' : ''}`;
 }
 
 /* ---------- moved with Plan and Stats ---------- */
@@ -226,16 +225,23 @@ export function topSetPt(ex: ExerciseLike, x: Exposure): { v: number; txt: strin
     const v = trendE(p.load, p.r, 0) || 0;
     if (!q || v > q.v) q = { v, p };
   }
-  return q ? { v: q.v, txt: setShort(ex, q.p.w, q.p.r) } : { v: 0, txt: '' };
+  return q ? { v: q.v, txt: setShort(ex, q.p) } : { v: 0, txt: '' };
 }
 
-/** A lift's strongest working set by reps alone, with its date; at one score, the one with more reps. */
-export function bestSet(exId: string): { v: number; w: number; r: number; date: string } | null {
-  let b: { v: number; w: number; r: number; date: string } | null = null;
+/* A lift's best set, one rule for Stats' headline, its Best set tile and the lift's history sheet: a timed hold by its
+   load as read, then its seconds; a lift with no estimate by its load as stored, then reps; any other by its estimate
+   with nothing in reserve (reps alone), then reps. */
+/** A lift's best working set (above), with its date; at one score, the one with more reps. */
+export function bestSet(exId: string): { v: number; w: number; r: number; u: Unit | null; date: string } | null {
+  const ex = EX(exId);
+  const plain = !!ex.timed || noE1(ex);
+  const score = (p: ExPoint): number => (ex.timed ? p.pl : plain ? p.w : trendE(p.load, p.r, 0) || p.load);
+  const tol = plain ? EPS_SAME : EPS;
+  let b: { v: number; w: number; r: number; u: Unit | null; date: string } | null = null;
   for (const x of liftRead(exId))
     for (const p of x.pts) {
-      const v = trendE(p.load, p.r, 0) || p.load;
-      if (!b || v > b.v + EPS || (v > b.v - EPS && p.r > b.r)) b = { v, w: p.w, r: p.r, date: x.date };
+      const v = score(p);
+      if (!b || v > b.v + tol || (v > b.v - tol && p.r > b.r)) b = { v, w: p.w, r: p.r, u: p.u, date: x.date };
     }
   return b;
 }
@@ -243,13 +249,13 @@ export function bestSet(exId: string): { v: number; w: number; r: number; date: 
 /* An isolation lift's best-estimate PR is shown as the set that set it, not
    as a 1RM: the strongest set of that lift in that session. */
 /** The set with the best estimate in a lift's session (by the session's id: two on one day are two sessions), or null. */
-export function prSet(exId: string, sid: string): { v: number; w: number; r: number } | null {
+export function prSet(exId: string, sid: string): { v: number; w: number; r: number; u: Unit | null } | null {
   const x = (IDX().byEx[exId] || []).find(q => q.sid === sid);
   if (!x) return null;
-  let b: { v: number; w: number; r: number } | null = null;
+  let b: { v: number; w: number; r: number; u: Unit | null } | null = null;
   for (const p of x.pts) {
     const v = e1(p.load, p.r, p.rq);
-    if (v != null && (!b || v > b.v)) b = { v, w: p.w, r: p.r };
+    if (v != null && (!b || v > b.v)) b = { v, w: p.w, r: p.r, u: p.u };
   }
   return b;
 }
@@ -449,7 +455,7 @@ export function bestLine(exId: string, upTo?: string): string {
   const last = exps[exps.length - 1];
   // Its year when not this one, as the board says it.
   const when = last && r.heavy.date === last.date ? '' : `, ${fmtDate(r.heavy.date)}`;
-  return `Heaviest ${setShort(ex, r.heavy.p.w, r.heavy.p.r)}${loadNote(ex)}${when}`;
+  return `Heaviest ${setShort(ex, r.heavy.p)}${loadNote(ex)}${when}`;
 }
 
 /* Each lift's best on Today's Workout preview (379, V 2026-11-03: "PR/best
@@ -473,11 +479,9 @@ export function bestSetLine(exId: string): string {
       .filter(f => f.p.pl >= e.p.pl - EPS_SAME && f.p.r >= e.p.r && (f.p.pl > e.p.pl + EPS_SAME || f.p.r > e.p.r))
       .sort((a, b) => b.p.pl - a.p.pl || b.p.r - a.p.r)[0];
     const best = over || e;
-    return `Best ${setShort(r.ex, best.p.w, best.p.r)}${loadNote(r.ex)}, ${fmtDate(best.date)}`;
+    return `Best ${setShort(r.ex, best.p)}${loadNote(r.ex)}, ${fmtDate(best.date)}`;
   }
-  return r.heavy
-    ? `Heaviest ${setShort(r.ex, r.heavy.p.w, r.heavy.p.r)}${loadNote(r.ex)}, ${fmtDate(r.heavy.date)}`
-    : '';
+  return r.heavy ? `Heaviest ${setShort(r.ex, r.heavy.p)}${loadNote(r.ex)}, ${fmtDate(r.heavy.date)}` : '';
 }
 
 /* A goal is a load for a number of reps (225 x 5), as lifters say it. Where
@@ -500,7 +504,7 @@ export function goalState(exId: string): {
   const g0 = ex && ex.goal;
   if (!g0 || !goalOk(ex)) return null;
   // Set in the other unit, the goal is the load of this unit's equipment it reads as (loadReadIn): 100 kg is 220 lb.
-  const g = { w: loadReadOf(ex, g0.w), r: g0.r };
+  const g = { w: loadReadOf(ex, g0.w, ex.goalU), r: g0.r };
   // Since a new machine or gym (liftRead): a goal reached at another machine is not reached here.
   const exps = liftRead(exId);
   const bw = bwRefLoad(ex);
@@ -527,9 +531,13 @@ export function goalState(exId: string): {
   const pct = !noBw && need && cur ? Math.min(PERCENT, (cur / need) * PERCENT) : null;
   return { g, hit, pct, cur, need, noBw };
 }
-/** A goal in words: "225 lb × 5", in the lift's own frame. */
-export function goalWords(ex: ExerciseLike, g: { w: number; r: number }): string {
-  return `${loadLabel(ex, loadReadOf(ex, g.w))}${ex.bw ? '' : ' ' + liftU(ex)}${loadNote(ex)} × ${g.r}`;
+/** A goal in words: "225 lb × 5", in the lift's own frame (its load entered in `u`, the lift's goal's unit unless given). */
+export function goalWords(
+  ex: ExerciseLike,
+  g: { w: number; r: number },
+  u: Unit | null | undefined = ex.goalU
+): string {
+  return `${loadLabel(ex, loadReadOf(ex, g.w, u))}${ex.bw ? '' : ' ' + liftU(ex)}${loadNote(ex)} × ${g.r}`;
 }
 
 /* ---------- Volume by region: what it reads ---------- */
@@ -782,6 +790,62 @@ export function weekSlots(R: Routine): WeekSlot[] {
   return out;
 }
 
+/* A fixed-weekday routine adapts (V, 2026-11-02) to a slipped day. A workout done on another day fills
+   its own slot (weekSlots), so its day stops reading missed, and Today offers the earliest workout this week still
+   to do, else today's; once today's is done, today or earlier, the next one this week ("show what is up next if
+   something was completed already"). A rest day with nothing behind keeps its card. Today's own workout is a tap
+   away on the note (and in the week bar), for a lifter who would rather move on. */
+/** The week's workout Today offers on a fixed-weekday routine, and why; null for the card as before. */
+function weekOffer(R: Routine, wd: number): { di: number; part: 1 | 2; kind: 'behind' | 'today' | 'ahead' } | null {
+  const slots = weekSlots(R);
+  const todo = slots.filter(x => !x.doneOn);
+  const behind = todo.find(x => x.di < wd);
+  if (behind) return { di: behind.di, part: behind.part, kind: 'behind' };
+  const mine = todo.find(x => x.di === wd);
+  if (mine) return { di: wd, part: mine.part, kind: 'today' };
+  if (!slots.some(x => x.di === wd)) return null;
+  const next = todo.find(x => x.di > wd);
+  return next ? { di: next.di, part: next.part, kind: 'ahead' } : null;
+}
+/* The workout Today offers with none picked, one rule for every screen that names it: the card, the line under Today
+   that says a hidden Workout preview has something to show, and Stats' Next session. On a fixed-weekday routine the
+   week's workout due (weekOffer: one still to do, else today's, else the next), outside a rest week; else today's
+   weekday; on a cycle, its next day. */
+/** The day Today offers with none picked (above), the workout of it, and why when it is the week's due one. */
+export function offeredDay(R: Routine): { di: number; part: 1 | 2; offer: ReturnType<typeof weekOffer> } {
+  const wd = dayOfWeek(today());
+  if (R.schedule !== 'weekly') return { di: R.days.length ? cycleState(R).next : 0, part: 1, offer: null };
+  const offer = isRestWeek(weekStart(today())) ? null : weekOffer(R, wd);
+  return { di: offer ? offer.di : wd, part: offer ? offer.part : 1, offer };
+}
+
+/** The next day due that holds lift `exId`, in the order Today offers the days (offeredDay): on a fixed-weekday routine
+    outside a rest week, this week's workouts still to do, earliest first, then next week's from Monday; else from the
+    day Today offers, round the routine. */
+export function nextDueWith(R: Routine, exId: string): Routine['days'][number] | null {
+  const has = (d: Routine['days'][number] | undefined): boolean =>
+    !!d && !d.rest && d.items.some(it => it.exId === exId);
+  const n = R.days.length;
+  if (!n) return null;
+  if (R.schedule === 'weekly' && !isRestWeek(weekStart(today()))) {
+    const todo = [
+      ...new Set(
+        weekSlots(R)
+          .filter(x => !x.doneOn)
+          .map(x => x.di)
+      )
+    ].sort((a, b) => a - b);
+    const due = todo.map(di => R.days[di]).find(has);
+    return due || R.days.find(has) || null;
+  }
+  const start = offeredDay(R).di;
+  for (let k = 0; k < n; k++) {
+    const d = R.days[(start + k) % n];
+    if (has(d)) return d;
+  }
+  return null;
+}
+
 /** This week's days ahead on a fixed-weekday routine whose every workout was done on another day, each with the workouts
     and the day they were done, as the bar reads them (weekSlots): This week and the calendar say so rather than offer them
     again (not "Legs B, planned" under the bar's "Legs B, done Wed"). */
@@ -878,6 +942,27 @@ export function machineName(exId: string, key: string): string | null {
   const k = key === NEW_MACHINE ? newMachineKey() : key;
   return (k && e && e.machines && e.machines[k]) || null;
 }
+
+/* A lift's machines as a file names them (the CSV's machine column, which import reads back): by the name the lifter
+   gave one, else by the day it was first used, as the Machine sheet says a machine with no name by a day; each label the
+   lift's alone, a second of the same name or day taking "-2". */
+/** Each of lift `exId`'s machines by key, with its label in a file (above), in the order first used. */
+export function machineLabels(exId: string): Map<string, string> {
+  const e = state.exercises.find(x => x.id === exId);
+  const out = new Map<string, string>();
+  const used = new Set<string>();
+  for (const x of IDX().byEx[exId] || []) {
+    if (out.has(x.mk)) continue;
+    const base = (e && e.machines && e.machines[x.mk]) || x.date;
+    let label = base;
+    for (let n = 2; used.has(label); n++) label = `${base}-${n}`;
+    used.add(label);
+    out.set(x.mk, label);
+  }
+  return out;
+}
+/** Whether a file's machine label is a day, as one with no name is written (machineLabels): not a name to give it. */
+export const isDayLabel = (label: string): boolean => /^\d{4}-\d{2}-\d{2}(-\d+)?$/.test(label);
 
 /** The quick picks offered when a machine is named. */
 const MACHINE_CHOICES = 6;

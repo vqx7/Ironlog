@@ -1,7 +1,8 @@
 /* The one way to change the log (ARCHITECTURE.md). An action on a moved screen hands its change to `act`,
    which does every step a change needs, always in this order: the check,
    the Undo step, the change, the caches dropped, the save on this device and
-   the edit noted for the sync (the save does both, saveNow), and the sessions the
+   the edit noted for the sync (the save does both, saveNow; the app's own change, `app`, is
+   noted as no edit), and the sessions the
    change would move to another machine named where they were (keepMachines). A change that
    fails halfway is put back whole, with no save and no Undo step. Placed by hand in
    each action, one left out would be found only when it lost something;
@@ -9,7 +10,7 @@
    tests/r57.js reads every step on the page after each action's tap. */
 
 import { CLOSED_KEY, log, prefDel, prefGet, prefSet, snapshot, undoPersist, undoStack } from './storage';
-import { assemble, baseOf, mergeChunk, saveNow, saveSoon } from './sync';
+import { assemble, baseOf, editsNoted, mergeChunk, saveNow, saveSoon, seenAsIs } from './sync';
 import { canon, mergeDraft } from './merge';
 import { chunksOf, emptyChunk } from './chunks';
 import type { Rec } from './records';
@@ -35,6 +36,10 @@ interface ActOpts {
   whole?: boolean | undefined;
   /** The change touches only the session in progress, which nothing cached reads (the index, the bests, the pace are built from saved sessions): the caches stay, through every keystroke and tick. */
   inProgress?: boolean | undefined;
+  /** The app's own change, not the lifter's (a fix of a log an older build saved, made once at start): saved at once
+      and sent as any change is, it moves no document's edit time, so it never outranks a lifter's edit made before it
+      on another phone (sync.ts editsNoted, seenAsIs). Inside another change it is part of that one. */
+  app?: true | undefined;
 }
 
 /* A change made inside another one (a helper that changes the log, called
@@ -106,12 +111,23 @@ export function act(change: () => void, opts: ActOpts = {}): boolean {
   depth++;
   let inside = false;
   outerBegun = begunBefore();
+  // The lifter's edits made before an app's own change keep their own times (editsNoted).
+  if (opts.app) editsNoted();
+  // Whether kept names were written and the log taken as seen with them (below): put back as seen if the change fails.
+  let seen = false;
   try {
     change();
     /* A session the change would move to another machine stays where it was (normalize.ts keepMachines); for a change
-       to the workout that changed the whole log inside it, against the log it found. */
+       to the workout that changed the whole log inside it, against the log it found. The names it writes are the
+       app's, into sessions the change may not have touched, so they move no edit time: the change is noted
+       before the first is written (editsNoted), and the log is taken as seen with them at once (seenAsIs), before
+       anything more of the change (its clock) is made. */
     const was = readings || (logBefore && !opts.whole ? machineReadings(logBefore) : null);
-    if (was) named = keepMachines(state, was);
+    if (was) named = keepMachines(state, was, editsNoted);
+    if (named) {
+      seenAsIs();
+      seen = true;
+    }
     // The workout's clock starts with the change that begins it, whichever tap began it (session.ts).
     clockAfter(outerBegun);
     followsAfter(outerBegun);
@@ -121,6 +137,8 @@ export function act(change: () => void, opts: ActOpts = {}): boolean {
       if (logBefore) setState(logBefore);
       state.draft = draftWas;
     }
+    // The log put back is the one last taken as seen, not the one with the names.
+    if (seen) seenAsIs();
     // The step kept for a change that was not made is taken back with it.
     if (step && undoStack[undoStack.length - 1] === step) {
       undoStack.pop();
@@ -136,8 +154,10 @@ export function act(change: () => void, opts: ActOpts = {}): boolean {
     logBefore = null;
   }
   if (!opts.inProgress || inside || named) invalidate();
-  if (opts.soon) saveSoon();
+  if (opts.soon && !opts.app) saveSoon();
   else saveNow();
+  // Saved, the app's own change is taken as seen: no edit time moves (seenAsIs).
+  if (opts.app) seenAsIs();
   return true;
 }
 

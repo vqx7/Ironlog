@@ -33,6 +33,9 @@ export type MuscleKey =
   | 'calves'
   | 'tibialis';
 
+/** A unit a load is entered and shown in. */
+export type Unit = 'kg' | 'lb';
+
 /** How the load number on an exercise reads (loadMode). */
 export type LoadMode = 'each' | 'total' | 'side' | 'stack' | 'bw';
 
@@ -64,6 +67,18 @@ export interface Exercise {
   unit?: 'kg' | 'lb' | undefined;
   /** The names the lifter gave the machines this lift was done on, by each machine's key (machineKeys); absent until one is named. */
   machines?: Record<string, string> | undefined;
+  /** The units the lift's step, heaviest load, bar and goal were entered in; absent with the number. Last, where a build
+      before them keeps the unknown fields (a goal's unit beside the goal, which such a build rebuilds from its load and
+      reps alone). */
+  incU?: Unit | undefined;
+  maxLoadU?: Unit | undefined;
+  barU?: Unit | undefined;
+  goalU?: Unit | undefined;
+  /** The unit each of the lift's machines has its weights in, by the machine's key, as the lifter picked it while the
+      lift was on that machine (the unit sheet); absent until one is picked. Last, after the units above. */
+  machineU?: Record<string, Unit> | undefined;
+  /** The equipment a lift the library refiled is set to is the lifter's pick, though it is the library's old one (library.ts LIB_EQUIP_BEFORE). */
+  equipOwn?: true | undefined;
 }
 
 /** A routine day's exercise: the plan for it. */
@@ -113,7 +128,8 @@ interface RirCheck {
   pred: number;
 }
 
-/** One logged set. `w` is the number as typed (below 0 only on an assisted lift),
+/** One logged set. `w` is its load in kilograms, exact (below 0 only on an assisted lift), and `u` the unit
+    it was entered in, absent when the load is 0 or an old set's number said none;
     `rir` what was called, null when left blank; `rid` the row's own id, kept
     from the workout in progress (absent on sets saved before r56.1), so
     a workout finished on one phone and ticked further on another joins row by row. */
@@ -127,8 +143,11 @@ export interface LoggedSet {
   rid?: string | undefined;
   /** What the app asked of the set as it was ticked at the gym (V 2026-11-12): its load (kg) and reps, either null
       when none was asked; absent on a warm-up, a drop set, a RIR check, a set typed in afterwards and a set saved
-      before 2.61. Kept last, where a build before it keeps the unknown field. */
+      before 2.61. Kept after the rest, where a build before it keeps the unknown field. */
   sg?: Asked | undefined;
+  /** The unit `w` was entered in; last, where a build before it keeps the unknown field. Saved only where the number
+      does not give it (merge.ts storedJson); read with it always (normalize.ts unitField). */
+  u?: Unit | undefined;
 }
 
 /** A set's load and reps as the app asked them (LoggedSet's sg). */
@@ -227,7 +246,7 @@ export interface Measurement {
   neck?: number | undefined;
 }
 
-/** An injury the lifter flagged: a muscle or a joint (`m`), since `date`. */
+/** An injury the lifter flagged: a muscle or a joint (`m`), since `date` ('' when a damaged save had none: normalize.ts). */
 export interface Injury {
   id: string;
   m: string;
@@ -271,6 +290,8 @@ interface EngineSettings {
   rirScale?: 'half' | 'rpe' | undefined;
   gym?: Gym | undefined;
   barKg: number | null;
+  /** The unit the bar's weight was entered in, absent with it. */
+  barU?: Unit | undefined;
   profile?: Profile | undefined;
   bands: Record<MuscleKey, [number, number]>;
   // The floors a first-run routine pick recorded, whole sets per muscle.
@@ -396,6 +417,8 @@ export interface DraftSet {
   rid?: string | undefined;
   /** What the app asked of the set as it was ticked (LoggedSet's sg), absent until then. */
   sg?: Asked | undefined;
+  /** The unit `w` was entered in (LoggedSet's u), absent with no load; last, as there. */
+  u?: Unit | undefined;
 }
 
 /** One entry of the error log Settings can copy: when, the area, the message, the build, and the first lines of the stack. */
@@ -479,6 +502,8 @@ export interface DraftBlock {
   nw?: true | undefined;
   /** The machine picked for the lift in this session (a key, machineKeys), on every block of it; absent until one is picked. */
   mc?: string | undefined;
+  /** In an edit, the session's machine name was one the app kept (SessionEx.kp): it stays so unless a machine is picked. */
+  kp?: true | undefined;
   /** The pictures on this exercise's note, by id, carried to the saved exercise by Finish; absent when none. */
   pics?: string[] | undefined;
 }

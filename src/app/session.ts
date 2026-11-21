@@ -3,12 +3,13 @@
    blank session, the fingerprint an edit is compared by, and hints said once.
    What reads the log or the settings to fill a session (suggestions, adjustments) is the engine's. */
 
-import type { DraftBlock, DraftSet, Session, SessionEx, Target } from './types';
+import type { DraftBlock, DraftSet, Session, SessionEx, Target, Unit } from './types';
+import { unitOnGrid } from './units';
 import { uid, today, iso, PERCENT, pctOf, shareWords } from './util';
 import { isMissed, isWork, LIGHTER_SET_SHARE, LIGHT_SHARE, RIR_CALL_TOP } from './formulas';
 import { fmtDate, LIGHT_RIR } from './format';
 import { cleanChk, picIds, LIMITS } from './records';
-import { copyName, named } from './machines';
+import { copyName, savedName } from './machines';
 
 /* ---------- loads and targets ---------- */
 
@@ -35,6 +36,23 @@ export function effW(b: DraftBlock | null | undefined, si: number): number | nul
   const s = b && b.sets[si];
   if (!s) return null;
   return s.w != null ? s.w : greyW(b, si);
+}
+/** The unit of a row's grey load (greyW): the unit stored with the row it is carried from, or the one the app made it in. */
+export function greyU(b: DraftBlock | null | undefined, si: number): Unit | null {
+  const s = b && b.sets[si];
+  if (!b || !s || s.warm || s.drop) return null;
+  for (let i = si - 1; i >= 0; i--) {
+    const x = b.sets[i];
+    if (!x || x.warm || x.drop || x.w == null || isMissed(x)) continue;
+    return b.adj && b.adj.at === i ? unitOnGrid(b.adj.w) : (x.u ?? null);
+  }
+  return b.sw == null ? null : unitOnGrid(b.sw);
+}
+/** The unit of what a row's load is or will be (effW): its own when it has a load, else its grey load's. */
+export function effU(b: DraftBlock | null | undefined, si: number): Unit | null {
+  const s = b && b.sets[si];
+  if (!s) return null;
+  return s.w != null ? (s.u ?? null) : greyU(b, si);
 }
 
 /* A reps target compares today's first n sets at the load with last time's
@@ -227,7 +245,9 @@ export function savedEx(b: DraftBlock): SessionEx {
         // The row's own id, last, where a build before it keeps the unknown field.
         ...(typeof s.rid === 'string' ? { rid: s.rid } : {}),
         // What the app asked of it as it was ticked (391), after the id, as normalize writes it.
-        ...(s.sg && !s.warm && !s.drop && !s.cal ? { sg: [...s.sg] } : {})
+        ...(s.sg && !s.warm && !s.drop && !s.cal ? { sg: [...s.sg] } : {}),
+        // The unit its load was entered in, last, as normalize writes it.
+        ...(s.u && s.w ? { u: s.u } : {})
       })),
     // The note's pictures; put last by picsLast once the plan's sets and a new-machine mark are on.
     ...(b.pics && b.pics.length ? { pics: [...b.pics] } : {})
@@ -431,18 +451,42 @@ export function markedNew(d: { ex: readonly { exId: string; nw?: true | undefine
   return d.ex.some(b => b.exId === exId && !!b.nw);
 }
 
-/** Saved exercises with the mark on each lift the session marks and the machine each was done on (`mcOf`, the key to save or null; machineToSaveIn), last, in that order. */
+/** Saved exercises with the mark on each lift the session marks and the machine each was done on (`mcOf`, the key to save or null; machineToSaveIn), last, in that order. A name the app kept stays so through an edit in which no machine was picked (savedName). */
 export function withNew<B extends { exId: string }>(
   ex: readonly B[],
-  d: Parameters<typeof markedNew>[0],
+  d: { ex: readonly { exId: string; nw?: true | undefined; mc?: string | undefined; kp?: true | undefined }[] },
   mcOf: (exId: string) => string | null
 ): B[] {
   return ex.map(b => {
     const mc = mcOf(b.exId);
     // An edit can name a machine on a session marked new (machinePick): both are saved, the mark first.
     const nw = markedNew(d, b.exId) ? { nw: true as const } : {};
-    return mc || markedNew(d, b.exId) ? { ...b, ...nw, ...named(mc) } : b;
+    const name = savedName(
+      mc,
+      d.ex.filter(x => x.exId === b.exId)
+    );
+    return mc || markedNew(d, b.exId) ? { ...b, ...nw, ...name } : b;
   });
+}
+
+/* ---------- a row's load and its unit ---------- */
+
+/* A row's load is stored with the unit it was entered in (types.ts LoggedSet's u), so every place that puts a load in a
+   row says which: typed, the field's unit; copied from another row, that row's; made by the app (a target, the next
+   sets adjusted, a grey load taken), the unit it was made in (unitOnGrid). A row with no load has no unit. */
+/** Puts load `kg` (kilograms, or none) in row `x` with the unit it was entered in. */
+export function setLoad(
+  x: { w: number | null; u?: Unit | undefined },
+  kg: number | null,
+  u: Unit | null | undefined
+): void {
+  x.w = kg;
+  if (kg != null && Math.abs(kg) > 0 && u) x.u = u;
+  else delete x.u;
+}
+/** Puts a load the app made (kilograms, or none) in row `x`, with the unit it was made in. */
+export function madeLoad(x: { w: number | null; u?: Unit | undefined }, kg: number | null): void {
+  setLoad(x, kg, kg == null ? null : unitOnGrid(kg));
 }
 
 /* ---------- a session as a whole ---------- */

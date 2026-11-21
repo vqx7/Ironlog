@@ -125,24 +125,40 @@ export function appBandIn(
 
 /* Whether a muscle has a weekly target (V 2026-10-24): one of
    TARGETED, which lifters train directly for size, or one the lifter gave a
-   target: with Set a target in Weekly set targets (settings.ownTargets), by
-   naming it a focus in Your training, or by a target typed on a build
-   before r58 (one other than the app's own, appBandIn, so it counts as it
-   did). A target typed then on one of TRACK_ONLY's four never counted, so it
-   does not now either. A muscle with none is
-   counted and shown, and never reads under or over. The one rule every
-   screen reads. */
+   target: with Set a target in Weekly set targets (settings.ownTargets), or by
+   naming it a focus in Your training. A target typed on an older build that
+   stored none of these is one of the lifter's too: recorded in ownTargets once,
+   at start (oldOwnTargetsIn), so whether a muscle has a target is never read
+   from its number. A muscle
+   with none is counted and shown, and never reads under or over. The one rule
+   every screen reads. */
 /** Whether a muscle has a weekly target, by its key; false for a key that is no muscle. */
 export function hasTargetIn(M: Model, m: string): boolean {
   const k = MK.find(x => x === m);
   if (!k) return false;
   if (TARGETED.has(k)) return true;
   const s = M.s.settings;
-  if ((s.ownTargets || []).includes(k) || (profIn(M).focus || []).includes(k)) return true;
-  if (TRACK_ONLY.has(k)) return false;
-  const a = appBandIn(M, k),
-    b = s.bands[k];
-  return b[0] !== a[0] || b[1] !== a[1];
+  return (s.ownTargets || []).includes(k) || (profIn(M).focus || []).includes(k);
+}
+
+/* A target typed on a build before r58 was stored as a number alone: it is one the lifter gave when it is other than
+   the app's own (appBandIn) on a muscle outside TARGETED, as every build read it until it was recorded. Recorded
+   once, at start on the device's own state, as a target given with Set a target is, so a later change of the app's
+   own number (a profile, the floors of a fit) never turns it into the app's, nor the app's into one of the lifter's.
+   A target typed then on one of TRACK_ONLY's four never counted, so it is not recorded. Never in normalize, which
+   also runs inside the sync comparison and Undo. */
+/** The muscles whose target typed on such a build is not yet recorded in ownTargets, in muscle order, or null when none. */
+export function oldOwnTargetsIn(M: Model): MuscleKey[] | null {
+  const s = M.s.settings,
+    own = s.ownTargets || [],
+    focus = profIn(M).focus || [];
+  const add = MK.filter(k => {
+    if (TARGETED.has(k) || TRACK_ONLY.has(k) || own.includes(k) || focus.includes(k)) return false;
+    const a = appBandIn(M, k),
+      b = s.bands[k];
+    return b[0] !== a[0] || b[1] !== a[1];
+  });
+  return add.length ? add : null;
 }
 
 /* The floors a first-run pick of a routine records (fitTargets): each muscle's planned hard sets a week in whole sets, where under

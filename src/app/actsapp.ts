@@ -12,14 +12,14 @@ import { PHOTO_ASKED, log, prefSet } from './storage';
 import { photoRemove, photoSet, photoUrl } from './photo';
 import { photoSyncSoon } from './sync';
 import { plainTemplate } from './normalize';
-import { appU, EX, fmtWApp, IDX, liftMachines, liftU, loadOf, noBody, rirEst, sortedSessions } from './live';
-import { LB, typedUnit } from './units';
+import { appU, EX, fmtWApp, IDX, liftU, loadOf, noBody, rirEst, sortedSessions } from './live';
+import { LB } from './units';
 import { e1 } from './formulas';
 import { state, ui } from './store';
 import { act, undoStep } from './act';
 import { draftBack } from './worksets';
 import { isStandalone, installKind } from './env';
-import { distShow, distU } from './display';
+import { distShow, distU, machineLabels, machineName } from './display';
 import { closeModal, confirmBox, openModal, render, renderModal, rerenderKeepScroll, setSaveState } from './page';
 import { stopTimer, timerAdd, timerSub } from './timer';
 import { toast, toastHide } from './toast';
@@ -31,10 +31,14 @@ import { csvGuard } from './importing';
 export function trashTidy(): void {
   const tr = state.trash || [];
   const keep = tr.filter(t => !(t.kind === 'routine' && plainTemplate(t.data)));
+  // The app's own bookkeeping, no edit (act's `app`).
   if (keep.length !== tr.length)
-    act(() => {
-      state.trash = keep;
-    });
+    act(
+      () => {
+        state.trash = keep;
+      },
+      { app: true }
+    );
 }
 /** Notes that a backup was made today (the Backup due reminder counts from it). */
 function markExported(): void {
@@ -125,8 +129,18 @@ async function exportFile(
   } catch (e) {
     log('export', e);
   }
+  // Shown as text instead, a backup's copy records the backup as its download would (onSaved), and no other text's does.
+  const asText = (): void =>
+    openModal({
+      kind: 'text',
+      title: fallbackTitle,
+      help: fallbackHelp,
+      text: data,
+      readonly: true,
+      ...(onSaved ? { backup: true as const } : {})
+    });
   if (!clicked) {
-    openModal({ kind: 'text', title: fallbackTitle, help: fallbackHelp, text: data, readonly: true });
+    asText();
     return;
   }
   // Only the lifter can see whether the download landed.
@@ -141,7 +155,7 @@ async function exportFile(
     false,
     {
       label: 'Show the text instead',
-      fn: () => openModal({ kind: 'text', title: fallbackTitle, help: fallbackHelp, text: data, readonly: true })
+      fn: asText
     }
   );
 }
@@ -162,9 +176,9 @@ function exportBackup(): Promise<void> {
     'Copy all of this and keep it somewhere safe. Paste it into Import on any device to restore.'
   );
 }
-/* One row per set, in display units, for anyone who wants this in a spreadsheet.
-   This is not a backup: it cannot be imported, and it carries no routines or
-   settings. The JSON export remains the thing that restores the app. */
+/* One row per set, in display units, for anyone who wants this in a spreadsheet. Import reads it back as sessions,
+   each load as it was entered in its own unit (typed_load and typed_unit); it carries no routines or settings, so the
+   JSON export remains the thing that restores the app. */
 /** Hundredths: a load typed in steps of 0.05 is a whole number of them. */
 const TYPED_CENTS = 100;
 
@@ -203,29 +217,21 @@ export function exportCSV(): Promise<void> | undefined {
       'machine'
     ]
   ];
-  /* The machine a set was done on, for a lift done on more than one (390 C): named by the day it was first used, the
-     same on every row of it, so a file read back keeps each machine's sessions together; empty for any other lift. */
+  /* The machine a set was done on (390 C), the same on every row of it, so a file read back keeps each machine's sessions
+     together: by the name the lifter gave it, else by the day it was first used (machineLabels), for a lift done on more
+     than one, or on one with a name; empty for any other lift. */
   const machineOf = new Map<string, string>();
   const byEx = IDX().byEx;
   for (const id of Object.keys(byEx)) {
-    const xs = byEx[id] || [];
-    const ms = liftMachines(id);
-    if (ms.length < 2) continue;
-    const first = new Map<string, string>();
-    for (const x of xs) if (!first.has(x.mk)) first.set(x.mk, x.date);
-    const used = new Set<string>();
-    for (const [mk, date] of first) {
-      let name = date;
-      for (let n = 2; used.has(name); n++) name = `${date}-${n}`;
-      used.add(name);
-      for (const x of xs) if (x.mk === mk) machineOf.set(`${x.sid}|${id}`, name);
-    }
+    const labels = machineLabels(id);
+    if (labels.size < 2 && ![...labels.keys()].some(k => machineName(id, k))) continue;
+    for (const x of byEx[id] || []) machineOf.set(`${x.sid}|${id}`, labels.get(x.mk) || '');
   }
-  /* Each set's load as it was typed, and the unit it was typed in (390's Release B: lifts are marked in kg or lb each),
-     beside the columns in the app's unit that add up across lifts: a load whose number says no unit is in its lift's. */
-  const typed = (ex: Parameters<typeof liftU>[0], w: number): [number, string] => {
-    const u = typedUnit(w) ?? liftU(ex);
-    return [Math.round((u === 'lb' ? w / LB : w) * TYPED_CENTS) / TYPED_CENTS, u];
+  /* Each set's load as it was entered, and the unit it was entered in, as stored with it (lifts are marked in kg or lb
+     each), beside the columns in the app's unit that add up across lifts: a load stored with no unit is in its lift's. */
+  const typed = (ex: Parameters<typeof liftU>[0], s: { w: number; u?: 'kg' | 'lb' | undefined }): [number, string] => {
+    const u = s.u ?? liftU(ex);
+    return [Math.round((u === 'lb' ? s.w / LB : s.w) * TYPED_CENTS) / TYPED_CENTS, u];
   };
   for (const ss of sortedSessions()) {
     for (const b of ss.ex) {
@@ -255,7 +261,7 @@ export function exportCSV(): Promise<void> | undefined {
           '',
           ex.timed ? 'seconds' : 'reps',
           s.cal ? `stop at ${s.cal.at}, called ${s.cal.pred} left` : '',
-          ...typed(ex, +s.w || 0),
+          ...typed(ex, { w: +s.w || 0, u: s.u }),
           machineOf.get(`${ss.id}|${b.exId}`) || ''
         ]);
       });
@@ -561,19 +567,26 @@ export const APP_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       title: 'Backup text',
       help: 'Select all and copy. Paste it into Import on any device to restore.',
       text: JSON.stringify({ app: STORAGE_ID, exported: new Date().toISOString(), state }),
-      readonly: true
+      readonly: true,
+      backup: true
     });
   },
+  /* Copy on a text sheet. Only the backup's text, copied, is a backup made: Diagnostics, a report, feedback or the CSV
+     copied record nothing, so Backup due stays as it was (the full review's L4-13). */
   copyText() {
     const ta = document.getElementById('mText');
     if (!(ta instanceof HTMLTextAreaElement)) return;
+    const backup = ui.modal && ui.modal.kind === 'text' && ui.modal.backup === true;
+    const made = (): void => {
+      if (backup) markExported();
+    };
     ta.select();
     let ok = false;
     try {
       if (navigator.clipboard) {
         navigator.clipboard.writeText(ta.value).then(
           () => {
-            markExported();
+            made();
             toast('Copied');
           },
           () => {
@@ -587,7 +600,7 @@ export const APP_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     } catch (e) {
       log('copy', e);
     }
-    if (ok) markExported();
+    if (ok) made();
     toast(ok ? 'Copied' : 'Select the text and copy it manually');
   }
 };

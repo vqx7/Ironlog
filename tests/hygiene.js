@@ -112,6 +112,24 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   const defined = new Set([...css.matchAll(/\.(u-[\w-]+)\{/g)].map(m => m[1]));
   const used = new Set(SRC_CODE.flatMap(f => [...fs.readFileSync(path.join(ROOT, 'src', f), 'utf8').matchAll(/(?<![\w-])(u-[a-z0-9][\w-]*)/g)].map(m => m[1])));
   ok(defined.size > 0 && [...defined].every(c => used.has(c)) && [...used].every(c => defined.has(c)), `every one-off class in the stylesheet is used in src/, and every one used is defined (${defined.size})`, { unused: [...defined].filter(c => !used.has(c)), undefined: [...used].filter(c => !defined.has(c)) });
+  /* The dark theme is two blocks the browser needs, one for a phone set to dark (the media query) and one for Settings'
+     Dark, and so is each accent's dark pair: one set of values in two places, so a change to one that misses the other
+     is refused here (the full review's P-3 a). Each accent's colour itself is written once (--acc-*), read by the
+     accent in every theme and by its swatch (P-3 b). */
+  const decls = body => body.split(';').map(x => x.trim()).filter(Boolean).sort().join(';');
+  const blockOf = re => { const m = re.exec(css); return m ? decls(m[1]) : null; };
+  const darkMedia = blockOf(/@media \(prefers-color-scheme:dark\)\{\s*:root:not\(\[data-theme="light"\]\)\{([^}]*)\}/);
+  const darkSet = blockOf(/\n:root\[data-theme="dark"\]\{([^}]*)\}/);
+  const pairs = ['blue', 'ember', 'pink', 'violet', 'cyan', 'red'].map(a => [a, blockOf(new RegExp(`:root\\[data-accent="${a}"\\]:not\\(\\[data-theme="light"\\]\\)\\{([^}]*)\\}`)), blockOf(new RegExp(`:root\\[data-accent="${a}"\\]\\[data-theme="dark"\\]\\{([^}]*)\\}`))]);
+  ok(darkMedia && darkMedia === darkSet, 'the dark theme for a phone set to dark and for Settings\' Dark is one set of values', { darkMedia: (darkMedia || '').slice(0, 120), darkSet: (darkSet || '').slice(0, 120) });
+  ok(pairs.every(([, a, b]) => a && a === b), 'each accent\'s dark values are one set, for a phone set to dark and for Settings\' Dark', pairs.filter(([, a, b]) => !a || a !== b).map(([n]) => n));
+  const swatchLiteral = [...css.matchAll(/\.sw-[\w-]+\{background:(#[0-9a-f]{3,8})/gi)].map(m => m[0]);
+  ok(swatchLiteral.length === 0 && /--acc-volt:/.test(css), 'each accent\'s colour is written once (--acc-*), its Settings swatch reading it', swatchLiteral);
+  // Every custom property the code sets on an element is read by a rule the page can show (the full review's P-4: the
+  // rest timer wrote one for a bar every mode hid).
+  const setProps = new Set(SRC_CODE.filter(f => f.endsWith('.ts')).flatMap(f => [...fs.readFileSync(path.join(ROOT, 'src', f), 'utf8').matchAll(/setProperty\(\s*'(--[\w-]+)'/g)].map(m => m[1])));
+  const unread = [...setProps].filter(v => !new RegExp(`var\\(${v}[,)]`).test(css));
+  ok(unread.length === 0, `every custom property the code sets is read by the stylesheet (${setProps.size})`, unread);
 }
 
 // 3. Minutes wording only from estMin.
@@ -231,6 +249,13 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     }
     ok(copies.length === 0, 'the outside addresses, library versions, font faces and weights config.ts defines are typed nowhere else in src/, scripts/ or tests/', [...new Set(copies)]);
     ok(hosts.length === 0, 'every outside address in src/ or scripts/ is one config.ts defines', hosts);
+    // Whether this copy runs as the installed app is one rule (the full review's P-2): the display modes are config.ts's
+    // INSTALLED_MODES, read by the app (env.ts) and by the account script through the build; neither names a mode itself.
+    const modes = String(cfg.INSTALLED_MODES || '').split(' ').filter(Boolean);
+    const typedModes = [];
+    // The code only: the style sheet's display-mode rules lay out the page (a home-screen copy's height), not this reading.
+    for (const [f, t] of texts) if (/\.(ts|js)$/.test(f)) for (const l of t.lits) for (const m of modes) if (new RegExp(`display-mode:\\s*${m}`).test(l)) typedModes.push(`${f}: ${m}`);
+    ok(modes.length === 3 && typedModes.length === 0, 'the installed app\'s display modes are config.ts\'s alone (INSTALLED_MODES): the app and the account script name none themselves', typedModes);
   }
   ok((cfg.WORDMARK.mark + cfg.WORDMARK.strong + cfg.WORDMARK.light).toLowerCase() === cfg.APP_NAME.toLowerCase(), 'the logo\'s wordmark spells the app name (a new name needs a new wordmark)', cfg.WORDMARK);
   ok(/^\d+\.\d+$/.test(cfg.DISPLAY_VERSION), 'the version people see is major.minor', cfg.DISPLAY_VERSION);
@@ -738,6 +763,28 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
       walk(sf);
     }
     ok(hits.length === 0, 'localStorage and IndexedDB are named only in storage.ts and sync.ts, and JSON is parsed only by records.ts (every stored value comes through one reader)', hits);
+  }
+  // The unit a load was entered in is stored with it (2.73, the full review's L01-1): no module reads it back from
+  // the number. A load's unit is read from its number (`unitOnGrid`) only where that is the rule: a load the app made
+  // is in the unit its equipment's steps are in (session.ts, worktaps.ts, worksets.ts, loadsteps.ts, and history.ts
+  // for the load the app asked), a plan item's step has no unit field (units.ts), a save from before units were stored
+  // takes its units once at load (normalize.ts), a comparison of two copies reads that unit as absent (merge.ts canon),
+  // and the suites' hook quotes a number the way the app quotes a load it made (main.ts). The guess every reader used before, `typedUnit`, and the readers built on it are gone. Read from the
+  // syntax tree's identifiers, so a mention in a comment is not one.
+  {
+    const hits = [];
+    const GRID = ['units', 'session', 'worktaps', 'worksets', 'loadsteps', 'history', 'normalize', 'merge', 'main'];
+    const GONE = new Set(['typedUnit', 'typedOtherIn', 'typedOther', 'typedIn']);
+    for (const id of MODS) {
+      const f = id + '.ts', txt = fs.readFileSync(path.join(APP, f), 'utf8');
+      const sf = ts.createSourceFile(f, txt, ts.ScriptTarget.Latest, true);
+      const walk = n => {
+        if (ts.isIdentifier(n) && ((n.text === 'unitOnGrid' && !GRID.includes(id)) || GONE.has(n.text))) hits.push(`${f}:${sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1} ${n.text}`);
+        ts.forEachChild(n, walk);
+      };
+      walk(sf);
+    }
+    ok(hits.length === 0, 'no module reads the unit a load was entered in back from its number: unitOnGrid is named only where a load the app made, a plan step or a save from before units were stored is read, and typedUnit is gone', hits);
   }
   // Every module is laid out by Prettier from the committed .prettierrc.json,
   // so layout is never a matter of taste or of hand (layout never changes

@@ -43,7 +43,9 @@
       return { type: type || null, error: err ? String(err).replace(/\+/g, ' ') : null };
     } catch (e) { return null; }
   })();
-  const standalone = () => { try { return window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; } catch (e) { return false; } };
+  /* Running as the installed app: the app's own reading (env.ts isStandalone), its display modes written in by the
+     build from src/app/config.ts (INSTALLED_MODES), so the two never disagree. */
+  const standalone = () => { try { return navigator.standalone === true || '{{INSTALLED_MODES}}'.split(' ').some(m => window.matchMedia('(display-mode: ' + m + ')').matches); } catch (e) { return false; } };
   /* On an iPhone an emailed link opens in Safari, which keeps its own storage,
      apart from the home-screen app. A link that signs Safari in must not start
      syncing whatever Safari happens to hold (old test data, demo data) into the
@@ -175,12 +177,13 @@
     // One email per address a minute: "you can only request this after 42 seconds".
     else if (/request this after (\d+) seconds?/i.test(msg)) return Object.assign(new Error(`Wait ${msg.match(/after (\d+) seconds?/i)[1]} seconds, then try again.`), { code: 'wait' });
     else if (/rate limit|over_email_send_rate_limit|too many/i.test(msg + code) || status === 429) text = 'Too many emails in the last hour. Try again later.';
-    else if (/weak_password|password should/i.test(msg + code)) text = msg || 'Choose a longer password.';
+    // The server's own rule, stricter than the app's: said in the app's words, the server's sentence kept for the log.
+    else if (/weak_password|password should/i.test(msg + code)) text = 'The account server wants a stronger password. Choose a longer one.';
     else if (/same_password|should be different/i.test(msg + code)) text = 'Choose a password different from the old one.';
     else if (/send a request to the edge function/i.test(msg)) text = 'Could not delete the account just now. Check you have signal and try again; if it keeps failing, report a problem.';
     else if (/failed to fetch|network|load failed|fetch/i.test(msg) || e instanceof TypeError) text = 'No connection. Try again when you have signal.';
     const out = new Error(text);
-    if (text === OTHER && msg) out.serverSaid = msg.slice(0, 300);
+    if ((text === OTHER || /weak_password|password should/i.test(msg + code)) && msg) out.serverSaid = msg.slice(0, 300);
     // 401/403 from the database means the sign-in is no longer valid: sync
     // switches itself off (cloudFail treats 'revoked' that way).
     // A table without permissions for signed-in users is a setup problem, not

@@ -35,8 +35,9 @@ const K = +process.env.ENGINE_N || 1000, BATCH = 100;
 // and musTrend, a muscle's strength trend in words, which Stats and the muscles sheet call and no adapter reaches (r54);
 // and r55's routine helpers: what a session records of its routine (pwOf), a first-run choice replacing the starter
 // (dropStarter), a day given an exercise (trainOn) and the item a lift's plan comes from (planItemOf).
+// 2.75: a cycle's next training day (nextTrainIdx) and a day's second workout's name (pmNameOf), which keep routines.ts's share.
 // r64 (302): the rest a ready-made routine gives each lift, and the signatures the routines had up to r63.
-const PLAIN = ['avgWeeksTxt', 'dayLabel', 'daySets', 'ssLetters', 'routineSig', 'tplCountLine', 'musTrend', 'pwOf', 'dropStarter', 'trainOn', 'planItemOf', 'platesPerSide', 'planSetsOf', 'withPlanSets', 'templateRest', 'templateSigsBefore', 'gymClean'];
+const PLAIN = ['avgWeeksTxt', 'dayLabel', 'daySets', 'ssLetters', 'routineSig', 'tplCountLine', 'musTrend', 'pwOf', 'dropStarter', 'trainOn', 'planItemOf', 'nextTrainIdx', 'pmNameOf', 'platesPerSide', 'planSetsOf', 'withPlanSets', 'templateRest', 'templateSigsBefore', 'gymClean', 'onUnitSteps'];
 // Every adapter live.ts gives the legacy script, read from live.ts itself, so a new one cannot go uncalled.
 const ADAPTERS = [...fs.readFileSync(path.join(APP, 'live.ts'), 'utf8').matchAll(/^export const (\w+) = live\(\w+In\);$/gm)].map(m => m[1]);
 // The adapters added since r53, and the plain functions above the digest does not call (tests/wide.js's digest is kept
@@ -65,6 +66,9 @@ const EXTRA = {
   liftsMoving: () => [[]],
   // 2.70 (NEW-156, NEW-167): the week's word and the lifts in each of its groups, and whether lifts flat together point to fatigue.
   verdict: () => [[]], fatigueCall: () => [[]],
+  // 2.75: a cycle's next training day, from before any day, after each, and on routines with no training day; a day's second workout's name, given or not.
+  nextTrainIdx: (s) => [...s.routines.flatMap(r => [[r, -1], [r, 0], [r, r.days.length - 1]]), [{ days: [{ rest: true, items: [] }] }, -1], [{ days: [{ rest: true, items: [] }, { rest: true, items: [] }] }, 1]],
+  pmNameOf: (s) => [...s.routines.flatMap(r => r.days.map(d => [d])), [{ name: 'Legs', pmName: 'Legs, evening' }], [{ name: 'Legs' }]],
   planItemOf: (s, ids) => s.routines.slice(0, 2).flatMap(r => ids.slice(0, 6).flatMap(id => [[r, id], [r, id, r.days.length > 1 ? r.days[1].id : null]])),
   // A lift's all-time bests, now and as of the log's middle session (a past workout's), and where the weeks are counted from.
   allTimeBests: (s, ids) => ids.flatMap(id => [[id], [id, s.sessions.length ? s.sessions[Math.floor(s.sessions.length / 2)].date : '']]),
@@ -142,9 +146,10 @@ const EXTRA = {
   // The strength focus on each lift: its stats and its main muscle's recovery, today and on the log's first day.
   // 2.65 (390's Release A): a heaviest load, a bar and any load set in either unit, read on the unit's equipment, and a
   // number typed within a bound.
-  liftMax: (s, ids) => ids.slice(0, 3).map(id => s.exercises.find(e => e.id === id)).filter(Boolean).flatMap(e => [[e], [{ ...e, maxLoad: 100 }], [{ ...e, maxLoad: 220 * 0.45359237 }]]),
-  barReadOf: (s, ids) => ids.slice(0, 2).map(id => s.exercises.find(e => e.id === id)).filter(Boolean).flatMap(e => [20, 45 * 0.45359237, 10, 60].flatMap(kg => [[e, kg], [{ ...e, unit: 'kg' }, kg], [{ ...e, unit: 'lb' }, kg]])),
-  loadReadOf: (s, ids) => ids.slice(0, 2).map(id => s.exercises.find(e => e.id === id)).filter(Boolean).flatMap(e => [100, 220 * 0.45359237, 0.4, 102.06].flatMap(kg => [[e, kg], [{ ...e, unit: 'kg' }, kg], [{ ...e, unit: 'lb' }, kg]])),
+  // 2.73: each set with the unit it was entered in (none, kg, lb), on a lift with no unit of its own, one in kg and one in lb.
+  liftMax: (s, ids) => ids.slice(0, 3).map(id => s.exercises.find(e => e.id === id)).filter(Boolean).flatMap(e => [[e], [{ ...e, maxLoad: 100 }], [{ ...e, maxLoad: 220 * 0.45359237 }], ...['kg', 'lb'].flatMap(u => [[{ ...e, maxLoad: 100, maxLoadU: 'kg', unit: u }], [{ ...e, maxLoad: 220 * 0.45359237, maxLoadU: 'lb', unit: u }]])]),
+  barReadOf: (s, ids) => ids.slice(0, 2).map(id => s.exercises.find(e => e.id === id)).filter(Boolean).flatMap(e => [20, 45 * 0.45359237, 10, 60].flatMap(kg => [null, 'kg', 'lb'].flatMap(t => [[e, kg, t], [{ ...e, unit: 'kg' }, kg, t], [{ ...e, unit: 'lb' }, kg, t]]))),
+  loadReadOf: (s, ids) => ids.slice(0, 2).map(id => s.exercises.find(e => e.id === id)).filter(Boolean).flatMap(e => [100, 220 * 0.45359237, 0.4, 102.06].flatMap(kg => [null, 'kg', 'lb'].flatMap(t => [[e, kg, t], [{ ...e, unit: 'kg' }, kg, t], [{ ...e, unit: 'lb' }, kg, t]]))),
   typedBoundOf: (s, ids) => ids.slice(0, 2).map(id => s.exercises.find(e => e.id === id)).filter(Boolean).flatMap(e => [[1200, 500], [600, 500], [200, 50], [30, 50]].flatMap(a => [[e, ...a], [{ ...e, unit: 'kg' }, ...a], [{ ...e, unit: 'lb' }, ...a]])),
   typedBoundApp: () => [[1200, 500], [600, 500], [200, 50], [30, 50]],
   strengthPick: (s, ids) => ids.map(id => s.exercises.find(e => e.id === id)).filter(Boolean).flatMap(e => [[e, window.__ironlog.IDX().exStats[e.id], window.__ironlog.recovery(e.primary)], [e, window.__ironlog.IDX().exStats[e.id], { r: 1, days: null, sets: 0, need: 0 }, s.sessions.length ? s.sessions[0].date : undefined]]),
@@ -154,14 +159,19 @@ const EXTRA = {
   fmtWOf: () => [[{ unit: 'kg' }, 102.05828325], [{ unit: 'lb' }, 100], [{}, 45.359237], [null, null]],
   toDOf: () => [[{ unit: 'kg' }, 102.05828325], [{ unit: 'lb' }, 100], [{}, 20], [{ unit: 'lb' }, null]],
   fromDOf: () => [[{ unit: 'kg' }, 100], [{ unit: 'lb' }, 225], [{}, 50], [null, null]],
-  stepReadOf: () => [[{ unit: 'kg' }, 4.5359237], [{ unit: 'lb' }, 5], [{ unit: 'lb' }, 2.5], [{ unit: 'kg' }, 0.5669904625], [{}, 2.26796185]],
+  stepReadOf: () => [[{ unit: 'kg' }, 4.5359237], [{ unit: 'lb' }, 5], [{ unit: 'lb' }, 2.5], [{ unit: 'kg' }, 0.5669904625], [{}, 2.26796185]].flatMap(a => [null, 'kg', 'lb'].map(t => [...a, t])),
   // 2.66: the scale's unit, a weigh-in shown, read and typed in it.
   bodyU: () => [[]],
   fmtBody: () => [[81.6466266], [90.7], [null]],
   toDBody: () => [[81.6466266], [90.7], [null]],
   fromDBody: () => [[180], [90.7], [null]],
-  listLabel: () => [[{ bw: false, unit: 'kg' }, 22.5], [{ bw: false, unit: 'kg' }, 22.6796185], [{ bw: false }, 100], [{ bw: true, unit: 'kg' }, 10, true], [{ bw: false, unit: 'lb' }, 0, true]],
-  typedLabel: () => [[{ bw: false, unit: 'kg' }, 102.05828325], [{ bw: false, unit: 'lb' }, 100], [{ bw: true, unit: 'kg' }, 11.33980925], [{ bw: true, unit: 'lb' }, -4.5359237], [{ bw: false }, 101.7234]],
+  listLabel: () => [[{ bw: false, unit: 'kg' }, 22.5, 'kg'], [{ bw: false, unit: 'kg' }, 22.6796185, 'lb'], [{ bw: false }, 100, null], [{ bw: false }, 61.25, 'kg'], [{ bw: true, unit: 'kg' }, 10, 'kg', true], [{ bw: true }, 4.5359237, 'lb'], [{ bw: false, unit: 'lb' }, 0, null, true]],
+  typedLabel: () => [[{ bw: false, unit: 'kg' }, 102.05828325, 'lb'], [{ bw: false, unit: 'lb' }, 100, 'kg'], [{ bw: true, unit: 'kg' }, 11.33980925, 'lb'], [{ bw: true, unit: 'lb' }, -4.5359237, 'lb'], [{ bw: false }, 101.7234, null], [{ bw: false, unit: 'lb' }, 61.25, 'kg']],
+  // 2.73: a load already lifted in a sentence, in its own unit or the lift's; and the targets typed before r58 to record.
+  saidLoad: () => [[{ bw: false, unit: 'kg' }, 102.05828325, 'lb'], [{ bw: false, unit: 'kg' }, 61.25, 'kg'], [{ bw: false }, 100, null], [{ bw: true, unit: 'lb' }, 11.33980925, 'kg'], [{ bw: true }, 0, 'lb']],
+  oldOwnTargets: () => [[]],
+  // A load in kilograms put on a unit's 0.05 steps, as minus and plus store a dumbbell of the other unit (2.73).
+  onUnitSteps: () => [[11.33980925, 'lb'], [11.34, 'lb'], [10.0017117585, 'kg'], [0.022679618500000002, 'lb'], [453.59237, 'lb'], [61.25, 'kg'], [0, 'kg']],
 };
 // Hand-made histories beside the wide ones, for paths those never reach, each built on a wide history's settings,
 // exercises and routines (since r54): a lifter back this week after ten weeks away, whose weeks count from the

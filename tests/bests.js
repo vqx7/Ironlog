@@ -1,4 +1,4 @@
-// PRs and All-time bests, checked against their written rules (CA-1; the spec "PRs and All-time bests", B-1 to B-19,
+// PRs and All-time bests, checked against their written rules (CA-1; the spec "PRs and All-time bests", B-1 to B-20,
 // in the project's claude/ironlog-spec-prs-bests.md, built from the code: prs.ts, bests.ts, formulas.ts, worksets.ts
 // (livePR, rowPR, prBeat), workfinish.ts's recap, display.ts, stats.ts, today.ts and history.ts, V's rulings deciding,
 // and where neither does, what a lifter expects). A feature suite: each section is one rule, a lifter's log seeded, the
@@ -342,6 +342,57 @@ async function stats(P) {
     ok(new RegExp(`Barbell Bench Press: Best estimate ${lbE(e1(185, 12))} lb \\(was ${lbE(e1(185, 10))}\\)`).test(rc || ''), 'B-7: saved, the list counts one PR for the bench, the strongest set announced: Best estimate 259', rc);
     const st = await stats(P);
     ok(st.prs.length === 1 && new RegExp(`^Barbell Bench Press Best estimate ${lbE(e1(185, 12))} lb Nov 11`).test(st.prs[0] || ''), 'B-7: Recent PRs holds that same one', st.prs);
+    await P.close();
+  }
+
+  if (run('B-7')) {
+    /* A heavier set after a stronger one in the same session (V's decision 1, 2026-11-17; the full review's L4-1): only a
+       set stronger than every earlier one is a PR, this session's earlier sets included (ruling 17). Last week 185 x 8
+       at 2 in reserve; today 195 x 10 at 2, then 200 x 8 at 2. 195 x 10 is the Weight PR the row and the message name;
+       200 x 8, heavier than it but weaker, is Heaviest yet: no message, no gold, not counted. The recap and Recent PRs
+       name 195 x 10, the set said at the gym. */
+    const P = await lifter();
+    await start(P);
+    ok(e1(200, 10) < e1(195, 12) && e1(195, 12) > e1(185, 10), 'B-7: worked out from the rule: 200 x 8 at 2 scores under 195 x 10 at 2, which scores over the strongest before', [e1(200, 10), e1(195, 12), e1(185, 10)]);
+    await logSet(P, 0, 0, 195, 10, 2);
+    await logSet(P, 0, 1, 200, 8, 2);
+    const t = await P.prToasts();
+    const marks = [await P.gold(0, 0), await P.gold(0, 1)];
+    ok(t.length === 1 && t[0].startsWith('Weight PR: Barbell Bench Press, 195×10 (heaviest before 185 lb') && marks[0] && !marks[1], 'B-7: 195 x 10 then 200 x 8, both at 2 in reserve: one message, the Weight PR 195 x 10, its row gold and 200 x 8\'s not (L4-1)', { t, marks });
+    const rc = await finish(P);
+    ok(/Barbell Bench Press: Weight PR, 195×10/.test(rc || '') && !/Barbell Bench Press: Weight PR, 200×8/.test(rc || ''), 'B-7: the recap\'s PR for the bench is the set said at the gym, 195 x 10, not the heavier and weaker 200 x 8 (L4-1)', rc);
+    ok(/Heaviest yet: Barbell Bench Press 200×8/.test(rc || ''), 'B-7: and the recap says 200 x 8 once, quietly, as Heaviest yet (V\'s decision 1)', rc);
+    const st = await stats(P);
+    ok(st.prs.length === 1 && /^Barbell Bench Press Weight PR 195×10 Nov 11/.test(st.prs[0] || ''), 'B-7: Recent PRs counts that same one, Weight PR 195×10 (L4-1)', st.prs);
+    await P.close();
+  }
+
+  if (run('B-7')) {
+    /* Sets typed in Quick entry are marked done as ticks are (the full review's L4-2): their PR is said as a tick says it,
+       the row gold, and the list counts the same one. */
+    const P = await lifter();
+    await start(P);
+    await P.ev(() => window.__ironlog.ACT.bQuick({ dataset: { b: '0' } })); await wait(250);
+    await P.page.fill('#qTxt', '195x8, 185x8'); await P.tap('#modal [data-act="qFill"]', 400);
+    const t = await P.prToasts();
+    ok(t.length === 1 && t[0].startsWith('Weight PR: Barbell Bench Press, 195×8 (heaviest before 185 lb') && (await P.gold(0, 0)) && !(await P.gold(0, 1)), 'B-7: 195 x 8 and 185 x 8 typed in Quick entry: the Weight PR is said as at a tick, its row gold (L4-2)', { t, all: await P.toasts() });
+    const rc = await finish(P);
+    ok(/Barbell Bench Press: Weight PR, 195×8/.test(rc || ''), 'B-7: and the recap counts that same one', rc);
+    await P.close();
+  }
+
+  if (run('B-7')) {
+    /* The live line under a lift says "your best yet" only of a set the list counts as a PR (the full review's L4-3):
+       raises 30 x 8 to failure in a 6 to 10 range on Oct 20, then 20 x 12 to failure in 10 to 15 on Nov 7; today, in 10
+       to 15, 30 x 7 to failure beats the best of the current range (20 x 12) and the target, but not 30 x 8, so it is no
+       PR: the line says it beat the target by load and nothing of a best yet. */
+    const P = await lifter({ items: [['dbLateral', 2, 10, 15]], log: [['2026-10-20', [['dbLateral', [[30, 8, 0], [30, 8, 0]]]]], ['2026-11-07', [['dbLateral', [[20, 12, 0], [20, 12, 0]]]]]] });
+    await P.ev(() => { const L = window.__ironlog; L.state.sessions.find(q => q.date === '2026-10-20').ex[0].rr = [6, 10]; L.state = L.normalize(L.state); L.invalidate(); L.saveNow(); L.render(); });
+    await start(P);
+    ok(e1(30, 7) > e1(20, 12) && e1(30, 7) < e1(30, 8), 'B-7: worked out from the rule: 30 x 7 to failure scores over 20 x 12 and under 30 x 8', [e1(30, 7), e1(20, 12), e1(30, 8)]);
+    await logSet(P, 0, 0, 30, 7, 0);
+    const line = await P.ev(() => { const e = document.getElementById('tp-0'); return e ? e.innerText.replace(/\s+/g, ' ').trim() : ''; });
+    ok(/Beaten by load: 30×7/.test(line) && !/best yet/.test(line) && !(await P.gold(0, 0)) && (await P.prToasts()).length === 0, 'B-7: raises 30 x 7 to failure after 30 x 8 in another range: "Beaten by load: 30×7", no "your best yet", no gold, no message (L4-3)', { line, toasts: await P.toasts() });
     await P.close();
   }
 
@@ -873,7 +924,7 @@ async function stats(P) {
     /* NEW-135 (found building 2.54): the Guide said only a PR with a new best estimate is counted, and that more reps
        without one are named in the recap as heaviest yet. A set stronger than every earlier one is counted, a rep more
        past 12 reps to failure included (R72-4, V 2026-11-04: B-2, B-3), and only a heavier set is named heaviest yet (B-6). */
-    ok(/Only a set stronger than every earlier one is announced and counted/.test(g) && !/Only a PR with a new best estimate is announced and counted/.test(g), 'B-19: the Guide says only a set stronger than every earlier one is announced and counted (NEW-135: "Only a PR with a new best estimate")', (g.match(/Only a[^.]*\./) || [])[0]);
+    ok(/Only a set stronger than every earlier one \(this workout's sets included\) is announced and counted/.test(g) && !/Only a PR with a new best estimate is announced and counted/.test(g), 'B-19: the Guide says only a set stronger than every earlier one, this workout\'s sets included, is announced and counted (NEW-135: "Only a PR with a new best estimate"; V\'s decision 1 of 2026-11-17)', (g.match(/Only a[^.]*\./) || [])[0]);
     ok(/A heavier set that is not stronger is named in the recap as heaviest yet/.test(g) && !/a heavier set or more reps without one/.test(g), 'B-19: and that a heavier set that is not stronger is named heaviest yet, never more reps (NEW-135)', (g.match(/[^.]*heaviest yet[^.]*\./) || [])[0]);
     ok(!P.errors.length, 'B-19: no page errors (guide)', P.errors);
     await P.ctx.close();

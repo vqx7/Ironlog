@@ -22,8 +22,10 @@ const seed = (L, unit, exId, list, rr) => {
   // Plan editor sets one (the default by equipment, 10 lb or 5 kg on a bar or a stack since r68, is tests/r68.js
   // section 4). Read the same by r31.3, where it was the default; dumbbells and kettlebells keep the rack read from their loads.
   const ex = s.exercises.find(x => x.id === exId);
-  if (ex && ['barbell', 'smith', 'machine', 'cable'].includes(ex.equip)) ex.inc = unit === 'lb' ? 5 * 0.45359237 : 2.5;
-  for (const [date, sets] of list) s.sessions.push({ id: 'r32' + exId + (n++), date, dayIdx: 0, dayId: null, dayName: 'T', routineId: '', notes: '', ex: [{ exId, rr: rr || undefined, sets: sets.map(([w, r, rir]) => ({ w: w * f, r, rir: rir == null ? null : rir, warm: false, drop: false })) }] });
+  // With the unit it was typed in, as a step is stored since 2.73.
+  if (ex && ['barbell', 'smith', 'machine', 'cable'].includes(ex.equip)) { ex.inc = unit === 'lb' ? 5 * 0.45359237 : 2.5; ex.incU = unit; }
+  for (const [date, sets] of list) s.sessions.push({ id: 'r32' + exId + (n++), date, dayIdx: 0, dayId: null, dayName: 'T', routineId: '', notes: '', ex: [{ exId, rr: rr || undefined, sets: sets.map(([w, r, rir]) => ({ w: w * f, r, rir: rir == null ? null : rir, warm: false, drop: false, ...(w ? { u: unit } : {}) })) }] });
+  // Each set with the unit it was typed in, as every set since 2.73 is stored.
   L.invalidate();
 };
 

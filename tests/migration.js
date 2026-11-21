@@ -1,8 +1,26 @@
 // Migration: saves made by the previous builds load with nothing lost.
 const {open}=require('./h');const { engine } = require('./h');
 const fails=[];const ok=(c,m,x)=>{if(!c){fails.push(m);console.log('FAIL',m,JSON.stringify(x));}else console.log('ok  ',m,x!==undefined?JSON.stringify(x).slice(0,200):'');};
+// A log's sessions as saved, with each set's unit taken out (2.73 gives every set with a load the unit it was entered
+// in, once, at load: the one change it makes to a saved session), and whether every unit given is the one the set's
+// number lies on, last among its fields.
+const LBK=0.45359237,onStep=(v,s)=>Math.abs(v/s-Math.round(v/s))<1e-6;
+const gridU=w=>{const a=Math.abs(w);if(!(a>0))return null;const k=onStep(a,0.05),l=onStep(a/LBK,0.05);return k===l?null:k?'kg':'lb';};
+const noU=ss=>JSON.stringify(ss.map(x=>({...x,ex:x.ex.map(b=>({...b,sets:b.sets.map(q=>{const {u,...rest}=q;return rest;})}))})));
+const unitsRight=ss=>ss.every(x=>x.ex.every(b=>b.sets.every(q=>(q.u===undefined?gridU(+q.w)===null:q.u===gridU(+q.w)&&Object.keys(q).pop()==='u'))));
+// Every number a lifter reads from a log, as one build reads it (2.73): each load, the PR list, All-time bests, the
+// weekly sets of six muscles, every routine lift's next target (load and words) and History's sets.
+const READ=()=>{const L=window.__ironlog;const S=L.state;const r6=v=>v==null?null:Math.round(v*1e6)/1e6;
+    const ids=[...new Set(S.sessions.flatMap(x=>x.ex.map(b=>b.exId)))].sort();
+    const bests={};for(const id of ids){const b=L.allTimeBests(id);bests[id]=b?{heavy:b.heavy?[r6(b.heavy.p.w),b.heavy.p.r,b.heavy.date]:null,est:b.est?r6(b.est.v):null,front:b.front.map(f=>[r6(f.p.w),f.p.r])}:null;}
+    const next={};const R=L.activeRoutine();for(const d of R.days)for(const it of d.items){const g=L.suggest(it.exId,it);next[it.exId+'|'+it.uid]=g?[r6(g.w),g.text,g.target]:null;}
+    L.ui.tab='history';L.render();document.querySelectorAll('#view details').forEach(d=>d.open=true);L.render();
+    return {w:S.sessions.map(x=>x.ex.map(b=>b.sets.map(q=>r6(q.w)))),
+      prs:L.IDX().prs.map(p=>[p.exId,p.sid,p.type,r6(p.w),p.r,!!p.big,r6(p.value)]),bests,
+      rolling:Object.fromEntries(['chest','triceps','biceps','quads','upperBack','lats'].map(m=>[m,L.rolling7(m)])),
+      next,history:document.getElementById('view').innerText};};
 (async()=>{const browser=await engine.launch();
-for(const [file,label] of [['baselines/r116.html','r116'],['baselines/r115.html','r115'],['baselines/r114.html','r114'],['baselines/r113.html','r113'],['baselines/r112.html','r112'],['baselines/r111.html','r111'],['baselines/r110.html','r110'],['baselines/r109.html','r109'],['baselines/r108.html','r108'],['baselines/r107.html','r107'],['baselines/r106.html','r106'],['baselines/r105.html','r105'],['baselines/r104.html','r104'],['baselines/r103.html','r103'],['baselines/r102.html','r102'],['baselines/r101.html','r101'],['baselines/r100.html','r100'],['baselines/r99.html','r99'],['baselines/r98.html','r98'],['baselines/r97.html','r97'],['baselines/r96.html','r96'],['baselines/r95.html','r95'],['baselines/r94.html','r94'],['baselines/r93.html','r93'],['baselines/r92.html','r92'],['baselines/r91.html','r91'],['baselines/r90.html','r90'],['baselines/r89.html','r89'],['baselines/r88.html','r88'],['baselines/r87.html','r87'],['baselines/r86.html','r86'],['baselines/r85.html','r85'],['baselines/r84.html','r84'],['baselines/r83.html','r83'],['baselines/r82.html','r82'],['baselines/r81.html','r81'],['baselines/r80.html','r80'],['baselines/r79.html','r79'],['baselines/r78.html','r78'],['baselines/r77.html','r77'],['baselines/r76.html','r76'],['baselines/r75.html','r75'],['baselines/r74.html','r74'],['baselines/r73.html','r73'],['baselines/r72.html','r72'],['baselines/r71.html','r71'],['baselines/r70.html','r70'],['baselines/r69.html','r69'],['baselines/r68.html','r68'],['baselines/r67.html','r67'],['baselines/r66.html','r66'],['baselines/r65-2.html','r65.2'],['baselines/r65.html','r65'],['baselines/r64.html','r64'],['baselines/r63.html','r63'],['baselines/r62.html','r62'],['baselines/r61.html','r61'],['baselines/r60.html','r60'],['baselines/r59.html','r59'],['baselines/r58.html','r58'],['baselines/r57.html','r57'],['baselines/r56-2.html','r56.2'],['baselines/r56-1.html','r56.1'],['baselines/r56.html','r56'],['baselines/r55.html','r55'],['baselines/r54.html','r54'],['baselines/r53.html','r53'],['baselines/r52.html','r52'],['baselines/r51.html','r51'],['baselines/r50.html','r50'],['baselines/r49.html','r49'],['baselines/r48.html','r48'],['baselines/r47.html','r47'],['baselines/r46.html','r46'],['baselines/r45.html','r45'],['baselines/r44.html','r44'],['baselines/r43.html','r43'],['baselines/r42.html','r42'],['baselines/r41.html','r41'],['baselines/r40.html','r40'],['baselines/r39.html','r39'],['baselines/r38.html','r38'],['baselines/r37.html','r37'],['baselines/r36.html','r36'],['baselines/r35.html','r35'],['baselines/r34-2.html','r34.2'],['baselines/r34-1.html','r34.1'],['baselines/r34.html','r34'],['baselines/r32-1.html','r32.1'],['baselines/r32.html','r32'],['baselines/r31-3.html','r31.3'],['baselines/r31-2.html','r31.2'],['baselines/r31-1.html','r31.1'],['baselines/r31.html','r31'],['baselines/r30-2.html','r30.2'],['baselines/r30.html','r30'],['baselines/r29-5.html','r29.5'],['baselines/r29.html','r29.4'],['baselines/r28.html','r28'],['baselines/r27.html','r27'],['baselines/r26.html','r26'],['baselines/r25.html','r25'],['baselines/r24.html','r24'],['baselines/r23.html','r23'],['baselines/r22.html','r22'],['baselines/r21.html','r21'],['baselines/r20.html','r20'],['baselines/r19.html','r19'],['baselines/r18.html','r18'],['baselines/r17.html','r17'],['baselines/r16.html','r16'],['baselines/r15.html','r15'],['baselines/r14.html','r14'],['baselines/r13.html','r13'],['baselines/r12.html','r12'],['baselines/r11.html','r11']]){
+for(const [file,label] of [['baselines/r122.html','r122'],['baselines/r121.html','r121'],['baselines/r120.html','r120'],['baselines/r119.html','r119'],['baselines/r118.html','r118'],['baselines/r117.html','r117'],['baselines/r116.html','r116'],['baselines/r115.html','r115'],['baselines/r114.html','r114'],['baselines/r113.html','r113'],['baselines/r112.html','r112'],['baselines/r111.html','r111'],['baselines/r110.html','r110'],['baselines/r109.html','r109'],['baselines/r108.html','r108'],['baselines/r107.html','r107'],['baselines/r106.html','r106'],['baselines/r105.html','r105'],['baselines/r104.html','r104'],['baselines/r103.html','r103'],['baselines/r102.html','r102'],['baselines/r101.html','r101'],['baselines/r100.html','r100'],['baselines/r99.html','r99'],['baselines/r98.html','r98'],['baselines/r97.html','r97'],['baselines/r96.html','r96'],['baselines/r95.html','r95'],['baselines/r94.html','r94'],['baselines/r93.html','r93'],['baselines/r92.html','r92'],['baselines/r91.html','r91'],['baselines/r90.html','r90'],['baselines/r89.html','r89'],['baselines/r88.html','r88'],['baselines/r87.html','r87'],['baselines/r86.html','r86'],['baselines/r85.html','r85'],['baselines/r84.html','r84'],['baselines/r83.html','r83'],['baselines/r82.html','r82'],['baselines/r81.html','r81'],['baselines/r80.html','r80'],['baselines/r79.html','r79'],['baselines/r78.html','r78'],['baselines/r77.html','r77'],['baselines/r76.html','r76'],['baselines/r75.html','r75'],['baselines/r74.html','r74'],['baselines/r73.html','r73'],['baselines/r72.html','r72'],['baselines/r71.html','r71'],['baselines/r70.html','r70'],['baselines/r69.html','r69'],['baselines/r68.html','r68'],['baselines/r67.html','r67'],['baselines/r66.html','r66'],['baselines/r65-2.html','r65.2'],['baselines/r65.html','r65'],['baselines/r64.html','r64'],['baselines/r63.html','r63'],['baselines/r62.html','r62'],['baselines/r61.html','r61'],['baselines/r60.html','r60'],['baselines/r59.html','r59'],['baselines/r58.html','r58'],['baselines/r57.html','r57'],['baselines/r56-2.html','r56.2'],['baselines/r56-1.html','r56.1'],['baselines/r56.html','r56'],['baselines/r55.html','r55'],['baselines/r54.html','r54'],['baselines/r53.html','r53'],['baselines/r52.html','r52'],['baselines/r51.html','r51'],['baselines/r50.html','r50'],['baselines/r49.html','r49'],['baselines/r48.html','r48'],['baselines/r47.html','r47'],['baselines/r46.html','r46'],['baselines/r45.html','r45'],['baselines/r44.html','r44'],['baselines/r43.html','r43'],['baselines/r42.html','r42'],['baselines/r41.html','r41'],['baselines/r40.html','r40'],['baselines/r39.html','r39'],['baselines/r38.html','r38'],['baselines/r37.html','r37'],['baselines/r36.html','r36'],['baselines/r35.html','r35'],['baselines/r34-2.html','r34.2'],['baselines/r34-1.html','r34.1'],['baselines/r34.html','r34'],['baselines/r32-1.html','r32.1'],['baselines/r32.html','r32'],['baselines/r31-3.html','r31.3'],['baselines/r31-2.html','r31.2'],['baselines/r31-1.html','r31.1'],['baselines/r31.html','r31'],['baselines/r30-2.html','r30.2'],['baselines/r30.html','r30'],['baselines/r29-5.html','r29.5'],['baselines/r29.html','r29.4'],['baselines/r28.html','r28'],['baselines/r27.html','r27'],['baselines/r26.html','r26'],['baselines/r25.html','r25'],['baselines/r24.html','r24'],['baselines/r23.html','r23'],['baselines/r22.html','r22'],['baselines/r21.html','r21'],['baselines/r20.html','r20'],['baselines/r19.html','r19'],['baselines/r18.html','r18'],['baselines/r17.html','r17'],['baselines/r16.html','r16'],['baselines/r15.html','r15'],['baselines/r14.html','r14'],['baselines/r13.html','r13'],['baselines/r12.html','r12'],['baselines/r11.html','r11']]){
   const P=await open(file,{browser,clock:'2026-09-26T10:00:00'});
   await P.page.evaluate(()=>{const L=window.__ironlog;const s=L.state;s.settings.onboarded=true;s.settings.priorities=['chest','biceps'];s.settings.heightCm=178;s.settings.bands.biceps=[12,22];
     s.exercises.push({id:'c_x',name:'My Curl',primary:'biceps',secondary:['forearms'],equip:'dumbbell',bw:false,custom:true,archived:false,note:'x'});
@@ -21,7 +39,13 @@ for(const [file,label] of [['baselines/r116.html','r116'],['baselines/r115.html'
   ok(!r.crash,`${label}: renders`);
   for(const t of ['today','program','dash','history','settings']){const c=await N.page.evaluate(t=>{const L=window.__ironlog;L.ui.tab=t;L.render();document.querySelectorAll('details').forEach(d=>d.open=true);return document.body.innerText.includes('Something broke');},t);if(c)ok(false,`${label}: ${t} crashed`);}
   ok(!N.errors.length,`${label}: no console errors`,N.errors);
+  // Read here as 2.74 reads the same save (which read it as 2.72 did: the units 2.73 gives a log change no number in it).
+  const here=await N.page.evaluate(READ);
   await N.ctx.close();
+  const W=await open('baselines/r120.html',{browser,state:old,clock:'2026-09-26T10:00:00'});
+  const was=await W.page.evaluate(READ);await W.ctx.close();
+  const diff=Object.keys(here).filter(k=>JSON.stringify(here[k])!==JSON.stringify(was[k]));
+  ok(!diff.length,`${label}: every load, PR, All-time best, weekly number, next target and History line as 2.74 reads them`,diff.map(k=>[k,JSON.stringify(here[k]).slice(0,200),JSON.stringify(was[k]).slice(0,200)]));
 }
 // Targets a first-run pick of Strength 5 x 5 fitted by the plan's reading before r54 (three and a half sessions a week) follow r54's
 // (three), once, at start: picked on r53 with its floors recorded, the same with chest typed to 9 since, and picked on r43, before
@@ -77,7 +101,7 @@ for(const [file,label] of [['baselines/r116.html','r116'],['baselines/r115.html'
   const N=await open('index.html',{browser,state:JSON.parse(raw),clock:'2026-10-15T10:00:00',realStarter:true});
   const r=await N.page.evaluate((sid)=>{const L=window.__ironlog;const s=L.state;const ss=s.sessions.find(x=>x.id===sid);const x=(L.IDX().byEx.bench||[]).find(q=>q.sid===sid);
     return {same:JSON.stringify(ss),draftCut:!!(s.draft&&s.draft.ex[0].cut),full:s.draft&&s.draft.ex[0].full,short:x&&x.short||null,light:x&&x.light};},JSON.parse(made.saved).id);
-  ok(r.same===made.saved,'r53\'s saved session with its trimmed bench press loads byte for byte, mark and all (its sync hash unchanged)',[r.same.slice(0,160),made.saved.slice(0,160)]);
+  ok(noU([JSON.parse(r.same)])===noU([JSON.parse(made.saved)])&&unitsRight([JSON.parse(r.same)]),'r53\'s saved session with its trimmed bench press loads as saved, mark and all, each set given the unit its load lies on, last',[r.same.slice(0,160),made.saved.slice(0,160)]);
   ok(r.draftCut&&r.full===undefined,'the session in progress keeps its trimmed mark as saved, with no count added',r);
   ok(r.short==='sets'&&r.light===false,'and the one rule reads the trimmed bench press: fewer sets than its usual four, so its target repeats while its trend counts',r);
   ok(!N.errors.length,'no console errors loading r53\'s trimmed sessions',N.errors);
@@ -119,8 +143,9 @@ for(const [file,label] of [['baselines/r116.html','r116'],['baselines/r115.html'
       set(60,8,{rid:'a',sg:[60,8]}),set(62.5,8,{rid:'b',sg:[null,8]}),set(40,10,{warm:true,rid:'c',sg:[40,10]}),
       set(60,7,{rid:'d',sg:['x',8]}),set(60,7,{rid:'e',sg:[60]}),set(60,7,{rid:'f',sg:[null,null]})]}]}];
     L.state=L.normalize(s);L.invalidate();L.saveNow();
-    return L.state.sessions[0].ex[0].sets.map(x=>x.sg===undefined?('sg' in x?'kept':'none'):JSON.stringify(x.sg)+(Object.keys(x).pop()==='sg'?' last':''));});
-  ok(JSON.stringify(mk)===JSON.stringify(['[60,8] last','[null,8] last','none','none','none','none']),'this build keeps a set\'s asked load and reps (or reps alone) last, and drops one on a warm-up, one that is not two numbers, and one with neither',mk);
+    // Last but the unit its load was entered in (2.73), which goes last.
+    return L.state.sessions[0].ex[0].sets.map(x=>x.sg===undefined?('sg' in x?'kept':'none'):JSON.stringify(x.sg)+(Object.keys(x).slice(-2).join()==='sg,u'?' last':''));});
+  ok(JSON.stringify(mk)===JSON.stringify(['[60,8] last','[null,8] last','none','none','none','none']),'this build keeps a set\'s asked load and reps (or reps alone) last but its load\'s unit, and drops one on a warm-up, one that is not two numbers, and one with neither',mk);
   const raw=await N.page.evaluate(()=>localStorage.getItem('ironlog.v1'));await N.ctx.close();
   const O=await open('baselines/r106.html',{browser,state:JSON.parse(raw),clock:'2026-11-12T10:00:00',realStarter:true});
   const o=await O.page.evaluate(()=>{const L=window.__ironlog;L.state.settings.userName='Phone two';L.saveNow();return JSON.parse(localStorage.getItem('ironlog.v1')).sessions[0].ex[0].sets.map(x=>x.sg===undefined?'none':JSON.stringify(x.sg));});
@@ -264,5 +289,177 @@ for(const [file,label] of [['baselines/r116.html','r116'],['baselines/r115.html'
   ok(JSON.stringify(back.read)===JSON.stringify(base.read)&&JSON.stringify(back.sessions)===JSON.stringify(here.saved.sessions),'2.69 opens the log saved here on the same machines and saves its sessions as they are',{back:back.read});
   ok(!N.errors.length&&!O.errors.length,'no console errors reading machines in a 2.69 log',[...N.errors,...O.errors]);
   await O.ctx.close();
+}
+// Every load's unit (2.73): a save from 2.72 holds each load in kilograms alone, its unit read back from the number at
+// every read. Opened here, each set and each number set on a lift (its step, heaviest load, goal and bar) and the bar in
+// settings has the unit its number lies on the 0.05 steps of, last among its fields; saved, a unit its number gives is
+// left out (merge.ts storedJson), so the save is the one 2.72 made, byte for byte, and nothing is sent again. A unit
+// its number does not give (a load typed as 61.37 kg, on neither unit's steps) is saved, and 2.72 keeps it in its
+// place. Every load stays as it was, and so does every number read from the log: the PR list, All-time bests, the
+// weekly sets, each lift's next target and History's sets.
+{
+  const SEED=LB=>{const L=window.__ironlog;const S=L.state;S.settings.onboarded=true;S.settings.unit='lb';L.makeDemo();S.draft=null;
+    // A bench marked kg in the lb app, with sets typed in kg and one in lb, one on neither unit's steps with its unit, and a dumbbell lift with its own numbers.
+    const set=(w,r,more)=>({w,r,rir:2,warm:false,drop:false,...(more||{})});
+    const day=(id,date,ex)=>({id,date,dayIdx:0,dayName:'Mine',routineId:'',free:true,notes:'',ex});
+    S.sessions.push(day('k1','2026-09-15',[{exId:'bench',rr:[6,10],sets:[set(100,8),set(100,8),set(102.5,6)]},{exId:'dbCurl',rr:[8,12],sets:[set(25*LB,12),set(27.5*LB,10)]}]),
+      day('k2','2026-09-22',[{exId:'bench',rr:[6,10],sets:[set(102.5,8),set(225*LB,5),set(61.37,8,{u:'kg'})]},{exId:'dbCurl',rr:[8,12],sets:[set(30*LB,10)]}]));
+    const e=id=>S.exercises.find(x=>x.id===id);
+    Object.assign(e('bench'),{unit:'kg',inc:2.5,maxLoad:180,goal:{w:120,r:5},barKg:15});
+    Object.assign(e('dbCurl'),{inc:5*LB,maxLoad:60*LB,goal:{w:40*LB,r:8}});
+    S.settings.barKg=45*LB;
+    L.state=L.normalize(S);L.invalidate();L.saveNow();};
+  const P=await open('baselines/r118.html',{browser,clock:'2026-09-26T10:00:00'});
+  await P.page.evaluate(SEED,LBK);await P.page.waitForTimeout(300);
+  const was=await P.page.evaluate(READ);
+  const raw=await P.page.evaluate(()=>localStorage.getItem('ironlog.v1'));await P.ctx.close();
+  const N=await open('index.html',{browser,state:JSON.parse(raw),clock:'2026-09-26T10:00:00'});
+  const now=await N.page.evaluate(READ);
+  const mem=await N.page.evaluate(()=>{const S=window.__ironlog.state;return {sessions:S.sessions.filter(x=>/^k/.test(x.id)).map(x=>({id:x.id,u:x.ex.map(b=>b.sets.map(q=>q.u||null)),last:x.ex.map(b=>b.sets.map(q=>Object.keys(q).pop()))})),ex:['bench','dbCurl'].map(id=>{const e=S.exercises.find(x=>x.id===id);return {u:[e.incU||null,e.maxLoadU||null,e.goalU||null,e.barU||null],last:Object.keys(e).slice(-6).join()};}),bar:S.settings.barU||null};});
+  const saved=await N.page.evaluate(()=>{const L=window.__ironlog;L.saveNow();return localStorage.getItem('ironlog.v1');});
+  const o=JSON.parse(raw);
+  const k=id=>mem.sessions.find(x=>x.id===id);
+  ok(JSON.stringify(k('k1').u)==='[["kg","kg","kg"],["lb","lb"]]'&&JSON.stringify(k('k2').u)==='[["kg","lb","kg"],["lb"]]'&&k('k2').last.flat().every(x=>x==='u'),'r118: opened here, each set has the unit its load lies on (100 and 102.5 in kg, 225 lb in lb on the same bench, the curls in lb) and 61.37 its own kg, last among its fields',mem.sessions);
+  ok(JSON.stringify(mem.ex[0].u)==='["kg","kg","kg","kg"]'&&JSON.stringify(mem.ex[1].u)==='["lb","lb","lb",null]'&&mem.ex[0].last==='incU,maxLoadU,barU,goalU,machineU,equipOwn'&&mem.bar==='lb','r118: a lift\'s step, heaviest load, goal and bar each have the unit its number lies on, last among the lift\'s fields but its machines\' units (2.74) and the lifter\'s pick of a refiled lift\'s equipment (2.75); the bar in settings too',mem);
+  ok(saved===raw,'r118: saved again here, the log is 2.72\'s save byte for byte: each unit its number gives left out, the one it does not give (61.37 kg) kept, nothing to send again',{same:saved===raw});
+  ok(JSON.parse(saved).sessions.find(x=>x.id==='k2').ex[0].sets[2].u==='kg','r118: the unit a number does not give is in the save',{});
+  ok(JSON.stringify(now.w)===JSON.stringify(was.w),'r118: every load read here is the load 2.72 read',{});
+  ok(JSON.stringify(now.prs)===JSON.stringify(was.prs),'r118: the PR list is the one 2.72 read, set for set',{now:now.prs.length,was:was.prs.length});
+  ok(JSON.stringify(now.bests)===JSON.stringify(was.bests),'r118: All-time bests are 2.72\'s, every heaviest set, estimate and rep record',{now:now.bests.bench,was:was.bests.bench});
+  ok(JSON.stringify(now.rolling)===JSON.stringify(was.rolling),'r118: the weekly sets are 2.72\'s',{now:now.rolling,was:was.rolling});
+  ok(JSON.stringify(now.next)===JSON.stringify(was.next),'r118: every lift\'s next target is 2.72\'s, load and words',Object.keys(now.next).filter(k=>JSON.stringify(now.next[k])!==JSON.stringify(was.next[k])).map(k=>[k,now.next[k],was.next[k]]));
+  ok(now.history===was.history,'r118: History lists every set as 2.72 did',{now:now.history.slice(0,300),was:was.history.slice(0,300)});
+  await N.ctx.close();
+  // A log made here with a set typed off every unit's steps (61.37 kg on a bench in lb), opened on 2.72 and saved
+  // there: the unit is kept in its place, and back here it reads as typed.
+  const M=await open('index.html',{browser,state:JSON.parse(raw),clock:'2026-09-26T10:00:00'});
+  const made=await M.page.evaluate(()=>{const L=window.__ironlog;L.act(()=>{const s=L.state.sessions.find(x=>x.id==='k1');s.ex[0].sets.push({w:61.37,r:6,rir:2,warm:false,drop:false,u:'kg'});});L.saveNow();return localStorage.getItem('ironlog.v1');});
+  await M.ctx.close();
+  const O=await open('baselines/r118.html',{browser,state:JSON.parse(made),clock:'2026-09-26T10:00:00'});
+  const back=await O.page.evaluate(()=>{const L=window.__ironlog;L.state.settings.userName='Phone two';L.saveNow();return JSON.parse(localStorage.getItem('ironlog.v1'));});
+  await O.ctx.close();
+  const madeS=JSON.parse(made).sessions;
+  ok(JSON.stringify(back.sessions)===JSON.stringify(madeS)&&back.sessions.find(x=>x.id==='k1').ex[0].sets[3].u==='kg','2.72 keeps the unit a number does not give when it saves, in its place: every session byte for byte',{});
+  const B=await open('index.html',{browser,state:back,clock:'2026-09-26T10:00:00'});
+  const again=await B.page.evaluate(()=>{const L=window.__ironlog;L.saveNow();const s=L.state.sessions.find(x=>x.id==='k1');return {saved:JSON.parse(localStorage.getItem('ironlog.v1')),line:L.setStr(L.EX('bench'),s.ex[0].sets[3])};});
+  ok(JSON.stringify(again.saved.sessions)===JSON.stringify(back.sessions)&&JSON.stringify(again.saved.exercises)===JSON.stringify(back.exercises)&&/^61\.4 kg×6/.test(again.line),
+    'and back here the log saves as 2.72 left it, and 61.37 reads in kg, as typed (to a tenth: on no unit\'s steps)',{line:again.line});
+  ok(!N.errors.length&&!M.errors.length&&!O.errors.length&&!B.errors.length,'no console errors reading a save from 2.72 with its units',[...N.errors,...M.errors,...O.errors,...B.errors]);
+  await B.ctx.close();
+}
+// A weekly target typed before r58 (2.73, the full review's L01-5): stored as its numbers alone, it is the lifter's when
+// it differs from the app's own on a muscle outside the ones with a target by default, as every build read it, at every
+// read. Opened here it is recorded as the lifter's once, at start, beside the targets Set a target records: so a later
+// change of the app's own number (a focus set in Your training brings forearms' own from 4 to 12 down to 2 to 12) leaves
+// it the lifter's. Read from its number, the 2 to 12 typed became the app's and stopped counting. Opened again, nothing
+// moves; a target typed on one of the four tracked since r29, which never counted, is not recorded.
+{
+  const P=await open('baselines/r57.html',{browser,clock:'2026-10-24T10:00:00'});
+  await P.page.evaluate(()=>{const L=window.__ironlog;const S=L.state;S.settings.onboarded=true;S.settings.bands.forearms=[2,12];S.settings.bands.serratus=[3,6];L.saveNow();});
+  const raw=await P.page.evaluate(()=>localStorage.getItem('ironlog.v1'));await P.ctx.close();
+  const N=await open('index.html',{browser,state:JSON.parse(raw),clock:'2026-10-24T10:00:00'});
+  const r=await N.page.evaluate(()=>{const L=window.__ironlog;const S=L.state;const own=(S.settings.ownTargets||[]).slice(),before={forearms:L.hasTarget('forearms'),serratus:L.hasTarget('serratus')};
+    S.settings.profile={...(S.settings.profile||{}),focus:['traps']};L.invalidate();
+    return {own,before,app:L.appBand('forearms').join('-'),after:L.hasTarget('forearms'),band:S.settings.bands.forearms.join('-'),saved:(JSON.parse(localStorage.getItem('ironlog.v1')).settings.ownTargets||[]).slice()};});
+  ok(r.own.join()==='forearms'&&r.saved.join()==='forearms'&&r.before.forearms&&!r.before.serratus,'r57: forearms typed as 2 to 12 is recorded as the lifter\'s target at start, and saved; serratus typed as 3 to 6, which never counted, is not',r);
+  ok(r.app==='2-12'&&r.band==='2-12'&&r.after,'r57: with a focus set, the app\'s own forearms target is 2 to 12 too, and the one typed still counts as the lifter\'s',r);
+  const raw2=await N.page.evaluate(()=>{const L=window.__ironlog;delete L.state.settings.profile;L.invalidate();L.saveNow();return localStorage.getItem('ironlog.v1');});await N.ctx.close();
+  const B=await open('index.html',{browser,state:JSON.parse(raw2),clock:'2026-10-24T10:00:00'});
+  const b=await B.page.evaluate(()=>{const L=window.__ironlog;return {own:(L.state.settings.ownTargets||[]).join(),saved:localStorage.getItem('ironlog.v1')};});
+  ok(b.own==='forearms'&&b.saved===raw2,'opened again, nothing moves: the target is recorded once',{own:b.own,same:b.saved===raw2});
+  ok(!N.errors.length&&!B.errors.length,'no console errors recording a target typed before r58',[...N.errors,...B.errors]);
+  await B.ctx.close();
+}
+// The Preacher Curl refiled with the barbells (2.75, V's decision 4 of 2026-11-17, the full review's L01-6): done on an
+// EZ bar more often than on a machine. A save from 2.74 holds the library's old equipment (machine) on the lift: opened
+// here it reads as a barbell lift, so it has no Machine sheet, and its sessions stay as saved; one the lifter refiled
+// in the exercise editor (dumbbells) stays as set. Saved again, the log is 2.74's byte for byte (merge.ts savedEquip:
+// the refile rewrites no log, so it never clashes with an edit an older phone made, the review's REV27-1).
+{
+  const SEED=({LB,equip})=>{const L=window.__ironlog;const S=L.state;S.settings.onboarded=true;S.settings.unit='lb';
+    const day=(id,date,w)=>({id,date,dayIdx:0,dayName:'Arms',routineId:'',free:true,notes:'',ex:[{exId:'preacher',rr:[8,12],sets:[10,10,9].map(r=>({w:w*LB,r,rir:2,warm:false,drop:false}))}]});
+    S.sessions.push(day('pc1','2026-09-15',60),day('pc2','2026-09-22',65));
+    if(equip)S.exercises.find(x=>x.id==='preacher').equip=equip;
+    L.state=L.normalize(S);L.invalidate();L.saveNow();};
+  for(const equip of [null,'dumbbell']){
+    const P=await open('baselines/r120.html',{browser,clock:'2026-09-26T10:00:00'});
+    await P.page.evaluate(SEED,{LB:LBK,equip});await P.page.waitForTimeout(300);
+    const raw=await P.page.evaluate(()=>localStorage.getItem('ironlog.v1'));await P.ctx.close();
+    const o=JSON.parse(raw);
+    const N=await open('index.html',{browser,state:o,clock:'2026-09-26T10:00:00'});
+    const got=await N.page.evaluate(()=>{const L=window.__ironlog;const e=L.state.exercises.find(x=>x.id==='preacher');L.saveNow();const saved=JSON.parse(localStorage.getItem('ironlog.v1'));
+      return {equip:e.equip,saved,ids:L.state.sessions.filter(x=>/^pc/.test(x.id)).map(x=>x.id).join()};});
+    const before=o.exercises.find(x=>x.id==='preacher'),after=got.saved.exercises.find(x=>x.id==='preacher');
+    const rest=a=>JSON.stringify({...a,exercises:a.exercises.filter(x=>x.id!=='preacher')});
+    const want=equip||'barbell';
+    ok(got.equip===want&&JSON.stringify(after)===JSON.stringify(before),`r120 (${equip?'set to dumbbells by the lifter':'as the library gave it'}): the Preacher Curl reads on ${want} here, and is saved as 2.74 saved it`,{equip:got.equip,before,after});
+    ok(got.ids==='pc1,pc2'&&JSON.stringify(got.saved.sessions)===JSON.stringify(o.sessions)&&rest(got.saved)===rest(o),`r120 (${equip||'library'}): every session, and everything else in the log, saved as 2.74 saved it`,{});
+    const M=await open('index.html',{browser,state:got.saved,clock:'2026-09-26T10:00:00'});
+    const again=await M.page.evaluate(()=>{const L=window.__ironlog;L.saveNow();return localStorage.getItem('ironlog.v1');});
+    ok(again===JSON.stringify(got.saved)||JSON.stringify(JSON.parse(again))===JSON.stringify(got.saved),`r120 (${equip||'library'}): opened again, nothing moves`,{});
+    ok(!N.errors.length&&!M.errors.length,'no console errors reading the refiled Preacher Curl',[...N.errors,...M.errors]);
+    await N.ctx.close();await M.ctx.close();
+  }
+}
+// The refiled Preacher Curl's machines (the review's REV27-5 and REV27-6). A lifter on 2.74 who did it on two machines
+// (the first at 80 lb, a second begun Oct 27 at 50 lb, back on the first since Nov 3): after the update a workout on
+// the first machine, and an edit of the Nov 3 session, are saved on the first machine, so nothing is read on the second
+// and 80 x 10 again is no PR. Machine picked for it in the exercise editor stays picked when the app is opened again.
+{
+  const SEED=({LB})=>{const L=window.__ironlog;const S=L.state;S.settings.onboarded=true;S.settings.unit='lb';S.settings.autoDone=false;S.settings.rirMode='off';
+    const mk=(id,date,lb,reps,more)=>({id,date,dayIdx:0,dayName:'Arms',routineId:'',free:true,notes:'',ex:[{exId:'preacher',rr:[8,12],sets:[reps,reps,reps].map(r=>({w:lb*LB,r,rir:2,warm:false,drop:false})),...more}]});
+    S.sessions.push(mk('pm1','2026-10-20',80,10,{mc:'0'}),mk('pm2','2026-10-23',80,10,{mc:'0'}),mk('pm3','2026-10-27',50,12,{nw:true,mc:'pm3'}),
+      mk('pm4','2026-10-30',50,12,{mc:'pm3'}),mk('pm5','2026-11-03',80,10,{mc:'0'}),mk('pm6','2026-11-06',80,10,{mc:'0'}));
+    L.state=L.normalize(S);L.invalidate();L.saveNow();};
+  const P=await open('baselines/r120.html',{browser,clock:'2026-11-10T10:00:00'});
+  await P.page.evaluate(SEED,{LB:LBK});await P.page.waitForTimeout(300);
+  const o=JSON.parse(await P.page.evaluate(()=>localStorage.getItem('ironlog.v1')));await P.ctx.close();
+  const READ_PC=()=>{const L=window.__ironlog;const I=L.IDX();
+    return {equip:L.EX('preacher').equip,on:(I.byEx.preacher||[]).map(x=>x.sid+':'+x.mk).join(' '),
+      named:L.state.sessions.filter(s=>s.ex.some(b=>b.exId==='preacher')).map(s=>s.id+':'+(s.ex[0].mc||'-')).join(' '),
+      prs:I.prs.filter(p=>p.exId==='preacher').map(p=>p.sid+' '+p.type).join()};};
+  const closeAll=async page=>{for(let k=0;k<8;k++){const m=await page.evaluate(()=>{const m=window.__ironlog.ui.modal;return m?m.kind:null;});if(!m)break;
+    if(m==='confirm')await page.click('#modal [data-act="mOk"]');else await page.evaluate(()=>window.__ironlog.ACT.mClose());await page.waitForTimeout(250);}};
+  // A workout on the first machine: the Preacher Curl added to a blank session, 80 lb x 10 ticked once, Finish.
+  const N=await open('index.html',{browser,state:o,clock:'2026-11-10T10:00:00'});
+  const was=await N.page.evaluate(READ_PC);
+  await N.page.evaluate(()=>window.__ironlog.ACT.startFree({dataset:{}}));await N.page.waitForTimeout(300);
+  await N.page.evaluate(()=>{const L=window.__ironlog;if(L.ui.modal)L.ACT.mClose();L.openModal({kind:'picker',mode:'addBlock',title:'Add exercise to session',q:'',m:''});});await N.page.waitForTimeout(250);
+  await N.page.click('#modal [data-act="pickDo"][data-ex="preacher"]');await N.page.waitForTimeout(350);
+  const on=await N.page.evaluate(()=>({shown:window.__ironlog.draftMachine('preacher'),saved:window.__ironlog.machineToSave('preacher')}));
+  const f=k=>`#view input[data-f="${k}"][data-b="0"][data-s="0"]`;
+  await N.page.fill(f('w'),'80');await N.page.fill(f('r'),'10');await N.page.waitForTimeout(500);
+  await N.page.click('#view [data-act="sDone"][data-b="0"][data-s="0"]');await N.page.waitForTimeout(400);
+  await N.page.click('#view [data-act="finish"]');await N.page.waitForTimeout(400);await closeAll(N.page);
+  const done=await N.page.evaluate(READ_PC);
+  const sid=await N.page.evaluate(()=>{const s=window.__ironlog.state.sessions.find(x=>!/^pm/.test(x.id)&&x.ex.some(b=>b.exId==='preacher'));return s?s.id:null;});
+  ok(was.equip==='barbell'&&was.on==='pm1:0 pm2:0 pm3:pm3 pm4:pm3 pm5:0 pm6:0','r120 (two machines): the Preacher Curl reads as a barbell lift, its sessions on the machines they name',was);
+  ok(on.shown==='0'&&on.saved==='0','r120 (two machines): the workout is on the first machine, and the first machine is the one it is saved on',on);
+  ok(!!sid&&done.named.endsWith(sid+':0')&&done.on.endsWith(sid+':0')&&!done.prs.includes(sid),'r120 (two machines): 80 lb x 10 on the first machine is saved and read on it, and is no PR',{sid,done});
+  // The Nov 3 session opened from History, one set's reps corrected (10 to 9), saved.
+  await N.page.evaluate(()=>{const L=window.__ironlog;L.ui.tab='history';L.ui.histOpen='pm5';L.render();});await N.page.waitForTimeout(250);
+  await N.page.click('#view [data-act="histEdit"][data-id="pm5"]');await N.page.waitForTimeout(400);
+  const edOn=await N.page.evaluate(()=>window.__ironlog.draftMachine('preacher'));
+  await N.page.fill(f('r'),'9');await N.page.waitForTimeout(600);
+  await N.page.click('#view [data-act="finish"]');await N.page.waitForTimeout(400);await closeAll(N.page);
+  const ed=await N.page.evaluate(()=>{const s=window.__ironlog.state.sessions.find(x=>x.id==='pm5');return {mc:s.ex[0].mc||null,reps:s.ex[0].sets.map(q=>q.r).join()};});
+  const edRead=await N.page.evaluate(READ_PC);
+  ok(edOn==='0'&&ed.mc==='0'&&ed.reps==='9,10,10'&&edRead.on.includes('pm5:0')&&!edRead.prs.includes('pm5'),'r120 (two machines): the Nov 3 session edited stays on the first machine, and is no PR',{edOn,ed,edRead});
+  ok(!N.errors.length,'no console errors on the refiled Preacher Curl\'s machines',N.errors);
+  // Machine picked for it in the exercise editor: saved as the lifter's, and read as a machine lift when opened again.
+  await N.page.evaluate(()=>{const A=window.__ironlog;A.ACT.exEdit({dataset:{ex:'preacher'}});const sel=document.querySelector('[data-ebind="equip"]');
+    sel.value='machine';sel.dispatchEvent(new Event('change',{bubbles:true}));A.ACT.exSave();});await N.page.waitForTimeout(300);
+  const picked=await N.page.evaluate(()=>{const L=window.__ironlog;L.saveNow();const st=JSON.parse(localStorage.getItem('ironlog.v1'));const e=st.exercises.find(x=>x.id==='preacher');
+    return {now:L.EX('preacher').equip,saved:e.equip,own:e.equipOwn===true,st};});
+  await N.ctx.close();
+  const M=await open('index.html',{browser,state:picked.st,clock:'2026-11-10T10:00:00'});
+  const back=await M.page.evaluate(()=>window.__ironlog.EX('preacher').equip);
+  ok(picked.now==='machine'&&picked.saved==='machine'&&picked.own&&back==='machine','Machine picked for the refiled Preacher Curl in the editor stays picked when the app is opened again',{now:picked.now,saved:picked.saved,own:picked.own,back});
+  await M.page.evaluate(()=>{const A=window.__ironlog;A.ACT.exEdit({dataset:{ex:'preacher'}});const sel=document.querySelector('[data-ebind="equip"]');
+    sel.value='barbell';sel.dispatchEvent(new Event('change',{bubbles:true}));A.ACT.exSave();});await M.page.waitForTimeout(300);
+  const unpicked=await M.page.evaluate(()=>{const L=window.__ironlog;L.saveNow();const e=JSON.parse(localStorage.getItem('ironlog.v1')).exercises.find(x=>x.id==='preacher');return {now:L.EX('preacher').equip,saved:e.equip,own:'equipOwn' in e};});
+  ok(unpicked.now==='barbell'&&unpicked.saved==='machine'&&!unpicked.own,'Barbell picked back is the library\'s again: saved as 2.74 saves the library\'s, with no mark',unpicked);
+  ok(!M.errors.length,'no console errors picking the Preacher Curl\'s equipment',M.errors);
+  await M.ctx.close();
 }
 console.log(fails.length?'FAILURES '+fails.length:'ALL PASS');await browser.close();})();

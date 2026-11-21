@@ -4,10 +4,10 @@
    date. Each function that reads the log, the date or a cache takes the model
    as its first parameter (model.ts). */
 
-import type { Session } from './types';
+import type { Session, Unit } from './types';
 import type { DateIndex, DayMeta, ExPoint, ExStat, Exposure, Idx, MissedPoint, Model, Pr, Score } from './model';
 import { MK, SLOW_RECOVERY, noE1, onMachines } from './library';
-import { addDays, daysBetween, median, r1, weekStart, EPS, EPS_SAME, WEEK_DAYS, PERCENT } from './util';
+import { addDays, daysBetween, median, r1, weekStart, EPS, EPS_SAME, WEEK_DAYS, PERCENT, MILLIONTHS } from './util';
 import {
   EXIn,
   activeRoutineIn,
@@ -17,7 +17,8 @@ import {
   machineKeys,
   machinesOf,
   onMachine,
-  sortedSessionsIn
+  sortedSessionsIn,
+  unitAt
 } from './model';
 import {
   BACK_DAYS,
@@ -191,8 +192,10 @@ export function draftMachineIn(M: Model, exId: string): string | null {
    session's own id, the key its mark (nw) gives it. */
 /** The machine key to save on a lift of the session in progress, or null for a free weight (above). */
 export function machineToSaveIn(M: Model, exId: string): string | null {
-  // A free weight's stretches are read as before (machineKeys): its sessions name no machine.
-  if (!onMachines(EXIn(M, exId))) return null;
+  /* A free weight's stretches are read as before (machineKeys): its sessions name no machine. A lift whose sessions
+     name machines goes on naming them whatever it is filed as now (a lift the library refiled from the machines, or
+     set to a free weight in the editor), so a session saved or edited stays on the machine it is read on. */
+  if (!onMachines(EXIn(M, exId)) && !M.s.sessions.some(s => s.ex.some(b => b.exId === exId && !!b.mc))) return null;
   const d = M.s.draft;
   if (!d) return null;
   const key = draftMachineIn(M, exId);
@@ -204,16 +207,49 @@ interface LiftMachine {
   key: string;
   date: string;
   w: number;
+  /** The unit `w` was entered in, as stored with its set. */
+  u: Unit | null;
   r: number;
+  /** The unit the machine's weights are in: the one picked for the lift while on it (Exercise.machineU), else `u`. */
+  mu: Unit | null;
+}
+
+/* A load of a lift's history is read with the unit its set was entered in, as stored with it. A rule handed only the
+   load (last time's, a suggestion's) finds that set: a load in kilograms lies on one unit's steps, so every set of a
+   lift at one load was entered in one unit. A set stored with no unit (its number on neither unit's steps) is read in
+   its lift's unit, as every screen reads it: null, which is not "no set at that load" (undefined). */
+/** A load in kilograms as a key: to a millionth, so a load read back from its set is the same key. */
+const loadKey = (w: number): number => Math.round(w * MILLIONTHS);
+/** The unit the lift's newest set at load `w` (kg) was entered in, as stored with it: null when it stores none, undefined when no set is at that load. */
+export function loadUnitIn(M: Model, exId: string, w: number): Unit | null | undefined {
+  if (!M.c._units) M.c._units = new Map();
+  let m = M.c._units.get(exId);
+  if (!m) {
+    m = new Map();
+    // Oldest first, so the newest set at a load is the one kept.
+    for (const x of IDXIn(M).byEx[exId] || []) for (const p of x.pts) m.set(loadKey(p.w), p.u);
+    M.c._units.set(exId, m);
+  }
+  const k = loadKey(w);
+  return m.has(k) ? m.get(k) : undefined;
 }
 
 /** The machines a lift was done on, the one used most lately first, each known by the heaviest set of its last session. */
 export function liftMachinesIn(M: Model, exId: string): LiftMachine[] {
+  const own = EXIn(M, exId).machineU || {};
   return machinesOf(IDXIn(M).byEx[exId] || [])
     .map(g => {
       const x = g[g.length - 1];
       const at = x.pts.filter(p => Math.abs(p.w - x.topW) < EPS_SAME);
-      return { key: g[0].mk, date: x.date, w: x.topW, r: at.length ? Math.max(...at.map(p => p.r)) : x.topReps };
+      const u = unitAt(x.pts, x.topW);
+      return {
+        key: g[0].mk,
+        date: x.date,
+        w: x.topW,
+        u,
+        r: at.length ? Math.max(...at.map(p => p.r)) : x.topReps,
+        mu: own[g[0].mk] ?? u
+      };
     })
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
 }
@@ -389,7 +425,8 @@ function idxSessionsIn(M: Model, sessions: readonly Session[]) {
           r: +s.r,
           w: +s.w || 0,
           rir: rirEffIn(M, s, ex, ss.date),
-          rq: rirEstIn(M, s, ex, ss.date)
+          rq: rirEstIn(M, s, ex, ss.date),
+          u: s.u ?? null
         };
       };
       const pts = ptsSrc.map(point);
@@ -987,7 +1024,7 @@ function idxLiftIn(
       Number(l3[2].topRir) - Number(l3[0].topRir) >= 1;
     // Once allRir holds, each top RIR is there, as the ! say.
     if (sameW && allRir && repsHeld && climbing)
-      easier = { w: l3[0].topW, from: r1(l3[0].topRir!), to: r1(l3[2].topRir!) };
+      easier = { w: l3[0].topW, u: unitAt(l3[0].pts, l3[0].topW), from: r1(l3[0].topRir!), to: r1(l3[2].topRir!) };
   }
   /* Widening set-to-set drop-off at an unchanged load: the top set still goes
      up but the back sets fall away. That is a fatigue or rest-length signal,
@@ -1001,7 +1038,7 @@ function idxLiftIn(
       l3.every(x => x.drop != null) &&
       l3[2].drop! - l3[0].drop! >= 2
     )
-      fade = { w: l3[0].topW, from: l3[0].drop!, to: l3[2].drop! };
+      fade = { w: l3[0].topW, u: unitAt(l3[0].pts, l3[0].topW), from: l3[0].drop!, to: l3[2].drop! };
   }
   // best: the top e1RM in the current rep range, which is what targets and
   // the live PR badge compare against. bestAll ignores rep range.

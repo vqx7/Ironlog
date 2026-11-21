@@ -15,8 +15,8 @@
 
 import { APP_NAME, STORAGE_ID } from './config';
 import { addDays, andList, daysBetween, isDate, median, today, uid, WEEK_DAYS } from './util';
-import { KM_MI, LB } from './units';
-import { LIB_NAMES_BEFORE, ML, onMachines } from './library';
+import { KM_MI, LB, TYPED_STEP } from './units';
+import { LIB_NAMES_BEFORE, ML, equipAsSaved, onMachines } from './library';
 import { dropStarter, routineSig } from './routines';
 import { offTarget } from './formulas';
 import { fmtDate } from './format';
@@ -37,25 +37,25 @@ import {
 import type { ImpRead } from './importing';
 import { cleanCardio, normalize, starterSigs } from './normalize';
 import { ENV, log, prefGet, unreadableForget, unreadableRaw } from './storage';
-import { arr, fixId, parseJson, rec } from './records';
+import { arr, parseJson, rec } from './records';
 import { assemble, cloudStop } from './sync';
 import { isChunkId, realCount } from './chunks';
 import type { Rec } from './records';
-import { activeRoutine, actualAvg4, appU, EX, fmtWOf, IDX, invalidate, liftU } from './live';
+import { activeRoutine, actualAvg4, appU, EX, IDX, invalidate, saidLoad } from './live';
 import { acct, cloud, setState, state, ui } from './store';
 import type { ImpPreviewModal, ImpTable } from './modals';
-import type { CardioEntry, Exercise } from './types';
+import type { CardioEntry, Exercise, Unit } from './types';
 import type { State } from './store';
 import { AUTH, codeOf } from './providers';
 import { NO_ANSWER } from './report';
 import { act } from './act';
-import { newItem } from './display';
+import { isDayLabel, machineLabels, newItem } from './display';
 import { closeModal, confirmBox, openModal, render, renderModal } from './page';
 import { toast } from './toast';
 import { parkSettle } from './park';
 import { fitTargets } from './targets';
 import type { Tap } from './workstate';
-import { named } from './machines';
+import { pickName } from './machines';
 
 declare global {
   interface Window {
@@ -284,6 +284,8 @@ interface BuiltSet {
   rir: number | null | undefined;
   warm: boolean;
   drop: boolean;
+  /** The unit the file wrote its load in. */
+  u?: Unit | undefined;
 }
 /** A session as an import would save it (normalize completes it). */
 interface BuiltSession {
@@ -311,6 +313,8 @@ interface ImpBuilt {
   odd: string[];
   timedOff: number;
   newEx: NewExercise[];
+  /** The names of the machines the import adds, by lift and the machine's key (fileMachines). */
+  machineNames: Record<string, Record<string, string>>;
 }
 /** The exercises the preview makes, by the file's name for each: one for every name picked as new, guessed from its name. */
 function newExercises(m: ImpPreviewModal): Record<string, NewExercise> {
@@ -344,14 +348,21 @@ function newExercises(m: ImpPreviewModal): Record<string, NewExercise> {
 
 /** The built sessions not in the log yet, and how many were (below). */
 function notInLog(out: BuiltSession[]): { fresh: BuiltSession[]; dup: number } {
-  /* Date, lifts and reps, not loads: the same file imported again with
-     the other unit choice converted every load differently and added every
-     session a second time. */
-  const fp = (ss: { date: string; ex: { exId: string; sets: { r: number | null }[] }[] }) =>
+  /* Date, lifts, reps and each load as written, in its own unit: the same file imported again with the other unit
+     choice has the same numbers in another unit, so it is the same sessions, and not added a second time; read in
+     kilograms every load differed, so loads were left out, and a second session on one day with the same lifts and reps
+     and other loads was taken for the first and skipped. */
+  // A load as written: how many of its unit's 0.05 steps it is.
+  const asWritten = (q: { w: number; u?: Unit | undefined }): number =>
+    Math.round((q.u === 'lb' ? q.w / LB : q.w) / TYPED_STEP);
+  const fp = (ss: {
+    date: string;
+    ex: { exId: string; sets: { r: number | null; w: number; u?: Unit | undefined }[] }[];
+  }): string =>
     ss.date +
     '|' +
     ss.ex
-      .map(b => b.exId + ':' + b.sets.map(q => q.r).join(','))
+      .map(b => b.exId + ':' + b.sets.map(q => `${q.r}@${asWritten(q)}`).join(','))
       .sort()
       .join(';');
   const have = new Set(state.sessions.map(fp));
@@ -417,6 +428,7 @@ export function impBuild(m: ImpPreviewModal): ImpBuilt {
   const odd: string[] = [];
   let timedOff = 0;
   const newEx = newExercises(m);
+  const labelled = new Map<BuiltSession['ex'][number], string>();
   for (const x of m.res.sessions) {
     const date = x.date || m.date;
     const ex: BuiltSession['ex'] = [];
@@ -429,7 +441,7 @@ export function impBuild(m: ImpPreviewModal): ImpBuilt {
       // A set timed in seconds on a lift that counts reps would turn seconds into reps: left out and counted.
       if (!it.setsText && !exo.timed && fileSets.some(q => q.timed)) timedOff += fileSets.filter(q => q.timed).length;
       const sets: BuiltSet[] | null = it.setsText
-        ? impTextSets(it, exo, conv)
+        ? impTextSets(it, exo, conv, m.unit)
         : fileSets
             .filter(q => exo.timed || !q.timed)
             .map(s => ({
@@ -437,7 +449,9 @@ export function impBuild(m: ImpPreviewModal): ImpBuilt {
               r: s.r,
               rir: s.rir,
               warm: s.warm,
-              drop: s.drop && !s.warm
+              drop: s.drop && !s.warm,
+              // The row's unit, else the file's: the unit the load was written in.
+              u: s.u ?? m.unit
             }));
       if (!sets || !sets.length) {
         if (!bad.includes(it.name)) bad.push(it.name);
@@ -454,21 +468,19 @@ export function impBuild(m: ImpPreviewModal): ImpBuilt {
       if (!exo.bw && !exo.timed)
         for (const q of sets)
           if ((q.w > 0 && q.w < ODD.kg) || q.r > ODD.reps) {
-            odd.push(`${exo.name} ${fmtWOf(exo, q.w)} ${liftU(exo)} x ${q.r}${x.date ? `, ${fmtDate(x.date)}` : ''}`);
+            // As read from the file, in the unit it was read in (saidLoad).
+            odd.push(`${exo.name} ${saidLoad(exo, q.w, q.u)} x ${q.r}${x.date ? `, ${fmtDate(x.date)}` : ''}`);
             break;
           }
       // A lift's sets across rows of the same exercise stay together.
       const prev = ex.find(b => b.exId === exo.id);
       if (prev) prev.sets.push(...sets);
-      // The machine the app's own file names keeps the lift's sessions on each machine together (390 C).
-      else
-        ex.push({
-          exId: exo.id,
-          note: it.note || '',
-          rr: null,
-          sets,
-          ...named(it.machine && onMachines(exo) ? fixId(it.machine) : null)
-        });
+      else {
+        const b = { exId: exo.id, note: it.note || '', rr: null, sets };
+        ex.push(b);
+        // The machine the app's own file names, put on each session below (fileMachines), for a lift saved as a machine lift.
+        if (it.machine && onMachines({ equip: equipAsSaved(exo) })) labelled.set(b, it.machine);
+      }
       if (it.ss) grp[exo.id] = it.ss;
     }
     if (ex.length && Object.keys(grp).length) ssOf[sid] = grp;
@@ -490,6 +502,7 @@ export function impBuild(m: ImpPreviewModal): ImpBuilt {
       });
   }
   const { fresh, dup: dupSessions } = notInLog(out);
+  const machineNames = fileMachines(fresh, labelled);
   const { cardio, cardioNoTime, dup: dupCardio } = fileCardio(m);
   const dup = dupSessions + dupCardio;
   return {
@@ -501,8 +514,41 @@ export function impBuild(m: ImpPreviewModal): ImpBuilt {
     bad,
     odd,
     timedOff,
-    newEx: Object.values(newEx).filter(e => fresh.some(ss => ss.ex.some(b => b.exId === e.id)))
+    newEx: Object.values(newEx).filter(e => fresh.some(ss => ss.ex.some(b => b.exId === e.id))),
+    machineNames
   };
+}
+
+/* The machines the app's own file names (its machine column, actsapp.ts exportCSV), each the same on every row of it: a
+   label that is one of the lift's machines here (machineLabels: its name, or the day a machine with none was first used)
+   is that machine, so a file read into a log whose lift has machines of those names joins them; any other is a machine
+   of its own, keyed by the id of its first session in the file, as a machine added in a workout is by the session that
+   began it, and named by the label unless that is a day (a machine with no name, as the file writes one). */
+/** Puts each labelled exercise of `out` on its machine (above); the names of the machines added, by lift and key. */
+function fileMachines(
+  out: BuiltSession[],
+  labelled: ReadonlyMap<BuiltSession['ex'][number], string>
+): Record<string, Record<string, string>> {
+  const names: Record<string, Record<string, string>> = {};
+  const keys = new Map<string, Map<string, string>>();
+  for (const ss of [...out].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)))
+    for (const b of ss.ex) {
+      const label = labelled.get(b);
+      if (!label) continue;
+      let byLabel = keys.get(b.exId);
+      if (!byLabel) {
+        byLabel = new Map([...machineLabels(b.exId)].map(([k, l]) => [l, k]));
+        keys.set(b.exId, byLabel);
+      }
+      let key = byLabel.get(label);
+      if (!key) {
+        key = ss.id;
+        byLabel.set(label, key);
+        if (!isDayLabel(label)) names[b.exId] = { ...(names[b.exId] || {}), [key]: label };
+      }
+      pickName(b, key);
+    }
+  return names;
 }
 
 /** How a routine is made from an import: the sessions that make a day, the days at most, the share of sessions the days must hold, the latest sessions a day's lifts are read from, the most sets an item takes, the highest RIR, the longest cycle in days, and the most rounds a week the days come round. */
@@ -962,7 +1008,10 @@ export const IMPORT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         setState(
           normalize({
             ...state,
-            exercises: [...state.exercises, ...b.newEx],
+            // The machines the file adds, named as it names them (fileMachines).
+            exercises: [...state.exercises, ...b.newEx].map(e =>
+              b.machineNames[e.id] ? { ...e, machines: { ...(e.machines || {}), ...b.machineNames[e.id] } } : e
+            ),
             sessions: [...state.sessions, ...b.sessions],
             cardio: [...state.cardio, ...b.cardio],
             settings: { ...state.settings, onboarded: true }

@@ -17,7 +17,7 @@ import { isWork } from './formulas';
 import { TRASH_DAYS, TRASH_MAX, sessCmp } from './records';
 import { CHK_Q, chkWord } from './coach';
 import { addDays, today, weekStart, WEEK_DAYS } from './util';
-import { appU, EX, exName, IDX, loadLabel, sessionWords, toDApp } from './live';
+import { appU, EX, exName, IDX, listLabel, sessionWords, toDApp } from './live';
 import { loadNote } from './loads';
 import { normalize } from './normalize';
 import { HIST_PAGE, setState, state, ui } from './store';
@@ -30,6 +30,7 @@ import type { ExerciseLike, Pr } from './model';
 import { UNDO_DAYS } from './storage';
 import { confirmBox, render, rerenderKeepScroll } from './page';
 import { toast } from './toast';
+import { unitOnGrid } from './units';
 
 /** The cardio entries History lists; older ones are in the CSV export. */
 const CARDIO_SHOWN = 40;
@@ -53,10 +54,11 @@ function askedLine(ex: ExerciseLike, sets: readonly LoggedSet[]): TemplateResult
       ? []
       : [
           x.sg[0] != null && x.sg[1] != null
-            ? setShort(ex, x.sg[0], x.sg[1])
+            ? // The load the app asked, made on its equipment's steps in that equipment's unit (unitOnGrid).
+              setShort(ex, { w: x.sg[0], r: x.sg[1], u: unitOnGrid(x.sg[0]) })
             : x.sg[1] != null
               ? `${x.sg[1]} ${ex.timed ? 's' : 'reps'}`
-              : loadLabel(ex, x.sg[0] ?? 0)
+              : listLabel(ex, x.sg[0] ?? 0, unitOnGrid(x.sg[0] ?? 0))
         ]
   );
   return said.length ? html`<br /><span class="muted">Asked: ${said.join(', ')}</span>` : nothing;

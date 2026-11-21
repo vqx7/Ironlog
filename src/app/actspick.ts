@@ -5,8 +5,8 @@
    (inProgress). */
 
 import { uid, numIn } from './util';
-import { BWF, MK, bwShare } from './library';
-import { dayLabel, fixSupersets, partOf, trainOn } from './routines';
+import { BWF, LIB_EQUIP_BEFORE, MK, bwShare } from './library';
+import { dayLabel, fixSupersets, partOf, stepOnPlans, trainOn } from './routines';
 import type { DraftBlock, Exercise, Plan, Routine } from './types';
 import { joinRows, joinable } from './session';
 import { platesMode } from './gym';
@@ -79,9 +79,9 @@ export function swapPlan<P extends Partial<Plan>>(
 /** An exercise's step, heaviest load and bar as the editor shows them, each set in the other unit read as its match. */
 function shownNumbers(x: Exercise): { inc: string; max: string; bar: string } {
   return {
-    inc: x.inc != null ? fmtWOf(x, stepReadOf(x, x.inc)) : '',
+    inc: x.inc != null ? fmtWOf(x, stepReadOf(x, x.inc, x.incU)) : '',
     max: x.maxLoad != null ? fmtWOf(x, liftMax(x) ?? 0) : '',
-    bar: x.barKg != null ? fmtWOf(x, barReadOf(x, x.barKg)) : ''
+    bar: x.barKg != null ? fmtWOf(x, barReadOf(x, x.barKg, x.barU)) : ''
   };
 }
 
@@ -574,25 +574,42 @@ export const PICK_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     // match on this unit's equipment, and saved as that it would move on every switch of units (100 kg, 220 lb, 97.5 kg).
     const was = m.isNew ? undefined : state.exercises.find(x => x.id === e.id);
     const sh = was ? shownNumbers(was) : null;
+    // A number entered is kept with the unit its field shows it in, the lift's; one left as shown keeps its own.
+    const u = liftU(e);
+    // A step entered goes on the lift's plan items too (stepOnPlans), once the exercise is saved below.
+    let stepEntered = false;
     if (sh && e.incRaw === sh.inc) delete e.incRaw;
     else {
+      stepEntered = true;
       const n = numIn(e.incRaw);
-      e.inc = n != null && n > 0 ? typedBoundOf(e, n, LIMITS.step) : null;
+      // 0 is a fixed load (routines.ts stepOnPlans), as the other two step editors take it.
+      e.inc = n != null && n >= 0 ? typedBoundOf(e, n, LIMITS.step) : null;
+      if (e.inc != null && e.inc > 0) e.incU = u;
+      else delete e.incU;
       delete e.incRaw;
     }
     if (sh && e.maxRaw === sh.max) delete e.maxRaw;
     else {
       const n = numIn(e.maxRaw);
-      if (n != null && n > 0)
-        e.maxLoad = Number(fromDOf(e, Math.min(n, liftU(e) === 'lb' ? MAX_LOAD.lb : MAX_LOAD.kg)));
-      else delete e.maxLoad;
+      if (n != null && n > 0) {
+        e.maxLoad = Number(fromDOf(e, Math.min(n, u === 'lb' ? MAX_LOAD.lb : MAX_LOAD.kg)));
+        e.maxLoadU = u;
+      } else {
+        delete e.maxLoad;
+        delete e.maxLoadU;
+      }
       delete e.maxRaw;
     }
     if (sh && e.barRaw === sh.bar && platesMode(e) === 'bar') delete e.barRaw;
     else {
       const n = numIn(e.barRaw);
-      if (n != null && n > 0 && platesMode(e) === 'bar') e.barKg = typedBoundOf(e, n, LIMITS.barKg);
-      else delete e.barKg;
+      if (n != null && n > 0 && platesMode(e) === 'bar') {
+        e.barKg = typedBoundOf(e, n, LIMITS.barKg);
+        e.barU = u;
+      } else {
+        delete e.barKg;
+        delete e.barU;
+      }
       delete e.barRaw;
     }
     {
@@ -610,6 +627,9 @@ export const PICK_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const ld = e.load;
     if ((ld === 'each' || ld === 'total' || ld === 'side' || ld === 'stack') && !e.bw) e.load = ld;
     else delete e.load;
+    // The equipment a lift the library refiled had, picked here, is the lifter's (normalize.ts reads it unmarked as the library's now).
+    if (!e.custom && (LIB_EQUIP_BEFORE[e.id] || []).includes(e.equip)) e.equipOwn = true;
+    else delete e.equipOwn;
     // Sets already logged with machine help are below 0; the exercise must stay assisted to read them right.
     if (!m.isNew && !(e.bw && e.assist) && hasSets(e.id, w => w < 0)) {
       toast('This exercise has sets logged with machine help, so it stays assisted.');
@@ -631,6 +651,7 @@ export const PICK_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         const i = state.exercises.findIndex(x => x.id === e.id);
         if (i >= 0) state.exercises[i] = saved;
       }
+      if (stepEntered) stepOnPlans(state.routines, saved.id, saved.inc ?? null);
     });
     // After the change, so the session's blocks read the exercise as saved.
     if (!m.isNew) refreshEx(e.id);

@@ -64,11 +64,14 @@ export function fitTargets(
   const D: Record<string, readonly number[]> = {};
   for (const m of MK) D[m] = defBand(m);
   const foc = new Set(prof().focus || []);
+  // The targets a fit to routine r gives, by the one rule a fit is made by (fitFloors), to tell one already made.
   const fitOf = (r: Routine | NewRoutine): Record<string, readonly number[]> => {
-    const p = plannedSets(r);
+    const fit = fitFloors(r);
     const o: Record<string, readonly number[]> = {};
-    for (const m of MK)
-      o[m] = TRACK_ONLY.has(m) || foc.has(m) ? D[m] : [Math.min(D[m][0], Math.floor(p[m] || 0)), D[m][1]];
+    for (const m of MK) {
+      const lo = fit[m];
+      o[m] = lo != null && !foc.has(m) ? [lo, D[m][1]] : D[m];
+    }
     return o;
   };
   if (!same(D) && ![starterRoutine(), defaultRoutine()].some(r => same(fitOf(r)))) return false;

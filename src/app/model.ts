@@ -4,8 +4,8 @@
    else: a test hands it a log and a date, and the app hands it the one live
    model (live.ts). */
 
-import type { EngineState, Exercise, Gym, Profile, Routine, Session, Target } from './types';
-import { weekStart } from './util';
+import type { EngineState, Exercise, Gym, Profile, Routine, Session, Target, Unit } from './types';
+import { EPS_SAME, weekStart } from './util';
 import { MK, exJoints } from './library';
 import { sessCmp } from './records';
 
@@ -20,6 +20,14 @@ export interface ExPoint {
   w: number;
   rir: number | null;
   rq: number | null;
+  /** The unit `w` was entered in, as stored with the set (null when none is). */
+  u: Unit | null;
+}
+
+/** The unit the set at load `w` (kg) among `pts` was entered in, as stored with it: null when none of them is at that load or stores one. */
+export function unitAt(pts: readonly Pick<ExPoint, 'w' | 'u'>[], w: number): Unit | null {
+  for (const p of pts) if (p.u && Math.abs(p.w - w) < EPS_SAME) return p.u;
+  return null;
 }
 
 /** A missed set as the Last line lists it: read as a working set is,
@@ -123,6 +131,8 @@ export function machinesOf<X extends { mk: string }>(xs: readonly X[]): X[][] {
     at and where the number went from and to. */
 export interface Drift {
   w: number;
+  /** The unit `w` was entered in, as stored with its sets (unitAt). */
+  u: Unit | null;
   from: number;
   to: number;
 }
@@ -172,6 +182,8 @@ interface PrBase {
   sid: string;
   exId: string;
   big: boolean;
+  /** A set of the session heavier than any before it that is not the PR counted, said in the recap as Heaviest yet. */
+  heavy?: { w: number; u: Unit | null; r: number };
 }
 
 /** A PR (idxPRs): a heavier set than any before, a best estimate, or more
@@ -180,15 +192,18 @@ export type Pr =
   | (PrBase & {
       type: 'Weight PR';
       w: number;
+      /** The unit `w` was entered in, and the one `prevW` was. */
+      u: Unit | null;
       r: number;
       prevW: number;
+      prevU: Unit | null;
       value: number | null;
       prev: number | null;
       prevAll: number | null;
       bb: number | null;
     })
   | (PrBase & { type: 'e1RM'; value: number | null; prev: number | null; prevAll: number | null; bb: number | null })
-  | (PrBase & { type: 'Rep PR'; w: number; r: number; prevR: number });
+  | (PrBase & { type: 'Rep PR'; w: number; u: Unit | null; r: number; prevR: number });
 
 /** A muscle's strength reading from its lifts' trends (idxScores). */
 export interface Score {
@@ -339,6 +354,8 @@ interface Caches {
   _pace: number | null;
   /** The loads Your gym's plates make on a bar (gym.ts, plateGridIn), by plates, unit and bar. */
   _plates: Map<string, readonly number[]> | null;
+  /** Each lift's logged loads and the unit each was entered in (analytics.ts loadUnitIn), by lift. */
+  _units: Map<string, Map<number, Unit | null>> | null;
 }
 
 /** The model: the log, the date the engine reads as today, the caches, and, for one lift's numbers, the unit they are worked out in. */
@@ -361,7 +378,8 @@ export function freshCaches(): Caches {
     _eff: null,
     _bwRef: undefined,
     _pace: null,
-    _plates: null
+    _plates: null,
+    _units: null
   };
 }
 
@@ -454,11 +472,12 @@ export function EXIn(M: Model, id: string): ExerciseLike {
     M.c.EXMAP = Object.create(null) as Record<string, Exercise>;
     for (const e of M.s.exercises) M.c.EXMAP[e.id] = e;
   }
+  // A lift the log no longer holds (deleted on a build that removed it, or on another phone) counts to no muscle.
   return (
     M.c.EXMAP[id] || {
       id,
       name: 'Deleted exercise',
-      primary: 'chest',
+      primary: '',
       secondary: [],
       equip: 'other',
       bw: false,
@@ -483,6 +502,7 @@ export function invalidateIn(M: Model): void {
   M.c._eff = null;
   M.c._bwRef = undefined;
   M.c._pace = null;
+  M.c._units = null;
   M.c._plates = null;
 }
 

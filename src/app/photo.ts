@@ -32,11 +32,16 @@ import { acct, cloud } from './store';
 const PHOTO_EDGE = 1024;
 /** The JPEG quality the photo is kept at. */
 const PHOTO_QUALITY = 0.85;
+/** The sides older builds kept the photo at, 256 and then 512, before PHOTO_EDGE. Kept so, it is soft opened large,
+    and picked again it is kept at PHOTO_EDGE. A photo smaller than PHOTO_EDGE at another side was picked smaller
+    than that, and picking it again keeps it the same. */
+const OLD_EDGES: readonly number[] = [256, 512];
 /** What a kept photo must look like: a JPEG data address and nothing else. */
 const PHOTO_SHAPE = /^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/;
 
 /** Where the phone's copy of the photo stands against the account: the account's id (empty when the change was made
-    before the sync knew the account), when the copy was last changed (ms, the changing phone's clock), and whether
+    before the sync knew the account), when the copy was last changed (ms, the changing phone's clock, or just after the
+    change it replaced: changedHere), and whether
     that change is still to be sent. */
 interface PhotoNote {
   uid: string;
@@ -52,6 +57,17 @@ export function photoOf(v: unknown): string | null {
 /** The photo the phone holds, signed in or not: what the sync sends and compares. */
 export function photoHeld(): string | null {
   return photoOf(prefGet(PHOTO_KEY));
+}
+
+/** Whether the photo at `url` is a square at a side an older build kept it at (OLD_EDGES), so that picked again it
+    would be kept sharper; false when it cannot be read as an image. */
+export function photoKeptSmall(url: string): Promise<boolean> {
+  return new Promise(res => {
+    const im = new Image();
+    im.onload = () => res(im.naturalWidth === im.naturalHeight && OLD_EDGES.includes(im.naturalWidth));
+    im.onerror = () => res(false);
+    im.src = url;
+  });
 }
 
 /** The profile photo to show, as an address an image can show, or null: none without an account (V, 2026-11-08). */
@@ -86,9 +102,13 @@ function noteSet(n: PhotoNote): void {
   prefSet(PHOTO_SYNC, JSON.stringify(n));
 }
 
-/** A change made on this phone, to be sent: the account it belongs to and when it was made. */
+/* The later change wins between phones, by these times; a phone whose clock runs behind would write an earlier time for
+   a later change. So a change made here is timed after the one the phone holds, taken in or made here, whatever its
+   clock says. */
+/** A change made on this phone, to be sent: the account it belongs to and when it was made (above). */
 function changedHere(): void {
-  noteSet({ uid: cloud.uid || '', et: Date.now(), up: true });
+  const n = photoNote();
+  noteSet({ uid: cloud.uid || '', et: Math.max(Date.now(), n ? n.et + 1 : 0), up: true });
 }
 
 /** Whether a change to the photo made here has not reached the signed-in account yet (sync.ts, hasUnsent). */

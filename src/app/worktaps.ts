@@ -23,13 +23,15 @@ import {
   liftU,
   lighterLoad,
   lightZero,
-  loadLabel,
   oddLoad,
+  saidLoad,
   stepLoad,
   toDOf
 } from './live';
 import { state, ui } from './store';
-import { effW, greyW, blockDone, newRow, editFp, markedNew } from './session';
+import { effW, effU, greyW, greyU, blockDone, newRow, editFp, madeLoad, markedNew, setLoad } from './session';
+import { onUnitSteps, unitOnGrid } from './units';
+import type { Unit } from './types';
 import type { DraftBlock } from './types';
 
 import { setShort } from './display';
@@ -77,7 +79,8 @@ import {
   restNext,
   CAL_OFFER,
   doneChanged,
-  onLiftDraw
+  onLiftDraw,
+  prOfBatch
 } from './worksets';
 import { BACK_SAID, finish, finishNow } from './workfinish';
 import { LIMITS, EFFORT_TOP } from './records';
@@ -140,15 +143,16 @@ function setRemove(t: Tap): void {
     n = b.sets.slice(0, i + 1).filter(y => !y.warm && !y.drop).length;
   const what = `${x.warm ? 'Warm-up' : x.drop ? 'Drop set' : 'Set ' + n}`;
   // The load as the row shows it: typed, else the grey load the set would take, never 0.
-  const shown = x.w ?? effW(b, i);
+  const shown = x.w ?? effW(b, i),
+    shownU = x.w != null ? (x.u ?? null) : effU(b, i);
   const val =
     +(x.r ?? 0) > 0
       ? // No load anywhere on a loaded lift: the reps alone, never a 0 the row does not show.
         shown == null && !ex.bw && !ex.timed
         ? `${x.r} rep${Number(x.r) === 1 ? '' : 's'}`
-        : setShort(ex, shown ?? 0, x.r)
+        : setShort(ex, { w: shown ?? 0, r: x.r, u: shownU })
       : x.w != null
-        ? loadLabel(ex, x.w) + (ex.bw ? '' : ' ' + liftU(ex))
+        ? saidLoad(ex, x.w, x.u)
         : '';
   const at = i;
   confirmBox(
@@ -348,7 +352,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         if (!was || !b) return;
         if (s.r != null && +s.r === greyR(b, si)) s.r = null;
         const gw = greyW(b, si);
-        if (!fillLoads() && s.w != null && gw != null && Math.abs(s.w - gw) < EPS) s.w = null;
+        if (!fillLoads() && s.w != null && gw != null && Math.abs(s.w - gw) < EPS) setLoad(s, null, null);
         const o = ordBack.get(b);
         if (o && !b.sets.some(x => x.done) && Date.now() - o.t < REORDER_BACK_MS) {
           ordBack.delete(b);
@@ -410,7 +414,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         const row = newRow();
         b.sets.push(row);
         if (ld >= 0) assessSet(bi, ld);
-        if (fillLoads()) row.w = effW(b, b.sets.length - 1);
+        if (fillLoads()) setLoad(row, effW(b, b.sets.length - 1), effU(b, b.sets.length - 1));
       },
       { inProgress: true }
     );
@@ -430,15 +434,27 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const dir = t.dataset.d === '-1' ? -1 : 1;
     const f = t.dataset.sf === 'w' ? 'w' : 'r';
     let w: number | null = null,
+      wu: Unit | null = null,
       r: number | null = null;
     if (f === 'w') {
       if (ex.assist) return;
       const to = stepLoad(ex, b.plan, effW(b, si) ?? 0, dir);
-      /* As the number typed in the lift's unit, to the hundredth a field takes: the field's own text is rounded to a
-         tenth, and stored from it a 1.25 kg step would go 41.3, 42.6, 43.9, off every load the lift has. */
-      const v = to == null ? null : toDOf(ex, to);
-      if (v == null) return;
-      w = Math.min(fromDOf(ex, Math.max(Math.round(v * HUNDREDTHS) / HUNDREDTHS, 0)) ?? 0, LOAD_MAX);
+      if (to == null) return;
+      /* The next load on the lift's list is a weight of its equipment, made on that equipment's steps in its unit: it
+         is stored as that number typed in that unit would be, with that unit, so a 25 lb dumbbell on a lift shown in kg
+         is 25 lb, never 11.34 kg read back as neither. One on no unit's steps is stored as the number typed in the
+         lift's unit, to the hundredth a field takes (the field shows such a number to a tenth, and stored from that
+         text a 1.25 kg step would go 41.3, 42.6, 43.9, off every load the lift has). */
+      const ru = unitOnGrid(to);
+      if (ru) {
+        w = Math.min(onUnitSteps(Math.max(to, 0), ru), LOAD_MAX);
+        wu = ru;
+      } else {
+        const v = toDOf(ex, to);
+        if (v == null) return;
+        w = Math.min(fromDOf(ex, Math.max(Math.round(v * HUNDREDTHS) / HUNDREDTHS, 0)) ?? 0, LOAD_MAX);
+        wu = liftU(ex);
+      }
     } else {
       const was = +(s.r ?? greyR(b, si) ?? 0) || 0;
       r = Math.min(Math.max(was + dir * (ex.timed ? STEP_SECONDS : 1), 0), LIMITS.reps);
@@ -448,7 +464,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     act(
       () => {
         if (w != null) {
-          s.w = w;
+          setLoad(s, w, wu);
           carried.delete(s);
         } else s.r = r;
         if (s.done && doneChanged(bi, si, f)) return;
@@ -496,7 +512,10 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     }
     act(
       () => {
-        b.sets.splice(at, 0, newRow({ w, warm: true }));
+        const row = newRow({ warm: true });
+        // A load the app made, with the unit it was made in.
+        madeLoad(row, w);
+        b.sets.splice(at, 0, row);
         adjSync(b);
       },
       { inProgress: true }
@@ -563,6 +582,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         s,
         si,
         w: s.w ?? greyW(b, si),
+        u: s.w != null ? (s.u ?? null) : greyU(b, si),
         r: isMissed(s) || +(s.r ?? 0) > 0 ? s.r : Math.round(greyR(b, si) ?? 0)
       }));
       act(
@@ -570,7 +590,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
           // What each was asked as Done was tapped, before a set's adjustment changes the ones after it (391).
           for (const x of shown) noteAsked(d, b, x.si);
           for (const x of shown) {
-            x.s.w = x.w;
+            setLoad(x.s, x.w, x.u);
             x.s.r = x.r;
             x.s.done = true;
             assessSet(bi, x.si);
@@ -581,6 +601,11 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       );
       after();
       toast(`${sets} logged as shown`, true);
+      // Its PR said as a tick says it, joined to the message (prOfBatch).
+      prOfBatch(
+        bi,
+        shown.map(x => x.s)
+      );
     };
     if (blocked)
       confirmBox(
@@ -622,7 +647,10 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     while (at + 1 < b.sets.length && b.sets[at + 1].drop) at++;
     act(
       () => {
-        b.sets.splice(at + 1, 0, newRow({ w, drop: true }));
+        const row = newRow({ drop: true });
+        // A load the app made, with the unit it was made in.
+        madeLoad(row, w);
+        b.sets.splice(at + 1, 0, row);
       },
       { inProgress: true }
     );
@@ -817,7 +845,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (!d) return;
     act(
       () => {
-        (d.cardio || (d.cardio = [])).push(cleanDraftCardio({ id: uid(), kind: 'walk', when: t.dataset.when }));
+        (d.cardio || (d.cardio = [])).push(cleanDraftCardio({ id: uid(), kind: 'walk', when: t.dataset.when }, d.date));
       },
       { inProgress: true }
     );

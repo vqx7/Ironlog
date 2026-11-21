@@ -3,6 +3,7 @@
    Settings, the other screens and the account flow. */
 
 import { APP_INSTALLED, prefGet } from './storage';
+import { INSTALLED_MODES } from './config';
 
 declare global {
   interface Window {
@@ -23,13 +24,11 @@ declare global {
    android-app:// referrer, which Chrome on Android gives any page another app opens (a link in Gmail), so a tab
    opened from an email would read as the app and sign itself in. Safari has its own flag. Get the app has one more
    reason to stay away (canInstallHere, below): this browser has installed the app (appinstalled, main.ts). */
-/** The display modes only an installed copy of Ironlog opens in. */
-const INSTALLED_MODES = ['standalone', 'minimal-ui', 'window-controls-overlay'] as const;
-/** Running as an installed app (home screen), not in a browser tab or inside Claude. */
+/** Running as an installed app (home screen), not in a browser tab or inside Claude (config.ts INSTALLED_MODES, the account script's too). */
 export function isStandalone(): boolean {
   try {
     if (navigator.standalone === true) return true;
-    return INSTALLED_MODES.some(m => window.matchMedia(`(display-mode: ${m})`).matches);
+    return INSTALLED_MODES.split(' ').some(m => window.matchMedia(`(display-mode: ${m})`).matches);
   } catch (e) {
     // A browser without matchMedia: read as a tab.
     return false;

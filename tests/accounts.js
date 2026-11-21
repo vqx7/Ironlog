@@ -151,6 +151,13 @@ fs.cpSync(DIST, tmp, { recursive: true });
   ok(/8 or more/.test((await sheet(A)).err) && !fake.users.size, 'a short password is refused before anything is sent');
   await fill(A, 'signup', 'not-an-email', 'longenough1');
   ok(/email address/.test((await sheet(A)).err), 'a bad email is refused');
+  // A server whose password rule is stricter than the app's: its refusal is said in the app's words, never the server's
+  // own sentence (the full review's P-1).
+  fake.setMinPassword(20);
+  await fill(A, 'signup', 'strict@example.com', 'twelve chars 1');
+  const strict = (await sheet(A)).err || '';
+  fake.setMinPassword(6);
+  ok(strict && !/should be at least|20 characters/i.test(strict) && /password/i.test(strict) && !fake.users.has('strict@example.com'), 'a password the server finds too weak: the app says so in its own words, not the server\'s sentence', strict);
   await fill(A, 'signup', 'V@Example.com ', 'correct horse 1');
   let sh = await sheet(A);
   ok(sh && sh.mode === 'wait' && /confirmation email to v@example\.com/.test(sh.text) && /signs you in by itself/.test(sh.text), 'sign-up asks to confirm the email, and says the app signs in by itself', sh);

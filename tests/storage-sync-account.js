@@ -602,6 +602,33 @@ async function from_r56_1b() {
       await P.ctx.close();
     }
 
+    // ---- L3-3 (the full review of 2026-11-17), a log kept aside joined with the phone's: every log holds a record for every
+    // library lift, so both hold bench, and the kept-aside log's whole record won, dropping the bench settings set only in
+    // the phone's log. Joined field by field, as a first sign-in joins two logs: J's log, kept aside, has bench in lb with
+    // its own step, heaviest load and bar; the phone's log (from K) set only bench's note. "Add it to this account" keeps
+    // both on the phone and in J. Fails on 2.71 (the note lost).
+    {
+      fake.addUser('j@example.com', 'correct horse 9'); fake.addUser('k@example.com', 'correct horse 9');
+      const P = await device();
+      await P.ev(s => { const L = window.__ironlog; L.state.sessions.push(s); Object.assign(L.state.exercises.find(e => e.id === 'bench'), { unit: 'lb', inc: 1.25, maxLoad: 140, barKg: 15 }); L.state = L.normalize(L.state); L.saveNow(); }, own('own7'));
+      await P.signIn('j@example.com');
+      await P.signOutKeep();
+      await P.signIn('k@example.com', true);
+      await P.page.click('#modal [data-act="mAlt"]');
+      await P.page.waitForFunction(() => { const c = window.__ironlog.cloudState(); return c.on && c.status === 'synced'; }, null, { timeout: 15000 }).catch(() => {}); await wait(1200);
+      await P.ev(s => { const L = window.__ironlog; L.state.sessions.push(s); L.state.exercises.find(e => e.id === 'bench').note = 'Grip at the rings'; L.state = L.normalize(L.state); L.saveNow(); }, { ...own('own8'), date: '2026-10-02' });
+      await P.signOutKeep();
+      ok((await P.cloud()).aside.join() === '1', 'set up: J\'s log kept aside, the phone on a copy of K\'s log with its own session', await P.cloud());
+      await P.signIn('j@example.com', true);
+      await P.page.click('#modal [data-act="mOk"]');
+      await P.page.waitForFunction(() => { const c = window.__ironlog.cloudState(); return c.on && c.status === 'synced'; }, null, { timeout: 15000 }).catch(() => {}); await wait(1500);
+      const bench = await P.ev(() => { const e = window.__ironlog.state.exercises.find(x => x.id === 'bench'); return { unit: e.unit || null, inc: e.inc || null, maxLoad: e.maxLoad || null, barKg: e.barKg || null, note: e.note }; });
+      const core = (() => { const u = fake.users.get('j@example.com'); const r = [...fake.rows.values()].find(x => x.user_id === u.id && /\/core$/.test(x.path)); const e = r ? (JSON.parse(r.data.json).exercises || []).find(x => x.id === 'bench') : null; return e ? { unit: e.unit || null, inc: e.inc || null, maxLoad: e.maxLoad || null, barKg: e.barKg || null, note: e.note } : null; })();
+      const want = JSON.stringify({ unit: 'lb', inc: 1.25, maxLoad: 140, barKg: 15, note: 'Grip at the rings' });
+      ok(JSON.stringify(bench) === want && JSON.stringify(core) === want && (await P.cloud()).sessions.slice().sort().join() === 'own7,own8', 'Add it to this account, with J\'s log kept aside: bench keeps J\'s kg/lb, step, heaviest load and bar and the note set in the phone\'s log, on the phone and in J, and both sessions (L3-3)', { phone: bench, account: core, sessions: (await P.cloud()).sessions });
+      await P.ctx.close();
+    }
+
     // ---- The review of the fix commit (PENDING 333, its finding 1): two tabs signed in to one account, then the menu's Sign
     // out in one (the log leaves the phone, the notes are forgotten). The other tab, slow to hear it, wrote its old notes back
     // over the forgotten ones and the first tab took them from it, so the next sign-in read the empty log as every session

@@ -508,8 +508,9 @@ const run = n => !ONLY || ONLY.includes(n);
           for (const b of x.ex) {
             // A lift done twice in a session, or marked New machine or gym (which the toast reads from the workout open), is left out.
             if (x.ex.filter(c => c.exId === b.exId).length > 1 || b.nw) continue;
-            let best = null;
-            for (const t of b.sets) { if (t.warm || t.drop || !(t.r > 0)) continue; const k = L.livePR(b.exId, { ...t, done: true }, x.date); if (k && (!best || rank[k] > rank[best])) best = k; }
+            // Each set as the gym says it, after the session's earlier working sets (2.75: ruling 17 with them included).
+            let best = null; const before = [];
+            for (const t of b.sets) { if (t.warm || t.drop || !(t.r > 0)) continue; const k = L.livePR(b.exId, { ...t, done: true }, x.date, before); before.push({ ...t, done: true }); if (k && (!best || rank[k] > rank[best])) best = k; }
             const want = byS[x.id + '|' + b.exId] || null, norm = k => (k === 'Time PR' ? 'Rep PR' : k);
             n++; if (norm(want) === norm(best)) same++; else if (off.length < 3) off.push({ date: x.date, ex: b.exId, list: want, toast: best, sets: b.sets.map(t => [t.w, t.r, t.rir, t.warm ? 'w' : t.drop ? 'd' : '']) });
           }

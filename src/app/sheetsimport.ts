@@ -139,7 +139,7 @@ function previewStep(m: ImpPreviewModal): TemplateResult {
                   const known = EX(e.exId);
                   const exo =
                     known.id === e.exId && !known.archived ? known : b.newEx.find(n => n.id === e.exId) || known;
-                  return html`<p class="small muted u-m0">${exo.name}: ${e.sets.map(q => (q.warm ? 'W ' : q.drop ? 'D ' : '') + setShort(exo, q.w, q.r)).join(', ')}</p>`;
+                  return html`<p class="small muted u-m0">${exo.name}: ${e.sets.map(q => (q.warm ? 'W ' : q.drop ? 'D ' : '') + setShort(exo, { w: q.w, r: q.r, u: q.u })).join(', ')}</p>`;
                 }
               )}`
           )}${b.sessions.length > SHOWN.sessions ? html`<p class="small muted">and ${b.sessions.length - SHOWN.sessions} more</p>` : nothing}</details>`

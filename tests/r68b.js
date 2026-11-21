@@ -245,7 +245,7 @@ async function finish(page) {
       const L = window.__ironlog;
       const it = (uid, exId, extra) => ({ uid, exId, sets: 4, repMin: 8, repMax: 12, rir: 2, rest: 90, inc: 2.5, ss: null, ...(extra || {}) });
       const txt = p => String(p).replace(/<[^>]+>/g, '').trim();
-      const two = { id: 'D1', name: 'Chest', rest: false, items: [it('a', 'bench'), it('b', 'inclineBench'), it('c', 'cableFly', { pm: true }), it('d', 'machPress', { pm: true })] };
+      const two = { id: 'D1', name: 'Chest', rest: false, items: [it('a', 'bench'), it('b', 'incBench'), it('c', 'cableFly', { pm: true }), it('d', 'machPress', { pm: true })] };
       const one = { ...two, items: two.items.map(i => ({ ...i, pm: undefined })) };
       return { two: txt(L.sessionCapNote(two)), one: txt(L.sessionCapNote(one)) };
     });

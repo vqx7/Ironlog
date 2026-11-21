@@ -27,7 +27,7 @@ import { editFp0 } from './workstate';
 import type { Tap } from './workstate';
 import { draftEntered, keepLiftMachine, newBlock, rowBlank, shortPlan, takeBackMachine } from './worksets';
 import { swapPlan } from './actspick';
-import { named } from './machines';
+import { nameAsIs } from './machines';
 
 /** The most sets a lift done again in a deload records as its full count. */
 const MAX_FULL = 30;
@@ -631,12 +631,14 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
                 cal: x.cal ? { ...x.cal } : undefined,
                 rid: x.rid,
                 // What the app asked of it when it was first ticked (391): an edit keeps it.
-                ...(x.sg ? { sg: [...x.sg] } : {})
+                ...(x.sg ? { sg: [...x.sg] } : {}),
+                // The unit its load was entered in: an edit keeps it.
+                ...(x.u ? { u: x.u } : {})
               })
             ),
             ...(b.nw ? { nw: true as const } : {}),
-            // The machine it was saved on, the lifter's in the edit (machines.ts), saved as theirs.
-            ...named(b.mc),
+            // The machine it was saved on, given or kept as it was (machines.ts): a name the app kept stays so unless a machine is picked.
+            ...nameAsIs(b),
             ...(b.pics && b.pics.length ? { pics: [...b.pics] } : {})
           };
         })

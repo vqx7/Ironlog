@@ -46,9 +46,9 @@ import {
 } from './units';
 import { defPlanIn, planCreditIn, planSetsPerWeekIn, plannedSetsIn, profPlanIn, profRuleIn } from './routines';
 import { planForIn, routineUpdatesIn } from './plans';
-import { appBandIn, defBandIn, fitFloorsIn, hasTargetIn, refitIn } from './profile';
+import { appBandIn, defBandIn, fitFloorsIn, hasTargetIn, oldOwnTargetsIn, refitIn } from './profile';
 import { barKgIn, barReadOfIn, capOfIn, exBarKgIn, gymRackIn, liftMaxIn, rackTolIn } from './gym';
-import { fmtBodyIn, fmtWAppIn, fmtWOfIn, listLabelIn, loadLabelIn, typedLabelIn } from './loads';
+import { fmtBodyIn, fmtWAppIn, fmtWOfIn, listLabelIn, loadLabelIn, saidLoadIn, typedLabelIn } from './loads';
 import {
   cycleStateIn,
   dayReasonsIn,
@@ -216,6 +216,7 @@ export const hasTarget = live(hasTargetIn);
 export const defBand = live(defBandIn);
 export const fitFloors = live(fitFloorsIn);
 export const refit = live(refitIn);
+export const oldOwnTargets = live(oldOwnTargetsIn);
 export const barKg = live(barKgIn);
 export const capOf = live(capOfIn);
 export const exBarKg = live(exBarKgIn);
@@ -233,6 +234,8 @@ export const loadLabel = live(loadLabelIn);
 /** A load already lifted, as it was typed: its unit named when it is not the lift's. */
 export const typedLabel = live(typedLabelIn);
 export const listLabel = live(listLabelIn);
+/** A load already lifted in a sentence, its unit always said (saidLoadIn). */
+export const saidLoad = live(saidLoadIn);
 export const IDX = live(IDXIn);
 export const allTimeBests = live(allTimeBestsIn);
 export const sinceBack = live(sinceBackIn);

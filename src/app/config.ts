@@ -46,7 +46,7 @@ export const DARK_BG = '#08090b';
 
 /** The version people see (V, 2026-10-16): 2.0 from build r49, the minor
     number up by one for each release merged, the major number for a large change. */
-export const DISPLAY_VERSION = '2.71';
+export const DISPLAY_VERSION = '2.77';
 
 /** The build: shown beside the version in Diagnostics, problem reports and
     backups, so a report is matched to the exact code; also names the service
@@ -54,7 +54,7 @@ export const DISPLAY_VERSION = '2.71';
     Problem reports and Copy diagnostics carry it as `build` and the version
     people see as `version`; a backup keeps it under `version`, as every
     build before r49 wrote backups, so old and new backups read the same. */
-export const APP_VERSION = '2026.11.16-r117';
+export const APP_VERSION = '2026.11.19-r123';
 
 /** Version and build together, for Diagnostics and the recovery screen. */
 export const VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
@@ -139,6 +139,11 @@ export const THREE_URLS: readonly string[] =
     behind (scripts/cloud-supabase.js reads it through the build's
     placeholder). */
 export const NET_MS = 20000;
+
+/** The display modes only an installed copy of the app opens in, as one line of words: the app's (env.ts isStandalone)
+    and the account script's reading of where it runs (scripts/cloud-supabase.js, through the build's placeholder),
+    so the two never disagree on whether this copy is the installed app. */
+export const INSTALLED_MODES = 'standalone minimal-ui window-controls-overlay';
 
 /** Where a report's ticket lives: the Inbox links a report to its ticket
     only when the address starts here (a report's fields are written by
