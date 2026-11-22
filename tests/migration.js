@@ -215,6 +215,27 @@ for(const [file,label] of [['baselines/r123.html','r123'],['baselines/r122.html'
   ok(!M.errors.length&&!N.errors.length,'no console errors with units set',[...M.errors,...N.errors]);
   await M.ctx.close();
 }
+// The style (2.77.1, Sunset Coast): a save from 2.77 has none, and loads here with its settings byte for byte (so its sync
+// hash is unchanged); one with Sunset Coast keeps it, saved again, and a style no build writes is dropped.
+{
+  const P=await open('baselines/r123.html',{browser,clock:'2026-11-21T10:00:00'});
+  await P.page.evaluate(()=>{const L=window.__ironlog;L.state.settings.onboarded=true;L.state.settings.accent='blue';L.makeDemo();L.state.draft=null;L.saveNow();});
+  await P.page.waitForTimeout(300);
+  const raw=await P.page.evaluate(()=>localStorage.getItem('ironlog.v1'));await P.ctx.close();
+  const N=await open('index.html',{browser,state:JSON.parse(raw),clock:'2026-11-21T10:00:00'});
+  const r=await N.page.evaluate(()=>{const L=window.__ironlog;L.saveNow();const saved=JSON.parse(localStorage.getItem('ironlog.v1'));return {style:'style' in saved.settings,set:JSON.stringify(saved.settings),page:document.documentElement.dataset.style||null};});
+  const o=JSON.parse(raw);
+  ok(!r.style&&!r.page&&r.set===JSON.stringify(o.settings),'r123: saved again here, no style given, Standard drawn, settings byte for byte',{style:r.style,page:r.page});
+  await N.ctx.close();
+  for(const [v,want] of [['sunset','sunset'],['neon',null]]){
+    const S=JSON.parse(raw);S.settings.style=v;
+    const M=await open('index.html',{browser,state:S,clock:'2026-11-21T10:00:00'});
+    const k=await M.page.evaluate(()=>{const L=window.__ironlog;L.saveNow();const saved=JSON.parse(localStorage.getItem('ironlog.v1'));return {style:saved.settings.style||null,accent:saved.settings.accent||null,page:document.documentElement.dataset.style||null};});
+    ok(k.style===want&&k.page===want&&k.accent==='blue',want?'Sunset Coast is kept, saved again, and drawn; the accent stays stored under it':'a style no build writes is dropped, Standard drawn, the accent kept',k);
+    ok(!M.errors.length,`no console errors with the style ${v}`,M.errors);
+    await M.ctx.close();
+  }
+}
 // The machine a session's lift was done on (2.67, 390 C): a save from 2.66 has none, and loads here with its sessions byte
 // for byte (so their sync hashes are unchanged); one naming machines keeps each valid name, here and on 2.66 (which keeps a
 // field it does not know, in its place), and drops one that is no name.

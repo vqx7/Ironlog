@@ -23,8 +23,9 @@
 //       the workout stays closed on both, the session alike on both; whether
 //       the set ticked there survives is the older build's own merge's to
 //       decide (pinned), since this build only sees what that phone sends;
-//   (6) a lift's unit and the scale's (2.66) reach the older phone, are kept
-//       there through its own edits and come back, with nothing more written.
+//   (6) a lift's unit and the scale's (2.66), and the style (2.77.1), reach
+//       the older phone, are kept there through its own edits and come back,
+//       with nothing more written; Standard picked again reaches it too.
 //   (7) the update from 2.69: a phone or tab that takes it reads the log as
 //       it is and writes nothing it did not change, so a delete, a correction
 //       or an Undo made on 2.69 stands, in two tabs and on two phones.
@@ -188,6 +189,24 @@ const plain = rows => (rows || []).map(s => `${s.w}x${s.r}`).join(',');
   ok(sn.bw === 'kg' && sn.theme === 'dark' && sn.keys === keys0, 'the scale\'s unit too, through the older phone\'s edit to the settings, its key where it stood', { sn, keys0 });
   const w6 = cloud.writes(); await N.settle(); await O.settle(); await N.settle();
   ok(cloud.writes() === w6, 'and the two phones then write nothing more', { writes: cloud.writes() - w6 });
+
+  // ---- (6, continued) Sunset Coast's style (2.77.1), picked on this phone: the older phone keeps it among the settings it does not
+  // know, sends it back with its own edit to the settings, its key where it stood; Standard picked here then reaches it, and
+  // the two write nothing more.
+  await N.ev(() => { const L = window.__ironlog; L.state.settings.style = 'sunset'; L.saveNow(); });
+  for (let i = 0; i < 2; i++) { await N.settle(); await O.settle(); }
+  const os = await O.ev(() => window.__ironlog.state.settings.style || null);
+  const keys7 = await N.ev(() => Object.keys(window.__ironlog.state.settings).join());
+  await O.ev(() => { const L = window.__ironlog; L.state.settings.theme = 'light'; L.saveNow(); });
+  for (let i = 0; i < 2; i++) { await O.settle(); await N.settle(); }
+  const ns = await N.ev(() => ({ style: window.__ironlog.state.settings.style || null, page: document.documentElement.dataset.style || null, theme: window.__ironlog.state.settings.theme, keys: Object.keys(window.__ironlog.state.settings).join() }));
+  ok(os === 'sunset' && ns.style === 'sunset' && ns.theme === 'light' && ns.keys === keys7, 'the style picked here is kept by the older phone and comes back through its edit to the settings, its key where it stood', { os, ns, keys7 });
+  await N.ev(() => { const L = window.__ironlog; delete L.state.settings.style; L.saveNow(); L.render(); });
+  for (let i = 0; i < 2; i++) { await N.settle(); await O.settle(); }
+  const back7 = { o: await O.ev(() => 'style' in window.__ironlog.state.settings), n: await N.ev(() => 'style' in window.__ironlog.state.settings) };
+  ok(!back7.o && !back7.n, 'Standard picked here reaches the older phone: neither keeps the style', back7);
+  const w7 = cloud.writes(); await N.settle(); await O.settle(); await N.settle();
+  ok(cloud.writes() === w7, 'and the two phones then write nothing more', { writes: cloud.writes() - w7 });
 
   /* ---- (7) The update from 2.69 (baselines/r115.html). A phone or tab that takes the update reads the log as it is
      (a session names its machine when saved or picked, and a change names those it would move, normalize.ts

@@ -103,7 +103,7 @@ const fails = []; const ok = (c, m) => { if (!c) { fails.push(m); console.log('F
     const col = v => { probe.style.color = `var(${v})`; return getComputedStyle(probe).color; };
     const out = {}; const H = document.documentElement;
     H.dataset.style = 'sunset';
-    for (const ac of ['ember', 'blue', 'red', 'cyan']) for (const th of ['dark', 'light']) {
+    for (const ac of ['ember', 'blue', 'volt', 'pink', 'violet', 'cyan', 'red']) for (const th of ['dark', 'light']) {
       H.dataset.theme = th; H.dataset.accent = ac;
       const pairs = [['--ink', '--bg'], ['--ink', '--surface'], ['--muted', '--surface'], ['--muted', '--bg'], ['--muted', '--surface-2'], ['--on-volt', '--volt'], ['--green', '--green-bg'], ['--yellow', '--yellow-bg'], ['--red', '--red-bg'], ['--blue', '--blue-bg'], ['--on-gold', '--gold'], ['--on-hero', '--hero'], ['--volt-line', '--bg'], ['--volt-line', '--surface'],
         ['--sun-on-b', '--sun-b1'], ['--sun-on-b', '--sun-b2'], ['--sun-on-b', '--sun-b3'], ['--sun-on-dusk', '--sun-dusk-1'], ['--sun-on-dusk', '--sun-dusk-2'], ['--sun-on-dusk', '--sun-dusk-3'], ['--sun-on-dusk-2', '--sun-dusk-1'], ['--sun-on-dusk-2', '--sun-dusk-2'], ['--sun-on-dusk-2', '--sun-dusk-3'], ['--sun-on-done', '--sun-done'],

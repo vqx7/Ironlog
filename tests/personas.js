@@ -1329,14 +1329,19 @@ async function finish() {
     ok((await ev(() => document.documentElement.dataset.style)) === 'sunset' && (await v('--bg')) === '#0b0614', '21. Style, Sunset Coast: the page turns to the night palette');
     await page.click('#tabs [data-tab="today"]'); await wait(150);
     const today = await ev(() => { const h = document.querySelector('#view .hero'); const b = h.querySelector('[data-act="startSession"]:not([data-light="1"])'); const cs = getComputedStyle(b); const d = document.querySelector('.wkbar .w.on .dn'); const a = h.querySelector('.sunart'); return { art: !!a && getComputedStyle(a).display !== 'none', btn: cs.backgroundImage, ink: cs.color }; });
-    ok(today.art && /linear-gradient/.test(today.btn) && today.ink === 'rgb(22, 3, 26)', '21. Today: the sun and palms on the card, Start in the sunset gradient with dark text', today);
+    // Painted, not only placed: a patch at the top of the sun drawn with the art and with it hidden must differ.
+    const patch = await ev(() => { const b = document.querySelector('#view .hero .sunart .sun').getBoundingClientRect(); return { x: b.left + b.width / 2 - 8, y: b.top + 4, width: 16, height: 8 }; });
+    const withArt = await page.screenshot({ clip: patch });
+    await ev(() => { document.querySelector('#view .hero .sunart').style.visibility = 'hidden'; }); const without = await page.screenshot({ clip: patch });
+    await ev(() => { document.querySelector('#view .hero .sunart').style.visibility = ''; });
+    ok(today.art && !withArt.equals(without) && /linear-gradient/.test(today.btn) && today.ink === 'rgb(22, 3, 26)', '21. Today: the sun and palms painted on the card, Start in the sunset gradient with dark text', today);
     await H.start();
     await H.type('w', 0, 0, 190); await H.type('r', 0, 0, 8); await H.tick(0, 0);
     const rest = await ev(() => { const t = document.getElementById('timer'); const cs = getComputedStyle(t); return { shown: !t.hidden, bg: cs.backgroundImage, ink: cs.color, done: t.classList.contains('done') }; });
     ok(rest.shown && !rest.done && /linear-gradient/.test(rest.bg) && rest.ink === 'rgb(255, 243, 251)', '21. the rest timer is the dusk strip, its text light', rest);
     await ev(t => window.__setClock(t), T0 + 'T09:05:00'); await wait(1300);
     const over = await ev(() => { const t = document.getElementById('timer'); const cs = getComputedStyle(t); return { done: t.classList.contains('done'), shown: !t.hidden, bg: cs.backgroundColor, img: cs.backgroundImage, ink: cs.color }; });
-    ok(!over.shown || (over.done && over.bg === 'rgb(255, 46, 136)' && over.img === 'none' && over.ink === 'rgb(22, 3, 26)'), '21. when rest ends it turns full neon pink, its text dark', over);
+    ok(over.shown && over.done && over.bg === 'rgb(255, 46, 136)' && over.img === 'none' && over.ink === 'rgb(22, 3, 26)', '21. when rest ends it stays up and turns full neon pink, its text dark', over);
     await H.type('w', 0, 1, 190); await H.type('r', 0, 1, 7); await H.tick(0, 1);
     await H.finish();
     const saved = await ev(() => { const S = window.__ironlog.state.sessions; const x = S[S.length - 1]; return x && x.date === '2026-11-23' ? x.ex[0].sets.map(s => [Math.round(s.w / 0.45359237), s.r]) : null; });
