@@ -288,6 +288,33 @@ Not written here as each shipped; what each moved and changed, with its names, i
 - **Elsewhere:** the update bar in `update.ts` (`updateStart`, `UPDATE_ACTS`; "Update ready" with Update); normalize's draft blocks built against `DraftBlock` (`satisfies`), `cleanTgt` returning a `Target`; the installed build's library loaders list its own copies alone (`scripts/build.js`).
 - **Checks:** `tests/r60.js` (section 1 holds the screen to r59 in 35 sessions and modes; sections 2 to 7 fail on r59 or on a build before r60), `tests/inflight.js`, `tests/personas.js`, `tests/loadrules.js`; `tests/engine.js` calls `nextSets` and `bwNoLoad` in Node, with two return histories.
 
+### r124 (2026-11-21, version 2.77.1; V's Sunset Coast style, tracker row NEW-202)
+
+V asked for a theme with the feel of a neon Miami night (2026-11-21: "a gta vi theme version of the app screens/colors
+etc"), then approved the plan and items 1 to 4 of the extras, with inspiration from a design of his own (palms, the
+gradient): an original style, nothing from the game itself (no logo, lettering, characters, names or slang), colours
+and art only, every screen, flow and number as in Standard. The first dot release: `DISPLAY_VERSION` may be
+major.minor.patch for a small release put in before the next minor one (V: "call this 277. Something").
+
+- **The setting:** `Settings.style` (types.ts), optional, absent for Standard so a log without one hashes as before;
+  `STYLES` (layout.ts) the one list of styles and their labels, read by `normalize` (`cleanSettings` picks from it and
+  drops anything else; `style` in `OPTIONAL_SETTINGS`) and by Settings > Appearance (`appearanceBody`'s Style select,
+  `SETTINGS_BINDS.style`, `lookWord` for the section's header). A build before 2.77.1 keeps the key unread, as it keeps
+  every setting a newer build saved (`tests/wayback.js` checks the way back to r123 and older, signed in).
+- **The page:** `applyTheme` (page.ts) sets `data-style` on the page beside `data-accent`; the accent stays set and
+  stored, and the style's tokens win over it in the stylesheet, so Standard brings it back unchanged. Problem reports
+  carry `style` in their context.
+- **The look:** `src/02-style.css`, after the accents: the day palette (`:root[data-style="sunset"]`) and the night one
+  (twice, for a phone set to dark and for Settings' Dark, one set of values), each with the --sun-* tokens only it
+  draws; then its drawing rules at the end of the sheet: the sunset gradient on primary buttons and trained days in the
+  week bar, the glow on the active tab and the week ring, gradient page titles, cyan small labels, gradient section
+  lines, the rest timer as a dusk strip that turns neon pink when rest ends. `SUN_ART` (icons.ts) is the sun setting
+  behind two palms, drawn by `sunArt` (today.ts) in each start card only with the style on, coloured by tokens, clipped
+  to the card and behind its text.
+- **Checks:** `tests/essentials.js` (the setting, the swatches, the accent kept, Today and a workout's screen laid out
+  exactly as in Standard), `tests/design.js` (every text pair in both palettes under any accent), `tests/personas.js`
+  21, `tests/hygiene.js` (the night palette one set; day and night name the same tokens), `tests/wayback.js`.
+
 ### r72 (2026-11-04, version 2.27; V's report of the fold's jump on live r71 and the 387 audit of the engines, with V's rulings of 2026-11-04; tracker rows NEW-63, 387-B1 to 387-B7, 387-B9, 387-C1, 387-D)
 
 - **The fold's glide (NEW-63):** `autoFold` (worksets.ts) hands the next exercise to `foldGlide`, which holds the space the fold took away as a margin above it and gives it back over `FOLD_MS.glide` while the page scrolls, ending where `scrollIntoView` put it (the exercise's scroll margin and the page's scroll padding); a touch or a wheel stops it, reduced motion goes straight there, a focused field in it keeps it still. Until r71 the anchoring `scrollBy` stopped at the top when the fold took away more than the page was scrolled, so the screen showed the session's title and glided back down (r60 and later).

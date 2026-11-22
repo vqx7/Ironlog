@@ -18,7 +18,7 @@ import type { DirectiveResult } from 'lit-html/directive.js';
 import { act } from './act';
 import { bodyField, bodyFieldKg, bodyUnitTap } from './bwnudge';
 import { APP_NAME } from './config';
-import { LOCKUP } from './icons';
+import { LOCKUP, SUN_ART } from './icons';
 import { MEAS, injLabel } from './library';
 import {
   DAYS,
@@ -709,7 +709,7 @@ export function viewToday(): TemplateResult {
      closed halfway, or the account was away when the edit ended) is offered in
      the start card's place until it does. */
   if (!state.draft && parkedHere())
-    return html`${above}<section class="hero" id="parkedCard"><div class="hero-top"><div class="hero-t"><p class="eyebrow">Workout set aside</p><h2>Your workout in progress</h2>
+    return html`${above}<section class="hero" id="parkedCard">${sunArt()}<div class="hero-top"><div class="hero-t"><p class="eyebrow">Workout set aside</p><h2>Your workout in progress</h2>
 <p class="muted small u-m0">${parkLine()}</p></div></div>
 <button class="btn primary fullw big" data-act="parkBack">Bring it back</button></section>${bwDueCard()}${todayRest({ playable: false, di, day, deload, cs })}`;
   if (free) {
@@ -721,7 +721,7 @@ export function viewToday(): TemplateResult {
             ? `${s.doneDays} session${s.doneDays === 1 ? '' : 's'}, ${r1(s.got)} hard sets this week`
             : 'Nothing yet this week.';
         })();
-    return html`${above}<section class="hero" data-day="free"><div class="hero-top"><div class="hero-t"><p class="eyebrow">${todayEye()} · Freestyle${deload ? ' · deload week' : ''}</p><h2>Blank session</h2>
+    return html`${above}<section class="hero" data-day="free">${sunArt()}<div class="hero-top"><div class="hero-t"><p class="eyebrow">${todayEye()} · Freestyle${deload ? ' · deload week' : ''}</p><h2>Blank session</h2>
 <p class="muted small u-m0">${w}</p></div></div>
 <button class="btn primary fullw big" data-act="startFree">Start session</button>
 <div class="row u-mt8">${changeBtn(di, true)}${moreBtn(deload)}</div>${moreRow(deload, false, di)}</section>${bwDueCard()}${todayRest({ playable: false, di, day, deload, cs })}`;
@@ -738,7 +738,7 @@ export function viewToday(): TemplateResult {
      most, the rest trimmed to your minutes). Deload, equipment, injury and
      cardio are occasional, so they sit behind More. An active deload still
      shows in the eyebrow and on its button. */
-  return html`${above}<section class="hero" data-day=${di}><div class="hero-top"><div class="hero-t"><p class="eyebrow">${todayEye()} · ${eyebrow}${
+  return html`${above}<section class="hero" data-day=${di}>${sunArt()}<div class="hero-top"><div class="hero-t"><p class="eyebrow">${todayEye()} · ${eyebrow}${
     deload ? ' · deload week' : isRestWeek(weekStart(t)) ? ' · rest week' : ''
   }</p><h2>${day.name}</h2>
 <p class="muted small u-m0" data-tip=${'Routine: ' + R.name}>${
@@ -756,11 +756,14 @@ ${note !== nothing ? html`<p class="hero-note small">${note}</p>` : nothing}${
 ${howText('starts', STARTS_HELP)}${moreRow(deload, playable, di, part)}</section>${bwDueCard()}${todayRest({ playable, di, day, deload, cs })}`;
 }
 
+/** Sunset Coast's art at the foot of the start card, when that style is on; nothing in Standard. */
+const sunArt = (): Part => (state.settings.style === 'sunset' ? markup(SUN_ART) : nothing);
+
 /** The card for a workout in progress the lifter stepped away from: what it is, the sets done, and Resume. */
 function resumeCard(d: NonNullable<typeof state.draft>): TemplateResult {
   const done = d.ex.reduce((a, b) => a + b.sets.filter(s => s.done && !s.warm).length, 0);
   const kind = d.editingId ? 'Editing a saved session' : d.past ? 'Past workout' : 'Workout in progress';
-  return html`<section class="hero" id="resumeCard"><div class="hero-top"><div class="hero-t"><p class="eyebrow">${kind}</p><h2>${d.dayName}</h2>
+  return html`<section class="hero" id="resumeCard">${sunArt()}<div class="hero-top"><div class="hero-t"><p class="eyebrow">${kind}</p><h2>${d.dayName}</h2>
 <p class="muted small u-m0">${done} ${done === 1 ? 'set' : 'sets'} done · saved as you go</p></div></div>
 <button class="btn primary fullw big" data-act="wkResume">Resume</button></section>`;
 }

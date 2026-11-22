@@ -22,6 +22,7 @@ import { MK, ML, MUSCLES, TARGETED, TRACK_ONLY } from './library';
 import {
   ACCENT0,
   ACCENTS,
+  STYLES,
   BW_EVERY,
   DEFAULT_HIDDEN,
   HIDEABLE,
@@ -762,7 +763,7 @@ ${bwSettings()}
 `;
 }
 
-/** Appearance: the theme and the accent colour. */
+/** Appearance: the theme, the style, and the accent colour, which a style other than Standard brings its own of. */
 function appearanceBody(s: Settings): TemplateResult {
   return html`<div class="card stack">
 <label class="field">Theme<select data-bind="theme">
@@ -770,15 +771,29 @@ function appearanceBody(s: Settings): TemplateResult {
 <option value="dark" .selected=${live(s.theme === 'dark')}>Dark</option>
 <option value="light" .selected=${live(s.theme === 'light')}>Light</option>
 </select></label>
-<div>
+<label class="field">Style<select data-bind="style">
+<option value="" .selected=${live(!s.style)}>Standard</option>
+${STYLES.map(([k, l]) => html`<option value=${k} .selected=${live(s.style === k)}>${l}</option>`)}
+</select></label>
+${
+  s.style
+    ? nothing
+    : html`<div>
 <p class="small muted u-m0-0-6_fw600">Accent colour</p>
 <div class="chips" role="group" aria-label="Accent colour">${ACCENTS.map(
-    ([k, l]) =>
-      html`<button class=${(s.accent || ACCENT0) === k ? 'chip acc on' : 'chip acc'} data-act="accent" data-v=${k} aria-pressed=${String((s.accent || ACCENT0) === k)}><i class=${`sw sw-${k}`} aria-hidden="true"></i>${l}</button>`
-  )}</div>
-</div>
+        ([k, l]) =>
+          html`<button class=${(s.accent || ACCENT0) === k ? 'chip acc on' : 'chip acc'} data-act="accent" data-v=${k} aria-pressed=${String((s.accent || ACCENT0) === k)}><i class=${`sw sw-${k}`} aria-hidden="true"></i>${l}</button>`
+      )}</div>
+</div>`
+}
 </div>
 `;
+}
+
+/** What Appearance's header says after the theme: the style's name, or with Standard the accent's. */
+function lookWord(s: Settings): string {
+  const st = STYLES.find(([k]) => k === s.style);
+  return (st || ACCENTS.find(([k]) => k === (s.accent || ACCENT0)) || ['', ''])[1].toLowerCase();
 }
 
 /** Rest timer and logging: the timer, auto-mark, loads filled in, how Today starts, adjusting the next sets and keeping the screen on. */
@@ -970,12 +985,7 @@ export function viewSettings(): TemplateResult {
        appearance"): what was one General section, its key kept for Measurements so a saved order and fold stay
        with the units, and Appearance new beside it (orderKeys slots a new key after the one before it in code). */
     G('general', 'Measurements', `${s.unit === 'kg' ? 'kg, cm' : 'lb, in'}`, measurementsBody(s)),
-    G(
-      'look',
-      'Appearance',
-      `${s.theme === 'system' ? 'device theme' : s.theme} · ${(ACCENTS.find(([k]) => k === (s.accent || ACCENT0)) || ['', ''])[1].toLowerCase()}`,
-      appearanceBody(s)
-    ),
+    G('look', 'Appearance', `${s.theme === 'system' ? 'device theme' : s.theme} · ${lookWord(s)}`, appearanceBody(s)),
     G(
       'gym',
       'Your gym',
@@ -1428,6 +1438,15 @@ export const SETTINGS_BINDS: Readonly<Record<string, (t: Field) => void>> = {
     if (v !== 'system' && v !== 'dark' && v !== 'light') return;
     act(() => {
       state.settings.theme = v;
+    });
+    render();
+  },
+  style(t) {
+    const v = STYLES.find(([k]) => k === t.value);
+    act(() => {
+      // Standard removes the style, so the accent stored under it shows again as it was.
+      if (v) state.settings.style = v[0];
+      else delete state.settings.style;
     });
     render();
   },

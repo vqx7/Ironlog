@@ -319,6 +319,8 @@ export interface Settings extends EngineSettings {
   timerCompact: boolean;
   autoDone: boolean;
   accent?: 'blue' | 'volt' | 'ember' | 'pink' | 'violet' | 'cyan' | 'red' | undefined;
+  /** A whole palette in place of Standard's (V, 2026-11-21): absent is Standard, so logs without one read as before. */
+  style?: 'sunset' | undefined;
   rirAsk?: true | undefined;
   /** History lists what the app asked of each set under what was done (391): absent, off, unless turned on. */
   askedShow?: true | undefined;

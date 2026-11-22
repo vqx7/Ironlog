@@ -229,7 +229,7 @@ export function guideSheet(m: { open?: string | undefined }): TemplateResult {
       'Sections',
       `<p>Tap a section's title to fold or open it. Drag its ⠿ to move it; the order is kept. Each time the app opens, every section starts folded, except Sessions on History.</p>
    <p><b>More sections</b>: when a tab has sections hidden, its bottom lists them; tap one to add it. The menu at the top right has Show, hide, or reorder sections. Settings, Layout shows or hides any section (nothing stops being tracked), and Default layout goes back to how a new install starts.</p>
-   <p><b>Your settings</b>: Settings has your training (goal, days, minutes, and focus), your gym's weights, the rest timer, auto-mark, RIR, units, theme and accent, weekly set targets, and priority muscles.</p>
+   <p><b>Your settings</b>: Settings has your training (goal, days, minutes, and focus), your gym's weights, the rest timer, auto-mark, RIR, units, theme, style, and accent, weekly set targets, and priority muscles. Appearance's Style is Standard or Sunset Coast, a neon night by the sea in Dark and a beach morning in Light; it brings its own colours, so the accent waits until Standard is back.</p>
    <p><b>kg or lb on one lift</b>: when a lift's equipment is marked in the other unit, tap the lb or kg under its name in a workout and pick its unit. The lift keeps that unit and is on that unit's own weights, whatever the unit in Settings or Your gym's. Its loads, targets, steps, and charts follow it; a load already typed keeps the unit it was typed in. The unit beside a weigh-in field does the same for your scale. Totals that add lifts together stay in the unit in Settings, and every set shows as it was typed, in the unit it was typed in.</p>`
     ],
     [

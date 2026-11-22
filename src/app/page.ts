@@ -117,11 +117,15 @@ export function rerenderKeepScroll(): void {
   window.scrollTo(0, y);
 }
 
-/** The page's colours: the theme, the accent, and the installed app's status bar, which follows the theme. */
+/** The page's colours: the theme, the style, the accent, and the installed app's status bar, which follows the theme. */
 export function applyTheme(): void {
   const t = state.settings.theme;
   if (t === 'system') delete document.documentElement.dataset.theme;
   else document.documentElement.dataset.theme = t;
+  // A style's colours win over the accent's in the stylesheet, so the accent is set either way and waits under it.
+  const st = state.settings.style;
+  if (st) document.documentElement.dataset.style = st;
+  else delete document.documentElement.dataset.style;
   document.documentElement.dataset.accent = state.settings.accent || ACCENT0;
   const m = document.querySelector('meta[name="theme-color"]');
   if (m)

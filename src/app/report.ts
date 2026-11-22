@@ -91,6 +91,8 @@ interface FbContext {
   installed: boolean;
   theme: string;
   accent: string;
+  /** The style, when one other than Standard is on: a screenshot's colours read with it. */
+  style: string | undefined;
   unit: string;
   from: string;
   exercise: string | undefined;
@@ -127,6 +129,7 @@ export function fbContext(m: {
     installed: isStandalone(),
     theme: state.settings.theme,
     accent: state.settings.accent || ACCENT0,
+    style: state.settings.style,
     unit: appU(),
     from: m.from || ui.tab,
     exercise: m.ex || undefined,

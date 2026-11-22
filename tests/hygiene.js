@@ -123,6 +123,14 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   const pairs = ['blue', 'ember', 'pink', 'violet', 'cyan', 'red'].map(a => [a, blockOf(new RegExp(`:root\\[data-accent="${a}"\\]:not\\(\\[data-theme="light"\\]\\)\\{([^}]*)\\}`)), blockOf(new RegExp(`:root\\[data-accent="${a}"\\]\\[data-theme="dark"\\]\\{([^}]*)\\}`))]);
   ok(darkMedia && darkMedia === darkSet, 'the dark theme for a phone set to dark and for Settings\' Dark is one set of values', { darkMedia: (darkMedia || '').slice(0, 120), darkSet: (darkSet || '').slice(0, 120) });
   ok(pairs.every(([, a, b]) => a && a === b), 'each accent\'s dark values are one set, for a phone set to dark and for Settings\' Dark', pairs.filter(([, a, b]) => !a || a !== b).map(([n]) => n));
+  /* Sunset Coast (2.77.1) is the same: its night palette one set in two places. Its day palette is the rule the night
+     one overrides on a dark phone, so both name the same tokens, or a token only the day sets would show at night. */
+  const sunDay = blockOf(/\n:root\[data-style="sunset"\]\{([^}]*)\}/);
+  const sunMedia = blockOf(/:root\[data-style="sunset"\]:not\(\[data-theme="light"\]\)\{([^}]*)\}/);
+  const sunSet = blockOf(/\n:root\[data-style="sunset"\]\[data-theme="dark"\]\{([^}]*)\}/);
+  const names = b => (b || '').split(';').map(d => d.split(':')[0]).filter(n => n.startsWith('--')).sort().join();
+  ok(sunMedia && sunMedia === sunSet, 'Sunset Coast\'s night palette is one set of values, for a phone set to dark and for Settings\' Dark', { sunMedia: (sunMedia || '').slice(0, 120), sunSet: (sunSet || '').slice(0, 120) });
+  ok(sunDay && names(sunDay) === names(sunMedia), 'Sunset Coast\'s day and night palettes set the same tokens', { day: names(sunDay), night: names(sunMedia) });
   const swatchLiteral = [...css.matchAll(/\.sw-[\w-]+\{background:(#[0-9a-f]{3,8})/gi)].map(m => m[0]);
   ok(swatchLiteral.length === 0 && /--acc-volt:/.test(css), 'each accent\'s colour is written once (--acc-*), its Settings swatch reading it', swatchLiteral);
   // Every custom property the code sets on an element is read by a rule the page can show (the full review's P-4: the
@@ -258,7 +266,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     ok(modes.length === 3 && typedModes.length === 0, 'the installed app\'s display modes are config.ts\'s alone (INSTALLED_MODES): the app and the account script name none themselves', typedModes);
   }
   ok((cfg.WORDMARK.mark + cfg.WORDMARK.strong + cfg.WORDMARK.light).toLowerCase() === cfg.APP_NAME.toLowerCase(), 'the logo\'s wordmark spells the app name (a new name needs a new wordmark)', cfg.WORDMARK);
-  ok(/^\d+\.\d+$/.test(cfg.DISPLAY_VERSION), 'the version people see is major.minor', cfg.DISPLAY_VERSION);
+  ok(/^\d+\.\d+(\.\d+)?$/.test(cfg.DISPLAY_VERSION), 'the version people see is major.minor, or major.minor.patch for a small release before the next minor one', cfg.DISPLAY_VERSION);
 }
 
 // 5. The module boundary, the ratchet and the type checker (r49).

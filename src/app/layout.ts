@@ -3,6 +3,7 @@
    the weigh-in cadence, the sheets that hold typed fields. */
 
 import { parseJson } from './records';
+import type { Settings } from './types';
 
 // Dashboard sections, in display order. Keys are what the jump strip targets.
 export const DSECS: readonly (readonly [string, string])[] = [
@@ -108,6 +109,11 @@ export const ACCENTS: readonly (readonly [string, string])[] = [
 
 /** The default accent, read when none is stored; choosing it again removes the stored one. */
 export const ACCENT0 = 'ember';
+
+/* The styles Settings > Appearance offers beside Standard, as a key and a label (V, 2026-11-21: Sunset Coast, a neon
+   night by the sea, with a daytime palette for Light). Standard is stored as no style, so a log without one reads as it
+   always did. A style brings its own colours, its accent among them, so the accent stored waits under it, unchanged. */
+export const STYLES: readonly (readonly [NonNullable<Settings['style']>, string])[] = [['sunset', 'Sunset Coast']];
 
 /* The weeks the radar averages (V: one week says little about
    balance): the last 2, 4 or 8 full weeks, 4 unless changed, kept per

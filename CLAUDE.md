@@ -3,7 +3,7 @@
 A hypertrophy and strength tracker for one lifter, V, used on a phone at the gym. It ships as a standalone
 installable web app: built from `src/` into one page, served by GitHub Pages at https://ironapp.org, working
 offline, with the log on the phone and an optional account that syncs it. Every pull request also publishes a
-preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r123, version 2.77, state schema v5.
+preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r124, version 2.77.1, state schema v5.
 
 The Claude artifact version was retired by V on 2026-09-27 (`OWNER.md` Done): never work on it or republish it.
 `cloudProvider()` still takes Claude's db when `window.claude` exists, because the sync suites use it as their
@@ -212,7 +212,9 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   `verdictIn`); the Volume radar is drawn from what was logged, never the routine's plan, and always
   draws; no Planned chip on Stats; the plan's usual-range note is a quiet line on Plan, never a flag and never on
   Stats; no other app is named on screen; no wording about shared phones, someone else or another person; no
-  Comeback (former bests); no restyle without V's direction; "on target", the 1RM display and mid-workout
+  Comeback (former bests); no restyle without V's direction; Sunset Coast (2.77.1) is a style beside Standard, chosen in
+  Appearance, changing colours and Today's art only, never a layout, flow or number, with nothing from a game or another
+  app on screen (V, 2026-11-21); "on target", the 1RM display and mid-workout
   adjustments on by default are V's calls; the top bar sits at the top of every tab and scrolls away with the page, its
   pull-down opening the calendar only with the page at its top (V, 2026-11-12, NEW-138), out of the bar's bottom edge with the bar in view above it (V, 2026-11-12, NEW-142).
 - **Copy:** short, plain, specific; the number and the action on screen, the reasons in a tip or How this works; no
@@ -255,7 +257,8 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
 ## Releasing
 
 - Bump `APP_VERSION` in `src/app/config.ts` for every published build, and `DISPLAY_VERSION` with it (the minor
-  number up one per release, the major for a large change); `STATE_VERSION` only when the stored shape changes.
+  number up one per release, the major for a large change, a third number for a small release put in before the
+  next minor one: 2.77.1, V, 2026-11-21); `STATE_VERSION` only when the stored shape changes.
   The build named at the top of this file is the one in config (`tests/hygiene.js` checks).
 - Work on a branch named after the build it carries (`r80` for build r80; V, 2026-11-07: branches named a build ahead of their own read as a skipped build), and open a pull request. `.github/workflows/publish.yml` runs every suite in Chromium and in
   WebKit and, if they pass, publishes the preview to `gh-pages` under `preview/` (one slot: the latest pull request
