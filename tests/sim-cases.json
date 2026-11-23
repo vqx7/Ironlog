@@ -1,0 +1,23 @@
+[
+  {
+    "name": "a session moved to an earlier half-month on one phone while the other, not caught up, saves a change in that half-month",
+    "found": "a moved session lost (the review of 2.76, REV27-3)",
+    "rule": "kept",
+    "from": "seed 46 of the histories on the source of 2.76, shrunk",
+    "script": [{"p":1,"op":"move","id":"s2","v":"2026-10-27"},{"p":0,"op":"note","id":"s3","v":"n4"},{"p":0,"op":"check"}]
+  },
+  {
+    "name": "a session deleted and restored on one phone while the other sends a change of its own",
+    "found": "a restored session lost (the second review of 2.77, REV29-5)",
+    "rule": "back",
+    "from": "seed 15 of the histories on the source of 2.76, shrunk",
+    "script": [{"p":0,"op":"del","id":"s2"},{"p":1,"op":"set","v":"u4"},{"p":0,"op":"restore","id":"s2"},{"p":0,"op":"check"}]
+  },
+  {
+    "name": "one workout open on two phones, dated to the other half-month on the phone that finishes it while the other ticks a set",
+    "found": "a workout dated elsewhere at Finish (the second review of 2.77, REV29-1)",
+    "rule": "date",
+    "from": "seed 2860 of the histories on the source of 2.76, shrunk",
+    "script": [{"p":1,"op":"start","id":"k6","v":"2026-11-03"},{"p":1,"op":"check"},{"p":0,"op":"tick","i":2},{"p":1,"op":"redate","v":"2026-10-27"},{"p":1,"op":"finish"},{"p":0,"op":"tick","i":3},{"p":1,"op":"check"}]
+  }
+]

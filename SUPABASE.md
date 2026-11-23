@@ -374,6 +374,380 @@ What the right answer looks like for this project:
 
 The sign-up bot check: Supabase Auth checks a Cloudflare Turnstile token on sign-up, password sign-in, a reset link and a new confirmation code once **Attack Protection > Enable CAPTCHA protection** is on with Turnstile's secret key. The app sends one only when `TURNSTILE_SITE_KEY` in `src/app/config.ts` is set (`src/app/captcha.ts`), so the app gets its key first and Supabase is switched on second (OWNER.md, E1).
 
+## Part 8: one row per record (added in 2.78, about 3 minutes)
+
+Until 2.78 the account held the log as documents: one per half-month of sessions, one per year of weigh-ins, one for the rest. Every sync bug of 2.72 to 2.77 that lost or doubled a record came from a record changing documents, or from a delete being read from a record's absence. From 2.78 the account also holds one row per record. In 2.78 the documents still decide what the log is: the app writes the rows beside them and checks that both say the same (Settings > "More" shows a line that starts "Rows check", under "Version"). A later release switches each account to the rows, only once its checks are clean.
+
+Nothing here changes `docs` or `docs_preview`, and the app does nothing with the new tables until they exist.
+
+1. The preview's table first. Supabase > SQL Editor > New query. Paste this and Run:
+
+```sql
+-- The preview build's copy of public.records: the same text under the preview's names, so nothing tried in a
+-- preview reaches the real rows (2.78).
+create table public.records_preview (
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  kind text not null check (char_length(kind) between 1 and 24),
+  id text not null check (char_length(id) between 1 and 120),
+  body text check (body is null or octet_length(body) <= 1048576),
+  sum text generated always as (md5(body)) stored,
+  t bigint not null default 0 check (t >= 0),
+  dev text collate "C" not null default '' check (dev ~ '^[ -~]{0,64}$'),
+  a bigint not null default 0 check (a >= 0),
+  gone_saw bigint,
+  gone_saw_dev text collate "C" check (gone_saw_dev ~ '^[ -~]{0,64}$'),
+  gone_good boolean not null default false,
+  gone_t bigint not null default 0,
+  gone_dev text collate "C" not null default '' check (gone_dev ~ '^[ -~]{0,64}$'),
+  gone_day text check (gone_day is null or char_length(gone_day) <= 10),
+  gone_clash boolean not null default false,
+  over_t bigint,
+  over_dev text collate "C",
+  seq bigint not null default 0,
+  updated_at timestamptz not null default now(),
+  primary key (user_id, kind, id),
+  check ((gone_saw is null) = (gone_saw_dev is null))
+);
+create unique index records_preview_seq on public.records_preview (user_id, seq);
+alter table public.records_preview enable row level security;
+create policy "own rows only" on public.records_preview for all to authenticated
+  using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+revoke all on public.records_preview from anon, authenticated;
+grant select, insert, update on public.records_preview to authenticated;
+
+create or replace function public.records_preview_join() returns trigger language plpgsql set search_path = '' as $$
+declare cur public.records_preview%rowtype; has boolean := false;
+begin
+  perform pg_advisory_xact_lock(hashtextextended('records_preview ' || new.user_id::text, 0));
+  if current_setting('transaction_isolation') <> 'read committed' then
+    raise exception 'rows_isolation' using errcode = 'P0001';
+  end if;
+  if tg_op = 'UPDATE' then
+    if new.user_id <> old.user_id or new.kind <> old.kind or new.id <> old.id then
+      raise exception 'rows_key' using errcode = 'P0001';
+    end if;
+    cur := old; has := true;
+  else
+    select * into cur from public.records_preview r where r.user_id = new.user_id and r.kind = new.kind and r.id = new.id;
+    has := found;
+  end if;
+  if has then
+    if new.kind = 'draft' and not (new.t = cur.t and new.dev = cur.dev) then
+      if new.over_t is distinct from cur.t or new.over_dev is distinct from cur.dev then
+        raise exception 'rows_draft_stale' using errcode = 'P0001';
+      end if;
+      if not ((new.t, new.dev) > (cur.t, cur.dev)) then
+        raise exception 'rows_draft_time' using errcode = 'P0001';
+      end if;
+    end if;
+    if (new.t, new.dev, new.a) > (cur.t, cur.dev, cur.a) then null;
+    elsif (new.t, new.dev, new.a) = (cur.t, cur.dev, cur.a)
+      and (cur.body is null or (new.body is not null and new.body collate "C" > cur.body collate "C")) then null;
+    else new.body := cur.body; new.t := cur.t; new.dev := cur.dev; new.a := cur.a; new.over_t := cur.over_t; new.over_dev := cur.over_dev;
+    end if;
+    if not ((coalesce(new.gone_saw, -1), coalesce(new.gone_saw_dev, ''), new.gone_good, new.gone_t, new.gone_dev)
+          > (coalesce(cur.gone_saw, -1), coalesce(cur.gone_saw_dev, ''), cur.gone_good, cur.gone_t, cur.gone_dev)) then
+      new.gone_saw := cur.gone_saw; new.gone_saw_dev := cur.gone_saw_dev; new.gone_good := cur.gone_good;
+      new.gone_t := cur.gone_t; new.gone_dev := cur.gone_dev; new.gone_day := cur.gone_day; new.gone_clash := cur.gone_clash;
+    end if;
+  end if;
+  if new.gone_good and new.gone_saw is not distinct from new.t and new.gone_saw_dev is not distinct from new.dev then new.body := null; end if;
+  if has and new.body is not distinct from cur.body and new.t = cur.t and new.dev = cur.dev and new.a = cur.a
+     and new.gone_saw is not distinct from cur.gone_saw and new.gone_saw_dev is not distinct from cur.gone_saw_dev
+     and new.gone_good = cur.gone_good and new.gone_t = cur.gone_t and new.gone_dev = cur.gone_dev
+     and new.gone_day is not distinct from cur.gone_day and new.gone_clash = cur.gone_clash then
+    return null;
+  end if;
+  new.seq := (select coalesce(max(r.seq), 0) + 1 from public.records_preview r where r.user_id = new.user_id);
+  new.updated_at := now();
+  return new;
+end $$;
+create trigger records_preview_join before insert or update on public.records_preview for each row execute function public.records_preview_join();
+
+create or replace function public.records_preview_push(p jsonb, only_if_top bigint default null) returns jsonb
+language plpgsql set search_path = '' as $$
+declare uid uuid := (select auth.uid()); res jsonb;
+begin
+  if uid is null then raise exception 'rows_signed_out' using errcode = 'P0001'; end if;
+  perform pg_advisory_xact_lock(hashtextextended('records_preview ' || uid::text, 0));
+  if only_if_top is not null
+     and only_if_top <> (select coalesce(max(r.seq), 0) from public.records_preview r where r.user_id = uid) then
+    raise exception 'rows_moved' using errcode = 'P0001';
+  end if;
+  with x as (
+    select * from jsonb_to_recordset(p) as x(kind text, id text, body text, t bigint, dev text, a bigint,
+      gone_saw bigint, gone_saw_dev text, gone_good boolean, gone_t bigint, gone_dev text, gone_day text, gone_clash boolean,
+      over_t bigint, over_dev text)
+  ), was as (
+    select r.* from public.records_preview r join x on x.kind = r.kind and x.id = r.id where r.user_id = uid
+  ), up as (
+    insert into public.records_preview (kind, id, body, t, dev, a, gone_saw, gone_saw_dev, gone_good, gone_t, gone_dev, gone_day, gone_clash, over_t, over_dev)
+    select x.kind, x.id, x.body, coalesce(x.t, 0), coalesce(x.dev, ''), coalesce(x.a, 0), x.gone_saw, x.gone_saw_dev,
+           coalesce(x.gone_good, false), coalesce(x.gone_t, 0), coalesce(x.gone_dev, ''), x.gone_day, coalesce(x.gone_clash, false), x.over_t, x.over_dev
+    from x
+    on conflict (user_id, kind, id) do update set body = excluded.body, t = excluded.t, dev = excluded.dev, a = excluded.a,
+      gone_saw = excluded.gone_saw, gone_saw_dev = excluded.gone_saw_dev, gone_good = excluded.gone_good, gone_t = excluded.gone_t,
+      gone_dev = excluded.gone_dev, gone_day = excluded.gone_day, gone_clash = excluded.gone_clash, over_t = excluded.over_t, over_dev = excluded.over_dev
+    returning *
+  )
+  select jsonb_agg(jsonb_build_object(
+      'kind', x.kind, 'id', x.id,
+      't', coalesce(up.t, was.t), 'dev', coalesce(up.dev, was.dev), 'a', coalesce(up.a, was.a),
+      'sum', case when up.kind is not null then up.sum else was.sum end,
+      'gone_saw', case when up.kind is not null then up.gone_saw else was.gone_saw end,
+      'gone_saw_dev', case when up.kind is not null then up.gone_saw_dev else was.gone_saw_dev end,
+      'gone_good', coalesce(up.gone_good, was.gone_good), 'gone_t', coalesce(up.gone_t, was.gone_t),
+      'gone_dev', coalesce(up.gone_dev, was.gone_dev),
+      'gone_day', case when up.kind is not null then up.gone_day else was.gone_day end,
+      'gone_clash', coalesce(up.gone_clash, was.gone_clash),
+      'seq', coalesce(up.seq, was.seq),
+      'took', up.kind is not null,
+      'was_t', was.t, 'was_dev', was.dev, 'was_a', was.a, 'was_sum', was.sum, 'was_live',
+        was.kind is not null and was.body is not null and not (was.gone_saw is not distinct from was.t and was.gone_saw_dev is not distinct from was.dev)
+    )
+    || case when (case when up.kind is not null then up.body else was.body end) is distinct from x.body
+            then jsonb_build_object('body', case when up.kind is not null then up.body else was.body end) else '{}'::jsonb end
+    || case when up.kind is not null and was.kind is not null and was.body is distinct from up.body
+              and (was.t is distinct from x.over_t or was.dev is distinct from x.over_dev)
+            then jsonb_build_object('was_body', was.body) else '{}'::jsonb end)
+  into res
+  from x left join up on up.kind = x.kind and up.id = x.id left join was on was.kind = x.kind and was.id = x.id;
+  return jsonb_build_object(
+    'top', (select coalesce(max(r.seq), 0) from public.records_preview r where r.user_id = uid),
+    'layout', (select r.body from public.records_preview r where r.user_id = uid and r.kind = 'meta' and r.id = 'layout'),
+    'rows', coalesce(res, '[]'::jsonb));
+end $$;
+revoke all on function public.records_preview_push(jsonb, bigint) from public, anon;
+grant execute on function public.records_preview_push(jsonb, bigint) to authenticated;
+
+create or replace function public.records_preview_pull(since bigint, most int default 500) returns jsonb
+language sql stable set search_path = '' as $$
+  select jsonb_build_object(
+    'top', (select coalesce(max(r.seq), 0) from public.records_preview r where r.user_id = (select auth.uid())),
+    'layout', (select r.body from public.records_preview r where r.user_id = (select auth.uid()) and r.kind = 'meta' and r.id = 'layout'),
+    'rows', coalesce((select jsonb_agg(to_jsonb(q) order by q.seq) from (
+      select r.kind, r.id, r.body, r.sum, r.t, r.dev, r.a, r.gone_saw, r.gone_saw_dev, r.gone_good, r.gone_t, r.gone_dev, r.gone_day, r.gone_clash, r.seq
+      from public.records_preview r where r.user_id = (select auth.uid()) and r.seq > since order by r.seq limit most) q), '[]'::jsonb));
+$$;
+revoke all on function public.records_preview_pull(bigint, int) from public, anon;
+grant execute on function public.records_preview_pull(bigint, int) to authenticated;
+
+create or replace function public.records_preview_limit() returns trigger language plpgsql set search_path = '' as $$
+declare u uuid; n bigint; b bigint;
+begin
+  for u in select distinct w.user_id from written w loop
+    select count(*), coalesce(sum(octet_length(r.body)), 0) into n, b from public.records_preview r where r.user_id = u;
+    if n > 20000 or b > 26214400 then raise exception 'rows_limit' using errcode = 'P0001'; end if;
+  end loop;
+  return null;
+end $$;
+create trigger records_preview_limit_i after insert on public.records_preview referencing new table as written for each statement execute function public.records_preview_limit();
+create trigger records_preview_limit_u after update on public.records_preview referencing new table as written for each statement execute function public.records_preview_limit();
+
+create or replace function public.records_preview_digest() returns jsonb language sql stable set search_path = '' as $$
+  select jsonb_build_object('n', count(*), 'top', coalesce(max(r.seq), 0),
+    'sum', md5(coalesce(string_agg(
+      r.kind || chr(31) || r.id || chr(31) || r.t || chr(31) || r.dev || chr(31) || r.a || chr(31) || left(coalesce(r.sum, ''), 12) || chr(31)
+        || coalesce(r.gone_saw::text, '') || chr(31) || coalesce(r.gone_saw_dev, '') || chr(31) || (r.gone_good::int),
+      chr(30) order by r.kind collate "C", r.id collate "C"), '')))
+  from public.records_preview r where r.user_id = (select auth.uid());
+$$;
+revoke all on function public.records_preview_digest() from public, anon;
+grant execute on function public.records_preview_digest() to authenticated;
+```
+
+   To check: `select public.records_preview_digest();` in a new query answers `{"n": 0, "sum": "d41d8cd98f00b204e9800998ecf8427e", "top": 0}`: no rows, because the SQL editor is not signed in as an app account, which is right. Then open the preview signed in and use it for a few minutes: Table Editor > records_preview shows your rows, and in the preview Settings > "More" shows a line that starts "Rows check" under "Version".
+
+2. The live app's table. New query, paste this and Run:
+
+```sql
+-- One row per record of the log (2.78): a session, a weigh-in, a routine, each setting. A deleted record keeps its
+-- row, marked. The trigger joins every write itself: the later edit of the copy, the mark that names the later copy,
+-- and it numbers each change (seq) so a phone reads only what changed since it last looked.
+create table public.records (
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  kind text not null check (char_length(kind) between 1 and 24),
+  id text not null check (char_length(id) between 1 and 120),
+  body text check (body is null or octet_length(body) <= 1048576),
+  sum text generated always as (md5(body)) stored,
+  t bigint not null default 0 check (t >= 0),
+  dev text collate "C" not null default '' check (dev ~ '^[ -~]{0,64}$'),
+  a bigint not null default 0 check (a >= 0),
+  gone_saw bigint,
+  gone_saw_dev text collate "C" check (gone_saw_dev ~ '^[ -~]{0,64}$'),
+  gone_good boolean not null default false,
+  gone_t bigint not null default 0,
+  gone_dev text collate "C" not null default '' check (gone_dev ~ '^[ -~]{0,64}$'),
+  gone_day text check (gone_day is null or char_length(gone_day) <= 10),
+  gone_clash boolean not null default false,
+  over_t bigint,
+  over_dev text collate "C",
+  seq bigint not null default 0,
+  updated_at timestamptz not null default now(),
+  primary key (user_id, kind, id),
+  check ((gone_saw is null) = (gone_saw_dev is null))
+);
+create unique index records_seq on public.records (user_id, seq);
+alter table public.records enable row level security;
+create policy "own rows only" on public.records for all to authenticated
+  using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+revoke all on public.records from anon, authenticated;
+grant select, insert, update on public.records to authenticated;
+
+create or replace function public.records_join() returns trigger language plpgsql set search_path = '' as $$
+declare cur public.records%rowtype; has boolean := false;
+begin
+  perform pg_advisory_xact_lock(hashtextextended('records ' || new.user_id::text, 0));
+  if current_setting('transaction_isolation') <> 'read committed' then
+    raise exception 'rows_isolation' using errcode = 'P0001';
+  end if;
+  if tg_op = 'UPDATE' then
+    if new.user_id <> old.user_id or new.kind <> old.kind or new.id <> old.id then
+      raise exception 'rows_key' using errcode = 'P0001';
+    end if;
+    cur := old; has := true;
+  else
+    select * into cur from public.records r where r.user_id = new.user_id and r.kind = new.kind and r.id = new.id;
+    has := found;
+  end if;
+  if has then
+    if new.kind = 'draft' and not (new.t = cur.t and new.dev = cur.dev) then
+      if new.over_t is distinct from cur.t or new.over_dev is distinct from cur.dev then
+        raise exception 'rows_draft_stale' using errcode = 'P0001';
+      end if;
+      if not ((new.t, new.dev) > (cur.t, cur.dev)) then
+        raise exception 'rows_draft_time' using errcode = 'P0001';
+      end if;
+    end if;
+    if (new.t, new.dev, new.a) > (cur.t, cur.dev, cur.a) then null;
+    elsif (new.t, new.dev, new.a) = (cur.t, cur.dev, cur.a)
+      and (cur.body is null or (new.body is not null and new.body collate "C" > cur.body collate "C")) then null;
+    else new.body := cur.body; new.t := cur.t; new.dev := cur.dev; new.a := cur.a; new.over_t := cur.over_t; new.over_dev := cur.over_dev;
+    end if;
+    if not ((coalesce(new.gone_saw, -1), coalesce(new.gone_saw_dev, ''), new.gone_good, new.gone_t, new.gone_dev)
+          > (coalesce(cur.gone_saw, -1), coalesce(cur.gone_saw_dev, ''), cur.gone_good, cur.gone_t, cur.gone_dev)) then
+      new.gone_saw := cur.gone_saw; new.gone_saw_dev := cur.gone_saw_dev; new.gone_good := cur.gone_good;
+      new.gone_t := cur.gone_t; new.gone_dev := cur.gone_dev; new.gone_day := cur.gone_day; new.gone_clash := cur.gone_clash;
+    end if;
+  end if;
+  if new.gone_good and new.gone_saw is not distinct from new.t and new.gone_saw_dev is not distinct from new.dev then new.body := null; end if;
+  if has and new.body is not distinct from cur.body and new.t = cur.t and new.dev = cur.dev and new.a = cur.a
+     and new.gone_saw is not distinct from cur.gone_saw and new.gone_saw_dev is not distinct from cur.gone_saw_dev
+     and new.gone_good = cur.gone_good and new.gone_t = cur.gone_t and new.gone_dev = cur.gone_dev
+     and new.gone_day is not distinct from cur.gone_day and new.gone_clash = cur.gone_clash then
+    return null;
+  end if;
+  new.seq := (select coalesce(max(r.seq), 0) + 1 from public.records r where r.user_id = new.user_id);
+  new.updated_at := now();
+  return new;
+end $$;
+create trigger records_join before insert or update on public.records for each row execute function public.records_join();
+
+create or replace function public.records_push(p jsonb, only_if_top bigint default null) returns jsonb
+language plpgsql set search_path = '' as $$
+declare uid uuid := (select auth.uid()); res jsonb;
+begin
+  if uid is null then raise exception 'rows_signed_out' using errcode = 'P0001'; end if;
+  perform pg_advisory_xact_lock(hashtextextended('records ' || uid::text, 0));
+  if only_if_top is not null
+     and only_if_top <> (select coalesce(max(r.seq), 0) from public.records r where r.user_id = uid) then
+    raise exception 'rows_moved' using errcode = 'P0001';
+  end if;
+  with x as (
+    select * from jsonb_to_recordset(p) as x(kind text, id text, body text, t bigint, dev text, a bigint,
+      gone_saw bigint, gone_saw_dev text, gone_good boolean, gone_t bigint, gone_dev text, gone_day text, gone_clash boolean,
+      over_t bigint, over_dev text)
+  ), was as (
+    select r.* from public.records r join x on x.kind = r.kind and x.id = r.id where r.user_id = uid
+  ), up as (
+    insert into public.records (kind, id, body, t, dev, a, gone_saw, gone_saw_dev, gone_good, gone_t, gone_dev, gone_day, gone_clash, over_t, over_dev)
+    select x.kind, x.id, x.body, coalesce(x.t, 0), coalesce(x.dev, ''), coalesce(x.a, 0), x.gone_saw, x.gone_saw_dev,
+           coalesce(x.gone_good, false), coalesce(x.gone_t, 0), coalesce(x.gone_dev, ''), x.gone_day, coalesce(x.gone_clash, false), x.over_t, x.over_dev
+    from x
+    on conflict (user_id, kind, id) do update set body = excluded.body, t = excluded.t, dev = excluded.dev, a = excluded.a,
+      gone_saw = excluded.gone_saw, gone_saw_dev = excluded.gone_saw_dev, gone_good = excluded.gone_good, gone_t = excluded.gone_t,
+      gone_dev = excluded.gone_dev, gone_day = excluded.gone_day, gone_clash = excluded.gone_clash, over_t = excluded.over_t, over_dev = excluded.over_dev
+    returning *
+  )
+  select jsonb_agg(jsonb_build_object(
+      'kind', x.kind, 'id', x.id,
+      't', coalesce(up.t, was.t), 'dev', coalesce(up.dev, was.dev), 'a', coalesce(up.a, was.a),
+      'sum', case when up.kind is not null then up.sum else was.sum end,
+      'gone_saw', case when up.kind is not null then up.gone_saw else was.gone_saw end,
+      'gone_saw_dev', case when up.kind is not null then up.gone_saw_dev else was.gone_saw_dev end,
+      'gone_good', coalesce(up.gone_good, was.gone_good), 'gone_t', coalesce(up.gone_t, was.gone_t),
+      'gone_dev', coalesce(up.gone_dev, was.gone_dev),
+      'gone_day', case when up.kind is not null then up.gone_day else was.gone_day end,
+      'gone_clash', coalesce(up.gone_clash, was.gone_clash),
+      'seq', coalesce(up.seq, was.seq),
+      'took', up.kind is not null,
+      'was_t', was.t, 'was_dev', was.dev, 'was_a', was.a, 'was_sum', was.sum, 'was_live',
+        was.kind is not null and was.body is not null and not (was.gone_saw is not distinct from was.t and was.gone_saw_dev is not distinct from was.dev)
+    )
+    || case when (case when up.kind is not null then up.body else was.body end) is distinct from x.body
+            then jsonb_build_object('body', case when up.kind is not null then up.body else was.body end) else '{}'::jsonb end
+    || case when up.kind is not null and was.kind is not null and was.body is distinct from up.body
+              and (was.t is distinct from x.over_t or was.dev is distinct from x.over_dev)
+            then jsonb_build_object('was_body', was.body) else '{}'::jsonb end)
+  into res
+  from x left join up on up.kind = x.kind and up.id = x.id left join was on was.kind = x.kind and was.id = x.id;
+  return jsonb_build_object(
+    'top', (select coalesce(max(r.seq), 0) from public.records r where r.user_id = uid),
+    'layout', (select r.body from public.records r where r.user_id = uid and r.kind = 'meta' and r.id = 'layout'),
+    'rows', coalesce(res, '[]'::jsonb));
+end $$;
+revoke all on function public.records_push(jsonb, bigint) from public, anon;
+grant execute on function public.records_push(jsonb, bigint) to authenticated;
+
+create or replace function public.records_pull(since bigint, most int default 500) returns jsonb
+language sql stable set search_path = '' as $$
+  select jsonb_build_object(
+    'top', (select coalesce(max(r.seq), 0) from public.records r where r.user_id = (select auth.uid())),
+    'layout', (select r.body from public.records r where r.user_id = (select auth.uid()) and r.kind = 'meta' and r.id = 'layout'),
+    'rows', coalesce((select jsonb_agg(to_jsonb(q) order by q.seq) from (
+      select r.kind, r.id, r.body, r.sum, r.t, r.dev, r.a, r.gone_saw, r.gone_saw_dev, r.gone_good, r.gone_t, r.gone_dev, r.gone_day, r.gone_clash, r.seq
+      from public.records r where r.user_id = (select auth.uid()) and r.seq > since order by r.seq limit most) q), '[]'::jsonb));
+$$;
+revoke all on function public.records_pull(bigint, int) from public, anon;
+grant execute on function public.records_pull(bigint, int) to authenticated;
+
+create or replace function public.records_limit() returns trigger language plpgsql set search_path = '' as $$
+declare u uuid; n bigint; b bigint;
+begin
+  for u in select distinct w.user_id from written w loop
+    select count(*), coalesce(sum(octet_length(r.body)), 0) into n, b from public.records r where r.user_id = u;
+    if n > 20000 or b > 26214400 then raise exception 'rows_limit' using errcode = 'P0001'; end if;
+  end loop;
+  return null;
+end $$;
+create trigger records_limit_i after insert on public.records referencing new table as written for each statement execute function public.records_limit();
+create trigger records_limit_u after update on public.records referencing new table as written for each statement execute function public.records_limit();
+
+create or replace function public.records_digest() returns jsonb language sql stable set search_path = '' as $$
+  select jsonb_build_object('n', count(*), 'top', coalesce(max(r.seq), 0),
+    'sum', md5(coalesce(string_agg(
+      r.kind || chr(31) || r.id || chr(31) || r.t || chr(31) || r.dev || chr(31) || r.a || chr(31) || left(coalesce(r.sum, ''), 12) || chr(31)
+        || coalesce(r.gone_saw::text, '') || chr(31) || coalesce(r.gone_saw_dev, '') || chr(31) || (r.gone_good::int),
+      chr(30) order by r.kind collate "C", r.id collate "C"), '')))
+  from public.records r where r.user_id = (select auth.uid());
+$$;
+revoke all on function public.records_digest() from public, anon;
+grant execute on function public.records_digest() to authenticated;
+```
+
+   Nothing reads or writes it until 2.78 is merged.
+
+3. One line for the tests: New query, `select version();`, Run, and send the line it answers (the tests then run on the same Postgres).
+
+What each part does:
+- **The table.** `kind` and `id` name the record; `body` is the record as the phone saves it; `sum` is the database's own checksum of it, which a phone cannot set; `t`, `dev` and `a` are the copy's version (when the lifter last edited it, on which phone, and how many times the app itself has written it since); the `gone_` columns are the deletion mark, which names the copy it deleted; `seq` numbers every change of the account.
+- **The row rule.** The same as `docs`: each account reads and writes only its own rows; nothing for signed-out visitors. A phone can add and change rows, never delete one: a deleted row would be a deletion mark removed.
+- **The trigger** (`records_join`). Every write goes through it, whoever makes it. It keeps the later edit of the copy and the mark that names the later copy, so the same writes in any order end as the same row, and it refuses an older edit over a newer one. Writes to one account are applied one at a time (the same lock `docs_limit` uses), so `seq` rises in the order they are saved.
+- **The calls.** `records_push` writes a set of rows in one step and answers with what the account then holds; `records_pull` answers with the rows changed since a number; `records_digest` answers with one checksum of the whole account, for the daily check. Each runs with the caller's own rights.
+- **The limits.** 1 MB a row; 20,000 rows and 25 MB an account.
+
+Deleting an account deletes its rows in both tables (`on delete cascade`). To clear the preview's rows only: SQL Editor, `delete from public.records_preview where user_id = auth.uid();` does nothing there (the editor is no app account); use Table Editor > records_preview and delete your rows.
+
 ## Who can see the data
 
 - Other users: never. The rule in step 6 is enforced by the database for every request.

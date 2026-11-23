@@ -66,6 +66,7 @@ import {
   UNDO_DAYS
 } from './storage';
 import { cloudPull, cloudStop, cq, photoSyncSoon, setCloud } from './sync';
+import { rowsDiag } from './rows';
 import { AUTH, FB } from './providers';
 import {
   activeRoutine,
@@ -905,8 +906,9 @@ function helpBody(): TemplateResult {
 `;
 }
 
-/** More: demo data, the version with the error log, the licenses in the installed app, and Erase everything. */
+/** More: demo data, the version with the error log and, on an account that has rows, how their check stands, the licenses in the installed app, and Erase everything. */
 function moreBody(hasDemo: boolean): TemplateResult {
+  const rows = rowsDiag();
   return html`<div class="card stack">
 <div>
 <p class="small u-m0-0-6"><b>Demo data</b> ${tipButton(
@@ -926,20 +928,25 @@ function moreBody(hasDemo: boolean): TemplateResult {
       : nothing
   }</p>
 ${
-  logBuf.length
-    ? html`<ul class="clist">${logBuf
-        .slice(-LOG_SHOWN)
-        .reverse()
-        .map(
-          x =>
-            html`<li><span class="small"><b>${x.a}</b> ${x.m}${x.n ? ` (${x.n} times)` : ''}</span><span class="small muted">${stampShort(x.t)}</span></li>
-`
-        )}</ul>
+  rows
+    ? html`<p class="small muted u-m0-0-6" id="rowsLine">${rows.line}</p>
 `
     : nothing
 }${
     logBuf.length
-      ? html`<div class="row"><button class="btn sm" data-act="diagCopy">Copy diagnostics</button><button class="btn sm" data-act="diagClear">Clear log</button></div>
+      ? html`<ul class="clist">${logBuf
+          .slice(-LOG_SHOWN)
+          .reverse()
+          .map(
+            x =>
+              html`<li><span class="small"><b>${x.a}</b> ${x.m}${x.n ? ` (${x.n} times)` : ''}</span><span class="small muted">${stampShort(x.t)}</span></li>
+`
+          )}</ul>
+`
+      : nothing
+  }${
+    logBuf.length || rows
+      ? html`<div class="row"><button class="btn sm" data-act="diagCopy">Copy diagnostics</button>${logBuf.length ? html`<button class="btn sm" data-act="diagClear">Clear log</button>` : nothing}</div>
 `
       : nothing
   }${

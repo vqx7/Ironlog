@@ -69,6 +69,7 @@ import { FIRST_MACHINE } from './model';
 import { invalidate } from './live';
 import { AUTH, codeOf } from './providers';
 import { photoHeld, photoNote, photoOf, photoPending, photoSent, photoTake } from './photo';
+import { ROWS_UPDATE, rowsBlocked, rowsForget, rowsGate, rowsLogKeys, rowsRemoved, rowsSoon, rowsStart } from './rows';
 import { acct, cloud, fx, setState, state, ui } from './store';
 import type {
   Base,
@@ -385,6 +386,8 @@ let notesEp = 0;
 /** The notes in this tab now describe a new log (above): forgotten, or another account's. */
 const newEp = (): void => {
   notesEp = Math.max(Date.now(), notesEp + 1);
+  // The rows' notes describe the log the notes before did: forgotten with them.
+  rowsForget();
 };
 /** The moment stored notes last stopped describing the log before them; 0 when they say none. */
 const epOf = (m: Rec | null): number => (m && typeof m.ep === 'number' ? m.ep : 0);
@@ -616,6 +619,14 @@ export function setCloud(st: CloudStatus, err?: string | undefined): void {
   cloud.err = err || null;
   fx.setSaveState();
   fx.syncLine();
+  // The documents are in step with the account: the account's rows are made to say what the log says (rows.ts).
+  if (st === 'synced') rowsSoon();
+}
+/** Stops the sync on an account whose layout asks for a newer build than this one, and says so: nothing more is read from the account or written to it. True when it stopped. */
+function rowsStop(): boolean {
+  if (!rowsBlocked()) return false;
+  setCloud('offline', ROWS_UPDATE);
+  return true;
 }
 /** The account's document by id. Only called while the sync is on, when there is a db. */
 function ref(id: string): CloudRef {
@@ -1525,6 +1536,7 @@ export async function cloudFlush(): Promise<void> {
      would find nothing to send and say Synced, the account's own changes
      never read. */
   if (!pulled) return cloudPull();
+  if (rowsStop()) return;
   if (trackT || cloud.pendAt) trackEdits();
   const todo = changedDocs();
   /* The draft goes up last: Finish empties it and adds the
@@ -1641,7 +1653,9 @@ export async function cloudFlush(): Promise<void> {
             cloud.editAt[x.id] = Math.max(cloud.editAt[x.id] || 0, ret);
             if (x.id === 'draft' && !dn) dn = { prev, sessions0: state.sessions, kept: null, lost: null };
             const agreed = x.id === 'draft' && m && m.b ? m.b.draft : null;
+            const before = rowsLogKeys();
             applyChunk(x.id, merged);
+            rowsRemoved(before);
             // Undo of a change kept here over the account's copy goes back to that copy (undoKeeps).
             undoKeeps(stat.lost.splice(lostBefore));
             adopted = true;
@@ -2076,7 +2090,11 @@ async function pullAll(said: number): Promise<void> {
     setCloud('offline');
     return;
   }
+  if (rowsStop()) return;
   setCloud('connecting');
+  const began = Date.now();
+  // The account's layout is asked for beside its documents and never waited for: what it says stops this sync below, or the next one.
+  void rowsGate();
   let snap: Awaited<ReturnType<ReturnType<CloudDb['collection']>['get']>>;
   try {
     snap = await withTimeout(cloud.db.collection(`data/users/${cloud.uid}`).get(), SYNC_MS.net, 'sync-pull');
@@ -2088,6 +2106,10 @@ async function pullAll(said: number): Promise<void> {
   }
   cloud.lastPull = Date.now();
   pulled = true;
+  if (rowsStop()) {
+    conflictNote({ conflicts: said });
+    return;
+  }
   // What the other tab synced while this one waited for the account is read before this tab's notes are.
   notesCatchUp();
   // The profile photo, from the same listing: a document of its own, so nothing below reads it.
@@ -2105,6 +2127,7 @@ async function pullAll(said: number): Promise<void> {
       fx.render();
       fx.toast('Demo data cleared. It never goes into an account.');
     }
+    readBegan = began;
     await cloudFlush();
     return;
   }
@@ -2154,7 +2177,9 @@ async function pullAll(said: number): Promise<void> {
     lost: Kept = null;
   if (parts) {
     const aside = laterCopiesKept(parts, stat);
+    const before = rowsLogKeys();
     setState(assemble(parts));
+    rowsRemoved(before);
     undoKeeps(stat.lost);
     putCopiesAside(aside);
     keepLastCopies(held);
@@ -2209,6 +2234,7 @@ async function pullAll(said: number): Promise<void> {
     // Nothing taken in here: what a send took in before handing over is still said.
     conflictNote(stat);
   }
+  readBegan = began;
   await cloudFlush();
 }
 
@@ -2231,6 +2257,7 @@ function stillSeen(d: Rec | null, seen: CloudSeen): boolean {
    whose documents live in one test's page or are written one request at a time. */
 function storeOf(raw: CloudDbIn): CloudDb {
   return {
+    rows: raw.rows,
     collection: p => raw.collection(p),
     doc(path) {
       const d = raw.doc(path);
@@ -2276,6 +2303,8 @@ let starting: Promise<void> | null = null;
 let starts = 0;
 let firstPull = false;
 let pulled = false;
+/** When the last whole read of the account that this tab took in was asked for: a document written before then is in the log (what rows.ts waits for before it sends the log over a row). */
+let readBegan = 0;
 /** Settles once no start of the sync is under way, so the sync then reads on or off: what a sign-in says waits for it. */
 export async function cloudDecided(): Promise<void> {
   while (starting) await starting;
@@ -2833,13 +2862,15 @@ export function syncStart(): void {
      was last agreed with the cloud, so the first pull adopts the cloud copy
      instead of the first flush writing an empty state over it. */
   if (!device.hadLocal) {
-    // Writes sent from a log no longer here are not this log's: forgotten with the notes.
+    // Writes sent from a log no longer here are not this log's: forgotten with the notes, and the rows' notes with them.
+    rowsForget();
     cloud.meta = {};
     cloud.sent = {};
     cloud.editAt = {};
     cloud.recAt = {};
   }
   resyncLocalH();
+  rowsStart({ ep: () => notesEp, unsent: hasUnsent, pulledAt: () => readBegan, stop: rowsStop });
   window.addEventListener('storage', onStorage);
   document.addEventListener('visibilitychange', onVisibility);
   window.addEventListener('pagehide', onPageHide);

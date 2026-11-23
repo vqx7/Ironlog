@@ -21,6 +21,7 @@ function start(root) {
   const rowsLive = rows;
   const rowsPreview = new Map(); // the same for public.docs_preview (the preview build, r24)
   let pvOn = true;              // false: docs_preview is not created yet
+  let recordsDb = null;         // the tables of SUPABASE.md, Part 8, on a real Postgres engine (tests/rowsdb.js), once a suite asks for them; until then the project has none, as before their SQL is run
   let minPassword = 6;          // the server's own shortest password (Supabase's default); a project can ask more
   const feedback = [];          // rows of public.feedback
   const readers = new Set();    // user ids in public.feedback_readers
@@ -188,6 +189,24 @@ function start(root) {
         if (req.method === 'GET') return send(res, 200, c && readers.has(c.id) ? feedback.slice().reverse() : []);
         return send(res, 405, { message: 'method' });
       }
+      // ---- Data API: one row per record (records and records_preview), once a suite has run their SQL (recordsOn) ----
+      {
+        const m = /^\/rest\/v1\/(?:rpc\/(records(?:_preview)?)_(push|pull|digest)|(records(?:_preview)?))$/.exec(p);
+        if (m) {
+          const table = m[1] || m[3], name = m[2] || 'list';
+          // As the Data API answers for a function or a table the project does not have.
+          if (!recordsDb) return send(res, 404, m[2] ? { code: 'PGRST202', message: `Could not find the function public.${table}_${name} in the schema cache` } : { code: 'PGRST205', message: `Could not find the table 'public.${table}' in the schema cache` });
+          const c = caller(req);
+          if (c && c.expired) return send(res, 401, { code: 'PGRST303', message: 'JWT expired' });
+          const b = json();
+          const args = name === 'push' ? [b.p, b.only_if_top ?? null] : name === 'pull' ? [b.since, b.most] : name === 'list' ? [Number(String(u.searchParams.get('seq') || 'gt.0').replace('gt.', '')), Number(u.searchParams.get('limit') || 1000), u.searchParams.get('select') || ''] : [];
+          recordsDb.then(R => R.call(c ? c.id : null, table, name, args)).then(
+            out => send(res, 200, out),
+            e => send(res, e.code === 'denied' ? 403 : 400, { code: e.code === 'denied' ? '42501' : 'P0001', message: String(e.message) })
+          );
+          return;
+        }
+      }
       // ---- Data API: tables docs and docs_preview ----
       if (p === '/rest/v1/docs' || p === '/rest/v1/docs_preview') {
         const rows = p === '/rest/v1/docs' ? rowsLive : rowsPreview;
@@ -265,6 +284,9 @@ function start(root) {
     const base = `http://127.0.0.1:${server.address().port}`;
     r({ base, users, rows, rowsPreview, log,
       previewTable(v) { pvOn = !!v; },
+      /* Runs the SQL of SUPABASE.md, Part 8 (the project now has `records` and `records_preview`); answers with the
+         database, whose `rows(uid)` reads an account's rows and whose `call(uid, table, name, args)` writes as it. */
+      recordsOn() { recordsDb = recordsDb || require('./rowsdb').rowsDb(); return recordsDb; },
       setMinPassword(n) { minPassword = n; },
       addUser(email, password) { const nu = { id: crypto.randomUUID(), email, password, confirmed: true, created: new Date().toISOString() }; users.set(email, nu); return nu; },
       confirm(email) { const x = users.get(email); if (x) { x.confirmed = true; x.code = null; } },
@@ -283,7 +305,7 @@ function start(root) {
          left half sent never does (r33 stopped at 15 minutes on GitHub after
          its last check, 2026-10-14). The suites are done with the server by
          then, so its connections are closed with it. */
-      close: () => new Promise(q => { server.close(q); server.closeAllConnections(); }) });
+      close: () => new Promise(q => { server.close(q); server.closeAllConnections(); if (recordsDb) recordsDb.then(R => R.close(), () => {}); }) });
   }));
 }
 // Since r26 sign-up and a new password are checked against Have I Been
