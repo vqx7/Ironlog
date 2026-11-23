@@ -31,7 +31,8 @@ const BEFORE = 'a90bfabc59c70793de70a0137cf3885f8f3c7e53';
 function sourceAt(sha) {
   const dir = path.join(os.tmpdir(), 'ironlog-src-' + sha.slice(0, 10));
   if (fs.existsSync(path.join(dir, 'src', 'app', 'sync.ts'))) return dir;
-  const git = a => execFileSync('git', a, { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 256 * 1024 * 1024 });
+  // GitHub's WebKit and Chromium jobs run in a container as another user than the checkout's owner, and git then refuses the repository unless told it is safe.
+  const git = a => execFileSync('git', ['-c', 'safe.directory=' + ROOT, '-c', 'safe.directory=*', ...a], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 256 * 1024 * 1024 });
   try { git(['cat-file', '-e', sha + '^{commit}']); } catch (e) { git(['fetch', '--quiet', '--depth', '1', 'origin', sha]); }
   fs.mkdirSync(dir, { recursive: true });
   execFileSync('tar', ['-x', '-C', dir], { input: git(['archive', sha, 'src/app']) });
