@@ -146,7 +146,12 @@ const plain = rows => (rows || []).map(s => `${s.w}x${s.r}`).join(',');
   await N.settle(); await O.settle();
   const rir1 = await N.ev(() => window.__ironlog.state.draft.ex[0].sets[1].rir), kept7 = (await N.done()).includes('80x7');
   ok((await N.done()) === (await O.done()) && rir1 === (await O.ev(() => window.__ironlog.state.draft.ex[0].sets[1].rir)), 'the two phones end on one copy of the workout', { N: await N.done(), O: await O.done() });
-  ok(kept7 !== (rir1 === 1), 'pinned, the older build\'s own merge: of the edit here and the one made there without pulling, it keeps one copy whole, so one of the two is gone (which one goes by the two phones\' clocks), as between two phones on the older build', { kept7, rir1 });
+  /* Which merge the older build has is read from the build, not from this outcome: one that keeps the agreed copy of
+     the workout in its sync notes (r56.1 and later) merges set by set, as this build does; one before keeps the later
+     copy whole. */
+  const setBySet = await O.ev(() => { try { const m = JSON.parse(localStorage.getItem('ironlog.v1.sync') || 'null'); return !!(m && m.meta && m.meta.draft && m.meta.draft.b && m.meta.draft.b.draft); } catch (e) { return false; } });
+  if (setBySet) ok(kept7 && rir1 === 1, 'the older build merges a workout set by set too (it keeps the agreed copy of it): the edit here and the one made there without pulling are both kept', { kept7, rir1 });
+  else ok(kept7 !== (rir1 === 1), 'pinned, the older build\'s own merge: of the edit here and the one made there without pulling, it keeps one copy whole, so one of the two is gone (which one goes by the two phones\' clocks), as between two phones on the older build', { kept7, rir1 });
 
   // ---- (4) Finished on the older phone while this one ticked one more: the set joins the saved session once.
   await N.settle(); await O.settle();
