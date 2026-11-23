@@ -259,10 +259,10 @@ const fresh = (acct: string, ep: number): Notes => ({
 });
 /** The notes as saved, when they are for this account and this log; else none. Notes for another account or an
     earlier log describe rows this phone must not act on: a record they hold that the log lacks would read as deleted. */
-function notesIn(acct: string, ep: number): Notes | null {
+function notesIn(acct: string, ep: number, text: string | null = prefGet(ROWS_KEY)): Notes | null {
   let m: Rec | null = null;
   try {
-    m = rec(parseJson(prefGet(ROWS_KEY) || 'null'));
+    m = rec(parseJson(text || 'null'));
   } catch (e) {
     // Notes that cannot be read are made again from the account.
     log('rows-notes', e);
@@ -307,13 +307,33 @@ function notesIn(acct: string, ep: number): Notes | null {
 /** Writes the notes, only while the log's own save succeeds: notes saved ahead of the log would describe a log the phone does not hold. Notes not written (the phone is full) are made again from the account at the next start. */
 function notesOut(N: Notes): void {
   if (!device.ok) return;
+  /* Another tab of this phone wrote the notes since this one read them (it counted a record a sync removed; a pass
+     never runs in two tabs at once, oneTab): what it recorded is kept, never written over. */
+  const stored = prefGet(ROWS_KEY);
+  if (stored !== null && stored !== written) {
+    const other = notesIn(N.acct, N.ep, stored);
+    if (other) {
+      N.chk.removed = Math.max(N.chk.removed, other.chk.removed);
+      for (const f of other.find)
+        if (!N.find.some(x => x.at === f.at && x.key === f.key && x.why === f.why)) {
+          N.find.push(f);
+          N.chk.diffs++;
+          N.chk.clean = 0;
+        }
+      N.find.sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0));
+      while (N.find.length > FIND_MAX) N.find.shift();
+    }
+  }
   const rows: Record<string, string> = {};
   for (const k in N.rows) {
     const h = N.rows[k];
     if (h) rows[k] = heldText(h);
   }
   const text = JSON.stringify({ ...N, rows });
-  if (text === written) return;
+  if (text === stored) {
+    written = text;
+    return;
+  }
   if (prefSet(ROWS_KEY, text)) written = text;
 }
 /** Forgets the rows' notes and what was learnt of the account: wherever the document sync's notes stop describing the log on this phone (a sign-out, another account's log taken, the log replaced). A record the notes held and the new log lacks is then no deletion. */
@@ -472,10 +492,15 @@ export function rowsRemoved(before: Set<string>): void {
   let n = 0;
   for (const k of before) if (!now.has(k)) n++;
   if (!n) return;
-  const N = notes && notes.acct === cloud.uid && notes.ep === ctx.ep() ? notes : notesIn(cloud.uid, ctx.ep());
+  // Counted in the notes as stored (another tab's pass may have written them since this tab read them); a pass under way in this tab keeps the count when it writes (notesOut).
+  const stored = prefGet(ROWS_KEY);
+  const N = notesIn(cloud.uid, ctx.ep(), stored);
   if (!N || !N.n) return;
   N.chk.removed += n;
-  notes = N;
+  if (!running) {
+    notes = N;
+    written = stored;
+  }
   notesOut(N);
 }
 
@@ -724,8 +749,11 @@ async function pass(): Promise<void> {
   // The documents are in step with the account: only then is the log what the rows should say.
   const quiet = (): boolean => cloud.status === 'synced' && !C.unsent();
   if (!quiet()) return;
-  if (!notes || notes.acct !== acct || notes.ep !== ep) {
-    notes = notesIn(acct, ep) || fresh(acct, ep);
+  // The notes are one phone's, shared by its tabs: a tab acts on them as stored now, not as it read them before another tab's pass.
+  const stored = prefGet(ROWS_KEY);
+  if (!notes || notes.acct !== acct || notes.ep !== ep || stored !== written) {
+    notes = notesIn(acct, ep, stored) || fresh(acct, ep);
+    written = stored;
     tried.clear();
   }
   const N = notes;
@@ -946,6 +974,14 @@ async function deviceRow(R: CloudRows, N: Notes): Promise<void> {
 
 /* ---------- what the document sync calls ---------- */
 
+/** Runs a pass in one tab of this phone at a time (Web Locks): two tabs hold one log and one set of notes, and two passes at once would each write the notes the other read. A tab that finds another's pass under way does nothing: that pass is mirroring the same log. Where the browser has no Web Locks the pass runs at once, as before them. */
+async function oneTab(fn: () => Promise<void>): Promise<void> {
+  const L = typeof navigator !== 'undefined' ? navigator.locks : undefined;
+  if (!L || typeof L.request !== 'function') return fn();
+  await L.request(ROWS_KEY, { ifAvailable: true }, async lock => {
+    if (lock) await fn();
+  });
+}
 /** Starts the rows: what the document sync tells them (Ctx). */
 export function rowsStart(c: Ctx): void {
   ctx = c;
@@ -957,7 +993,7 @@ export function rowsSoon(): void {
     again = true;
     return;
   }
-  running = pass()
+  running = oneTab(pass)
     .catch((e: unknown) => {
       log('rows', e);
       // No answer, or a sign-in the sync itself will say is lost, is no fault of the rows: the next sync tries again. Anything else stops them for this visit.

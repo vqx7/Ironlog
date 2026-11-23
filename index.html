@@ -11606,10 +11606,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     devDay: null,
     ph: null
   });
-  function notesIn(acct2, ep) {
+  function notesIn(acct2, ep, text = prefGet(ROWS_KEY)) {
     let m3 = null;
     try {
-      m3 = rec(parseJson(prefGet(ROWS_KEY) || "null"));
+      m3 = rec(parseJson(text || "null"));
     } catch (e5) {
       log("rows-notes", e5);
       return null;
@@ -11651,13 +11651,31 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   function notesOut(N2) {
     if (!device.ok) return;
+    const stored = prefGet(ROWS_KEY);
+    if (stored !== null && stored !== written) {
+      const other = notesIn(N2.acct, N2.ep, stored);
+      if (other) {
+        N2.chk.removed = Math.max(N2.chk.removed, other.chk.removed);
+        for (const f3 of other.find)
+          if (!N2.find.some((x2) => x2.at === f3.at && x2.key === f3.key && x2.why === f3.why)) {
+            N2.find.push(f3);
+            N2.chk.diffs++;
+            N2.chk.clean = 0;
+          }
+        N2.find.sort((a2, b2) => a2.at < b2.at ? -1 : a2.at > b2.at ? 1 : 0);
+        while (N2.find.length > FIND_MAX) N2.find.shift();
+      }
+    }
     const rows2 = {};
     for (const k2 in N2.rows) {
       const h3 = N2.rows[k2];
       if (h3) rows2[k2] = heldText(h3);
     }
     const text = JSON.stringify({ ...N2, rows: rows2 });
-    if (text === written) return;
+    if (text === stored) {
+      written = text;
+      return;
+    }
     if (prefSet(ROWS_KEY, text)) written = text;
   }
   function rowsForget() {
@@ -11792,10 +11810,14 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     let n3 = 0;
     for (const k2 of before2) if (!now2.has(k2)) n3++;
     if (!n3) return;
-    const N2 = notes && notes.acct === cloud.uid && notes.ep === ctx.ep() ? notes : notesIn(cloud.uid, ctx.ep());
+    const stored = prefGet(ROWS_KEY);
+    const N2 = notesIn(cloud.uid, ctx.ep(), stored);
     if (!N2 || !N2.n) return;
     N2.chk.removed += n3;
-    notes = N2;
+    if (!running) {
+      notes = N2;
+      written = stored;
+    }
     notesOut(N2);
   }
   function layoutOf(v3) {
@@ -11995,8 +12017,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const still = () => cloud.on && cloud.uid === acct2 && C2.ep() === ep && !off && !blocked;
     const quiet = () => cloud.status === "synced" && !C2.unsent();
     if (!quiet()) return;
-    if (!notes || notes.acct !== acct2 || notes.ep !== ep) {
-      notes = notesIn(acct2, ep) || fresh(acct2, ep);
+    const stored = prefGet(ROWS_KEY);
+    if (!notes || notes.acct !== acct2 || notes.ep !== ep || stored !== written) {
+      notes = notesIn(acct2, ep, stored) || fresh(acct2, ep);
+      written = stored;
       tried.clear();
     }
     const N2 = notes;
@@ -12189,6 +12213,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     });
     if (await send(R2, N2, [{ kind: "device", id, body, t: Date.now(), dev: id, a: 0 }])) N2.devDay = today();
   }
+  async function oneTab(fn) {
+    const L2 = typeof navigator !== "undefined" ? navigator.locks : void 0;
+    if (!L2 || typeof L2.request !== "function") return fn();
+    await L2.request(ROWS_KEY, { ifAvailable: true }, async (lock) => {
+      if (lock) await fn();
+    });
+  }
   function rowsStart(c4) {
     ctx = c4;
   }
@@ -12198,7 +12229,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       again = true;
       return;
     }
-    running = pass().catch((e5) => {
+    running = oneTab(pass).catch((e5) => {
       log("rows", e5);
       const c4 = codeOf(e5);
       if (navigator.onLine !== false && c4 !== "timeout" && c4 !== "revoked" && c4 !== "gone" && !/no answer in time|unavailable|offline|Failed to fetch|NetworkError|Load failed/i.test(said2(e5)))
@@ -13777,7 +13808,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     while (starting) await starting;
   }
   var cloudFirstPull = () => cloud.on && firstPull;
-  async function oneTab(fn) {
+  async function oneTab2(fn) {
     const L2 = typeof navigator !== "undefined" ? navigator.locks : void 0;
     if (L2 && typeof L2.request === "function") return await L2.request(KEY + ".account", () => fn());
     return fn();
@@ -13969,7 +14000,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const pv = await cloudProvider();
       if (!pv) return;
       const db = pv.db, id = pv.userId;
-      const go = await oneTab(async () => {
+      const go = await oneTab2(async () => {
         const now2 = await cloudProvider();
         return !!now2 && now2.userId === id && await takeAccount(id);
       });

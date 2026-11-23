@@ -37,13 +37,17 @@ function sourceAt(sha) {
   execFileSync('tar', ['-x', '-C', dir], { input: git(['archive', sha, 'src/app']) });
   return dir;
 }
-/** A copy of this checkout's source with `from` replaced by `to` in src/app/rows.ts: the rows module with one rule broken. */
+/** A copy of this checkout's source with `from` replaced by `to` in src/app/rows.ts: the rows module with one rule broken. A rule kept in two places is broken in both (`from` a list of pairs). */
 function brokenCopy(name, from, to) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ironlog-broken-'));
   fs.cpSync(path.join(ROOT, 'src', 'app'), path.join(dir, 'src', 'app'), { recursive: true });
-  const f = path.join(dir, 'src', 'app', 'rows.ts'), text = fs.readFileSync(f, 'utf8');
-  if (!text.includes(from)) throw new Error(`rows.ts no longer holds the text the broken copy "${name}" replaces`);
-  fs.writeFileSync(f, text.split(from).join(to));
+  const f = path.join(dir, 'src', 'app', 'rows.ts');
+  let text = fs.readFileSync(f, 'utf8');
+  for (const [a, b] of Array.isArray(from) ? from : [[from, to]]) {
+    if (!text.includes(a)) throw new Error(`rows.ts no longer holds the text the broken copy "${name}" replaces: ${a.slice(0, 50)}`);
+    text = text.split(a).join(b);
+  }
+  fs.writeFileSync(f, text);
   return dir;
 }
 let accounts = 0;
@@ -200,6 +204,26 @@ const CASES = {
     r.clock.t += 26 * 3600000; await A.sync(); await A.sync();
     if (diag(A).line !== 'Rows check: 2 clean days, 0 differences, 0 removed by a sync') out.push(`the next day phone A says "${diag(A).line}"`);
     if (!A.rowNotes().rows['device/dev-third']) out.push("phone A's notes do not hold the third phone's row");
+    return out;
+  },
+  /* Two tabs of one phone hold one set of notes. A tab that read them before the other tab recorded a difference
+     must not write its own, older ones over that: it acts on the notes as stored. Here the second tab is a second
+     page on the same storage, behind by a day. */
+  async 'a second tab of the phone never writes its older notes over what the first recorded'(dir, R) {
+    const name = acct(), r = await history({ dirs: [dir, dir], rows: R, name, script: [{ p: 0, op: 'check' }] });
+    const out = [], A = r.phones[0];
+    const A2 = phoneOf(dir, { name: 'A', clock: r.clock, storage: A.ls, seed: 8 }).start(); A2.signIn(r.C); await A2.sync();
+    if (diag(A2).line !== 'Rows check: 1 clean day, 0 differences, 0 removed by a sync') return [`the second tab starts with "${diag(A2).line}"`];
+    // The first tab meets a row the documents decided against, and records the difference (the case above).
+    await R.call(name, 'records', 'push', [[{ kind: 'session', id: 's1', body: '{"id":"s1","notes":"not what the documents hold"}', t: r.clock.t + 5000, dev: 'dev-other', a: 0 }]]);
+    await r.run({ p: 0, op: 'note', id: 's2', v: 'typed in the first tab' }); await A.flush();
+    await r.check();
+    if (!/1 difference,/.test(diag(A).line)) return [`the first tab did not record the difference: "${diag(A).line}"`];
+    // The next day the second tab syncs and runs its daily check.
+    r.clock.t += 26 * 3600000; await A2.sync(); await A2.sync();
+    const kept = A2.rowNotes();
+    if (!/1 difference,/.test(diag(A2).line)) out.push(`the second tab says "${diag(A2).line}"`);
+    if (kept.chk.diffs !== 1 || kept.find.length !== 1) out.push(`the notes on the phone hold ${kept.chk.diffs} differences and ${kept.find.length} findings after the second tab's pass`);
     return out;
   },
   /* "Sign out", then signed in again: the phone reads the list, finds its log there, and nothing in the account changes. */
@@ -376,6 +400,7 @@ const CASES = {
       ['a row the documents decided against is never sent over', `      const ripe = since !== undefined && now - since >= WAIT_MS && C.pulledAt() > since;`, `      const ripe = false && since !== undefined && now - since >= WAIT_MS && C.pulledAt() > since;`, ["a row the documents decided against is sent over, and the difference recorded"]],
       ['a row is sent over the account\'s at once, with no wait', `      const ripe = since !== undefined && now - since >= WAIT_MS && C.pulledAt() > since;`, `      const ripe = true;`, ["a row the documents decided against is sent over, and the difference recorded", "a row ahead of the documents a phone holds is left alone"]],
       ['every read starts after the phone\'s own last write, whatever another phone wrote before it', `    if (top - N.n === own) N.n = top;`, `    N.n = top;`, ['a row another phone wrote while this phone was writing is read at the next pass']],
+      ['a tab writes the notes it read before over what another tab has stored since', [[`notes.ep !== ep || stored !== written) {`, `notes.ep !== ep) {`], [`if (stored !== null && stored !== written) {`, `if (stored === 'never') {`]], '', ['a second tab of the phone never writes its older notes over what the first recorded']],
       ['the rows\' notes are kept at "Sign out"', `  // Notes storage would not forget name the log they were for, and are not read for another.
   prefDel(ROWS_KEY);`, ``, ['"Sign out" then signed in again changes nothing in the account']]
     ];
