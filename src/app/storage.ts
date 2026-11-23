@@ -14,6 +14,8 @@ import { arr, fixId, parseJson, rec } from './records';
 import type { Rec } from './records';
 import type { LogEntry } from './types';
 import { realCount } from './chunks';
+import { Hx } from './merge';
+import type { Lost } from './merge';
 import { normalize } from './normalize';
 import { cloud, fx, setState, state, ui } from './store';
 import type { State } from './store';
@@ -427,6 +429,52 @@ export function snapshot(inv?: (() => boolean) | null): void {
   }
   while (undoStack.length > UNDO_MAX) undoStack.shift();
   undoPersist();
+}
+/* Undo goes back to the log as it stood before the change. A change made to a record that another tab or phone had
+   changed, unseen here, replaces that copy when the two are merged and this one is kept as the later edit. The step
+   that changed the record then goes back to the copy it replaced, not to the one this device held before it: Undo
+   would otherwise take the other's change away with this one, on every device. */
+/** Gives the Undo step that changed each record a merge kept over another copy (`lost`) that copy to go back to. */
+export function undoKeeps(lost: readonly Lost[]): void {
+  if (!lost.length || !undoStack.length) return;
+  let changed = false;
+  for (const x of lost) {
+    const cut = x.key.indexOf('/');
+    if (cut < 0) continue;
+    const list = x.key.slice(0, cut),
+      id = x.key.slice(cut + 1);
+    /** The record or value keyed `x.key` in a saved log, with the way to replace it; null when the log holds none. */
+    const held = (log: Rec): { v: unknown; put: (v: unknown) => void } | null => {
+      if (list === '' || list === 'settings') {
+        const o = list ? rec(log['settings']) : log;
+        return o ? { v: o[id], put: v => (v === undefined ? delete o[id] : (o[id] = v)) } : null;
+      }
+      const rows = arr(log[list]);
+      const at = rows ? rows.findIndex(r => rec(r)?.['id'] === id) : -1;
+      return rows && at >= 0 ? { v: rows[at], put: v => (rows[at] = v) } : null;
+    };
+    // The newest step that changed the record from the copy both sides had agreed on.
+    for (let n = undoStack.length - 1; n >= 0; n--) {
+      const e = undoStack[n];
+      if (!e) continue;
+      try {
+        const pre = rec(parseJson(e.pre));
+        const was = pre ? held(pre) : null;
+        if (!pre || !was || Hx(was.v) !== x.base) continue;
+        const post = e.post == null ? null : rec(parseJson(e.post));
+        const after = post ? held(post) : null;
+        if (post && after && Hx(after.v) === x.base) continue;
+        was.put(x.copy);
+        e.pre = JSON.stringify(pre);
+        changed = true;
+        break;
+      } catch (err) {
+        // A step that cannot be read is left as it is: Undo then goes back to the copy this device held.
+        log('undo', err);
+      }
+    }
+  }
+  if (changed) undoPersist();
 }
 /* The first save after a snapshot is the action itself; remember the result,
    so Undo can tell the action apart from anything logged after it. */

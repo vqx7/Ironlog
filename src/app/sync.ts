@@ -50,7 +50,7 @@ import {
   sameRecord,
   storedJson
 } from './merge';
-import type { Wins } from './merge';
+import type { Lost, Wins } from './merge';
 import { keptOnSession, unname } from './machines';
 import { draftCardio, draftSession } from './session';
 import type { DraftLike } from './session';
@@ -85,6 +85,7 @@ import type {
 import {
   KEY,
   capturePost,
+  undoKeeps,
   demoRestore,
   device,
   log,
@@ -1548,7 +1549,7 @@ export async function cloudFlush(): Promise<void> {
     let adopted = false,
       moreBody = false,
       again = false;
-    const stat = { conflicts: 0 };
+    const stat: { conflicts: number; lost: Lost[] } = { conflicts: 0, lost: [] };
     let dn: {
       prev: DraftLike | null;
       sessions0: unknown;
@@ -1607,7 +1608,8 @@ export async function cloudFlush(): Promise<void> {
             const remoteWins = ret > (cloud.editAt[x.id] || 0),
               rt = timesIn(b.rt);
             const mine = parseJson(json);
-            const clashed = stat.conflicts;
+            const clashed = stat.conflicts,
+              lostBefore = stat.lost.length;
             const merged = mergeChunk(x.id, baseFor(x.id, m, legB), mine, rd, clashRule(x.id, rt, remoteWins), stat);
             // The workout here before this flush took anything in, for what is said after it; each merge reads the one here now.
             const prev = x.id === 'draft' ? state.draft : null;
@@ -1624,6 +1626,7 @@ export async function cloudFlush(): Promise<void> {
               /* This document's merge is dropped, to be made again by the pull, which says its clashes; those of the
                  documents taken in before it are said with them (or at once, when the send gives up). */
               stat.conflicts = clashed;
+              stat.lost.length = lostBefore;
               if (++handedOver > HAND_OVERS) {
                 handedOver = 0;
                 tellTakenIn();
@@ -1639,6 +1642,8 @@ export async function cloudFlush(): Promise<void> {
             if (x.id === 'draft' && !dn) dn = { prev, sessions0: state.sessions, kept: null, lost: null };
             const agreed = x.id === 'draft' && m && m.b ? m.b.draft : null;
             applyChunk(x.id, merged);
+            // Undo of a change kept here over the account's copy goes back to that copy (undoKeeps).
+            undoKeeps(stat.lost.splice(lostBefore));
             adopted = true;
             writeTakenIn();
             took = { h: hashStr(b.json), at: Number(b.at), b: baseOf(x.id, rd) };
@@ -2119,7 +2124,7 @@ async function pullAll(said: number): Promise<void> {
     merged = false,
     draftIn = false,
     keptDraft = false;
-  const stat = { conflicts: said };
+  const stat: { conflicts: number; lost: Lost[] } = { conflicts: said, lost: [] };
   const adoptedIds = new Set<string>();
   const leg: { bodyweights: unknown[]; measurements: unknown[] } = { bodyweights: [], measurements: [] };
   const legB = legacyBodyBase();
@@ -2150,6 +2155,7 @@ async function pullAll(said: number): Promise<void> {
   if (parts) {
     const aside = laterCopiesKept(parts, stat);
     setState(assemble(parts));
+    undoKeeps(stat.lost);
     putCopiesAside(aside);
     keepLastCopies(held);
     absorbLegacy(leg);
@@ -2720,7 +2726,7 @@ function mergeIn(text: string, own: boolean): void {
   // above resyncLocalH).
   trackEdits();
   const held = heldNow();
-  const stat = { conflicts: 0, byTime: 0 };
+  const stat: { conflicts: number; byTime: number; lost: Lost[] } = { conflicts: 0, byTime: 0, lost: [] };
   // The workout here before the merge: the copy that may lose it (below), and what is then said.
   const dr0 = state.draft;
   let kept: Kept = null;
@@ -2750,6 +2756,8 @@ function mergeIn(text: string, own: boolean): void {
     for (const id in parts) recordTimesAfter(id, L[id], Rr[id], parts[id], other ? other[id] || null : null);
     const aside = laterCopiesKept(parts, stat);
     setState(assemble(parts));
+    // Undo of a change kept here over the other tab's copy goes back to that copy (undoKeeps).
+    undoKeeps(stat.lost);
     putCopiesAside(aside);
     /* The copy of the workout that lost the merge keeps its sets, as on two phones (keepLost): this tab's when it held
        something logged the other tab's save lacked, the other tab's when it did and this tab's copy stood. Logged means

@@ -2577,6 +2577,414 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var loadReadOfIn = (M3, ex, kg2, t4) => loadReadIn(liftModelIn(M3, ex), kg2, t4);
   var planStepUnit = (v3) => unitOnGrid(v3);
 
+  // src/app/machines.ts
+  function keptName(key) {
+    return { mc: key, kp: true };
+  }
+  function nameAsIs(b2) {
+    return b2.mc ? b2.kp ? keptName(b2.mc) : { mc: b2.mc } : {};
+  }
+  function savedName(key, from) {
+    if (!key) return {};
+    return from.some((b2) => b2.mc === key && b2.kp) ? keptName(key) : { mc: key };
+  }
+  function pickName(b2, key) {
+    b2.mc = key;
+    delete b2.kp;
+  }
+  function unname(b2) {
+    delete b2.mc;
+    delete b2.kp;
+  }
+  function copyName(to, from) {
+    if (!from.mc) return;
+    to.mc = from.mc;
+    if (from.kp) to.kp = true;
+    else delete to.kp;
+  }
+  function cleanName(b2) {
+    return typeof b2.mc === "string" && b2.mc ? { mc: fixId(b2.mc), ...b2.kp === true ? { kp: true } : {} } : {};
+  }
+  function blocksOf(x2) {
+    const R2 = rec(x2);
+    if (!R2) return null;
+    const ex = arr(R2.ex);
+    if (ex) return { R: R2, inData: false, ex };
+    const D2 = rec(R2.data);
+    const dx = D2 && arr(D2.ex);
+    return dx ? { R: R2, inData: true, ex: dx } : null;
+  }
+  function withBlocks(R2, inData, ex) {
+    return inData ? { ...R2, data: { ...rec(R2.data), ex } } : { ...R2, ex };
+  }
+  var liftOf = (exId, light) => typeof exId === "string" ? `${exId}|${light ? 1 : 0}` : null;
+  function unkept(x2) {
+    const at2 = blocksOf(x2);
+    if (!at2 || !at2.ex.some((b2) => rec(b2)?.kp === true)) return x2;
+    return withBlocks(
+      at2.R,
+      at2.inData,
+      at2.ex.map((b2) => {
+        const B5 = rec(b2);
+        if (!B5 || B5.kp !== true) return b2;
+        const o3 = {};
+        for (const k2 of Object.keys(B5)) if (k2 !== "mc" && k2 !== "kp") o3[k2] = B5[k2];
+        return o3;
+      })
+    );
+  }
+  function keptOf(q) {
+    const kept = /* @__PURE__ */ new Map();
+    for (const b2 of blocksOf(q)?.ex || []) {
+      const B5 = rec(b2);
+      const k2 = B5 && B5.kp === true && typeof B5.mc === "string" ? liftOf(B5.exId, B5.light) : null;
+      if (B5 && k2 && typeof B5.mc === "string" && !kept.has(k2)) kept.set(k2, B5.mc);
+    }
+    return kept;
+  }
+  function keptOn(p3, q) {
+    const P2 = blocksOf(p3), kept = keptOf(q);
+    if (!P2 || !kept.size) return p3;
+    let put = false;
+    const ex = P2.ex.map((b2) => {
+      const B5 = rec(b2);
+      const k2 = B5 && !B5.mc ? liftOf(B5.exId, B5.light) : null;
+      const key = k2 ? kept.get(k2) : void 0;
+      if (!B5 || key === void 0) return b2;
+      put = true;
+      return { ...B5, ...keptName(key) };
+    });
+    return put ? withBlocks(P2.R, P2.inData, ex) : p3;
+  }
+  function keptOnSession(p3, q) {
+    const kept = keptOf(q);
+    let put = false;
+    const ex = p3.ex.map((b2) => {
+      const k2 = b2.mc ? null : liftOf(b2.exId, b2.light);
+      const key = k2 ? kept.get(k2) : void 0;
+      if (key === void 0) return b2;
+      put = true;
+      return { ...b2, ...keptName(key) };
+    });
+    return put ? { ...p3, ex } : p3;
+  }
+
+  // src/app/merge.ts
+  function winsFor(w2, key, stat) {
+    if (typeof w2 === "boolean") return w2;
+    const r4 = w2.rec(key);
+    if (r4 === null) return w2.doc;
+    stat.byTime = (stat.byTime || 0) + 1;
+    return r4;
+  }
+  var docWins = (w2) => typeof w2 === "boolean" ? w2 : w2.doc;
+  var UNIT_FIELD = {
+    u: "w",
+    incU: "inc",
+    maxLoadU: "maxLoad",
+    barU: "barKg",
+    goalU: "goal"
+  };
+  function givenUnit(f3, k2) {
+    const of = UNIT_FIELD[k2];
+    if (!of) return false;
+    const v3 = f3[k2], n0 = f3[of];
+    const n3 = of === "goal" ? rec(n0)?.w : n0;
+    return (v3 === "kg" || v3 === "lb") && typeof n3 === "number" && unitOnGrid(n3) === v3;
+  }
+  function savedEquip(f3, k2) {
+    if (k2 !== "equip" || typeof f3.id !== "string" || typeof f3.equip !== "string") return void 0;
+    const was = equipAsSaved({
+      id: f3.id,
+      equip: f3.equip,
+      custom: f3.custom === true,
+      equipOwn: f3.equipOwn === true ? true : void 0
+    });
+    return was !== f3.equip ? was : void 0;
+  }
+  function storedJson(x2) {
+    return JSON.stringify(x2, function(k2, v3) {
+      const f3 = rec(this);
+      if (!f3) return v3;
+      return givenUnit(f3, k2) ? void 0 : savedEquip(f3, k2) ?? v3;
+    });
+  }
+  function canon(x2) {
+    if (x2 === void 0) return "null";
+    if (x2 === null || typeof x2 !== "object") return JSON.stringify(x2);
+    const list = arr(x2);
+    if (list) return "[" + list.map(canon).join(",") + "]";
+    const f3 = rec(x2) || {};
+    return "{" + Object.keys(f3).filter((k2) => f3[k2] !== void 0 && !givenUnit(f3, k2)).sort().map((k2) => JSON.stringify(k2) + ":" + canon(savedEquip(f3, k2) ?? f3[k2])).join(",") + "}";
+  }
+  var Hx = (x2) => hashStr(canon(unkept(x2)));
+  var sameRecord = (a2, b2) => canon(unkept(a2)) === canon(unkept(b2));
+  function oneCopy(a2, b2) {
+    return canon(a2) <= canon(b2) ? keptOn(a2, b2) : keptOn(b2, a2);
+  }
+  function oneSession(a2, b2) {
+    return canon(a2) <= canon(b2) ? keptOnSession(a2, b2) : keptOnSession(b2, a2);
+  }
+  function merge3List(base, l4, r4, remoteWins, stat, list = "") {
+    const known = !!base;
+    base = base || {};
+    const L2 = /* @__PURE__ */ new Map(), Rm = /* @__PURE__ */ new Map();
+    for (const x2 of arr(l4) || []) {
+      const R2 = rec(x2);
+      if (R2 && typeof R2.id === "string") L2.set(R2.id, R2);
+    }
+    for (const x2 of arr(r4) || []) {
+      const R2 = rec(x2);
+      if (R2 && typeof R2.id === "string") Rm.set(R2.id, R2);
+    }
+    const out = [];
+    for (const id of [...L2.keys(), ...[...Rm.keys()].filter((k2) => !L2.has(k2))]) {
+      const a2 = L2.get(id), b2 = Rm.get(id), bh = known ? base[id] : "?";
+      const ah = a2 ? Hx(a2) : void 0, rh = b2 ? Hx(b2) : void 0;
+      if (a2 && b2 && ah === rh) {
+        out.push(oneCopy(a2, b2));
+        continue;
+      }
+      if (!a2 || !b2) {
+        const p3 = a2 || b2, ph = a2 ? ah : rh;
+        if (known && ph === bh) continue;
+        out.push(p3);
+        continue;
+      }
+      if (ah === bh) {
+        out.push(keptOn(b2, a2));
+        continue;
+      }
+      if (rh === bh) {
+        out.push(keptOn(a2, b2));
+        continue;
+      }
+      stat.conflicts++;
+      const theirs = winsFor(remoteWins, recordKey(list, id), stat);
+      if (!theirs && known) stat.lost?.push({ key: recordKey(list, id), base: bh, copy: b2 });
+      out.push(theirs ? keptOn(b2, a2) : keptOn(a2, b2));
+    }
+    return out;
+  }
+  function merge3Val(bh, a2, b2, remoteWins, stat, key = "") {
+    const ah = Hx(a2), rh = Hx(b2);
+    if (ah === rh || rh === bh) return a2;
+    if (ah === bh) return b2;
+    stat.conflicts++;
+    const theirs = winsFor(remoteWins, key, stat);
+    if (!theirs && key) stat.lost?.push({ key, base: bh, copy: b2 });
+    return theirs ? b2 : a2;
+  }
+  var recordKey = (list, id) => `${list}/${id}`;
+  var held = (r4) => canon({ ...r4, rid: void 0 });
+  function rowKeys(sets) {
+    let n3 = 0;
+    return sets.map((r4) => [typeof r4.rid === "string" ? r4.rid : "#" + n3++, r4]);
+  }
+  function contentKeys(to, sets, side) {
+    const ids = new Set(sets.map((r4) => r4.rid));
+    const free = to.map(([k2, r4]) => ({ k: k2, h: held(r4), taken: ids.has(k2) }));
+    let n3 = 0;
+    return sets.map((r4) => {
+      if (typeof r4.rid === "string") return [r4.rid, r4];
+      const h3 = held(r4);
+      const b2 = free.find((x2) => !x2.taken && x2.h === h3);
+      if (b2) {
+        b2.taken = true;
+        return [b2.k, r4];
+      }
+      return [side + "#" + n3++, r4];
+    });
+  }
+  function weave(base, sides) {
+    const out = [...base];
+    for (const keys of sides) {
+      let at2 = -1;
+      for (const k2 of keys) {
+        const i5 = out.indexOf(k2);
+        if (i5 >= 0) at2 = i5;
+        else out.splice(++at2, 0, k2);
+      }
+    }
+    return out;
+  }
+  function mergeRows(base, l4, r4, remoteWins, stat, match) {
+    const bk = rowKeys(base || []);
+    let lk, rk;
+    if (match === "place") {
+      lk = rowKeys(l4);
+      rk = rowKeys(r4);
+    } else if (base) {
+      lk = contentKeys(bk, l4, "l");
+      rk = contentKeys(bk, r4, "r");
+    } else {
+      rk = contentKeys([], r4, "r");
+      lk = contentKeys(rk, l4, "l");
+    }
+    const B5 = new Map(bk), L2 = new Map(lk), R2 = new Map(rk);
+    const same = (x2, y2) => held(x2) === held(y2);
+    const either = (x2, y2) => typeof x2.rid === "string" || typeof y2.rid !== "string" ? x2 : y2;
+    const out = [];
+    const order = match === "place" ? weave([...B5.keys()], [[...L2.keys()], [...R2.keys()]]) : [.../* @__PURE__ */ new Set([...R2.keys(), ...B5.keys(), ...L2.keys()])];
+    for (const k2 of order) {
+      const b2 = B5.get(k2), a2 = L2.get(k2), c4 = R2.get(k2);
+      if (a2 && c4) {
+        if (same(a2, c4)) out.push(either(a2, c4));
+        else if (b2 && same(c4, b2)) out.push(a2);
+        else if (b2 && same(a2, b2)) out.push(c4);
+        else {
+          stat.conflicts++;
+          out.push(remoteWins ? c4 : a2);
+        }
+      } else if (a2) {
+        if (!(b2 && same(a2, b2))) out.push(a2);
+      } else if (c4) {
+        if (!(b2 && same(c4, b2))) out.push(c4);
+      }
+    }
+    return out;
+  }
+  function mergeFields(out, base, l4, r4, skip, remoteWins, stat) {
+    for (const f3 of /* @__PURE__ */ new Set([...Object.keys(l4), ...Object.keys(r4)])) {
+      if (skip.includes(f3)) continue;
+      if (!base && l4[f3] === void 0 !== (r4[f3] === void 0)) {
+        out[f3] = l4[f3] === void 0 ? r4[f3] : l4[f3];
+        continue;
+      }
+      const v3 = merge3Val(base ? Hx(base[f3]) : "?", l4[f3], r4[f3], remoteWins, stat);
+      if (v3 === void 0) delete out[f3];
+      else out[f3] = v3;
+    }
+  }
+  function blockKeys(list) {
+    const seen = {};
+    return list.map((b2) => [
+      typeof b2.bid === "string" && b2.bid ? "b:" + b2.bid : b2.exId + "#" + (seen[b2.exId] = (seen[b2.exId] || 0) + 1),
+      b2
+    ]);
+  }
+  function mergeExercises(base, local, remote, remoteWins, stat, match) {
+    const B5 = new Map(blockKeys(base || [])), L2 = new Map(blockKeys(local)), R2 = new Map(blockKeys(remote));
+    const bo = [...B5.keys()].join("|"), lo = [...L2.keys()].join("|"), ro = [...R2.keys()].join("|");
+    let order;
+    if (!base) order = [...R2.keys()];
+    else if (lo === ro || ro === bo) order = [...L2.keys()];
+    else if (lo === bo) order = [...R2.keys()];
+    else {
+      stat.conflicts++;
+      order = remoteWins ? [...R2.keys()] : [...L2.keys()];
+    }
+    for (const k2 of [...L2.keys(), ...R2.keys()]) if (!order.includes(k2)) order.push(k2);
+    const out = [];
+    for (const k2 of order) {
+      const b2 = B5.get(k2), a2 = L2.get(k2), c4 = R2.get(k2);
+      if (a2 && c4) {
+        const x2 = { ...a2, sets: mergeRows(base ? b2 ? b2.sets : [] : null, a2.sets, c4.sets, remoteWins, stat, match) };
+        mergeFields(rec(x2) || {}, b2 ? rec(b2) : null, rec(a2) || {}, rec(c4) || {}, ["sets"], remoteWins, stat);
+        out.push(x2);
+      } else if (a2) {
+        if (!(b2 && canon(a2) === canon(b2))) out.push(a2);
+      } else if (c4) {
+        if (!(b2 && canon(c4) === canon(b2))) out.push(c4);
+      }
+    }
+    return out;
+  }
+  function cardioBase(list) {
+    const o3 = {};
+    for (const x2 of arr(list) || []) {
+      const R2 = rec(x2);
+      if (R2 && typeof R2.id === "string") o3[R2.id] = Hx(x2);
+    }
+    return o3;
+  }
+  function mergeWorkout(base, local, remote, remoteWins, stat) {
+    const out = { ...local, ex: mergeExercises(base.ex, local.ex, remote.ex, remoteWins, stat, "place") };
+    for (const b2 of out.ex) {
+      const a2 = b2.adj;
+      const i5 = a2 && typeof a2.rid === "string" ? b2.sets.findIndex((x2) => x2.rid === a2.rid) : -1;
+      if (a2 && i5 >= 0 && i5 !== a2.at) b2.adj = { ...a2, at: i5 };
+    }
+    const O = rec(out) || {}, Bf = rec(base) || {}, Lf = rec(local) || {}, Rf = rec(remote) || {};
+    mergeFields(O, Bf, Lf, Rf, ["ex", "id", "cardio", "begunAt"], remoteWins, stat);
+    let first = null;
+    for (const t4 of [local.begunAt, remote.begunAt])
+      if (typeof t4 === "number" && t4 > 0 && (first == null || t4 < first)) first = t4;
+    if (first != null) O.begunAt = first;
+    const cardio = merge3List(cardioBase(Bf.cardio), Lf.cardio, Rf.cardio, remoteWins, stat);
+    if (cardio.length || Lf.cardio !== void 0 || Rf.cardio !== void 0) O.cardio = cardio;
+    return out;
+  }
+  function mergeSession(base, local, remote, remoteWins, stat) {
+    const out = {
+      ...local,
+      ex: mergeExercises(base ? base.ex : null, local.ex, remote.ex, remoteWins, stat, "content")
+    };
+    mergeFields(
+      rec(out) || {},
+      base ? rec(base) : null,
+      rec(local) || {},
+      rec(remote) || {},
+      ["ex", "id", "t"],
+      remoteWins,
+      stat
+    );
+    const t4 = remote.t ?? local.t;
+    if (t4 !== void 0) out.t = t4;
+    else delete out.t;
+    return out;
+  }
+  function undoDraftOf(v3) {
+    const d3 = rec(v3);
+    const ex = d3 && arr(d3["ex"]);
+    if (!d3 || typeof d3["id"] !== "string" || !ex) return null;
+    const blocks2 = [];
+    for (const b0 of ex) {
+      const b2 = rec(b0);
+      if (!b2 || typeof b2["exId"] !== "string") return null;
+      blocks2.push({ ...b2, exId: b2["exId"] });
+    }
+    return { ...d3, id: d3["id"], ex: blocks2 };
+  }
+  function mergeDraft(base0, cur0, pre0, saved) {
+    const base = undoDraftOf(base0), cur2 = undoDraftOf(cur0), pre = undoDraftOf(pre0);
+    if (pre && (!base || base.id !== pre.id) && canon(cur0) === canon(base0) && !saved(pre.id)) return pre0;
+    if (!pre || !cur2 || !base || pre.id !== cur2.id || base.id !== cur2.id) return cur0 === void 0 ? null : cur0;
+    const keyed = (list) => blockKeys(list || []);
+    const B5 = new Map(keyed(base.ex)), C2 = keyed(cur2.ex), P2 = keyed(pre.ex);
+    const Cm = new Map(C2);
+    const pick2 = (k2) => {
+      const b2 = B5.get(k2), c4 = Cm.get(k2), p3 = P2.find((x2) => x2[0] === k2);
+      const pv = p3 ? p3[1] : void 0;
+      const bh = b2 ? canon(b2) : null, ch = c4 ? canon(c4) : null, ph = pv ? canon(pv) : null;
+      if (ch === bh) return pv;
+      if (ph === bh) return c4;
+      return c4;
+    };
+    const out = [];
+    const ord = (l4) => l4.map((x2) => x2[0]).join("|");
+    const keep = ord(keyed(base.ex)) === ord(P2);
+    for (const [k2] of keep ? C2 : P2) {
+      const v3 = pick2(k2);
+      if (v3) out.push(v3);
+    }
+    for (const [k2, _c] of C2) {
+      if (!P2.some((x2) => x2[0] === k2)) {
+        const v3 = pick2(k2);
+        if (v3 && !out.includes(v3)) out.push(v3);
+      }
+    }
+    const res = { ...cur2, ex: out };
+    for (const f3 of ["notes", "dayName", "deload", "light", "limited", "cardio", "chk"]) {
+      if (canon(cur2[f3]) === canon(base[f3])) res[f3] = pre[f3];
+    }
+    if (canon(cur2.pics) === canon(base.pics)) {
+      if (pre.pics === void 0) delete res.pics;
+      else res.pics = pre.pics;
+    }
+    return res;
+  }
+
   // src/app/formulas.ts
   var E1_MAX_REPS = 12;
   var E1_MAX_RIR = 4;
@@ -2894,98 +3302,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var LIGHT_RIR = 3;
   var effLeast = (scale, rir) => scale === "rpe" ? `RPE ${effAt(scale, rir)} or less` : `${effAt(scale, rir)} or more reps in reserve`;
   var effLeastShort = (scale, rir) => scale === "rpe" ? `RPE ${effAt(scale, rir)} or less` : `${effAt(scale, rir)}+ RIR`;
-
-  // src/app/machines.ts
-  function keptName(key) {
-    return { mc: key, kp: true };
-  }
-  function nameAsIs(b2) {
-    return b2.mc ? b2.kp ? keptName(b2.mc) : { mc: b2.mc } : {};
-  }
-  function savedName(key, from) {
-    if (!key) return {};
-    return from.some((b2) => b2.mc === key && b2.kp) ? keptName(key) : { mc: key };
-  }
-  function pickName(b2, key) {
-    b2.mc = key;
-    delete b2.kp;
-  }
-  function unname(b2) {
-    delete b2.mc;
-    delete b2.kp;
-  }
-  function copyName(to, from) {
-    if (!from.mc) return;
-    to.mc = from.mc;
-    if (from.kp) to.kp = true;
-    else delete to.kp;
-  }
-  function cleanName(b2) {
-    return typeof b2.mc === "string" && b2.mc ? { mc: fixId(b2.mc), ...b2.kp === true ? { kp: true } : {} } : {};
-  }
-  function blocksOf(x2) {
-    const R2 = rec(x2);
-    if (!R2) return null;
-    const ex = arr(R2.ex);
-    if (ex) return { R: R2, inData: false, ex };
-    const D2 = rec(R2.data);
-    const dx = D2 && arr(D2.ex);
-    return dx ? { R: R2, inData: true, ex: dx } : null;
-  }
-  function withBlocks(R2, inData, ex) {
-    return inData ? { ...R2, data: { ...rec(R2.data), ex } } : { ...R2, ex };
-  }
-  var liftOf = (exId, light) => typeof exId === "string" ? `${exId}|${light ? 1 : 0}` : null;
-  function unkept(x2) {
-    const at2 = blocksOf(x2);
-    if (!at2 || !at2.ex.some((b2) => rec(b2)?.kp === true)) return x2;
-    return withBlocks(
-      at2.R,
-      at2.inData,
-      at2.ex.map((b2) => {
-        const B5 = rec(b2);
-        if (!B5 || B5.kp !== true) return b2;
-        const o3 = {};
-        for (const k2 of Object.keys(B5)) if (k2 !== "mc" && k2 !== "kp") o3[k2] = B5[k2];
-        return o3;
-      })
-    );
-  }
-  function keptOf(q) {
-    const kept = /* @__PURE__ */ new Map();
-    for (const b2 of blocksOf(q)?.ex || []) {
-      const B5 = rec(b2);
-      const k2 = B5 && B5.kp === true && typeof B5.mc === "string" ? liftOf(B5.exId, B5.light) : null;
-      if (B5 && k2 && typeof B5.mc === "string" && !kept.has(k2)) kept.set(k2, B5.mc);
-    }
-    return kept;
-  }
-  function keptOn(p3, q) {
-    const P2 = blocksOf(p3), kept = keptOf(q);
-    if (!P2 || !kept.size) return p3;
-    let put = false;
-    const ex = P2.ex.map((b2) => {
-      const B5 = rec(b2);
-      const k2 = B5 && !B5.mc ? liftOf(B5.exId, B5.light) : null;
-      const key = k2 ? kept.get(k2) : void 0;
-      if (!B5 || key === void 0) return b2;
-      put = true;
-      return { ...B5, ...keptName(key) };
-    });
-    return put ? withBlocks(P2.R, P2.inData, ex) : p3;
-  }
-  function keptOnSession(p3, q) {
-    const kept = keptOf(q);
-    let put = false;
-    const ex = p3.ex.map((b2) => {
-      const k2 = b2.mc ? null : liftOf(b2.exId, b2.light);
-      const key = k2 ? kept.get(k2) : void 0;
-      if (key === void 0) return b2;
-      put = true;
-      return { ...b2, ...keptName(key) };
-    });
-    return put ? { ...p3, ex } : p3;
-  }
 
   // src/app/session.ts
   function greyW(b2, si) {
@@ -4119,318 +4435,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (!sameBand(n3, o3)) bands[m3] = n3;
     }
     return { bands, fit: now2 };
-  }
-
-  // src/app/merge.ts
-  function winsFor(w2, key, stat) {
-    if (typeof w2 === "boolean") return w2;
-    const r4 = w2.rec(key);
-    if (r4 === null) return w2.doc;
-    stat.byTime = (stat.byTime || 0) + 1;
-    return r4;
-  }
-  var docWins = (w2) => typeof w2 === "boolean" ? w2 : w2.doc;
-  var UNIT_FIELD = {
-    u: "w",
-    incU: "inc",
-    maxLoadU: "maxLoad",
-    barU: "barKg",
-    goalU: "goal"
-  };
-  function givenUnit(f3, k2) {
-    const of = UNIT_FIELD[k2];
-    if (!of) return false;
-    const v3 = f3[k2], n0 = f3[of];
-    const n3 = of === "goal" ? rec(n0)?.w : n0;
-    return (v3 === "kg" || v3 === "lb") && typeof n3 === "number" && unitOnGrid(n3) === v3;
-  }
-  function savedEquip(f3, k2) {
-    if (k2 !== "equip" || typeof f3.id !== "string" || typeof f3.equip !== "string") return void 0;
-    const was = equipAsSaved({
-      id: f3.id,
-      equip: f3.equip,
-      custom: f3.custom === true,
-      equipOwn: f3.equipOwn === true ? true : void 0
-    });
-    return was !== f3.equip ? was : void 0;
-  }
-  function storedJson(x2) {
-    return JSON.stringify(x2, function(k2, v3) {
-      const f3 = rec(this);
-      if (!f3) return v3;
-      return givenUnit(f3, k2) ? void 0 : savedEquip(f3, k2) ?? v3;
-    });
-  }
-  function canon(x2) {
-    if (x2 === void 0) return "null";
-    if (x2 === null || typeof x2 !== "object") return JSON.stringify(x2);
-    const list = arr(x2);
-    if (list) return "[" + list.map(canon).join(",") + "]";
-    const f3 = rec(x2) || {};
-    return "{" + Object.keys(f3).filter((k2) => f3[k2] !== void 0 && !givenUnit(f3, k2)).sort().map((k2) => JSON.stringify(k2) + ":" + canon(savedEquip(f3, k2) ?? f3[k2])).join(",") + "}";
-  }
-  var Hx = (x2) => hashStr(canon(unkept(x2)));
-  var sameRecord = (a2, b2) => canon(unkept(a2)) === canon(unkept(b2));
-  function oneCopy(a2, b2) {
-    return canon(a2) <= canon(b2) ? keptOn(a2, b2) : keptOn(b2, a2);
-  }
-  function oneSession(a2, b2) {
-    return canon(a2) <= canon(b2) ? keptOnSession(a2, b2) : keptOnSession(b2, a2);
-  }
-  function merge3List(base, l4, r4, remoteWins, stat, list = "") {
-    const known = !!base;
-    base = base || {};
-    const L2 = /* @__PURE__ */ new Map(), Rm = /* @__PURE__ */ new Map();
-    for (const x2 of arr(l4) || []) {
-      const R2 = rec(x2);
-      if (R2 && typeof R2.id === "string") L2.set(R2.id, R2);
-    }
-    for (const x2 of arr(r4) || []) {
-      const R2 = rec(x2);
-      if (R2 && typeof R2.id === "string") Rm.set(R2.id, R2);
-    }
-    const out = [];
-    for (const id of [...L2.keys(), ...[...Rm.keys()].filter((k2) => !L2.has(k2))]) {
-      const a2 = L2.get(id), b2 = Rm.get(id), bh = known ? base[id] : "?";
-      const ah = a2 ? Hx(a2) : void 0, rh = b2 ? Hx(b2) : void 0;
-      if (a2 && b2 && ah === rh) {
-        out.push(oneCopy(a2, b2));
-        continue;
-      }
-      if (!a2 || !b2) {
-        const p3 = a2 || b2, ph = a2 ? ah : rh;
-        if (known && ph === bh) continue;
-        out.push(p3);
-        continue;
-      }
-      if (ah === bh) {
-        out.push(keptOn(b2, a2));
-        continue;
-      }
-      if (rh === bh) {
-        out.push(keptOn(a2, b2));
-        continue;
-      }
-      stat.conflicts++;
-      out.push(winsFor(remoteWins, recordKey(list, id), stat) ? keptOn(b2, a2) : keptOn(a2, b2));
-    }
-    return out;
-  }
-  function merge3Val(bh, a2, b2, remoteWins, stat, key = "") {
-    const ah = Hx(a2), rh = Hx(b2);
-    if (ah === rh || rh === bh) return a2;
-    if (ah === bh) return b2;
-    stat.conflicts++;
-    return winsFor(remoteWins, key, stat) ? b2 : a2;
-  }
-  var recordKey = (list, id) => `${list}/${id}`;
-  var held = (r4) => canon({ ...r4, rid: void 0 });
-  function rowKeys(sets) {
-    let n3 = 0;
-    return sets.map((r4) => [typeof r4.rid === "string" ? r4.rid : "#" + n3++, r4]);
-  }
-  function contentKeys(to, sets, side) {
-    const ids = new Set(sets.map((r4) => r4.rid));
-    const free = to.map(([k2, r4]) => ({ k: k2, h: held(r4), taken: ids.has(k2) }));
-    let n3 = 0;
-    return sets.map((r4) => {
-      if (typeof r4.rid === "string") return [r4.rid, r4];
-      const h3 = held(r4);
-      const b2 = free.find((x2) => !x2.taken && x2.h === h3);
-      if (b2) {
-        b2.taken = true;
-        return [b2.k, r4];
-      }
-      return [side + "#" + n3++, r4];
-    });
-  }
-  function weave(base, sides) {
-    const out = [...base];
-    for (const keys of sides) {
-      let at2 = -1;
-      for (const k2 of keys) {
-        const i5 = out.indexOf(k2);
-        if (i5 >= 0) at2 = i5;
-        else out.splice(++at2, 0, k2);
-      }
-    }
-    return out;
-  }
-  function mergeRows(base, l4, r4, remoteWins, stat, match) {
-    const bk = rowKeys(base || []);
-    let lk, rk;
-    if (match === "place") {
-      lk = rowKeys(l4);
-      rk = rowKeys(r4);
-    } else if (base) {
-      lk = contentKeys(bk, l4, "l");
-      rk = contentKeys(bk, r4, "r");
-    } else {
-      rk = contentKeys([], r4, "r");
-      lk = contentKeys(rk, l4, "l");
-    }
-    const B5 = new Map(bk), L2 = new Map(lk), R2 = new Map(rk);
-    const same = (x2, y2) => held(x2) === held(y2);
-    const either = (x2, y2) => typeof x2.rid === "string" || typeof y2.rid !== "string" ? x2 : y2;
-    const out = [];
-    const order = match === "place" ? weave([...B5.keys()], [[...L2.keys()], [...R2.keys()]]) : [.../* @__PURE__ */ new Set([...R2.keys(), ...B5.keys(), ...L2.keys()])];
-    for (const k2 of order) {
-      const b2 = B5.get(k2), a2 = L2.get(k2), c4 = R2.get(k2);
-      if (a2 && c4) {
-        if (same(a2, c4)) out.push(either(a2, c4));
-        else if (b2 && same(c4, b2)) out.push(a2);
-        else if (b2 && same(a2, b2)) out.push(c4);
-        else {
-          stat.conflicts++;
-          out.push(remoteWins ? c4 : a2);
-        }
-      } else if (a2) {
-        if (!(b2 && same(a2, b2))) out.push(a2);
-      } else if (c4) {
-        if (!(b2 && same(c4, b2))) out.push(c4);
-      }
-    }
-    return out;
-  }
-  function mergeFields(out, base, l4, r4, skip, remoteWins, stat) {
-    for (const f3 of /* @__PURE__ */ new Set([...Object.keys(l4), ...Object.keys(r4)])) {
-      if (skip.includes(f3)) continue;
-      if (!base && l4[f3] === void 0 !== (r4[f3] === void 0)) {
-        out[f3] = l4[f3] === void 0 ? r4[f3] : l4[f3];
-        continue;
-      }
-      const v3 = merge3Val(base ? Hx(base[f3]) : "?", l4[f3], r4[f3], remoteWins, stat);
-      if (v3 === void 0) delete out[f3];
-      else out[f3] = v3;
-    }
-  }
-  function blockKeys(list) {
-    const seen = {};
-    return list.map((b2) => [
-      typeof b2.bid === "string" && b2.bid ? "b:" + b2.bid : b2.exId + "#" + (seen[b2.exId] = (seen[b2.exId] || 0) + 1),
-      b2
-    ]);
-  }
-  function mergeExercises(base, local, remote, remoteWins, stat, match) {
-    const B5 = new Map(blockKeys(base || [])), L2 = new Map(blockKeys(local)), R2 = new Map(blockKeys(remote));
-    const bo = [...B5.keys()].join("|"), lo = [...L2.keys()].join("|"), ro = [...R2.keys()].join("|");
-    let order;
-    if (!base) order = [...R2.keys()];
-    else if (lo === ro || ro === bo) order = [...L2.keys()];
-    else if (lo === bo) order = [...R2.keys()];
-    else {
-      stat.conflicts++;
-      order = remoteWins ? [...R2.keys()] : [...L2.keys()];
-    }
-    for (const k2 of [...L2.keys(), ...R2.keys()]) if (!order.includes(k2)) order.push(k2);
-    const out = [];
-    for (const k2 of order) {
-      const b2 = B5.get(k2), a2 = L2.get(k2), c4 = R2.get(k2);
-      if (a2 && c4) {
-        const x2 = { ...a2, sets: mergeRows(base ? b2 ? b2.sets : [] : null, a2.sets, c4.sets, remoteWins, stat, match) };
-        mergeFields(rec(x2) || {}, b2 ? rec(b2) : null, rec(a2) || {}, rec(c4) || {}, ["sets"], remoteWins, stat);
-        out.push(x2);
-      } else if (a2) {
-        if (!(b2 && canon(a2) === canon(b2))) out.push(a2);
-      } else if (c4) {
-        if (!(b2 && canon(c4) === canon(b2))) out.push(c4);
-      }
-    }
-    return out;
-  }
-  function cardioBase(list) {
-    const o3 = {};
-    for (const x2 of arr(list) || []) {
-      const R2 = rec(x2);
-      if (R2 && typeof R2.id === "string") o3[R2.id] = Hx(x2);
-    }
-    return o3;
-  }
-  function mergeWorkout(base, local, remote, remoteWins, stat) {
-    const out = { ...local, ex: mergeExercises(base.ex, local.ex, remote.ex, remoteWins, stat, "place") };
-    for (const b2 of out.ex) {
-      const a2 = b2.adj;
-      const i5 = a2 && typeof a2.rid === "string" ? b2.sets.findIndex((x2) => x2.rid === a2.rid) : -1;
-      if (a2 && i5 >= 0 && i5 !== a2.at) b2.adj = { ...a2, at: i5 };
-    }
-    const O = rec(out) || {}, Bf = rec(base) || {}, Lf = rec(local) || {}, Rf = rec(remote) || {};
-    mergeFields(O, Bf, Lf, Rf, ["ex", "id", "cardio", "begunAt"], remoteWins, stat);
-    let first = null;
-    for (const t4 of [local.begunAt, remote.begunAt])
-      if (typeof t4 === "number" && t4 > 0 && (first == null || t4 < first)) first = t4;
-    if (first != null) O.begunAt = first;
-    const cardio = merge3List(cardioBase(Bf.cardio), Lf.cardio, Rf.cardio, remoteWins, stat);
-    if (cardio.length || Lf.cardio !== void 0 || Rf.cardio !== void 0) O.cardio = cardio;
-    return out;
-  }
-  function mergeSession(base, local, remote, remoteWins, stat) {
-    const out = {
-      ...local,
-      ex: mergeExercises(base ? base.ex : null, local.ex, remote.ex, remoteWins, stat, "content")
-    };
-    mergeFields(
-      rec(out) || {},
-      base ? rec(base) : null,
-      rec(local) || {},
-      rec(remote) || {},
-      ["ex", "id", "t"],
-      remoteWins,
-      stat
-    );
-    const t4 = remote.t ?? local.t;
-    if (t4 !== void 0) out.t = t4;
-    else delete out.t;
-    return out;
-  }
-  function undoDraftOf(v3) {
-    const d3 = rec(v3);
-    const ex = d3 && arr(d3["ex"]);
-    if (!d3 || typeof d3["id"] !== "string" || !ex) return null;
-    const blocks2 = [];
-    for (const b0 of ex) {
-      const b2 = rec(b0);
-      if (!b2 || typeof b2["exId"] !== "string") return null;
-      blocks2.push({ ...b2, exId: b2["exId"] });
-    }
-    return { ...d3, id: d3["id"], ex: blocks2 };
-  }
-  function mergeDraft(base0, cur0, pre0, saved) {
-    const base = undoDraftOf(base0), cur2 = undoDraftOf(cur0), pre = undoDraftOf(pre0);
-    if (pre && (!base || base.id !== pre.id) && canon(cur0) === canon(base0) && !saved(pre.id)) return pre0;
-    if (!pre || !cur2 || !base || pre.id !== cur2.id || base.id !== cur2.id) return cur0 === void 0 ? null : cur0;
-    const keyed = (list) => blockKeys(list || []);
-    const B5 = new Map(keyed(base.ex)), C2 = keyed(cur2.ex), P2 = keyed(pre.ex);
-    const Cm = new Map(C2);
-    const pick2 = (k2) => {
-      const b2 = B5.get(k2), c4 = Cm.get(k2), p3 = P2.find((x2) => x2[0] === k2);
-      const pv = p3 ? p3[1] : void 0;
-      const bh = b2 ? canon(b2) : null, ch = c4 ? canon(c4) : null, ph = pv ? canon(pv) : null;
-      if (ch === bh) return pv;
-      if (ph === bh) return c4;
-      return c4;
-    };
-    const out = [];
-    const ord = (l4) => l4.map((x2) => x2[0]).join("|");
-    const keep = ord(keyed(base.ex)) === ord(P2);
-    for (const [k2] of keep ? C2 : P2) {
-      const v3 = pick2(k2);
-      if (v3) out.push(v3);
-    }
-    for (const [k2, _c] of C2) {
-      if (!P2.some((x2) => x2[0] === k2)) {
-        const v3 = pick2(k2);
-        if (v3 && !out.includes(v3)) out.push(v3);
-      }
-    }
-    const res = { ...cur2, ex: out };
-    for (const f3 of ["notes", "dayName", "deload", "light", "limited", "cardio", "chk"]) {
-      if (canon(cur2[f3]) === canon(base[f3])) res[f3] = pre[f3];
-    }
-    if (canon(cur2.pics) === canon(base.pics)) {
-      if (pre.pics === void 0) delete res.pics;
-      else res.pics = pre.pics;
-    }
-    return res;
   }
 
   // src/app/layout.ts
@@ -5963,6 +5967,43 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     while (undoStack.length > UNDO_MAX) undoStack.shift();
     undoPersist();
+  }
+  function undoKeeps(lost) {
+    if (!lost.length || !undoStack.length) return;
+    let changed = false;
+    for (const x2 of lost) {
+      const cut = x2.key.indexOf("/");
+      if (cut < 0) continue;
+      const list = x2.key.slice(0, cut), id = x2.key.slice(cut + 1);
+      const held3 = (log2) => {
+        if (list === "" || list === "settings") {
+          const o3 = list ? rec(log2["settings"]) : log2;
+          return o3 ? { v: o3[id], put: (v3) => v3 === void 0 ? delete o3[id] : o3[id] = v3 } : null;
+        }
+        const rows2 = arr(log2[list]);
+        const at2 = rows2 ? rows2.findIndex((r4) => rec(r4)?.["id"] === id) : -1;
+        return rows2 && at2 >= 0 ? { v: rows2[at2], put: (v3) => rows2[at2] = v3 } : null;
+      };
+      for (let n3 = undoStack.length - 1; n3 >= 0; n3--) {
+        const e5 = undoStack[n3];
+        if (!e5) continue;
+        try {
+          const pre = rec(parseJson(e5.pre));
+          const was = pre ? held3(pre) : null;
+          if (!pre || !was || Hx(was.v) !== x2.base) continue;
+          const post = e5.post == null ? null : rec(parseJson(e5.post));
+          const after2 = post ? held3(post) : null;
+          if (post && after2 && Hx(after2.v) === x2.base) continue;
+          was.put(x2.copy);
+          e5.pre = JSON.stringify(pre);
+          changed = true;
+          break;
+        } catch (err) {
+          log("undo", err);
+        }
+      }
+    }
+    if (changed) undoPersist();
   }
   function capturePost() {
     const e5 = undoStack[undoStack.length - 1];
@@ -12289,7 +12330,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     setCloud("saving");
     try {
       let adopted = false, moreBody2 = false, again = false;
-      const stat = { conflicts: 0 };
+      const stat = { conflicts: 0, lost: [] };
       let dn = null;
       const tooBig = [];
       const raced = [];
@@ -12328,13 +12369,14 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
               const ret = Number(b2.et) || Number(b2.at);
               const remoteWins = ret > (cloud.editAt[x2.id] || 0), rt2 = timesIn(b2.rt);
               const mine = parseJson(json);
-              const clashed = stat.conflicts;
+              const clashed = stat.conflicts, lostBefore = stat.lost.length;
               const merged = mergeChunk(x2.id, baseFor(x2.id, m3, legB), mine, rd, clashRule(x2.id, rt2, remoteWins), stat);
               const prev = x2.id === "draft" ? state.draft : null;
               const mergedDraft = x2.id === "draft" ? draftOf(merged) : null;
               const alone = x2.id === "draft" ? !(prev && (!mergedDraft || mergedDraft.id !== prev.id)) || await sessionFromCloud(prev, legB) : !movesBetweenDocs(x2.id, mine, merged);
               if (!alone) {
                 stat.conflicts = clashed;
+                stat.lost.length = lostBefore;
                 if (++handedOver > HAND_OVERS) {
                   handedOver = 0;
                   tellTakenIn();
@@ -12350,6 +12392,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
               if (x2.id === "draft" && !dn) dn = { prev, sessions0: state.sessions, kept: null, lost: null };
               const agreed = x2.id === "draft" && m3 && m3.b ? m3.b.draft : null;
               applyChunk(x2.id, merged);
+              undoKeeps(stat.lost.splice(lostBefore));
               adopted = true;
               writeTakenIn();
               took = { h: hashStr(b2.json), at: Number(b2.at), b: baseOf(x2.id, rd) };
@@ -12708,7 +12751,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const agreedDraft = cloud.meta.draft && cloud.meta.draft.b ? cloud.meta.draft.b.draft : null;
     let draftMerged = false, draftRemoteWins = false;
     let parts = null, merged = false, draftIn = false, keptDraft = false;
-    const stat = { conflicts: said2 };
+    const stat = { conflicts: said2, lost: [] };
     const adoptedIds = /* @__PURE__ */ new Set();
     const leg = { bodyweights: [], measurements: [] };
     const legB = legacyBodyBase();
@@ -12736,6 +12779,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (parts) {
       const aside = laterCopiesKept(parts, stat);
       setState(assemble(parts));
+      undoKeeps(stat.lost);
       putCopiesAside(aside);
       keepLastCopies(held3);
       absorbLegacy(leg);
@@ -13136,7 +13180,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const other = otherTabTimes();
     trackEdits();
     const held3 = heldNow();
-    const stat = { conflicts: 0, byTime: 0 };
+    const stat = { conflicts: 0, byTime: 0, lost: [] };
     const dr0 = state.draft;
     let kept = null;
     if (!base || canon(state) === canon(base)) setState(incoming);
@@ -13154,6 +13198,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       for (const id in parts) recordTimesAfter(id, L2[id], Rr[id], parts[id], other ? other[id] || null : null);
       const aside = laterCopiesKept(parts, stat);
       setState(assemble(parts));
+      undoKeeps(stat.lost);
       putCopiesAside(aside);
       const agreed = base.draft;
       if (loggedSince(dr0, agreed)) kept = keepLost(dr0, state.draft, agreed, true, true);
