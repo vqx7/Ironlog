@@ -109,6 +109,31 @@ jobs:
           path: screenshots/
           if-no-files-found: ignore
           retention-days: 7
+  # TEMPORARY, for 2.78's gate on NEW-204 (its design, 15.1: the check green 20 times on WebKit), taken out again
+  # before the pull request is merged: the two-tab Undo checks of S-6 twenty times in WebKit, in a job of its own so
+  # no shard nears its limit. The job `test` does not wait for it.
+  undo20:
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.0-noble
+      options: --ipc=host
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4, pinned to its commit (NEW-36)
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4, pinned to its commit (NEW-36)
+        with:
+          node-version: 22
+      - name: Install
+        timeout-minutes: 30
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install webkit
+      - name: S-6 twenty times in WebKit
+        run: |
+          for i in $(seq 1 20); do
+            IRONLOG_BROWSER=webkit SYNC_ONLY=S-6 node tests/storage-sync.js > /tmp/undo.out 2>&1 || { grep -v '^ok' /tmp/undo.out | tail -30; echo "::error::run $i of 20 failed"; exit 1; }
+            echo "run $i: $(grep -c '^ok' /tmp/undo.out) checks, $(grep -c 'NEW-204' /tmp/undo.out) of them NEW-204's"
+          done
   # The account's rows under writers at the same moment (2.78, tests/sql-two.js), on a Postgres server: PGlite, which
   # the suites run the account's SQL on, has one connection, so it cannot show that every change of an account is
   # numbered in the order it is saved, nor that a phone reading by number misses none. Run on the two Postgres

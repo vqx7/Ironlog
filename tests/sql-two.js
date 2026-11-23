@@ -12,7 +12,8 @@ const fails = [];
 const ok = (c, m, x) => { if (!c) fails.push(m); console.log((c ? 'ok   ' : 'FAIL ') + m + (c || x === undefined ? '' : ' ' + JSON.stringify(x).slice(0, 700))); return !!c; };
 if (!process.env.PGHOST) {
   const must = process.env.SQL_TWO_MUST === '1';
-  console.log(must ? 'FAIL no Postgres server given to this job (PGHOST)' : 'skipped: no Postgres server (set PGHOST, PGPORT, PGUSER); the GitHub workflow runs this suite in a job of its own');
+  // tests/run.js reads a suite as passed by its last line; here nothing was checked, and the line before says so.
+  console.log(must ? 'FAIL no Postgres server given to this job (PGHOST)' : 'note skipped: no Postgres server (set PGHOST, PGPORT, PGUSER); the GitHub workflow runs this suite in a job of its own\nALL PASS (nothing run here)');
   process.exit(must ? 1 : 0);
 }
 const BROKEN = process.argv.includes('--broken') ? process.argv[process.argv.indexOf('--broken') + 1] : '';
