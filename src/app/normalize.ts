@@ -111,7 +111,8 @@ import {
   SEC_TABS,
   defaultOrder,
   bwEveryKept,
-  blockWeeksKept
+  blockWeeksKept,
+  STYLES
 } from './layout';
 
 declare global {
@@ -646,6 +647,10 @@ function cleanSettings(s: Rec, f: Fresh): Settings {
   // The settings as they came, read beside the merged ones for the two fields whose absence means something (the folds, the removed built-ins).
   const sIn = rec(s.settings) || {};
   const accent = pick(st.accent, ['blue', 'volt', 'ember', 'pink', 'violet', 'cyan', 'red'] as const);
+  const style = pick(
+    st.style,
+    STYLES.map(([k]) => k)
+  );
   const bwEvery = bwEveryKept(st.bwEvery);
   const blockWeeks = blockWeeksKept(st.blockWeeks);
   const restWeeks = (() => {
@@ -720,6 +725,8 @@ function cleanSettings(s: Rec, f: Fresh): Settings {
     autoDone: st.autoDone === true,
     // Optional settings stay undefined unless set.
     ...(accent ? { accent } : {}),
+    // Standard is no style stored, so logs without one hash as before.
+    ...(style ? { style } : {}),
     ...(st.rirAsk === true ? { rirAsk: true } : {}),
     // History lists what the app asked of each set; absent unless on.
     ...(st.askedShow === true ? { askedShow: true } : {}),
@@ -782,6 +789,7 @@ function cleanSettings(s: Rec, f: Fresh): Settings {
 /** The settings absent unless set: each is taken out of the merged copy when it is not (cleanSettings). */
 const OPTIONAL_SETTINGS = [
   'accent',
+  'style',
   'rirAsk',
   'askedShow',
   'rirHalf',

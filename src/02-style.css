@@ -136,6 +136,79 @@
 :root[data-accent="violet"][data-theme="dark"]{--volt:var(--acc-violet);--on-volt:#ffffff;--volt-line:#a68bff;--volt-soft:#1d1340}
 :root[data-accent="cyan"][data-theme="dark"]{--volt:var(--acc-cyan);--on-volt:#0b0c0e;--volt-line:#4fdcff;--volt-soft:#062a36;--blue:#b69cff;--blue-bg:#221a3d}
 :root[data-accent="red"][data-theme="dark"]{--volt:var(--acc-red);--on-volt:#0b0c0e;--volt-line:#ff5c6f;--volt-soft:#3a0a12;--red:#f472d0;--red-bg:#3a1233}
+/* Sunset Coast (V, 2026-11-21, 2.77.1): a style in place of Standard's colours, chosen in Settings > Appearance. A neon
+   night by the sea in Dark, a pastel beach morning in Light. Its own accent is pink, so these come after every accent and
+   win over it: the accent stored waits under the style, unchanged. The night palette is one set in two places, as Dark
+   is (tests/hygiene.js), and names every token the day one does. Today's card carries a striped sun setting behind two
+   palms (SUN_ART in icons.ts, one drawing coloured by --sun-sky-* and --sun-palm). The --sun-* tokens are the colours
+   only this style draws:
+   its button gradient and the text on it, the rest timer's dusk strip and its pink when rest ends, the page titles'
+   gradient, the small labels, and the glow; every text pair is checked for 4.5:1 in tests/design.js. */
+:root[data-style="sunset"]{--bg:#fdf6f1; --surface:#ffffff; --surface-2:#f8ebf1; --surface-3:#efdbe7;
+  --ink:#1d0b26; --ink-2:#38213f; --muted:#6a5075; --line:#ecd8e3; --line-soft:#f3e6ec;
+  --btn:#ffffff; --btn-b:#ecd3e0; --field:#ffffff; --field-b:#e6cfdc; --card-b:#f0dfe8;
+  --glass:rgba(253,246,241,.9); --shadow:0 1px 2px rgba(60,10,50,.05),0 10px 30px rgba(120,20,90,.07);
+  --green:#0b7a42; --yellow:#8a5300; --red:#b42318; --blue:#6d28d9; --brand:#d6246e; --part:#9fd6b7;
+  --green-bg:#dcf2e5; --yellow-bg:#fbebd0; --red-bg:#fde3e0; --blue-bg:#efe9ff;
+  --volt:#d6246e; --on-volt:#ffffff; --volt-line:#b0175a; --volt-soft:#fde0ee;
+  --holo-1:#e0561a; --holo-2:#d6246e; --holo-3:#7c3aed; --holo-4:#0e8fb3;
+  --hero:#fff1e8; --on-hero:#1d0b26; --hero-2:#ffe4ec;
+  --hero-bg:radial-gradient(120% 60% at 50% 118%,rgba(255,170,120,.45),rgba(255,120,170,.2) 45%,transparent 72%),linear-gradient(172deg,#fff3e8,#ffe3ec 55%,#f3e2ff);
+  --hero-rim:inset 0 1px 0 rgba(255,255,255,.9),inset 0 0 0 1px rgba(214,36,110,.12);
+  --hero-shadow:0 14px 36px rgba(214,36,110,.12),0 1px 2px rgba(60,10,50,.06);
+  --dock:#3a1660; --dock-bg:linear-gradient(90deg,var(--sun-dusk-1),var(--sun-dusk-2) 55%,var(--sun-dusk-3)); --on-dock:#fff3fb;
+  --sun-b1:#ff9a3d; --sun-b2:#ff5fa2; --sun-b3:#e58bff; --sun-on-b:#1d0b26;
+  --sun-dusk-1:#4a1250; --sun-dusk-2:#3a1660; --sun-dusk-3:#123a5c; --sun-on-dusk:#fff3fb; --sun-on-dusk-2:#e8cdee;
+  --sun-done:#ff2e88; --sun-on-done:#16031a;
+  --sun-t1:#c2185b; --sun-t2:#7c3aed; --sun-t3:#0b7285; --sun-kick:#0b7285;
+  --sun-glow:#ff2e88; --sun-glow-2:#0e8fb3; --sun-title-glow:transparent;
+  --sun-sky-1:#ffd28a; --sun-sky-2:#ff9fb0; --sun-sky-3:#e879c6; --sun-sun-op:.75; --sun-palm:#a35d8f; --sun-palm-op:.45;
+  --sun-line:linear-gradient(90deg,rgba(214,36,110,.4),rgba(14,143,179,.3) 60%,rgba(14,143,179,0));
+  color-scheme:light;}
+@media (prefers-color-scheme:dark){
+  :root[data-style="sunset"]:not([data-theme="light"]){--bg:#0b0614; --surface:#170d26; --surface-2:#211335; --surface-3:#2d1b46;
+  --ink:#fff3fb; --ink-2:#efd9f3; --muted:#b49ccc; --line:#2e1d46; --line-soft:#1f1432;
+  --btn:#231538; --btn-b:transparent; --field:#231538; --field-b:transparent; --card-b:transparent;
+  --glass:rgba(11,6,20,.88); --shadow:none;
+  --green:#46e08f; --yellow:#ffb547; --red:#ff5a4e; --blue:#b69cff; --brand:#ff2e88; --part:#1c6a4a;
+  --green-bg:#0d2a1f; --yellow-bg:#36200b; --red-bg:#3a1214; --blue-bg:#221a3d;
+  --volt:#ff2e88; --on-volt:#16031a; --volt-line:#ff6fae; --volt-soft:#3a0c2a;
+  --holo-1:#ff8a1f; --holo-2:#ff2e88; --holo-3:#a63dff; --holo-4:#19d3ff;
+  --hero:#1a0a2c; --on-hero:#fff3fb; --hero-2:#2a1240;
+  --hero-bg:repeating-linear-gradient(180deg,transparent 0 13px,rgba(25,211,255,.035) 13px 14px),radial-gradient(120% 60% at 50% 118%,rgba(255,138,31,.5),rgba(255,46,136,.26) 45%,transparent 72%),linear-gradient(172deg,#1c0b30,#2b0f3f 38%,#4a1249 70%,#6a1647);
+  --hero-rim:inset 0 1px 0 rgba(255,140,200,.22),inset 0 0 0 1px rgba(255,46,136,.16);
+  --hero-shadow:0 18px 44px rgba(255,46,136,.16),0 2px 0 rgba(25,211,255,.08);
+  --dock:#3a1660; --dock-bg:linear-gradient(90deg,var(--sun-dusk-1),var(--sun-dusk-2) 55%,var(--sun-dusk-3)); --on-dock:#fff3fb;
+  --sun-b1:#ff9a3d; --sun-b2:#ff4f9a; --sun-b3:#e070ff; --sun-on-b:#16031a;
+  --sun-dusk-1:#4a1250; --sun-dusk-2:#3a1660; --sun-dusk-3:#123a5c; --sun-on-dusk:#fff3fb; --sun-on-dusk-2:#e8cdee;
+  --sun-done:#ff2e88; --sun-on-done:#16031a;
+  --sun-t1:#ff4f9a; --sun-t2:#ffb08a; --sun-t3:#3fd8ff; --sun-kick:#5fe3ff;
+  --sun-glow:#ff2e88; --sun-glow-2:#19d3ff; --sun-title-glow:rgba(255,46,136,.35);
+  --sun-sky-1:#ffd24a; --sun-sky-2:#ff8a1f; --sun-sky-3:#ff2e88; --sun-sun-op:.7; --sun-palm:#12051f; --sun-palm-op:.9;
+  --sun-line:linear-gradient(90deg,rgba(255,46,136,.55),rgba(25,211,255,.4) 60%,rgba(25,211,255,0));
+  color-scheme:dark;}
+}
+:root[data-style="sunset"][data-theme="dark"]{--bg:#0b0614; --surface:#170d26; --surface-2:#211335; --surface-3:#2d1b46;
+  --ink:#fff3fb; --ink-2:#efd9f3; --muted:#b49ccc; --line:#2e1d46; --line-soft:#1f1432;
+  --btn:#231538; --btn-b:transparent; --field:#231538; --field-b:transparent; --card-b:transparent;
+  --glass:rgba(11,6,20,.88); --shadow:none;
+  --green:#46e08f; --yellow:#ffb547; --red:#ff5a4e; --blue:#b69cff; --brand:#ff2e88; --part:#1c6a4a;
+  --green-bg:#0d2a1f; --yellow-bg:#36200b; --red-bg:#3a1214; --blue-bg:#221a3d;
+  --volt:#ff2e88; --on-volt:#16031a; --volt-line:#ff6fae; --volt-soft:#3a0c2a;
+  --holo-1:#ff8a1f; --holo-2:#ff2e88; --holo-3:#a63dff; --holo-4:#19d3ff;
+  --hero:#1a0a2c; --on-hero:#fff3fb; --hero-2:#2a1240;
+  --hero-bg:repeating-linear-gradient(180deg,transparent 0 13px,rgba(25,211,255,.035) 13px 14px),radial-gradient(120% 60% at 50% 118%,rgba(255,138,31,.5),rgba(255,46,136,.26) 45%,transparent 72%),linear-gradient(172deg,#1c0b30,#2b0f3f 38%,#4a1249 70%,#6a1647);
+  --hero-rim:inset 0 1px 0 rgba(255,140,200,.22),inset 0 0 0 1px rgba(255,46,136,.16);
+  --hero-shadow:0 18px 44px rgba(255,46,136,.16),0 2px 0 rgba(25,211,255,.08);
+  --dock:#3a1660; --dock-bg:linear-gradient(90deg,var(--sun-dusk-1),var(--sun-dusk-2) 55%,var(--sun-dusk-3)); --on-dock:#fff3fb;
+  --sun-b1:#ff9a3d; --sun-b2:#ff4f9a; --sun-b3:#e070ff; --sun-on-b:#16031a;
+  --sun-dusk-1:#4a1250; --sun-dusk-2:#3a1660; --sun-dusk-3:#123a5c; --sun-on-dusk:#fff3fb; --sun-on-dusk-2:#e8cdee;
+  --sun-done:#ff2e88; --sun-on-done:#16031a;
+  --sun-t1:#ff4f9a; --sun-t2:#ffb08a; --sun-t3:#3fd8ff; --sun-kick:#5fe3ff;
+  --sun-glow:#ff2e88; --sun-glow-2:#19d3ff; --sun-title-glow:rgba(255,46,136,.35);
+  --sun-sky-1:#ffd24a; --sun-sky-2:#ff8a1f; --sun-sky-3:#ff2e88; --sun-sun-op:.7; --sun-palm:#12051f; --sun-palm-op:.9;
+  --sun-line:linear-gradient(90deg,rgba(255,46,136,.55),rgba(25,211,255,.4) 60%,rgba(25,211,255,0));
+  color-scheme:dark;}
 *,*::before,*::after{box-sizing:inherit}
 /* One-off spacing and layout for single elements (r65, the r63 audit's A-9),
    which sat in 342 style attributes in the screens' markup. Each class does
@@ -1282,3 +1355,36 @@ body.timer-on main{padding-bottom:calc(168px + env(safe-area-inset-bottom,0px))}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 /* The minutes a past workout took, beside its date (r67, NEW-39). */
 .lh-row input.minf{width:auto;flex:0 1 104px;min-height:44px;padding:4px 10px;font-size:16px}
+/* Sunset Coast's drawing (2.77.1): the tokens above set its colours; these rules are the few things only it draws. */
+/* The sun and palms (SUN_ART) sit behind the card's text, clipped to its corners; the card isolates them so they never
+   reach past it, and the card's layout does not change (tests/essentials.js compares it with Standard's). */
+.sunart{display:none}
+:root[data-style="sunset"] .hero{position:relative;isolation:isolate}
+:root[data-style="sunset"] .sunart{display:block;position:absolute;inset:0;z-index:-1;border-radius:inherit;overflow:hidden;pointer-events:none}
+:root[data-style="sunset"] .sunart svg{position:absolute;right:-10px;bottom:0;width:230px;height:auto}
+.sunart .sk1{stop-color:var(--sun-sky-1)}.sunart .sk2{stop-color:var(--sun-sky-2)}.sunart .sk3{stop-color:var(--sun-sky-3)}
+.sunart .sun{opacity:var(--sun-sun-op)}
+.sunart .palms{fill:var(--sun-palm);opacity:var(--sun-palm-op)}
+:root[data-style="sunset"] .btn.primary{background:linear-gradient(95deg,var(--sun-b1),var(--sun-b2) 55%,var(--sun-b3));color:var(--sun-on-b);box-shadow:0 6px 22px color-mix(in srgb,var(--sun-glow) 30%,transparent)}
+:root[data-style="sunset"] .hero .btn:not(.primary){background:color-mix(in srgb,var(--hero-2) 88%,var(--on-hero))}
+:root[data-style="sunset"] .hero h2{text-shadow:0 0 18px var(--sun-title-glow)}
+:root[data-style="sunset"] .hero .eyebrow,:root[data-style="sunset"] .ph .kick{color:var(--sun-kick);opacity:1}
+@supports ((-webkit-background-clip:text) or (background-clip:text)){
+  :root[data-style="sunset"] .ph h2{width:fit-content;max-width:100%;background:linear-gradient(90deg,var(--sun-t1),var(--sun-t2) 50%,var(--sun-t3));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+}
+:root[data-style="sunset"] .wkbar .w.on .dn{background:linear-gradient(160deg,var(--sun-b1),var(--sun-b2));color:var(--sun-on-b)}
+:root[data-style="sunset"] .tabs button[aria-current="page"] svg{filter:drop-shadow(0 0 4px color-mix(in srgb,var(--sun-glow) 70%,transparent))}
+:root[data-style="sunset"] .tabs button[aria-current="page"]::before{background:linear-gradient(90deg,color-mix(in srgb,var(--sun-glow) 22%,transparent),color-mix(in srgb,var(--sun-glow-2) 18%,transparent))}
+:root[data-style="sunset"] .ring svg{overflow:visible}
+:root[data-style="sunset"] .ring .rp{filter:drop-shadow(0 0 4px color-mix(in srgb,var(--sun-glow) 60%,transparent)) drop-shadow(0 0 9px color-mix(in srgb,var(--sun-glow-2) 35%,transparent))}
+:root[data-style="sunset"] .sec>summary::before{background:var(--sun-line)}
+/* The rest timer as a dusk strip, its text light; when rest ends, full neon pink with dark text. */
+:root[data-style="sunset"] #timer:not(.compact){background:var(--dock-bg),var(--dock);color:var(--sun-on-dusk);border-color:transparent}
+:root[data-style="sunset"] #timer:not(.compact) .tlb{color:var(--sun-on-dusk-2)}
+:root[data-style="sunset"] #timer .tpill{color:var(--sun-on-dusk);background:color-mix(in srgb,var(--sun-on-dusk) 14%,transparent)}
+:root[data-style="sunset"] #timer .tskip{color:var(--sun-on-dusk)}
+:root[data-style="sunset"] #timer .tdial .trk{stroke:color-mix(in srgb,var(--sun-on-dusk) 22%,transparent)}
+:root[data-style="sunset"] #timer.done,:root[data-style="sunset"] #timer.done:not(.compact){background:var(--sun-done);color:var(--sun-on-done)}
+:root[data-style="sunset"] #timer.done .tv,:root[data-style="sunset"] #timer.done .tlb,:root[data-style="sunset"] #timer.done .tpill,:root[data-style="sunset"] #timer.done .tskip{color:var(--sun-on-done)}
+:root[data-style="sunset"] #timer.done .tpill{background:color-mix(in srgb,var(--sun-on-done) 12%,transparent)}
+:root[data-style="sunset"] #timer.done .tdial .trk{stroke:color-mix(in srgb,var(--sun-on-done) 22%,transparent)}

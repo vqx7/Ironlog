@@ -1,6 +1,6 @@
 // r15 design: week ring, focused logger (fold, one-tap sets, RIR strip,
 // progress bar, menu), one day at a time in Program, History by week, theme
-// default and text contrast in both themes.
+// default and text contrast in both themes, and in both of Sunset Coast's (2.77.1).
 const { open } = require('./h');
 const fails = []; const ok = (c, m) => { if (!c) { fails.push(m); console.log('FAIL', m); } else console.log('ok  ', m); };
 (async () => {
@@ -91,6 +91,31 @@ const fails = []; const ok = (c, m) => { if (!c) { fails.push(m); console.log('F
     probe.remove(); document.documentElement.dataset.theme = 'dark'; document.documentElement.dataset.accent = 'blue'; return out;
   });
   for (const k of Object.keys(contrast)) { const low = contrast[k].filter(([, r]) => r < 4.5); ok(!low.length, `${k}: every key text pair reaches 4.5:1` + (low.length ? ' ' + JSON.stringify(low) : '')); }
+
+  /* Sunset Coast (2.77.1): the same pairs in its night and day palettes, whichever accent is stored under it (its
+     tokens must win over every accent's), and the pairs only it draws: the text on each stop of its button and week
+     bar gradient, on each stop of the rest timer's dusk strip and on the pink it turns when rest ends, each stop of the
+     page titles' gradient and the small labels' colour on the page and on Today's card. */
+  const sun = await ev(() => {
+    const lum = c => { const m = c.match(/\d+(\.\d+)?/g).map(Number); const f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(m[0]) + 0.7152 * f(m[1]) + 0.0722 * f(m[2]); };
+    const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+    const probe = document.createElement('div'); document.body.appendChild(probe);
+    const col = v => { probe.style.color = `var(${v})`; return getComputedStyle(probe).color; };
+    const out = {}; const H = document.documentElement;
+    H.dataset.style = 'sunset';
+    for (const ac of ['ember', 'blue', 'volt', 'pink', 'violet', 'cyan', 'red']) for (const th of ['dark', 'light']) {
+      H.dataset.theme = th; H.dataset.accent = ac;
+      const pairs = [['--ink', '--bg'], ['--ink', '--surface'], ['--muted', '--surface'], ['--muted', '--bg'], ['--muted', '--surface-2'], ['--on-volt', '--volt'], ['--green', '--green-bg'], ['--yellow', '--yellow-bg'], ['--red', '--red-bg'], ['--blue', '--blue-bg'], ['--on-gold', '--gold'], ['--on-hero', '--hero'], ['--volt-line', '--bg'], ['--volt-line', '--surface'],
+        ['--sun-on-b', '--sun-b1'], ['--sun-on-b', '--sun-b2'], ['--sun-on-b', '--sun-b3'], ['--sun-on-dusk', '--sun-dusk-1'], ['--sun-on-dusk', '--sun-dusk-2'], ['--sun-on-dusk', '--sun-dusk-3'], ['--sun-on-dusk-2', '--sun-dusk-1'], ['--sun-on-dusk-2', '--sun-dusk-2'], ['--sun-on-dusk-2', '--sun-dusk-3'], ['--sun-on-done', '--sun-done'],
+        ['--sun-t1', '--bg'], ['--sun-t2', '--bg'], ['--sun-t3', '--bg'], ['--sun-kick', '--bg'], ['--sun-kick', '--hero']];
+      out['sunset ' + ac + ' ' + th] = pairs.map(([a, b]) => [a + ' on ' + b, Math.round(ratio(col(a), col(b)) * 100) / 100]);
+    }
+    // The volt the accent would give, read with Standard, beside Sunset Coast's: no accent may show through.
+    H.dataset.theme = 'dark'; H.dataset.accent = 'blue'; const vSun = col('--volt'); delete H.dataset.style; const vStd = col('--volt');
+    probe.remove(); H.dataset.theme = 'dark'; H.dataset.accent = 'blue'; return { out, vSun, vStd };
+  });
+  for (const k of Object.keys(sun.out)) { const low = sun.out[k].filter(([, r]) => r < 4.5); ok(!low.length, `${k}: every key text pair reaches 4.5:1` + (low.length ? ' ' + JSON.stringify(low) : '')); }
+  ok(sun.vSun !== sun.vStd && sun.vSun === 'rgb(255, 46, 136)', 'under Sunset Coast the stored accent does not show through', sun);
 
   ok(errors.length === 0, 'no console errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log(fails.length ? `FAILURES ${fails.length}` : 'ALL PASS');

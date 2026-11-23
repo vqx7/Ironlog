@@ -99,6 +99,9 @@
 //      dumbbells; in the session, the dumbbells' LB tapped to KG: their rows ask the nearest load in kg, said so, the
 //      bench stays in lb; the sets done as asked and Finish; History shows the dumbbells in kg and the bench in lb; and
 //      the week after the dumbbells read last time in kg, nothing converted back, the bench in lb.
+//  21  Sunset Coast (2.77.1): Style picked in Settings by a tap; Today's card with the sun and palms, Start in the
+//      sunset gradient with dark text, and today in the week bar once trained; the rest timer a dusk strip that turns neon pink as rest ends; the
+//      sets saved as typed; no sideways scroll at 320 px on any tab; kept after a reload; Standard again brings Ember back.
 // Run on r59 (`node tests/personas.js baselines/r59.html`) to see which of
 // these the build before already got wrong. PERSONAS=1,3 runs some of them.
 const { open, engine, touchDriver } = require('./h');
@@ -1309,6 +1312,56 @@ async function finish() {
     ok(gone && /^Progressing\. \S/.test(s.line) && s.rows.some(x => /^Stuck/i.test(x) && /Barbell Row/.test(x) && !/Leg Press/.test(x)) && !s.rows.some(x => /Leg Press/.test(x)),
       '20. with the leg press taken out of the routine, it is read no more: Progressing, and Stuck names only the row', { gone, s });
     ok(!H.P.errors.length, '20. no page errors', H.P.errors);
+    await H.P.ctx.close();
+  }
+
+  // ---- 21. A lifter who picks Sunset Coast and trains (2.77.1, V 2026-11-21): every step a tap or typing. The
+  // style changes colours and art only: the same workout is saved as in Standard, and Standard comes back as it was.
+  if (run(21)) {
+    const T0 = '2026-11-23'; // a Monday
+    const H = await phone(T0);
+    const { ev, page } = H;
+    await seed(H, { unit: 'lb', days: [{ id: 'A', name: 'Push', items: [['bench', 2, 6, 10, 1, 90, 5]] }], sessions: [{ day: 'A', date: '2026-11-16', ex: [['bench', [[185, 8, 1], [185, 8, 1]]]] }] });
+    await page.click('#tabs [data-tab="settings"]'); await wait(150);
+    await ev(() => { const L = window.__ironlog; L.ui.folds['settings:look'] = true; L.render(); });
+    await page.selectOption('#view select[data-bind="style"]', 'sunset'); await wait(150);
+    const v = n => ev(n => getComputedStyle(document.documentElement).getPropertyValue(n).trim().toLowerCase(), n);
+    ok((await ev(() => document.documentElement.dataset.style)) === 'sunset' && (await v('--bg')) === '#0b0614', '21. Style, Sunset Coast: the page turns to the night palette');
+    await page.click('#tabs [data-tab="today"]'); await wait(150);
+    const today = await ev(() => { const h = document.querySelector('#view .hero'); const b = h.querySelector('[data-act="startSession"]:not([data-light="1"])'); const cs = getComputedStyle(b); const d = document.querySelector('.wkbar .w.on .dn'); const a = h.querySelector('.sunart'); return { art: !!a && getComputedStyle(a).display !== 'none', btn: cs.backgroundImage, ink: cs.color }; });
+    // Painted, not only placed: a patch at the top of the sun drawn with the art and with it hidden must differ.
+    const patch = await ev(() => { const b = document.querySelector('#view .hero .sunart .sun').getBoundingClientRect(); return { x: b.left + b.width / 2 - 8, y: b.top + 4, width: 16, height: 8 }; });
+    const withArt = await page.screenshot({ clip: patch });
+    await ev(() => { document.querySelector('#view .hero .sunart').style.visibility = 'hidden'; }); const without = await page.screenshot({ clip: patch });
+    await ev(() => { document.querySelector('#view .hero .sunart').style.visibility = ''; });
+    ok(today.art && !withArt.equals(without) && /linear-gradient/.test(today.btn) && today.ink === 'rgb(22, 3, 26)', '21. Today: the sun and palms painted on the card, Start in the sunset gradient with dark text', today);
+    await H.start();
+    await H.type('w', 0, 0, 190); await H.type('r', 0, 0, 8); await H.tick(0, 0);
+    const rest = await ev(() => { const t = document.getElementById('timer'); const cs = getComputedStyle(t); return { shown: !t.hidden, bg: cs.backgroundImage, ink: cs.color, done: t.classList.contains('done') }; });
+    ok(rest.shown && !rest.done && /linear-gradient/.test(rest.bg) && rest.ink === 'rgb(255, 243, 251)', '21. the rest timer is the dusk strip, its text light', rest);
+    await ev(t => window.__setClock(t), T0 + 'T09:05:00'); await wait(1300);
+    const over = await ev(() => { const t = document.getElementById('timer'); const cs = getComputedStyle(t); return { done: t.classList.contains('done'), shown: !t.hidden, bg: cs.backgroundColor, img: cs.backgroundImage, ink: cs.color }; });
+    ok(over.shown && over.done && over.bg === 'rgb(255, 46, 136)' && over.img === 'none' && over.ink === 'rgb(22, 3, 26)', '21. when rest ends it stays up and turns full neon pink, its text dark', over);
+    await H.type('w', 0, 1, 190); await H.type('r', 0, 1, 7); await H.tick(0, 1);
+    await H.finish();
+    const saved = await ev(() => { const S = window.__ironlog.state.sessions; const x = S[S.length - 1]; return x && x.date === '2026-11-23' ? x.ex[0].sets.map(s => [Math.round(s.w / 0.45359237), s.r]) : null; });
+    ok(JSON.stringify(saved) === JSON.stringify([[190, 8], [190, 7]]), '21. Finish saves the sets as typed, as in Standard', saved);
+    const wk = await ev(() => { const d = document.querySelector('.wkbar .w.today.on .dn'); return d ? { bg: getComputedStyle(d).backgroundImage, ink: getComputedStyle(d).color } : null; });
+    ok(wk && /linear-gradient/.test(wk.bg) && wk.ink === 'rgb(22, 3, 26)', '21. today, trained, in the week bar in the sunset gradient with dark text', wk);
+    // At 320 px nothing scrolls sideways on any tab, the titles' gradient included.
+    await page.setViewportSize({ width: 320, height: 700 }); await wait(150);
+    const wide = [];
+    for (const t of ['today', 'program', 'dash', 'history', 'settings']) { await page.click(`#tabs [data-tab="${t}"]`); await wait(200); const w = await ev(() => document.documentElement.scrollWidth); if (w > 320) wide.push(t + '=' + w); }
+    ok(!wide.length, '21. at 320 px no tab scrolls sideways', wide);
+    await page.setViewportSize({ width: 390, height: 844 }); await wait(100);
+    await page.reload(); await page.waitForFunction(() => window.__ironlog && window.__ironlog.state); await wait(200);
+    ok((await ev(() => document.documentElement.dataset.style)) === 'sunset', '21. Sunset Coast is still chosen after a reload');
+    await page.click('#tabs [data-tab="settings"]'); await wait(150);
+    await ev(() => { const L = window.__ironlog; L.ui.folds['settings:look'] = true; L.render(); });
+    await page.selectOption('#view select[data-bind="style"]', ''); await wait(150);
+    const back = await ev(() => ({ style: document.documentElement.dataset.style || null, stored: 'style' in window.__ironlog.state.settings, accent: document.documentElement.dataset.accent, chips: document.querySelectorAll('#view [data-act="accent"]').length }));
+    ok(!back.style && !back.stored && back.accent === 'ember' && back.chips === 7 && (await v('--bg')) === '#08090b' && (await v('--volt')) === '#ff6a2b', '21. Standard again: nothing stored, Ember and its swatches back as before', back);
+    ok(!H.P.errors.length, '21. no page errors', H.P.errors);
     await H.P.ctx.close();
   }
 

@@ -28,6 +28,50 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   // Blue accent: "above target" turns violet so it never looks like "done".
   ok(await ev(() => getComputedStyle(document.documentElement).getPropertyValue('--blue').trim().toLowerCase() === '#b69cff'), 'with blue, the above-target colour is violet');
 
+  // ---- Style (2.77.1, V 2026-11-21): Sunset Coast, a whole palette beside Standard. It brings its own colours, so the
+  // accent swatches step aside while it is on and the accent picked comes back, as it was, with Standard.
+  const look = () => ev(() => { const cs = getComputedStyle(document.documentElement); const v = n => cs.getPropertyValue(n).trim().toLowerCase(); const sel = document.querySelector('#view select[data-bind="style"]'); const hero = document.querySelector('.hero');
+    return { style: document.documentElement.dataset.style || null, stored: window.__ironlog.state.settings.style, has: 'style' in window.__ironlog.state.settings, accent: window.__ironlog.state.settings.accent, bg: v('--bg'), volt: v('--volt'), sel: sel ? sel.value : null, opts: sel ? [...sel.options].map(o => o.value + '=' + o.textContent).join() : null, swatches: document.querySelectorAll('#view [data-act="accent"]').length, sum: (document.querySelector('[data-sk="settings:look"] .sec-s') || {}).textContent || null, heroArt: hero ? (a => !!a && getComputedStyle(a).display !== 'none' && a.getBoundingClientRect().height > 0)(hero.querySelector('.sunart')) : null }; });
+  const toSettings = () => ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.ui.folds['settings:look'] = true; L.render(); });
+  // The art painted, not only placed: a patch at the top of the sun, inside the card, drawn with the art and with it hidden
+  // must differ (an art box behind the card's own background, or a check of the box alone, would not).
+  const artPaints = async () => { const r = await ev(() => { const c = document.querySelector('#view .hero .sunart .sun'); if (!c) return null; const b = c.getBoundingClientRect(); return { x: b.left + b.width / 2 - 8, y: b.top + 4, width: 16, height: 8 }; }); if (!r) return false; const sa = await A.page.screenshot({ clip: r }); await ev(() => { document.querySelector('#view .hero .sunart').style.visibility = 'hidden'; }); const sb = await A.page.screenshot({ clip: r }); await ev(() => { document.querySelector('#view .hero .sunart').style.visibility = ''; }); return !sa.equals(sb); };
+  await toSettings();
+  x = await look();
+  ok(x.style === null && !x.has && x.sel === '' && x.opts === '=Standard,sunset=Sunset Coast' && x.swatches === 7 && x.bg === '#08090b', 'Appearance offers a Style, Standard by default and stored as nothing, with the accent swatches shown', x);
+  await A.page.selectOption('#view select[data-bind="style"]', 'sunset'); await A.page.waitForTimeout(150);
+  x = await look();
+  ok(x.style === 'sunset' && x.stored === 'sunset' && x.bg === '#0b0614' && x.volt === '#ff2e88' && x.sel === 'sunset', 'Sunset Coast is stored and turns the whole page to its night palette, pink taking the accent\'s place', x);
+  ok(x.swatches === 0 && x.accent === 'blue' && /sunset coast/i.test(x.sum || ''), 'while it is on, the accent swatches step aside, the accent picked stays stored, and the section says Sunset Coast', x);
+  await ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); });
+  ok((await look()).heroArt === true && (await artPaints()), 'Today\'s card carries the sun and palms, painted');
+  await ev(() => { const L = window.__ironlog; L.state.settings.theme = 'light'; L.render(); });
+  x = await look();
+  ok(x.style === 'sunset' && x.bg === '#fdf6f1' && x.volt === '#d6246e' && x.heroArt === true && (await artPaints()), 'in Light it is the daytime palette, sun and palms included, painted', x);
+  await ev(() => { const L = window.__ironlog; L.state.settings.theme = 'dark'; L.saveNow(); });
+  /* Colours and art only: every box on Today, the start card's included, and on a workout's screen sits where it does in
+     Standard (the art itself, and a page title, which the gradient fits to its text, aside). */
+  const boxes = () => ev(() => [...document.querySelectorAll('#view *')].filter(e => !e.closest('.sunart') && !e.matches('.ph h2')).map(e => { const r = e.getBoundingClientRect(); return [e.tagName, Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)].join(); }));
+  const both = async () => { const out = []; for (const st of ['sunset', null]) { await ev(st => { const L = window.__ironlog; if (st) L.state.settings.style = st; else delete L.state.settings.style; L.render(); window.scrollTo(0, 0); }, st); await A.page.waitForTimeout(120); out.push(await boxes()); } return out; };
+  await ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); });
+  let [bs, bn] = await both();
+  ok(bs.length > 50 && bs.join('|') === bn.join('|'), 'Today lays out exactly as in Standard', { n: bs.length, diff: bs.filter((b, i) => b !== bn[i]).slice(0, 4) });
+  await A.page.click('.hero [data-act="startSession"]:not([data-light])'); await A.page.waitForTimeout(200);
+  [bs, bn] = await both();
+  ok(bs.length > 50 && bs.join('|') === bn.join('|'), 'a workout\'s screen lays out exactly as in Standard', { n: bs.length, diff: bs.filter((b, i) => b !== bn[i]).slice(0, 4) });
+  await ev(() => { const L = window.__ironlog; L.state.draft = null; L.state.settings.style = 'sunset'; L.saveNow(); L.render(); });
+  await A.page.reload(); await A.page.waitForFunction(() => window.__ironlog); await A.page.waitForTimeout(300);
+  x = await look();
+  ok(x.style === 'sunset' && x.stored === 'sunset' && x.bg === '#0b0614', 'the style is kept after a reload (two phones on one account: tests/mixed.js)', x);
+  await toSettings();
+  await A.page.selectOption('#view select[data-bind="style"]', ''); await A.page.waitForTimeout(150);
+  x = await look();
+  ok(x.style === null && !x.has && x.accent === 'blue' && x.volt === '#2a63f5' && x.bg === '#08090b' && x.swatches === 7, 'Standard again stores nothing and brings the Blue accent back as it was, swatches and all', x);
+  ok(await ev(() => document.querySelector('#view [data-act="accent"][data-v="blue"]').classList.contains('on')), 'with Blue still the one selected');
+  // A style only this build knows is read; one no build knows is dropped as the log is read, and none stays absent.
+  const nst = await ev(() => { const L = window.__ironlog; const base = JSON.parse(JSON.stringify(L.state)); const n = v => { const o = JSON.parse(JSON.stringify(base)); if (v === undefined) delete o.settings.style; else o.settings.style = v; return L.normalize(o).settings; }; return { sunset: n('sunset').style, odd: 'style' in n('neon'), none: 'style' in n(undefined) }; });
+  ok(nst.sunset === 'sunset' && !nst.odd && !nst.none, 'a log with Sunset Coast reads it, an unknown style is dropped, and a log without one stays without', nst);
+
   // ---- Name. Since r69 (V, 2026-11-03) no name is asked and Today has no greeting; a name an earlier build stored stays in the log.
   ok(await ev(() => !document.querySelector('#view [data-bind="userName"]')), 'Settings, General asks no name');
   await ev(() => { const L = window.__ironlog; L.state.settings.userName = 'Vee'; L.saveNow(); L.ui.tab = 'today'; L.render(); });

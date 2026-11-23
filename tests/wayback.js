@@ -6,20 +6,21 @@
 // (`rid`), and a log kept aside for another account. For each older build:
 //   (1) everything this build saved is there: every session and set, the
 //       workout in progress with its ticked sets, weigh-ins, cardio, a custom
-//       exercise, the settings; every tab draws, and nothing errs;
+//       exercise, the settings (a style only this build knows among them); every tab draws, and nothing errs;
 //   (2) it syncs with the account this build left: nothing lost there, and
 //       it settles (two rounds write nothing more);
 //   (3) a set ticked on the older build, then this build again (the revert
 //       undone): the set is there, every row keeps its id, and the log kept
 //       aside is still kept.
 // `node tests/wayback.js <older page> ...` runs it against other builds
-// (default: baselines/r69.html, the build a revert of r70 republishes, then r68, r67, r66, r65.2, r65,
+// (default: baselines/r123.html, the build a revert of 2.77.1 republishes, then r69, the build a revert of r70
+// republished, r68, r67, r66, r65.2, r65,
 // r64, r63, r62, r61, r60, r59, r58, r57, r56.2, r56.1, r56 and r55; r55.1 and r56 went out inside r56.1's
 // merge and were never published on their own).
 const { open, engine } = require('./h');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 800) : ''); } else console.log('ok  ', m); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
-const OLDER = process.argv.length > 2 ? process.argv.slice(2) : ['baselines/r69.html', 'baselines/r68.html', 'baselines/r67.html', 'baselines/r66.html', 'baselines/r65-2.html', 'baselines/r65.html', 'baselines/r64.html', 'baselines/r63.html', 'baselines/r62.html', 'baselines/r61.html', 'baselines/r60.html', 'baselines/r59.html', 'baselines/r58.html', 'baselines/r57.html', 'baselines/r56-2.html', 'baselines/r56-1.html', 'baselines/r56.html', 'baselines/r55.html'];
+const OLDER = process.argv.length > 2 ? process.argv.slice(2) : ['baselines/r123.html', 'baselines/r69.html', 'baselines/r68.html', 'baselines/r67.html', 'baselines/r66.html', 'baselines/r65-2.html', 'baselines/r65.html', 'baselines/r64.html', 'baselines/r63.html', 'baselines/r62.html', 'baselines/r61.html', 'baselines/r60.html', 'baselines/r59.html', 'baselines/r58.html', 'baselines/r57.html', 'baselines/r56-2.html', 'baselines/r56-1.html', 'baselines/r56.html', 'baselines/r55.html'];
 const CLOCK = '2026-10-21T10:00:00';
 
 // One stand-in cloud: documents by path, shared by every page opened with it, with a count of writes.
@@ -59,7 +60,9 @@ async function phone(browser, cloud, file, uid) {
       sessions: S.sessions.map(s => s.id + ':' + s.ex.map(b => b.exId + '=' + b.sets.map(x => `${x.w}x${x.r}@${x.rir}`).join('/')).join(';')).sort(),
       draft: S.draft ? S.draft.id + ':' + S.draft.ex.map(b => b.exId + '=' + b.sets.map(x => (x.done ? `${x.w}x${x.r}` : '-')).join('/')).join(';') : null,
       bw: S.bodyweights.map(b => b.date + '=' + b.kg).sort(), cardio: S.cardio.map(c => c.date + '=' + c.kind + '/' + c.min).sort(),
-      custom: S.exercises.filter(e => e.custom).map(e => e.id + '=' + e.name), name: S.settings.userName || null, unit: S.settings.unit, budget: S.settings.timeBudget
+      custom: S.exercises.filter(e => e.custom).map(e => e.id + '=' + e.name), name: S.settings.userName || null, unit: S.settings.unit, budget: S.settings.timeBudget,
+      // A setting a newer build added (Sunset Coast's style, 2.77.1) is kept by an older one, unread.
+      style: S.settings.style || null
     };
   });
   P.rids = () => P.ev(() => { const S = window.__ironlog.state; return [...S.sessions.flatMap(s => s.ex.flatMap(b => b.sets.map(x => x.rid || null))), ...(S.draft ? S.draft.ex.flatMap(b => b.sets.map(x => x.rid || null)) : [])]; });
@@ -82,7 +85,7 @@ async function phone(browser, cloud, file, uid) {
   const kept = await N.ev(() => window.__ironlog.asideList());
   ok(kept.length === 1 && kept[0].acct === 'z1' && (await N.ev(() => window.__ironlog.cloudState().acct)) === 'u1', 'set up: this build keeps account z1\'s log aside and syncs with u1', kept);
   await N.ev(() => {
-    const L = window.__ironlog; const S = L.state; S.settings.onboarded = true; S.settings.userName = 'V'; S.settings.timeBudget = 75;
+    const L = window.__ironlog; const S = L.state; S.settings.onboarded = true; S.settings.userName = 'V'; S.settings.timeBudget = 75; S.settings.style = 'sunset';
     S.exercises.push({ id: 'c_neck', name: 'Neck bridge', primary: 'traps', secondary: [], equip: 'bodyweight', bw: true, custom: true, archived: false, note: '' });
     S.bodyweights.push({ id: 'bw1', date: '2026-10-20', kg: 84.2 });
     S.cardio.push({ id: 'c1', date: '2026-10-20', kind: 'walk', min: 25, hr: null, when: 'pre', note: '' });
