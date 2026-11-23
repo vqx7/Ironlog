@@ -346,8 +346,8 @@ document code. In 2.78 the documents still decide what the log is, and nothing c
   workflow's `sqltwo` job, `tests/sim.js` and `tests/simlib.js` (phones in Node and whole histories), `tests/rows.js`
   with `tests/sim-cases.json`, `tests/storage-sync-account.js` S-34, `tests/fake-supabase.js` (`recordsOn`),
   `tests/storage-sync.js` S-6 and S-7 (Undo), `tests/mixed.js` (the pin reads the older build's merge, NEW-203).
-- **Found by the histories and not changed here (NEW-206 to NEW-209):** with one workout open on two phones the
-  documents can drop or double a ticked set around Finish; older than this release; the rows are designed to end it.
+- **Found by the histories and not changed here (NEW-206, NEW-207, NEW-209):** with one workout open on two phones
+  the documents can drop a ticked set around Finish; older than this release; the rows are designed to end it.
 
 ### r72 (2026-11-04, version 2.27; V's report of the fold's jump on live r71 and the 387 audit of the engines, with V's rulings of 2026-11-04; tracker rows NEW-63, 387-B1 to 387-B7, 387-B9, 387-C1, 387-D)
 

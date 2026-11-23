@@ -45,9 +45,10 @@ const DO = {
   bw(P, o) { P.E.act(() => { const S = P.state(); const b = S.bodyweights.find(x => x.id === o.id); if (b) b.kg = o.v; else P.E.setState(P.E.normalize({ ...S, bodyweights: [...S.bodyweights, { id: o.id, date: o.d, kg: o.v, demo: false }] })); }); return true; },
   cardio(P, o) { const ok = P.state().cardio.some(c => c.id === o.id); if (ok) P.edit(S => { S.cardio.find(c => c.id === o.id).note = o.v; }); return ok; },
   set(P, o) { P.edit(S => { S.settings.userName = o.v; }); return true; },
+  // Each set with a row id of its own, as the app gives every set of a workout (session.ts), which is what two phones' copies of one workout are joined by.
   start(P, o) {
     if (P.state().draft || P.state().sessions.some(s => s.id === o.id) || P.state().trash.some(t => t.id === o.id)) return false;
-    P.edit(S => { S.draft = P.E.normalize({ draft: { id: o.id, date: o.v, dayIdx: 0, dayName: 'Day 1', routineId: '', ex: [{ exId: 'squat', sets: [{ w: 100, r: 11, rir: 2 }, { w: 100, r: 12, rir: 2 }, { w: 100, r: 13, rir: 2 }, { w: 100, r: 14, rir: 2 }] }] } }).draft; }); return true;
+    P.edit(S => { S.draft = P.E.normalize({ draft: { id: o.id, date: o.v, dayIdx: 0, dayName: 'Day 1', routineId: '', ex: [{ exId: 'squat', sets: [11, 12, 13, 14].map((r, i) => ({ w: 100, r, rir: 2, rid: o.id + 'r' + i })) }] } }).draft; }); return true;
   },
   tick(P, o) { const d = P.state().draft; const s = d && d.ex[0] && d.ex[0].sets[o.i]; if (!s || s.done) return false; P.edit(S => { S.draft.ex[0].sets[o.i].done = true; }); return true; },
   redate(P, o) { const d = P.state().draft; if (!d || d.date === o.v) return false; P.edit(S => { S.draft.date = o.v; }); return true; },
@@ -81,7 +82,7 @@ async function history(o) {
   clock.t += 2000; await A.tick(); A.signIn(C); await A.sync(); phones.push(A);
   for (let i = 1; i < o.dirs.length; i++) { const P = phoneOf(o.dirs[i], { name: 'ABC'[i], clock, seed: 101 + i, skew: skews[i] }).start(); P.signIn(C); await P.sync(); phones.push(P); }
   // What the lifter did, by record: every action that changed a log, with the phone, its place in the history and the round (the stretch between two moments when every phone had synced).
-  const acts = {}; const made = new Set(['s1', 's2', 's3', 's4']); const forgood = new Set(); const raced = new Set(); const ticked = {}; const tickedBy = {}; const known = {}; const closed = {}; const fails = []; let round = 0, seq = 0, n = 0;
+  const acts = {}; const made = new Set(['s1', 's2', 's3', 's4']); const forgood = new Set(); const raced = new Set(); const ticked = {}; const known = {}; const closed = {}; const fails = []; let round = 0, seq = 0, n = 0;
   const said = (id, p, op) => { (acts[id] = acts[id] || []).push({ p, op, round, seq: ++seq }); };
   const versions = new Map();
   const pushes = () => C.calls.filter(c => c.name === 'push').length;
@@ -125,7 +126,7 @@ async function history(o) {
         const dated = a.filter(x => x.op === 'move' || x.op === 'redate' || x.op === 'start' || x.op === 'add'), ld = dated[dated.length - 1];
         if (ld && ld.v && live.has(id) && !a.some(x => x.round >= ld.round && x.p !== ld.p && x.op !== 'tick') && !a.some(x => x.seq > ld.seq && (x.op === 'del' || x.op === 'restore'))) {
           const got = S.sessions.find(s => s.id === id).date;
-          // A saved workout moved on one phone while another, not caught up, ticked a set of it: one of the three things the documents cannot decide (below).
+          // A saved workout moved on one phone while another, not caught up, ticked a set of it: one of the two things the documents cannot decide (below).
           if (got !== ld.v && ld.op === 'move' && a.some(x => x.op === 'tick' && x.p !== ld.p && x.round === ld.round)) known[LATER] = (known[LATER] || 0) + 1;
           else if (got !== ld.v) fail('date', id, `${id}: the date given last (${ld.v}) is not its date on ${P.name} (${got})`);
         }
@@ -137,8 +138,8 @@ async function history(o) {
       }
       for (const w of Object.keys(ticked)) {
         if (closed[w] === 'discarded' || (acts[w] || []).some(x => x.op === 'del' || x.op === 'forgood')) continue;
-        /* Three things the documents cannot decide, counted apart and not failed (known). They hold one open workout
-           an account. They hold no set's place in a workout once it is a session. And once a workout is a session
+        /* Two things the documents cannot decide, counted apart and not failed (known). They hold one open workout
+           an account. And once a workout is a session
            on one phone, they hold it as that phone's copy: when the other phone, not caught up, changes the workout
            again, each phone ends with a whole copy of its own and the later one is kept, so a set only the other
            copy held is dropped (the app says "The later edit was kept."), or, the session moved to another
@@ -152,7 +153,6 @@ async function history(o) {
         const late = fin ? new Set(a.filter(x => x.op === 'tick' && x.round === fin.round && x.p !== fin.p).map(x => x.p)) : new Set();
         const both = fin && a.some(x => x.op === 'tick' && x.p !== fin.p && x.round === fin.round && x.seq < fin.seq && a.some(y => y.op === 'tick' && y.p === x.p && y.round === fin.round && y.seq > fin.seq));
         const why = raced.has(w) ? 'two workouts started on two phones at once'
-          : Object.values(tickedBy[w] || {}).some(ps => ps.size > 1) ? 'one set ticked on two phones'
           : late.size > 1 || both || new Set(a.filter(x => x.op === 'finish').map(x => x.p)).size > 1 || a.some(x => x.op === 'tick' && a.some(y => y.round === x.round && y.p !== x.p && (y.op === 'note' || y.op === 'move' || y.op === 'restore' || y.op === 'redate'))) ? LATER
           : '';
         const reps = [...S.sessions.filter(s => s.id === w || s.id.startsWith(w + '-')).flatMap(s => s.ex.flatMap(b => b.sets.map(x => x.r))), ...(S.draft && S.draft.id === w ? S.draft.ex.flatMap(b => b.sets.filter(x => x.done).map(x => x.r)) : [])];
@@ -238,7 +238,7 @@ async function history(o) {
         if (other.length) for (const w of [...other, x.id]) raced.add(w);
         closed[x.id] = 'open';
       }
-      if (x.op === 'tick') { (ticked[d0.id] = ticked[d0.id] || new Set()).add(d0.ex[0].sets[x.i].r); const by = (tickedBy[d0.id] = tickedBy[d0.id] || {}); (by[x.i] = by[x.i] || new Set()).add(x.p % phones.length); }
+      if (x.op === 'tick') (ticked[d0.id] = ticked[d0.id] || new Set()).add(d0.ex[0].sets[x.i].r);
       if (x.op === 'finish') { made.add(d0.id); if (closed[d0.id] !== 'discarded') closed[d0.id] = 'finished'; }
       if (x.op === 'discard') closed[d0.id] = 'discarded';
     }
