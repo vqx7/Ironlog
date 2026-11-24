@@ -84,7 +84,7 @@ async function history(o) {
   // What the lifter did, by record: every action that changed a log, with the phone, its place in the history and the round (the stretch between two moments when every phone had synced).
   const acts = {}; const made = new Set(['s1', 's2', 's3', 's4']); const forgood = new Set(); const raced = new Set(); const ticked = {}; const known = {}; const closed = {}; const fails = []; let round = 0, seq = 0, n = 0;
   const said = (id, p, op) => { (acts[id] = acts[id] || []).push({ p, op, round, seq: ++seq }); };
-  const versions = new Map();
+  const versions = new Map(); const seenFindings = new Set();
   const pushes = () => C.calls.filter(c => c.name === 'push').length;
   /** Every phone online and synced until a whole round of syncs writes nothing; false when that never came. */
   const settle = async () => {
@@ -202,7 +202,16 @@ async function history(o) {
       }
       for (const k of want.keys()) if (!seen.has(k)) fail('rows', k, `the log holds ${k} and the account has no row for it`);
       if (S.draft && !seen.has('draft/draft')) fail('rows', 'draft/draft', 'a workout is open and the account has no row for it');
-      for (const Q of phones) for (const f of (Q.E.rowsDiag && Q.E.rowsDiag() ? Q.E.rowsDiag().findings : [])) if (/notes were not|another checksum/.test(f.why)) fail('rows', f.key, `${Q.name}: ${f.why}`);
+      for (const Q of phones) for (const f of (Q.E.rowsDiag && Q.E.rowsDiag() ? Q.E.rowsDiag().findings : [])) {
+        if (/notes were not|another checksum/.test(f.why)) fail('rows', f.key, `${Q.name}: ${f.why}`);
+        /* A difference is recorded when the documents kept a copy against the order of the times, which takes two
+           phones changing one record with no sync between (a clash the documents decide by their own rule). One
+           recorded for a record only one phone touched in a round is the rows' own fault. */
+        const id = f.key.slice(f.key.indexOf('/') + 1), a = acts[id] || [];
+        const clash = a.some(x => a.some(y => y.round === x.round && y.p !== x.p));
+        if (!clash && !seenFindings.has(Q.name + f.at + f.key)) fail('rows', f.key, `${Q.name} recorded a difference for ${f.key}, which no two phones changed between two syncs: ${f.why} (${f.mine} | ${f.theirs})`);
+        seenFindings.add(Q.name + f.at + f.key);
+      }
       for (const Q of phones) { const d = Q.E.rowsDiag && Q.E.rowsDiag(); if (d && /off \(/.test(d.line)) fail('rows', '', `${Q.name}: ${d.line}`); }
     }
     round++;
@@ -227,6 +236,7 @@ async function history(o) {
     if (did) {
       const id = x.op === 'tick' || x.op === 'redate' || x.op === 'finish' || x.op === 'discard' ? d0.id : x.id;
       if (id) said(id, x.p % phones.length, x.op), (acts[id][acts[id].length - 1].v = x.v);
+      if (x.op === 'set') said('userName', x.p % phones.length, x.op);
       if (x.op === 'add') made.add(x.id);
       if (x.op === 'forgood') forgood.add(x.id);
       if (x.op === 'start') {

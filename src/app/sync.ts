@@ -69,7 +69,17 @@ import { FIRST_MACHINE } from './model';
 import { invalidate } from './live';
 import { AUTH, codeOf } from './providers';
 import { photoHeld, photoNote, photoOf, photoPending, photoSent, photoTake } from './photo';
-import { ROWS_UPDATE, rowsBlocked, rowsForget, rowsGate, rowsLogKeys, rowsRemoved, rowsSoon, rowsStart } from './rows';
+import {
+  ROWS_UPDATE,
+  rowsAsked,
+  rowsBlocked,
+  rowsForget,
+  rowsGate,
+  rowsLogKeys,
+  rowsRemoved,
+  rowsSoon,
+  rowsStart
+} from './rows';
 import { acct, cloud, fx, setState, state, ui } from './store';
 import type {
   Base,
@@ -625,6 +635,8 @@ export function setCloud(st: CloudStatus, err?: string | undefined): void {
 /** Stops the sync on an account whose layout asks for a newer build than this one, and says so: nothing more is read from the account or written to it. True when it stopped. */
 function rowsStop(): boolean {
   if (!rowsBlocked()) return false;
+  // Asked again at each try, never waited for: an account that goes back to a layout this build knows syncs at the try after.
+  void rowsGate();
   setCloud('offline', ROWS_UPDATE);
   return true;
 }
@@ -1536,6 +1548,9 @@ export async function cloudFlush(): Promise<void> {
      would find nothing to send and say Synced, the account's own changes
      never read. */
   if (!pulled) return cloudPull();
+  // Nothing is sent while the account's layout, asked for when the read before this send began, is on its way (it answers, or is given up on within the sync's own wait for an answer).
+  const asked = rowsAsked();
+  if (asked) await asked;
   if (rowsStop()) return;
   if (trackT || cloud.pendAt) trackEdits();
   const todo = changedDocs();
@@ -2093,7 +2108,7 @@ async function pullAll(said: number): Promise<void> {
   if (rowsStop()) return;
   setCloud('connecting');
   const began = Date.now();
-  // The account's layout is asked for beside its documents and never waited for: what it says stops this sync below, or the next one.
+  // The account's layout is asked for beside its documents: what it says stops this sync below, or its send (cloudFlush).
   void rowsGate();
   let snap: Awaited<ReturnType<ReturnType<CloudDb['collection']>['get']>>;
   try {

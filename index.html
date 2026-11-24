@@ -5939,6 +5939,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function undoForget() {
     undoStack.length = 0;
     undoWaiting = false;
+    keepIn = [];
+    keepLost = [];
     undoDb().then((db) => {
       if (!db) return;
       try {
@@ -5968,42 +5970,77 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     while (undoStack.length > UNDO_MAX) undoStack.shift();
     undoPersist();
   }
+  var keepLost = [];
+  var keepIn = [];
+  var keepT = null;
+  var KEEP_NOW = 2;
+  function heldIn(log2, key) {
+    const cut = key.indexOf("/");
+    if (cut < 0) return null;
+    const list = key.slice(0, cut), id = key.slice(cut + 1);
+    if (list === "" || list === "settings") {
+      const o3 = list ? rec(log2["settings"]) : log2;
+      return o3 ? { v: o3[id], put: (v3) => v3 === void 0 ? delete o3[id] : o3[id] = v3 } : null;
+    }
+    const rows2 = arr(log2[list]);
+    const at2 = rows2 ? rows2.findIndex((r4) => rec(r4)?.["id"] === id) : -1;
+    return rows2 && at2 >= 0 ? { v: rows2[at2], put: (v3) => rows2[at2] = v3 } : null;
+  }
+  function keepLook(e5) {
+    let changed = false;
+    try {
+      const pre = rec(parseJson(e5.pre));
+      if (!pre) return false;
+      let post;
+      keepLost = keepLost.filter((x2) => {
+        const was = heldIn(pre, x2.key);
+        if (!was || Hx(was.v) !== x2.base) return true;
+        if (post === void 0) post = e5.post == null ? null : rec(parseJson(e5.post));
+        const after2 = post ? heldIn(post, x2.key) : null;
+        if (post && after2 && Hx(after2.v) === x2.base) return true;
+        was.put(x2.copy);
+        changed = true;
+        return false;
+      });
+      if (changed) e5.pre = JSON.stringify(pre);
+    } catch (err) {
+      log("undo", err);
+    }
+    return changed;
+  }
+  function keepOne() {
+    const e5 = keepIn.pop();
+    if (!e5 || !keepLost.length) {
+      keepIn = [];
+      keepLost = [];
+      return;
+    }
+    if (keepLook(e5)) {
+      stepsStored.set(stepId(e5), "");
+      undoPersist();
+    }
+    if (!keepLost.length || !keepIn.length) {
+      keepIn = [];
+      keepLost = [];
+    }
+  }
+  function keepLater() {
+    if (keepT || !keepIn.length) return;
+    keepT = setTimeout(() => {
+      keepT = null;
+      keepOne();
+      keepLater();
+    }, 0);
+  }
   function undoKeeps(lost) {
     if (!lost.length || !undoStack.length) return;
-    let changed = false;
-    for (const x2 of lost) {
-      const cut = x2.key.indexOf("/");
-      if (cut < 0) continue;
-      const list = x2.key.slice(0, cut), id = x2.key.slice(cut + 1);
-      const held3 = (log2) => {
-        if (list === "" || list === "settings") {
-          const o3 = list ? rec(log2["settings"]) : log2;
-          return o3 ? { v: o3[id], put: (v3) => v3 === void 0 ? delete o3[id] : o3[id] = v3 } : null;
-        }
-        const rows2 = arr(log2[list]);
-        const at2 = rows2 ? rows2.findIndex((r4) => rec(r4)?.["id"] === id) : -1;
-        return rows2 && at2 >= 0 ? { v: rows2[at2], put: (v3) => rows2[at2] = v3 } : null;
-      };
-      for (let n3 = undoStack.length - 1; n3 >= 0; n3--) {
-        const e5 = undoStack[n3];
-        if (!e5) continue;
-        try {
-          const pre = rec(parseJson(e5.pre));
-          const was = pre ? held3(pre) : null;
-          if (!pre || !was || Hx(was.v) !== x2.base) continue;
-          const post = e5.post == null ? null : rec(parseJson(e5.post));
-          const after2 = post ? held3(post) : null;
-          if (post && after2 && Hx(after2.v) === x2.base) continue;
-          was.put(x2.copy);
-          e5.pre = JSON.stringify(pre);
-          changed = true;
-          break;
-        } catch (err) {
-          log("undo", err);
-        }
-      }
-    }
-    if (changed) undoPersist();
+    keepLost.push(...lost);
+    keepIn = [...undoStack];
+    for (let n3 = 0; n3 < KEEP_NOW && keepIn.length; n3++) keepOne();
+    keepLater();
+  }
+  function undoKeepsNow() {
+    while (keepIn.length) keepOne();
   }
   function capturePost() {
     const e5 = undoStack[undoStack.length - 1];
@@ -11483,6 +11520,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
 
   // src/app/rows.ts
   var ROWS_KEY = KEY + ".rows";
+  var LAYOUT_KEY = ROWS_KEY + ".layout";
   var LEVEL = 1;
   var ROWS_UPDATE = "Update the app to keep syncing. Your log stays on this phone.";
   var SUM_LEN = 12;
@@ -11510,6 +11548,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var notes = null;
   var off = null;
   var blocked = false;
+  var layoutFor = null;
+  var layoutText = null;
+  var asked = null;
   var running = null;
   var again = false;
   var asking = 0;
@@ -11517,6 +11558,12 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function heed(L2) {
     const was = blocked;
     blocked = needsNewer(L2);
+    layoutFor = cloud.uid;
+    if (cloud.uid) {
+      const text = JSON.stringify({ acct: cloud.uid, decides: L2 ? L2.decides : "docs", level: L2 ? L2.level : 1 });
+      if (text !== layoutText && (blocked || layoutText !== null)) prefSet(LAYOUT_KEY, text);
+      layoutText = text;
+    }
     if (blocked && !was && ctx) ctx.stop();
   }
   var said2 = (e5) => {
@@ -11574,7 +11621,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       ].join(" ");
     return h3.dev === "" && h3.a === 0 ? h3.t.toString(B36) + " " + h3.s : [h3.t.toString(B36), word(h3.dev), h3.a, h3.s].join(" ");
   }
-  function heldIn(v3) {
+  function heldIn2(v3) {
     if (typeof v3 !== "string") return null;
     const p3 = v3.split(" ");
     const plain = p3.length === 2;
@@ -11620,7 +11667,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     out.n = num(m3["n"]);
     const rows2 = rec(m3["rows"]) || {};
     for (const k2 in rows2) {
-      const h3 = heldIn(rows2[k2]);
+      const h3 = heldIn2(rows2[k2]);
       if (!h3) return null;
       out.rows[k2] = h3;
     }
@@ -11649,7 +11696,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (ph && typeof ph["s"] === "string") out.ph = { at: num(ph["at"]), len: num(ph["len"]), s: ph["s"] };
     return out;
   }
-  function notesOut(N2) {
+  function notesOut(N2, own2 = true) {
     if (!device.ok) return;
     const stored = prefGet(ROWS_KEY);
     if (stored !== null && stored !== written) {
@@ -11673,16 +11720,18 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     const text = JSON.stringify({ ...N2, rows: rows2 });
     if (text === stored) {
-      written = text;
+      if (own2) written = text;
       return;
     }
-    if (prefSet(ROWS_KEY, text)) written = text;
+    if (prefSet(ROWS_KEY, text) && own2) written = text;
   }
   function rowsForget() {
     notes = null;
     written = null;
     off = null;
     blocked = false;
+    layoutFor = null;
+    asked = null;
     docSeen.clear();
     tried.clear();
     prefDel(ROWS_KEY);
@@ -11764,7 +11813,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return out;
   }
   function copyOf(ch, m3) {
-    if (m3.body !== void 0) return m3.body;
+    if (m3.photo) return JSON.stringify(photoHeld());
     const D2 = ch[m3.doc];
     if (!D2) return null;
     if (m3.kind === "core") return bodyOf(D2[m3.id] ?? null);
@@ -11818,7 +11867,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       notes = N2;
       written = stored;
     }
-    notesOut(N2);
+    notesOut(N2, !running);
   }
   function layoutOf(v3) {
     if (typeof v3 !== "string") return null;
@@ -11829,26 +11878,28 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       log("rows-layout", e5);
     }
     if (!L2) return null;
+    const lv = L2["level"];
     return {
       made: typeof L2["made"] === "string" ? L2["made"] : null,
-      decides: typeof L2["decides"] === "string" ? L2["decides"] : "docs",
-      level: num(L2["level"]) || 1
+      decides: L2["decides"] === void 0 ? "docs" : typeof L2["decides"] === "string" ? L2["decides"] : "?",
+      level: lv === void 0 ? 1 : typeof lv === "number" && Number.isFinite(lv) && lv >= 1 ? lv : Infinity
     };
   }
   var needsNewer = (L2) => !!L2 && (L2.decides !== "docs" || L2.level > LEVEL);
   async function takeIn(R2, N2) {
-    const changed = /* @__PURE__ */ new Set();
     const note = (x2) => {
       const X = rec(x2);
       if (!X || typeof X["kind"] !== "string" || typeof X["id"] !== "string") return 0;
       const k2 = keyOf(X["kind"], X["id"]), h3 = heldOf(X);
-      if (!sameHeld(N2.rows[k2], h3)) changed.add(k2);
+      if (!sameHeld(N2.rows[k2], h3)) {
+        if (MIRRORED.has(X["kind"])) N2.wait[k2] ??= Date.now();
+      }
       N2.rows[k2] = h3;
       return num(X["seq"]);
     };
     const none = () => N2.n === 0 && !Object.keys(N2.rows).length;
     let p3 = rec(await soon(none() ? R2.pull(PAST_ALL, 1) : R2.pull(N2.n, PAGE)));
-    if (!p3) return null;
+    if (!p3) return false;
     const L2 = layoutOf(p3["layout"]);
     heed(L2);
     if (!none() && (num(p3["top"]) < N2.n || N2.made !== null && (!L2 || L2.made !== N2.made))) {
@@ -11861,7 +11912,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       let at2 = 0;
       for (; ; ) {
         const page = arr(await soon(R2.list(at2, PAGE)));
-        if (!page) return null;
+        if (!page) return false;
         let last = at2;
         for (const x2 of page) last = Math.max(last, note(x2));
         const moved = last > at2;
@@ -11869,7 +11920,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         if (page.length < PAGE || !moved) break;
       }
       N2.n = at2;
-      return changed;
+      return true;
     }
     for (; ; ) {
       const rows2 = arr(p3["rows"]) || [];
@@ -11881,9 +11932,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       }
       N2.n = last;
       p3 = rec(await soon(R2.pull(N2.n, PAGE)));
-      if (!p3) return null;
+      if (!p3) return false;
     }
-    return changed;
+    return true;
   }
   async function send(R2, N2, rows2, sums) {
     let at2 = 0;
@@ -11986,16 +12037,16 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function photoMine(N2) {
     if (photoPending()) return null;
     const n3 = photoNote();
-    const body = JSON.stringify(photoHeld());
-    const at2 = n3 ? n3.et : 0;
-    if (!N2.ph || N2.ph.at !== at2 || N2.ph.len !== body.length) N2.ph = { at: at2, len: body.length, s: sumOf(body) };
-    return { kind: "photo", id: "photo", doc: "photo", rk: "", s: N2.ph.s, place: "log", body, at: at2 };
+    const held3 = photoHeld();
+    const at2 = n3 ? n3.et : 0, len = held3 === null ? -1 : held3.length;
+    if (!N2.ph || N2.ph.at !== at2 || N2.ph.len !== len) N2.ph = { at: at2, len, s: sumOf(JSON.stringify(held3)) };
+    return { kind: "photo", id: "photo", doc: "photo", rk: "", s: N2.ph.s, place: "log", photo: true, at: at2 };
   }
   function logNow(N2) {
     const ch = chunksOf(state);
     const mine = mineNow(ch);
     const photo = photoMine(N2);
-    if (photo && (photo.body !== "null" || N2.rows["photo/photo"])) mine.set("photo/photo", photo);
+    if (photo && (photoHeld() !== null || N2.rows["photo/photo"])) mine.set("photo/photo", photo);
     return { ch, mine, photo: !!photo };
   }
   function keysOf(N2, L2) {
@@ -12037,8 +12088,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     };
     const daily = N2.chk.day !== day || N2.devDay !== day;
     if (!N2.made || daily || differs()) {
-      const changed = await takeIn(R2, N2);
-      if (changed === null) {
+      if (!await takeIn(R2, N2)) {
         off = NO_TABLE;
         return;
       }
@@ -12068,13 +12118,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           tried.delete(k2);
           continue;
         }
-        if (changed.has(k2)) {
-          N2.wait[k2] ??= now2;
-          continue;
-        }
         const since = N2.wait[k2];
         const ripe = since !== void 0 && now2 - since >= WAIT_MS && C2.pulledAt() > since;
-        const plain = takes(m3, h3) && (since === void 0 || !!m3 && tried.get(k2) !== mineText(m3));
+        const plain = since === void 0 ? takes(m3, h3) : !!m3 && (!h3 || timeOf(m3) > h3.t) && tried.get(k2) !== mineText(m3);
         if (!plain && !ripe) {
           N2.wait[k2] ??= now2;
           continue;
@@ -12242,7 +12288,15 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       }
     });
   }
-  async function rowsGate() {
+  function rowsGate() {
+    const p3 = gate();
+    asked = p3;
+    void p3.finally(() => {
+      if (asked === p3) asked = null;
+    });
+    return p3;
+  }
+  async function gate() {
     const R2 = cloud.db && cloud.db.rows;
     if (!R2 || off === NO_TABLE) return false;
     asking++;
@@ -12260,7 +12314,21 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     return blocked;
   }
-  var rowsBlocked = () => blocked;
+  function rowsBlocked() {
+    if (layoutFor !== cloud.uid && cloud.uid && cloud.db && cloud.db.rows) {
+      layoutFor = cloud.uid;
+      layoutText = prefGet(LAYOUT_KEY);
+      let L2 = null;
+      try {
+        L2 = rec(parseJson(layoutText || "null"));
+      } catch (e5) {
+        log("rows-layout", e5);
+      }
+      blocked = !!L2 && L2["acct"] === cloud.uid && needsNewer(layoutOf(layoutText));
+    }
+    return blocked;
+  }
+  var rowsAsked = () => asked;
   function rowsDiag() {
     if (!cloud.on || !cloud.db || !cloud.db.rows) return null;
     if (off === NO_TABLE) return null;
@@ -12624,6 +12692,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   function rowsStop() {
     if (!rowsBlocked()) return false;
+    void rowsGate();
     setCloud("offline", ROWS_UPDATE);
     return true;
   }
@@ -12986,7 +13055,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const cards = new Set(was ? (was.cardio || []).map((c4) => canon(c4)) : []);
     return d3.ex.some((b2) => b2.sets.some((x2) => x2.done && !rows2.has(canon(x2)))) || (d3.cardio || []).some((c4) => !!c4.min && !cards.has(canon(c4)));
   }
-  function keepLost(lost, now2, agreed, remoteWins, tabs = false) {
+  function keepLost2(lost, now2, agreed, remoteWins, tabs = false) {
     if (!lost || lost.editingId || now2 && now2.id === lost.id) return null;
     const kept = draftSession(lost), cardio = draftCardio(lost);
     if (!kept && !cardio.length) return null;
@@ -13233,6 +13302,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (!cloud.on) return;
     notesCatchUp();
     if (!pulled) return cloudPull();
+    const asked2 = rowsAsked();
+    if (asked2) await asked2;
     if (rowsStop()) return;
     if (trackT || cloud.pendAt) trackEdits();
     const todo = changedDocs();
@@ -13323,9 +13394,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
               took = { h: hashStr(b2.json), at: Number(b2.at), b: baseOf(x2.id, rd) };
               if (x2.id === "draft" && dn) {
                 const remoteDraft = draftOf(rec(rd));
-                if (loggedSince(prev, agreed)) dn.kept = keepLost(prev, mergedDraft, agreed, remoteWins) || dn.kept;
+                if (loggedSince(prev, agreed)) dn.kept = keepLost2(prev, mergedDraft, agreed, remoteWins) || dn.kept;
                 if (loggedSince(remoteDraft, agreed))
-                  dn.lost = keepLost(remoteDraft, mergedDraft, agreed, remoteWins) || dn.lost;
+                  dn.lost = keepLost2(remoteDraft, mergedDraft, agreed, remoteWins) || dn.lost;
                 if (dn.kept || dn.lost || canon(state.sessions) !== canon(dn.sessions0)) again2 = true;
               }
               if (x2.id === "core" && absorbLegacy(legacyBody(rec(rd)))) moreBody2 = true;
@@ -13720,9 +13791,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       absorbLegacy(leg);
       if (draftMerged) {
         const remoteDraft = remote.draft ? draftOf(rec(remote.draft.data)) : null;
-        if (loggedSince(dr0, agreedDraft)) kept = keepLost(dr0, state.draft, agreedDraft, draftRemoteWins);
+        if (loggedSince(dr0, agreedDraft)) kept = keepLost2(dr0, state.draft, agreedDraft, draftRemoteWins);
         if (loggedSince(remoteDraft, agreedDraft))
-          lost = keepLost(remoteDraft, state.draft, agreedDraft, draftRemoteWins);
+          lost = keepLost2(remoteDraft, state.draft, agreedDraft, draftRemoteWins);
       }
     }
     if (parts || merged) {
@@ -14139,8 +14210,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       undoKeeps(stat.lost);
       putCopiesAside(aside);
       const agreed = base.draft;
-      if (loggedSince(dr0, agreed)) kept = keepLost(dr0, state.draft, agreed, true, true);
-      if (loggedSince(incoming.draft, agreed)) keepLost(incoming.draft, state.draft, agreed, true, true);
+      if (loggedSince(dr0, agreed)) kept = keepLost2(dr0, state.draft, agreed, true, true);
+      if (loggedSince(incoming.draft, agreed)) keepLost2(incoming.draft, state.draft, agreed, true, true);
     }
     keepLastCopies(held3);
     device.lastSaved = text;
@@ -14337,6 +14408,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return !!was && typeof was["id"] === "string" && was["id"] !== d3.id && !after2;
   }
   function undoStep() {
+    undoKeepsNow();
     const top = undoStack[undoStack.length - 1];
     if (top && waitsForWorkout(top)) return "open";
     const e5 = undoStack.pop();
@@ -25074,11 +25146,11 @@ ${JSON.stringify(ctx2, null, 1)}`;
     const el = document.querySelector("#modal [data-captcha]");
     if (!(el instanceof HTMLElement) || box2 && box2.el === el || failedFor === el) return;
     if (!loading) loading = loadScript(TURNSTILE_URL);
-    const asked = loading;
-    asked.then((loaded) => {
+    const asked2 = loading;
+    asked2.then((loaded) => {
       const ts = window.turnstile;
       if (!loaded || !ts) {
-        if (loading === asked) loading = null;
+        if (loading === asked2) loading = null;
         failedFor = el;
         return;
       }
@@ -29294,7 +29366,7 @@ ${JSON.stringify(ctx2, null, 1)}`;
         else if (typedNotDone(x2)) typedWork++;
       }
     if (!any || left === 0) return false;
-    const asked = () => {
+    const asked2 = () => {
       const dd = state.draft;
       if (dd) dd._leftAsked = true;
     };
@@ -29307,14 +29379,14 @@ ${JSON.stringify(ctx2, null, 1)}`;
         `${andList(typed.map((u4) => `${u4.name} (${u4.n} set${u4.n > 1 ? "s" : ""})`))} ${typed.length > 1 ? "have" : "has"} reps and no checkmark. ${left > 1 ? `The other ${left} are empty and left out.` : "The other set is empty and left out."} ${fewer}`,
         `Mark ${total > 1 ? "them" : "it"} done and save`,
         () => {
-          asked();
+          asked2();
           markAll();
         },
         false,
         {
           label: "Save without them",
           fn: () => {
-            asked();
+            asked2();
             saveAfterRamps();
           }
         }
@@ -29326,7 +29398,7 @@ ${JSON.stringify(ctx2, null, 1)}`;
       `Finish now and they are left out. ${fewer}`,
       "Finish now",
       () => {
-        asked();
+        asked2();
         finish();
       },
       false,

@@ -42,12 +42,12 @@ function rng(seed) { let x = (seed >>> 0) || 1; return () => ((x = (Math.imul(x,
 /** A request that got no answer, as the sync reads one. */
 const dropped = () => Object.assign(new Error('offline'), { code: 'unavailable' });
 
-/* The stand-in account. Documents by path, written only over the copy read, each write noted. `o.rows`: { R, table,
+/* The stand-in account. Documents by path, written only over the copy read, each write and each whole read noted (writes, reads). `o.rows`: { R, table,
    name } gives the account rows, on the database `R` (rowsdb.js) as the account named `name`; { missing: true } an
    account whose rows' SQL was never run (every call answers null, as the backend does); absent, a backend that
    knows no rows at all. Every request of phone `who` passes its `net`, before and after the account applies it. */
 function accountOf(o = {}) {
-  const store = new Map(), writes = [], calls = [];
+  const store = new Map(), writes = [], calls = [], reads = [];
   const rowsFor = (who, net) => {
     if (!o.rows) return undefined;
     const call = async (name, args) => {
@@ -72,13 +72,13 @@ function accountOf(o = {}) {
         return still;
       }
     }),
-    collection: p => ({ async get() { await net('list', 'before'); const docs = [...store.entries()].filter(([k]) => k.startsWith(p + '/') && !k.slice(p.length + 1).includes('/')).map(([k, v]) => ({ id: k.slice(p.length + 1), exists: true, data: () => JSON.parse(v) })); await net('list', 'after'); return { docs }; } })
+    collection: p => ({ async get() { await net('list', 'before'); reads.push({ who, p }); const docs = [...store.entries()].filter(([k]) => k.startsWith(p + '/') && !k.slice(p.length + 1).includes('/')).map(([k, v]) => ({ id: k.slice(p.length + 1), exists: true, data: () => JSON.parse(v) })); await net('list', 'after'); return { docs }; } })
   });
   /** The account's documents of user `uid` as the logs they hold, by document id. */
   const all = uid => Object.fromEntries([...store.entries()].filter(([k]) => k.startsWith(`data/users/${uid}/`)).map(([k, v]) => { const d = JSON.parse(v); return [k.slice(`data/users/${uid}/`.length), typeof d.json === 'string' ? JSON.parse(d.json) : d]; }));
   /** The account's rows, as the database's owner reads them. */
   const rows = async () => (o.rows && !o.rows.missing ? o.rows.R.rows(o.rows.name, o.rows.table || 'records') : []);
-  return { store, writes, calls, dbFor, all, rows, has: !!o.rows };
+  return { store, writes, calls, reads, dbFor, all, rows, has: !!o.rows };
 }
 
 /* A phone: `dir` its build, `o.clock` { t } its clock in ms (shared between phones for one clock), `o.skew` what its

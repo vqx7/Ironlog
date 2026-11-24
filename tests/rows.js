@@ -121,6 +121,49 @@ const CASES = {
     for (const P of r.phones) if (diag(P).findings.length || / waiting$/.test(diag(P).line)) out.push(`${P.name} ends with "${diag(P).line}" and ${diag(P).findings.length} findings`);
     return out;
   },
+  /* The same row, read by a pass that then stops before it compares: the lifter typed again while the rows were
+     being read. The rows are in the notes all the same, and the next pass (a send of that second change, with no
+     read of the documents since) must still leave the other phone's new session alone (REV32-2). */
+  async 'a row read by a pass that stopped early is still left alone by the next pass'(dir, R) {
+    const r = await history({ dirs: [dir, dir], rows: R, name: acct(), script: [{ p: 0, op: 'check' }] });
+    const [A, B] = r.phones, out = [];
+    const x9 = async () => (await r.C.rows()).find(x => x.kind === 'session' && x.id === 'x9');
+    await r.run({ p: 1, op: 'add', id: 'x9', v: '2025-12-30' }); await B.flush();
+    let once = true;
+    A.hook = async (kind, when) => { if (kind === 'rows-pull' && when === 'after' && once) { once = false; A.edit(S => { S.sessions.find(s => s.id === 's2').notes = 'typed while the rows were read'; }); } };
+    await r.run({ p: 0, op: 'note', id: 's1', v: 'typed on A' });
+    A.hook = null;
+    if (once) return ['phone A read no rows'];
+    r.clock.t += 1500; await A.tick(); await A.flush();
+    let row = await x9();
+    if (!row || row.body === null || row.gone_saw !== null) out.push('phone A marked the session it has not read yet as deleted');
+    if (!/1 waiting$/.test(diag(A).line)) out.push(`phone A says "${diag(A).line}", not that one record waits`);
+    // The same by the workout's row: its write is refused as stale, the rows are read again, and that read brings another new session in.
+    await r.check();
+    for (const x of [{ p: 0, op: 'start', id: 'k1', v: '2026-11-20' }, { p: 0, op: 'check' }, { p: 1, op: 'tick', i: 0 }, { p: 1, op: 'add', id: 'x8', v: '2026-11-20' }]) await r.run(x);
+    await B.flush();
+    await r.run({ p: 0, op: 'tick', i: 1 }); await r.run({ p: 0, op: 'tick', i: 2 });
+    row = (await r.C.rows()).find(x => x.kind === 'session' && x.id === 'x8');
+    if (!row || row.body === null || row.gone_saw !== null) out.push('after the workout row\'s second try, phone A marked a session it has not read yet as deleted');
+    await r.check();
+    out.push(...said(r));
+    for (const P of r.phones) if (diag(P).findings.length) out.push(`${P.name} recorded a difference: ${diag(P).findings[0].why}`);
+    return out;
+  },
+  /* A record leaves the log by a sync while the phone's own pass over the rows is under way: it is still counted
+     ("removed by a sync"), though the pass writes the notes after the count was written (REV32-4). */
+  async 'a record a sync removed while a pass was under way is still counted'(dir, R) {
+    const r = await history({ dirs: [dir, dir], rows: R, name: acct(), script: [{ p: 0, op: 'check' }] });
+    const [A, B] = r.phones;
+    B.E.act(() => { const S = B.state(); S.bodyweights = S.bodyweights.filter(b => b.id !== 'w1'); }); r.clock.t += 1500; await B.tick(); await B.flush();
+    let once = true;
+    A.hook = async (kind, when) => { if (kind === 'rows-pull' && when === 'after' && once) { once = false; await A.E.cq(A.E.cloudPull); } };
+    await r.run({ p: 0, op: 'note', id: 's1', v: 'typed on A' });
+    A.hook = null; await A.settle();
+    if (once || A.state().bodyweights.some(b => b.id === 'w1')) return ['the read of the documents did not run inside the pass'];
+    r.clock.t += 61000; await A.tick(); await A.sync(); await A.sync();
+    return /, 1 removed by a sync/.test(diag(A).line) && A.rowNotes().chk.removed === 1 ? [] : [`phone A says "${diag(A).line}" and its notes hold ${A.rowNotes().chk.removed}`];
+  },
   /* The account holds a later version of a session than the documents kept (as if the documents had decided against
      the order of the times). The phone waits a minute and a whole read of the documents, then sends the log's copy
      over it with a new time, and records the difference. */
@@ -161,6 +204,33 @@ const CASES = {
       if (A.state().sessions.find(s => s.id === 's2').notes !== 'typed later') out.push(tag + 'the change made after the stop is not in the log on the phone');
       if (after - writes > 1) out.push(tag + `${after - writes} documents were written after the layout changed`);
       if (!/needs a newer version/.test(diag(A).line)) out.push(tag + `Settings says "${diag(A).line}"`);
+      /* The app closed and opened again, three times, a change made each time: the phone knows from what it kept
+         that it must not sync, and writes no document and takes none in (REV32-5). */
+      let store = A.ls, last = A;
+      for (let n = 1; n <= 3; n++) {
+        last.E.cloudStop();
+        const P = phoneOf(dir, { name: 'A', clock: r.clock, storage: store, seed: 20 + n }).start(); P.signIn(r.C);
+        const w = r.C.writes.length, reads = r.C.calls.length, docs = r.C.reads.length;
+        P.edit(S => { S.sessions.find(s => s.id === 's2').notes = 'typed at open ' + n; }); r.clock.t += 3000; await P.tick(); await P.sync();
+        if (r.C.writes.length !== w) out.push(tag + `app opened again (${n}): ${r.C.writes.length - w} documents written`);
+        if (P.E.cloud.status !== 'offline' || P.E.cloud.err !== P.E.ROWS_UPDATE) out.push(tag + `app opened again (${n}): the phone reads "${P.E.cloud.status}: ${P.E.cloud.err}"`);
+        if (r.C.calls.slice(reads).some(c => c.name !== 'pull')) out.push(tag + `app opened again (${n}): the phone wrote to the rows`);
+        if (r.C.reads.length !== docs) out.push(tag + `app opened again (${n}): the phone read the account's documents ${r.C.reads.length - docs} times`);
+        last = P; store = P.ls;
+      }
+      // The account goes back to a layout this build knows: the phone syncs again at the second try, and what was typed meanwhile goes out.
+      await R.call(name, 'records', 'push', [[{ kind: 'meta', id: 'layout', body: JSON.stringify({ ...layout, decides: 'docs', level: 1, gen: 3 }), t: r.clock.t + 5000, dev: 'dev-new', a: 0 }]]);
+      r.clock.t += 61000; await last.tick(); await last.sync(); await last.settle(); await last.sync();
+      if (last.E.cloud.status !== 'synced') out.push(tag + `with the layout back, the phone reads "${last.E.cloud.status}: ${last.E.cloud.err}"`);
+      if (!JSON.stringify(r.C.all('u')).includes('typed at open 3')) out.push(tag + 'with the layout back, what was typed meanwhile did not reach the account');
+    }
+    {
+      // A layout whose level cannot be read is read as more than this build knows, not as nothing asked.
+      const name = acct(), r = await history({ dirs: [dir, dir], rows: R, name, script: [{ p: 0, op: 'check' }] });
+      const A = r.phones[0], layout = JSON.parse((await r.C.rows()).find(x => x.kind === 'meta').body);
+      await R.call(name, 'records', 'push', [[{ kind: 'meta', id: 'layout', body: JSON.stringify({ ...layout, level: 'two' }), t: r.clock.t + 1000, dev: 'dev-new', a: 0 }]]);
+      r.clock.t += 61000; await A.tick(); await A.sync(); await A.sync();
+      if (A.E.cloud.err !== A.E.ROWS_UPDATE) out.push(`a layout whose level is not a number: the phone reads "${A.E.cloud.status}: ${A.E.cloud.err}"`);
     }
     return out;
   },
@@ -382,11 +452,16 @@ const CASES = {
   }
   if (part('broken')) {
     const BROKEN = [
-      ['a row the account just changed is not left alone', `      if (changed.has(k)) {
-        N.wait[k] ??= now;
-        continue;
-      }
-`, '', ["a row ahead of the documents a phone holds is left alone"]],
+      ['a row a read brought in waits only for the pass that read it', `      if (MIRRORED.has(X['kind'])) N.wait[k] ??= Date.now();`, ``, ['a row read by a pass that stopped early is still left alone by the next pass']],
+      ['a count written during a pass is written over by the pass', `    if (own) written = text;
+    return;
+  }
+  if (prefSet(ROWS_KEY, text) && own) written = text;`, `    written = text;
+    return;
+  }
+  if (prefSet(ROWS_KEY, text)) written = text;`, ['a record a sync removed while a pass was under way is still counted']],
+      ['the layout is forgotten when the app is closed', `    blocked = !!L && L['acct'] === cloud.uid && needsNewer(layoutOf(layoutText));`, `    blocked = false;`, ['an account that asks for a newer build: the phone stops syncing and says to update']],
+      ['a level that is not a number is read as the first', `typeof lv === 'number' && Number.isFinite(lv) && lv >= 1 ? lv : Infinity`, `typeof lv === 'number' && Number.isFinite(lv) && lv >= 1 ? lv : 1`, ['an account that asks for a newer build: the phone stops syncing and says to update']],
       ['a record gone from the log is not marked in its row', `    if (!h) return null;
     const cut = k.indexOf('/');`, `    if (h) return null;
     const cut = k.indexOf('/');`, ['the rows say what the log says after each thing a lifter does']],

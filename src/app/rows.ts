@@ -25,6 +25,8 @@ import { codeOf } from './providers';
 
 /** The key the rows' notes are saved under. */
 const ROWS_KEY = KEY + '.rows';
+/** The key the account's layout is kept under, so a build that must not sync knows it when the app is opened. */
+const LAYOUT_KEY = ROWS_KEY + '.layout';
 /** The level of sync a build has: 1 writes the rows beside the documents, which decide. An account whose layout asks for more is one this build cannot sync. */
 const LEVEL = 1;
 /** What a phone on a build that cannot sync its account says. */
@@ -90,7 +92,7 @@ interface Mine {
   place: 'log' | 'trash';
   day?: string;
   clash?: boolean;
-  body?: string;
+  photo?: boolean;
   at?: number;
 }
 /** Something the daily check or a write found, kept for Diagnostics: when, the record, what happened, and both sides as text. */
@@ -129,6 +131,11 @@ let notes: Notes | null = null;
 let off: string | null = null;
 /** Whether the account's layout asks for a build newer than this one. */
 let blocked = false;
+/** The account `blocked` was last worked out for, and the layout as kept on the phone (LAYOUT_KEY) when this page last read or wrote it. */
+let layoutFor: string | null = null;
+let layoutText: string | null = null;
+/** The read of the layout under way (rowsGate), which a send of the documents waits for; null when none is. */
+let asked: Promise<boolean> | null = null;
 let running: Promise<void> | null = null;
 let again = false;
 /** The layout reads under way (rowsGate). */
@@ -139,6 +146,14 @@ let written: string | null = null;
 function heed(L: { decides: string; level: number } | null): void {
   const was = blocked;
   blocked = needsNewer(L);
+  layoutFor = cloud.uid;
+  /* Kept on the phone for the account: the next time the app is opened it knows before its first request that it
+     must not sync, and does not read the documents into the log or send what it holds while the layout is asked for. */
+  if (cloud.uid) {
+    const text = JSON.stringify({ acct: cloud.uid, decides: L ? L.decides : 'docs', level: L ? L.level : 1 });
+    if (text !== layoutText && (blocked || layoutText !== null)) prefSet(LAYOUT_KEY, text);
+    layoutText = text;
+  }
   if (blocked && !was && ctx) ctx.stop();
 }
 
@@ -305,10 +320,11 @@ function notesIn(acct: string, ep: number, text: string | null = prefGet(ROWS_KE
   return out;
 }
 /** Writes the notes, only while the log's own save succeeds: notes saved ahead of the log would describe a log the phone does not hold. Notes not written (the phone is full) are made again from the account at the next start. */
-function notesOut(N: Notes): void {
+function notesOut(N: Notes, own = true): void {
   if (!device.ok) return;
-  /* Another tab of this phone wrote the notes since this one read them (it counted a record a sync removed; a pass
-     never runs in two tabs at once, oneTab): what it recorded is kept, never written over. */
+  /* The notes were written since this pass read them, by another tab of this phone or by this tab's own count of a
+     record a sync removed (rowsRemoved; a pass never runs in two tabs at once, oneTab): what was recorded is kept,
+     never written over. */
   const stored = prefGet(ROWS_KEY);
   if (stored !== null && stored !== written) {
     const other = notesIn(N.acct, N.ep, stored);
@@ -330,19 +346,22 @@ function notesOut(N: Notes): void {
     if (h) rows[k] = heldText(h);
   }
   const text = JSON.stringify({ ...N, rows });
+  // `own` false: written from outside a pass while one is under way (rowsRemoved). The pass must then find the stored notes are not the ones it read, and keep what this write recorded.
   if (text === stored) {
-    written = text;
+    if (own) written = text;
     return;
   }
-  if (prefSet(ROWS_KEY, text)) written = text;
+  if (prefSet(ROWS_KEY, text) && own) written = text;
 }
 /** Forgets the rows' notes and what was learnt of the account: wherever the document sync's notes stop describing the log on this phone (a sign-out, another account's log taken, the log replaced). A record the notes held and the new log lacks is then no deletion. */
 export function rowsForget(): void {
   notes = null;
   written = null;
-  // What was learnt of the account before is not known of the one the notes will next describe.
+  // What was learnt of the account before is not known of the one the notes will next describe (its layout, kept on the phone by account, is read again).
   off = null;
   blocked = false;
+  layoutFor = null;
+  asked = null;
   docSeen.clear();
   tried.clear();
   // Notes storage would not forget name the log they were for, and are not read for another.
@@ -443,7 +462,7 @@ function mineNow(ch: Record<string, Rec>): Map<string, Mine> {
 }
 /** The copy of record `m` as it is in the log's documents `ch` now; null when the log no longer holds it there. */
 function copyOf(ch: Record<string, Rec>, m: Mine): string | null {
-  if (m.body !== undefined) return m.body;
+  if (m.photo) return JSON.stringify(photoHeld());
   const D = ch[m.doc];
   if (!D) return null;
   if (m.kind === 'core') return bodyOf(D[m.id] ?? null);
@@ -501,7 +520,7 @@ export function rowsRemoved(before: Set<string>): void {
     notes = N;
     written = stored;
   }
-  notesOut(N);
+  notesOut(N, !running);
 }
 
 /* ---------- the account's answers ---------- */
@@ -517,34 +536,40 @@ function layoutOf(v: unknown): { made: string | null; decides: string; level: nu
     log('rows-layout', e);
   }
   if (!L) return null;
+  // What cannot be read is read as more than this build knows, never as nothing asked: the phone stops and says to update.
+  const lv = L['level'];
   return {
     made: typeof L['made'] === 'string' ? L['made'] : null,
-    decides: typeof L['decides'] === 'string' ? L['decides'] : 'docs',
-    level: num(L['level']) || 1
+    decides: L['decides'] === undefined ? 'docs' : typeof L['decides'] === 'string' ? L['decides'] : '?',
+    level: lv === undefined ? 1 : typeof lv === 'number' && Number.isFinite(lv) && lv >= 1 ? lv : Infinity
   };
 }
 /** Whether a layout is one this build cannot sync by: the rows decide, or it asks for a newer build. */
 const needsNewer = (L: { decides: string; level: number } | null): boolean =>
   !!L && (L.decides !== 'docs' || L.level > LEVEL);
 
-/** Takes what the account's rows changed since the notes' number into the notes: the keys whose row is not the one
-    the notes held, or null when the account has no rows table. A phone with no notes reads the list, without the
-    copies, so a second phone does not read the whole log to find it already there. */
-async function takeIn(R: CloudRows, N: Notes): Promise<Set<string> | null> {
-  const changed = new Set<string>();
+/** Takes what the account's rows changed since the notes' number into the notes, each changed row of a kind this
+    build mirrors noted as waiting from now; false when the account has no rows table. A phone with no notes reads
+    the list, without the copies, so a second phone does not read the whole log to find it already there. */
+async function takeIn(R: CloudRows, N: Notes): Promise<boolean> {
   /** Notes one row of an answer; its change number. */
   const note = (x: unknown): number => {
     const X = rec(x);
     if (!X || typeof X['kind'] !== 'string' || typeof X['id'] !== 'string') return 0;
     const k = keyOf(X['kind'], X['id']),
       h = heldOf(X);
-    if (!sameHeld(N.rows[k], h)) changed.add(k);
+    if (!sameHeld(N.rows[k], h)) {
+      /* Noted here, wherever a read brings a changed row in, and not by the pass that asked: a pass that ends before
+         it compares (the lifter changed something meanwhile), the workout row's second try and the daily check's
+         remake all read rows too, and the next pass must still leave those rows alone. */
+      if (MIRRORED.has(X['kind'])) N.wait[k] ??= Date.now();
+    }
     N.rows[k] = h;
     return num(X['seq']);
   };
   const none = (): boolean => N.n === 0 && !Object.keys(N.rows).length;
   let p = rec(await soon(none() ? R.pull(PAST_ALL, 1) : R.pull(N.n, PAGE)));
-  if (!p) return null;
+  if (!p) return false;
   const L = layoutOf(p['layout']);
   heed(L);
   // The account restored from a copy, or its rows begun again: every row is read again.
@@ -558,7 +583,7 @@ async function takeIn(R: CloudRows, N: Notes): Promise<Set<string> | null> {
     let at = 0;
     for (;;) {
       const page: unknown[] | null = arr(await soon(R.list(at, PAGE)));
-      if (!page) return null;
+      if (!page) return false;
       let last = at;
       for (const x of page) last = Math.max(last, note(x));
       // A full page that does not move the number on is not the account's list: read no further.
@@ -567,7 +592,7 @@ async function takeIn(R: CloudRows, N: Notes): Promise<Set<string> | null> {
       if (page.length < PAGE || !moved) break;
     }
     N.n = at;
-    return changed;
+    return true;
   }
   for (;;) {
     const rows = arr(p['rows']) || [];
@@ -579,9 +604,9 @@ async function takeIn(R: CloudRows, N: Notes): Promise<Set<string> | null> {
     }
     N.n = last;
     p = rec(await soon(R.pull(N.n, PAGE)));
-    if (!p) return null;
+    if (!p) return false;
   }
-  return changed;
+  return true;
 }
 /** Sends rows, in writes of WRITE_ROWS and WRITE_BYTES at most, and takes each answer into the notes: false when the account has no rows table. `sums`: the checksum already worked out for a row's copy, by key, so a long log is not read twice. */
 async function send(R: CloudRows, N: Notes, rows: RowIn[], sums?: Map<string, string>): Promise<boolean> {
@@ -700,14 +725,15 @@ function rowFor(
     ...made
   };
 }
-/** The profile photo as a record, when the phone holds no change to it still to send. Its checksum is kept in the notes with the photo's own edit time and length, and worked out again only when one of them moved: the photo is the one long copy. */
+/** The profile photo as a record, when the phone holds no change to it still to send. Its checksum is kept in the notes with the photo's own edit time and length, and its text made and its checksum worked out again only when one of them moved: the photo is the one long copy. */
 function photoMine(N: Notes): Mine | null {
   if (photoPending()) return null;
   const n = photoNote();
-  const body = JSON.stringify(photoHeld());
-  const at = n ? n.et : 0;
-  if (!N.ph || N.ph.at !== at || N.ph.len !== body.length) N.ph = { at, len: body.length, s: sumOf(body) };
-  return { kind: 'photo', id: 'photo', doc: 'photo', rk: '', s: N.ph.s, place: 'log', body, at };
+  const held = photoHeld();
+  const at = n ? n.et : 0,
+    len = held === null ? -1 : held.length;
+  if (!N.ph || N.ph.at !== at || N.ph.len !== len) N.ph = { at, len, s: sumOf(JSON.stringify(held)) };
+  return { kind: 'photo', id: 'photo', doc: 'photo', rk: '', s: N.ph.s, place: 'log', photo: true, at };
 }
 /** The log as rows now: its documents, each record of them by key, and whether the profile photo is among them. */
 function logNow(N: Notes): { ch: Record<string, Rec>; mine: Map<string, Mine>; photo: boolean } {
@@ -715,7 +741,7 @@ function logNow(N: Notes): { ch: Record<string, Rec>; mine: Map<string, Mine>; p
   const mine = mineNow(ch);
   const photo = photoMine(N);
   // A phone with no photo, on an account with no photo row, has nothing to say of it.
-  if (photo && (photo.body !== 'null' || N.rows['photo/photo'])) mine.set('photo/photo', photo);
+  if (photo && (photoHeld() !== null || N.rows['photo/photo'])) mine.set('photo/photo', photo);
   return { ch, mine, photo: !!photo };
 }
 /** The keys to compare: every record of the log, and every row of a kind this build mirrors. */
@@ -771,8 +797,7 @@ async function pass(): Promise<void> {
   };
   const daily = N.chk.day !== day || N.devDay !== day;
   if (!N.made || daily || differs()) {
-    const changed = await takeIn(R, N);
-    if (changed === null) {
+    if (!(await takeIn(R, N))) {
       off = NO_TABLE;
       return;
     }
@@ -805,19 +830,18 @@ async function pass(): Promise<void> {
         tried.delete(k);
         continue;
       }
-      /* A row the account changed since this phone last read it may be ahead of the documents this phone holds
-         (another phone writes the document first, then the row): the record is left alone. So is one the account
-         would not take as the log holds it (the account's copy is the later one). If it still differs a minute on,
-         and after a whole read of the documents since, the documents did decide otherwise, and the log's state is
-         sent over the account's. */
-      if (changed.has(k)) {
-        N.wait[k] ??= now;
-        continue;
-      }
+      /* A row the account changed since this phone last agreed with it waits from the read that brought it in
+         (takeIn): it may be ahead of the documents this phone holds (another phone writes the document first, then
+         the row). So does one the account would not take as the log holds it (the account's copy is the later one).
+         If it still differs a minute on, and after a whole read of the documents since, the documents did decide
+         otherwise, and the log's state is sent over the account's. */
       const since = N.wait[k];
       const ripe = since !== undefined && now - since >= WAIT_MS && C.pulledAt() > since;
-      // The log's copy is the later one, so the account is behind the documents, not ahead: sent as it stands, once.
-      const plain = takes(m, h) && (since === undefined || (!!m && tried.get(k) !== mineText(m)));
+      /* Sent as it stands: a row this phone has not seen change since it last agreed with the log, which the account
+         will take (the log moved, not the account); or, of a row that waits, only a copy the documents time later
+         than the account's, once (the lifter changed it here since: the account is behind, not ahead). A record gone
+         from the log, or one whose time is not later, is never sent over a row that waits before the wait is over. */
+      const plain = since === undefined ? takes(m, h) : !!m && (!h || timeOf(m) > h.t) && tried.get(k) !== mineText(m);
       if (!plain && !ripe) {
         N.wait[k] ??= now;
         continue;
@@ -1016,7 +1040,15 @@ export function rowsSoon(): void {
     });
 }
 /** Reads the account's layout before the documents are synced: whether the account is one this build cannot sync (its rows decide, or it asks for a newer build). A read that fails says nothing, and the sync goes on as a build that knows no rows does. */
-export async function rowsGate(): Promise<boolean> {
+export function rowsGate(): Promise<boolean> {
+  const p = gate();
+  asked = p;
+  void p.finally(() => {
+    if (asked === p) asked = null;
+  });
+  return p;
+}
+async function gate(): Promise<boolean> {
   const R = cloud.db && cloud.db.rows;
   // Asked even while the rows are off after a failure: a build that must stop syncing must learn it whatever else failed.
   if (!R || off === NO_TABLE) return false;
@@ -1035,8 +1067,24 @@ export async function rowsGate(): Promise<boolean> {
   }
   return blocked;
 }
-/** Whether the account's layout asks for a build newer than this one, as last read. */
-export const rowsBlocked = (): boolean => blocked;
+/** Whether the account's layout asks for a build newer than this one, as last read: this visit, or by an earlier one (kept on the phone for the account). */
+export function rowsBlocked(): boolean {
+  if (layoutFor !== cloud.uid && cloud.uid && cloud.db && cloud.db.rows) {
+    layoutFor = cloud.uid;
+    layoutText = prefGet(LAYOUT_KEY);
+    let L: Rec | null = null;
+    try {
+      L = rec(parseJson(layoutText || 'null'));
+    } catch (e) {
+      // A kept layout that cannot be read is no layout: the account is asked.
+      log('rows-layout', e);
+    }
+    blocked = !!L && L['acct'] === cloud.uid && needsNewer(layoutOf(layoutText));
+  }
+  return blocked;
+}
+/** The read of the layout under way, if one is: a send of the documents that follows a read of them waits for it, so a build the account asks more of sends nothing while the answer is on its way. Null when none is under way, and the send then goes on in the same stretch of work as before the rows. */
+export const rowsAsked = (): Promise<unknown> | null => asked;
 /** The rows' state for Diagnostics: one line, and the findings kept. */
 export function rowsDiag(): { line: string; findings: Finding[] } | null {
   if (!cloud.on || !cloud.db || !cloud.db.rows) return null;

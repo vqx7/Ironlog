@@ -248,7 +248,7 @@ function stepId(e: UndoStep): string {
   }
   return id;
 }
-/** What a step as stored says beyond its log before (which never changes): whether its log after is kept, and its words. */
+/** What a step as stored says beyond its log before: whether its log after is kept, and its words. The log before changes only where a merge gives the step another copy to go back to (undoKeeps), which marks the step as not stored as it now is. */
 const stepSig = (e: UndoStep): string => `${e.post == null ? '' : 'p'}|${e.said ?? ''}`;
 /** The steps in the store, by id, with what each says (stepSig), or '' while that is not known (read back, or being written); a step not listed here is not stored. */
 const stepsStored = new Map<string, string>();
@@ -394,6 +394,8 @@ export async function undoRestore(): Promise<void> {
 export function undoForget(): void {
   undoStack.length = 0;
   undoWaiting = false;
+  keepIn = [];
+  keepLost = [];
   undoDb().then(db => {
     if (!db) return;
     try {
@@ -434,47 +436,87 @@ export function snapshot(inv?: (() => boolean) | null): void {
    changed, unseen here, replaces that copy when the two are merged and this one is kept as the later edit. The step
    that changed the record then goes back to the copy it replaced, not to the one this device held before it: Undo
    would otherwise take the other's change away with this one, on every device. */
-/** Gives the Undo step that changed each record a merge kept over another copy (`lost`) that copy to go back to. */
+/** The copies a merge replaced that no step has been given yet, the steps still to look in (the newest last), and the timer of the next look. */
+let keepLost: Lost[] = [];
+let keepIn: UndoStep[] = [];
+let keepT: ReturnType<typeof setTimeout> | null = null;
+/** The steps looked in at once, in the merge's own stretch of work: Undo is nearly always of one of the newest changes. Each look reads a step's whole log, so the older steps are looked in one a turn of the event loop (keepLater), and all at once if Undo is tapped first (undoKeepsNow). */
+const KEEP_NOW = 2;
+/** The record or value keyed `key` in a saved log, with the way to replace it; null when the log holds none. */
+function heldIn(log: Rec, key: string): { v: unknown; put: (v: unknown) => void } | null {
+  const cut = key.indexOf('/');
+  if (cut < 0) return null;
+  const list = key.slice(0, cut),
+    id = key.slice(cut + 1);
+  if (list === '' || list === 'settings') {
+    const o = list ? rec(log['settings']) : log;
+    return o ? { v: o[id], put: v => (v === undefined ? delete o[id] : (o[id] = v)) } : null;
+  }
+  const rows = arr(log[list]);
+  const at = rows ? rows.findIndex(r => rec(r)?.['id'] === id) : -1;
+  return rows && at >= 0 ? { v: rows[at], put: v => (rows[at] = v) } : null;
+}
+/** Looks in one step for every copy still to place: a step that changed a record from the copy both sides had agreed on goes back to the copy the merge replaced. The step's log is read once, whatever the number of copies. True when the step changed. */
+function keepLook(e: UndoStep): boolean {
+  let changed = false;
+  try {
+    const pre = rec(parseJson(e.pre));
+    if (!pre) return false;
+    let post: Rec | null | undefined;
+    keepLost = keepLost.filter(x => {
+      const was = heldIn(pre, x.key);
+      if (!was || Hx(was.v) !== x.base) return true;
+      if (post === undefined) post = e.post == null ? null : rec(parseJson(e.post));
+      const after = post ? heldIn(post, x.key) : null;
+      if (post && after && Hx(after.v) === x.base) return true;
+      was.put(x.copy);
+      changed = true;
+      return false;
+    });
+    if (changed) e.pre = JSON.stringify(pre);
+  } catch (err) {
+    // A step that cannot be read is left as it is: Undo then goes back to the copy this device held.
+    log('undo', err);
+  }
+  return changed;
+}
+/** Looks in the newest step not yet looked in. A step that changed is stored again: its log before is not what the store holds. */
+function keepOne(): void {
+  const e = keepIn.pop();
+  if (!e || !keepLost.length) {
+    keepIn = [];
+    keepLost = [];
+    return;
+  }
+  if (keepLook(e)) {
+    stepsStored.set(stepId(e), '');
+    undoPersist();
+  }
+  if (!keepLost.length || !keepIn.length) {
+    keepIn = [];
+    keepLost = [];
+  }
+}
+/** Looks in the remaining steps, one a turn of the event loop. */
+function keepLater(): void {
+  if (keepT || !keepIn.length) return;
+  keepT = setTimeout(() => {
+    keepT = null;
+    keepOne();
+    keepLater();
+  }, 0);
+}
+/** Gives the Undo step that changed each record a merge kept over another copy (`lost`) that copy to go back to: the newest steps at once, the older ones over the next turns of the event loop. */
 export function undoKeeps(lost: readonly Lost[]): void {
   if (!lost.length || !undoStack.length) return;
-  let changed = false;
-  for (const x of lost) {
-    const cut = x.key.indexOf('/');
-    if (cut < 0) continue;
-    const list = x.key.slice(0, cut),
-      id = x.key.slice(cut + 1);
-    /** The record or value keyed `x.key` in a saved log, with the way to replace it; null when the log holds none. */
-    const held = (log: Rec): { v: unknown; put: (v: unknown) => void } | null => {
-      if (list === '' || list === 'settings') {
-        const o = list ? rec(log['settings']) : log;
-        return o ? { v: o[id], put: v => (v === undefined ? delete o[id] : (o[id] = v)) } : null;
-      }
-      const rows = arr(log[list]);
-      const at = rows ? rows.findIndex(r => rec(r)?.['id'] === id) : -1;
-      return rows && at >= 0 ? { v: rows[at], put: v => (rows[at] = v) } : null;
-    };
-    // The newest step that changed the record from the copy both sides had agreed on.
-    for (let n = undoStack.length - 1; n >= 0; n--) {
-      const e = undoStack[n];
-      if (!e) continue;
-      try {
-        const pre = rec(parseJson(e.pre));
-        const was = pre ? held(pre) : null;
-        if (!pre || !was || Hx(was.v) !== x.base) continue;
-        const post = e.post == null ? null : rec(parseJson(e.post));
-        const after = post ? held(post) : null;
-        if (post && after && Hx(after.v) === x.base) continue;
-        was.put(x.copy);
-        e.pre = JSON.stringify(pre);
-        changed = true;
-        break;
-      } catch (err) {
-        // A step that cannot be read is left as it is: Undo then goes back to the copy this device held.
-        log('undo', err);
-      }
-    }
-  }
-  if (changed) undoPersist();
+  keepLost.push(...lost);
+  keepIn = [...undoStack];
+  for (let n = 0; n < KEEP_NOW && keepIn.length; n++) keepOne();
+  keepLater();
+}
+/** Finishes at once what undoKeeps left for later: called before a step is taken back, so Undo never reads a step still to be looked in. */
+export function undoKeepsNow(): void {
+  while (keepIn.length) keepOne();
 }
 /* The first save after a snapshot is the action itself; remember the result,
    so Undo can tell the action apart from anything logged after it. */

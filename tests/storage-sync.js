@@ -1485,6 +1485,36 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       const got = { kept, a: (await notesOf(A)).z, b: (await notesOf(B)).z };
       ok(got.kept === 'typed on B' && got.a === 'typed on A' && got.b === 'typed on A', "S-7: Undo of an edit that replaced another phone's edit, not seen when it was made, goes back to that edit on both phones (NEW-205)", got);
     }
+    /* The same when the edit is not the newest change: three more changes with Undo are made on phone B before it syncs,
+       so the step that goes back to phone A's edit is the fourth from the top, one the merge looks in after its own
+       stretch of work. Undo four times, at once after the sync. */
+    {
+      await A.sync(); await B.sync();
+      await note(A, 'z', 'third on A'); await A.flush(); await wait(300);
+      await B.ev(() => { const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 'z').notes = 'third on B'; }, { undo: true }); for (const n of ['one', 'two', 'three']) L.act(() => { L.state.settings.userName = n; }, { undo: true }); });
+      await B.flush(); await B.sync();
+      const kept = (await notesOf(B)).z;
+      await B.ev(() => { for (let i = 0; i < 4; i++) window.__ironlog.ACT.undo(); }); await wait(300);
+      await B.flush(); await B.sync(); await A.sync();
+      const got = { kept, a: (await notesOf(A)).z, b: (await notesOf(B)).z, name: await B.ev(() => window.__ironlog.state.settings.userName) };
+      ok(got.kept === 'third on B' && got.a === 'third on A' && got.b === 'third on A' && got.name !== 'one' && got.name !== 'two' && got.name !== 'three', "S-7: and when three more changes were made after it: the fourth Undo goes back to the other phone's edit", got);
+    }
+    /* And after the app is closed and opened again on phone B between the sync that kept its edit and Undo: the copy
+       to go back to is in the step as stored, not only in the open page (REV32-1). Last of the three: a page opened
+       again starts its clock again. */
+    {
+      await A.sync(); await B.sync();
+      await note(A, 'z', 'last on A'); await A.flush(); await wait(300);
+      await B.ev(() => { const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 'z').notes = 'last on B'; }, { undo: true }); });
+      await B.flush(); await B.sync();
+      const kept = (await notesOf(B)).z;
+      await wait(400);
+      await B.page.reload(); await B.page.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart); await wait(800); await B.settled();
+      await B.ev(() => window.__ironlog.ACT.undo()); await wait(300);
+      await B.flush(); await B.sync(); await A.sync();
+      const got = { kept, a: (await notesOf(A)).z, b: (await notesOf(B)).z };
+      ok(got.kept === 'last on B' && got.a === 'last on A' && got.b === 'last on A', "S-7: and after the app is closed and opened again on that phone before Undo (REV32-1)", got);
+    }
     // Changed on one side, deleted on the other: it is kept.
     await del(A, 'x'); await note(B, 'x', 'kept on B'); await A.flush(); await B.flush(); await A.sync(); await B.sync();
     const xa = (await notesOf(A)).x, xb = (await notesOf(B)).x;

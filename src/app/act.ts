@@ -9,7 +9,7 @@
    tests/hygiene.js refuses a write to the log in a screen outside `act`, and
    tests/r57.js reads every step on the page after each action's tap. */
 
-import { CLOSED_KEY, log, prefDel, prefGet, prefSet, snapshot, undoPersist, undoStack } from './storage';
+import { CLOSED_KEY, log, prefDel, prefGet, prefSet, snapshot, undoKeepsNow, undoPersist, undoStack } from './storage';
 import { assemble, baseOf, editsNoted, mergeChunk, saveNow, saveSoon, seenAsIs } from './sync';
 import { canon, mergeDraft } from './merge';
 import { chunksOf, emptyChunk } from './chunks';
@@ -263,6 +263,8 @@ function waitsForWorkout(e: { pre: string; post: string | null }): boolean {
 
 /** Takes back the newest Undo step: 'none' when there is none, 'open' when it waits for the workout open now (waitsForWorkout), 'failed' when it could not be read, 'unchanged' when nothing it changed is left to undo, else what it took back, in the words of the message that reported the change ('' for a step kept unnamed). */
 export function undoStep(): 'none' | 'open' | 'failed' | 'unchanged' | { said: string } {
+  // A merge may still be giving older steps the copies they go back to (storage.ts undoKeeps): finished first.
+  undoKeepsNow();
   const top = undoStack[undoStack.length - 1];
   if (top && waitsForWorkout(top)) return 'open';
   const e = undoStack.pop();
