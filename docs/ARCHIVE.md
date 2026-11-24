@@ -346,6 +346,14 @@ document code. In 2.78 the documents still decide what the log is, and nothing c
   workflow's `sqltwo` job, `tests/sim.js` and `tests/simlib.js` (phones in Node and whole histories), `tests/rows.js`
   with `tests/sim-cases.json`, `tests/storage-sync-account.js` S-34, `tests/fake-supabase.js` (`recordsOn`),
   `tests/storage-sync.js` S-6 and S-7 (Undo), `tests/mixed.js` (the pin reads the older build's merge, NEW-203).
+- **After the one review of the built stack (REV32):** `undoKeeps` marks the step it changes as not stored, reads each
+  step's log once (`keepLook`), the two newest at once (`KEEP_NOW`) and the older ones a turn each (`keepLater`),
+  and `undoKeepsNow` finishes them before a step is taken back (`undoStep`). In `rows.ts`: a changed row waits from
+  the read that brings it in (`takeIn`); `oneTab` (one pass at a time across a phone's tabs) and notes read as stored;
+  `notesOut(N, own)` keeps what was written during a pass; the layout kept on the phone (`LAYOUT_KEY`, `rowsBlocked`),
+  `rowsAsked` (a send waits for the layout's read under way), a stopped phone asking again (`rowsStop`), a level
+  that cannot be read stopping the sync (`layoutOf`); `warm` and `pause` (a visit's first read of the log a document
+  a turn); the photo's checksum kept in the notes (`Notes.ph`).
 - **Found by the histories and not changed here (NEW-206, NEW-207, NEW-209):** with one workout open on two phones
   the documents can drop a ticked set around Finish; older than this release; the rows are designed to end it.
 

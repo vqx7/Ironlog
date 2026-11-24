@@ -16,7 +16,8 @@ function bundleOf(dir) {
     const built = esbuild.buildSync({
       stdin: {
         contents: [
-          "export { cloudPull, cloudFlush, cq, saveNow, syncStart, cloudStop, hasUnsent } from './sync';",
+          "export { cloudPull, cloudFlush, cq, saveNow, syncStart, cloudStop, hasUnsent, photoFlush } from './sync';",
+          "export { photoPending } from './photo';",
           "export { state, setState, cloud, setFx } from './store';",
           "export { device, load, logBuf, KEY } from './storage';",
           "export { act, undoStep, toTrash } from './act';",

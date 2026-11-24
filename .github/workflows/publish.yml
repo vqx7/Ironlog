@@ -150,6 +150,9 @@ jobs:
       - name: The same on the SQL with the account's lock taken out must fail
         run: |
           if node tests/sql-two.js --broken lock; then echo "::error::tests/sql-two.js passed on the SQL without the account's lock"; exit 1; fi
+      - name: The same on the SQL ordering text as the database does, not by bytes, must fail
+        run: |
+          if node tests/sql-two.js --broken collate; then echo "::error::tests/sql-two.js passed on the SQL without its order by bytes"; exit 1; fi
   # One check named test, as OWNER.md B6 asks branch protection to require. It
   # runs whatever the shards did and fails unless all eight passed, the four
   # in Chromium and the four in WebKit, and the two runs of the account's SQL

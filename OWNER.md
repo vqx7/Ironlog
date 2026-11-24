@@ -648,7 +648,7 @@ revoke all on function public.records_preview_digest() from public, anon;
 grant execute on function public.records_preview_digest() to authenticated;
 ```
 
-2. Open the preview (https://ironapp.org/preview/), sign in and use it for a few minutes. Settings > "More" then shows a line that starts "Rows check", under "Version".
+2. Open the preview (https://ironapp.org/preview/), sign in and use it for a few minutes. Settings > "More" then shows a line that starts "Rows check", under "Version". If no such line shows, close the preview and open it again: it asks the account about the new table once each time it is opened.
 
 3. The live app's table. New query, paste this and Run:
 
@@ -829,7 +829,11 @@ grant execute on function public.records_digest() to authenticated;
 
 4. New query, `select version();`, Run, and send Claude the line it answers.
 
-5. Merge the 2.78 pull request. For the next 7 days use the app as usual. Look at Settings > "More" now and then: if the line that starts "Rows check" counts a difference, tap "Copy diagnostics" under it, copy the text and paste it to Claude.
+5. Merge the 2.78 pull request. For the next 7 days use the app as usual. Look at Settings > "More" now and then. The line should read "Rows check: N clean days, 0 differences, 0 removed by a sync", N going up by one a day.
+   - "N waiting" at the end, or "Rows check: not run yet": nothing to do.
+   - A difference counted, or "Rows check: off (...)": tap "Copy diagnostics" under it. A sheet titled "Diagnostics" opens with text; copy that text and paste it to Claude.
+   - "removed by a sync" counts records that left this phone's log by a sync and not by your deleting them here. On one phone it stays 0. With a second phone it counts what you deleted for good on the other.
+   - With two phones, the same record changed on both with no sync between is counted as a difference when the documents kept the copy with the earlier time (an edit on one phone, a delete on the other). That is the check working, not a fault, but it sets the clean days back to 0, so paste it to Claude all the same.
 
 ## Checks on your phone (items 7 and 63)
 Status: to do whenever you are at the gym; tell Claude what you see. Newest first; the rest stay listed until you say they are done.

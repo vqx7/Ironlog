@@ -168,7 +168,7 @@ const CASES = {
      the order of the times). The phone waits a minute and a whole read of the documents, then sends the log's copy
      over it with a new time, and records the difference. */
   async "a row the documents decided against is sent over, and the difference recorded"(dir, R) {
-    const name = acct(), r = await history({ dirs: [dir, dir], rows: R, name, script: [{ p: 0, op: 'check' }] });
+    const name = acct(), r = await history({ dirs: [dir, dir], rows: R, name, outside: true, script: [{ p: 0, op: 'check' }] });
     const out = [], A = r.phones[0];
     await R.call(name, 'records', 'push', [[{ kind: 'session', id: 's1', body: '{"id":"s1","notes":"not what the documents hold"}', t: r.clock.t + 5000, dev: 'dev-other', a: 0 }]]);
     await r.run({ p: 0, op: 'note', id: 's2', v: 'typed on A' }); await A.flush();
@@ -188,7 +188,7 @@ const CASES = {
   async 'an account that asks for a newer build: the phone stops syncing and says to update'(dir, R) {
     const out = [];
     for (const want of [{ decides: 'docs', level: 2 }, { decides: 'rows', level: 1 }]) {
-      const name = acct(), r = await history({ dirs: [dir, dir], rows: R, name, script: [{ p: 0, op: 'check' }] });
+      const name = acct(), r = await history({ dirs: [dir, dir], rows: R, name, outside: true, script: [{ p: 0, op: 'check' }] });
       const [A, B] = r.phones, tag = JSON.stringify(want) + ': ';
       const layout = JSON.parse((await r.C.rows()).find(x => x.kind === 'meta').body);
       await R.call(name, 'records', 'push', [[{ kind: 'meta', id: 'layout', body: JSON.stringify({ ...layout, ...want, gen: 2 }), t: r.clock.t + 1000, dev: 'dev-new', a: 0 }]]);
@@ -226,7 +226,7 @@ const CASES = {
     }
     {
       // A layout whose level cannot be read is read as more than this build knows, not as nothing asked.
-      const name = acct(), r = await history({ dirs: [dir, dir], rows: R, name, script: [{ p: 0, op: 'check' }] });
+      const name = acct(), r = await history({ dirs: [dir, dir], rows: R, name, outside: true, script: [{ p: 0, op: 'check' }] });
       const A = r.phones[0], layout = JSON.parse((await r.C.rows()).find(x => x.kind === 'meta').body);
       await R.call(name, 'records', 'push', [[{ kind: 'meta', id: 'layout', body: JSON.stringify({ ...layout, level: 'two' }), t: r.clock.t + 1000, dev: 'dev-new', a: 0 }]]);
       r.clock.t += 61000; await A.tick(); await A.sync(); await A.sync();
@@ -261,7 +261,7 @@ const CASES = {
      The phone's next read must start before that row, not after its own write: else its notes never hold it, and
      the next daily check finds the notes wrong. */
   async 'a row another phone wrote while this phone was writing is read at the next pass'(dir, R) {
-    const name = acct(), r = await history({ dirs: [dir, dir], rows: R, name, script: [{ p: 0, op: 'check' }] });
+    const name = acct(), r = await history({ dirs: [dir, dir], rows: R, name, outside: true, script: [{ p: 0, op: 'check' }] });
     const out = [], A = r.phones[0];
     let once = true;
     A.hook = async (kind, when) => {
@@ -281,7 +281,7 @@ const CASES = {
      must not write its own, older ones over that: it acts on the notes as stored. Here the second tab is a second
      page on the same storage, behind by a day. */
   async 'a second tab of the phone never writes its older notes over what the first recorded'(dir, R) {
-    const name = acct(), r = await history({ dirs: [dir, dir], rows: R, name, script: [{ p: 0, op: 'check' }] });
+    const name = acct(), r = await history({ dirs: [dir, dir], rows: R, name, outside: true, script: [{ p: 0, op: 'check' }] });
     const out = [], A = r.phones[0];
     const A2 = phoneOf(dir, { name: 'A', clock: r.clock, storage: A.ls, seed: 8 }).start(); A2.signIn(r.C); await A2.sync();
     if (diag(A2).line !== 'Rows check: 1 clean day, 0 differences, 0 removed by a sync') return [`the second tab starts with "${diag(A2).line}"`];
@@ -295,6 +295,41 @@ const CASES = {
     const kept = A2.rowNotes();
     if (!/1 difference,/.test(diag(A2).line)) out.push(`the second tab says "${diag(A2).line}"`);
     if (kept.chk.diffs !== 1 || kept.find.length !== 1) out.push(`the notes on the phone hold ${kept.chk.diffs} differences and ${kept.find.length} findings after the second tab's pass`);
+    return out;
+  },
+  /* What the review's own broken copies showed unchecked (REV32): a mark that names another device's copy of the same
+     millisecond deletes nothing; a write the app makes on its own, with the record's time unmoved, reaches the row;
+     an account whose rows were lost and begun again is filled again; the profile photo has its row. */
+  async 'a mark of another copy, the app\'s own write, an account begun again, and the photo'(dir, R) {
+    const name = acct(), r = await history({ dirs: [dir, dir], rows: R, name, outside: true, script: [{ p: 0, op: 'check' }] });
+    const out = [], A = r.phones[0];
+    // The row of s1 as another phone wrote it in the same millisecond, with a mark that names this phone's copy of that millisecond, not the one kept: in the log.
+    const s1 = (await r.C.rows()).find(x => x.kind === 'session' && x.id === 's1');
+    await R.call(name, 'records', 'push', [[{ kind: 'session', id: 's1', body: s1.body, t: s1.t, dev: 'dev-b', a: 0, gone_saw: s1.t, gone_saw_dev: 'dev-a', gone_t: s1.t + 10, gone_dev: 'dev-a', gone_day: '2026-11-22' }]]);
+    await r.run({ p: 0, op: 'note', id: 's2', v: 'typed on A' }); await r.check();
+    out.push(...said(r));
+    if (r.phones.some(P => diag(P).findings.length || / waiting$/.test(diag(P).line))) out.push('a mark that names another device\'s copy was read as deleting the copy kept: ' + r.phones.map(P => diag(P).line).join(' | '));
+    // The app's own write: the note changed with the record's time unmoved (act's `app`), to a text before the old one by bytes.
+    const t0 = (await r.C.rows()).find(x => x.id === 's3').t;
+    A.E.act(() => { A.state().sessions.find(s => s.id === 's3').notes = 'app wrote'; }, { app: true });
+    r.clock.t += 1500; await A.tick(); await r.check();
+    const s3 = (await r.C.rows()).find(x => x.kind === 'session' && x.id === 's3');
+    if (JSON.parse(s3.body).notes !== 'app wrote' || s3.t !== t0 || s3.a !== 1) out.push(`the app's own write: the row holds "${JSON.parse(s3.body).notes}" at time ${s3.t === t0 ? 'unmoved' : 'moved'}, written ${s3.a} times by the app`);
+    out.push(...said(r));
+    // The profile photo: a row of its own, its copy the photo, written once.
+    const photo = 'data:image/jpeg;base64,' + Buffer.from('a small picture '.repeat(40)).toString('base64');
+    A.ls.set(A.E.KEY + '.photo', photo); A.ls.set(A.E.KEY + '.photoSync', JSON.stringify({ uid: 'u', et: r.clock.t, up: true }));
+    await A.E.cq(A.E.photoFlush); await A.settle(); r.clock.t += 5000; await A.sync(); await A.sync();
+    const ph = (await r.C.rows()).find(x => x.kind === 'photo');
+    if (!ph || JSON.parse(ph.body) !== photo) out.push('the photo has no row holding it' + (A.E.photoPending() ? ' (the photo was never sent as a document)' : ''));
+    const from = r.C.calls.length; r.clock.t += 5000; await A.sync();
+    if (pushesOf(r.C, 'A', from).length) out.push('the photo\'s row was written again with nothing changed');
+    // The account's rows lost and begun again (a restore from a copy made before them): the phone reads that its number is past the account's, and fills the rows again.
+    await R.admin(`delete from public.records where user_id = $1`, [R.uuidOf(name)]);
+    r.versions.clear();
+    await r.run({ p: 0, op: 'note', id: 's2', v: 'typed after the rows were lost' }); await r.check();
+    out.push(...said(r));
+    if (!(await r.C.rows()).some(x => x.kind === 'meta' && x.id === 'layout')) out.push('the account begun again has no layout row');
     return out;
   },
   /* "Sign out", then signed in again: the phone reads the list, finds its log there, and nothing in the account changes. */
@@ -477,6 +512,10 @@ const CASES = {
       ['a row is sent over the account\'s at once, with no wait', `      const ripe = since !== undefined && now - since >= WAIT_MS && C.pulledAt() > since;`, `      const ripe = true;`, ["a row the documents decided against is sent over, and the difference recorded", "a row ahead of the documents a phone holds is left alone"]],
       ['every read starts after the phone\'s own last write, whatever another phone wrote before it', `    if (top - N.n === own) N.n = top;`, `    N.n = top;`, ['a row another phone wrote while this phone was writing is read at the next pass']],
       ['a tab writes the notes it read before over what another tab has stored since', [[`notes.ep !== ep || stored !== written) {`, `notes.ep !== ep) {`], [`if (stored !== null && stored !== written) {`, `if (stored === 'never') {`]], '', ['a second tab of the phone never writes its older notes over what the first recorded']],
+      ['a mark read by its time alone, not its device', `  if (h.saw === null || h.saw !== h.t || h.sawDev !== h.dev) return 'log';`, `  if (h.saw === null || h.saw !== h.t) return 'log';`, ['a mark of another copy, the app\'s own write, an account begun again, and the photo']],
+      ['the app\'s own write sent with its count unmoved', `  if (h && t === h.t) return { t: h.t, dev: h.dev, a: h.a + 1 };`, `  if (h && t === h.t) return { t: h.t, dev: h.dev, a: h.a };`, ['a mark of another copy, the app\'s own write, an account begun again, and the photo']],
+      ['an account begun again is not noticed', `  if (!none() && (num(p['top']) < N.n || (N.made !== null && (!L || L.made !== N.made)))) {`, `  if (!none() && num(p['top']) < -1) {`, ['a mark of another copy, the app\'s own write, an account begun again, and the photo']],
+      ['the photo has no row', `  if (photo && (photoHeld() !== null || N.rows['photo/photo'])) mine.set('photo/photo', photo);`, ``, ['a mark of another copy, the app\'s own write, an account begun again, and the photo']],
       ['the rows\' notes are kept at "Sign out"', `  // Notes storage would not forget name the log they were for, and are not read for another.
   prefDel(ROWS_KEY);`, ``, ['"Sign out" then signed in again changes nothing in the account']]
     ];

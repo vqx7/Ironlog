@@ -62,7 +62,7 @@ const DO = {
 };
 const NET = new Set(['off', 'on', 'flush', 'pull', 'sync', 'race', 'wait', 'drop', 'check']);
 
-/* One history. o.dirs: the build of each phone; o.rows: the rows' database (rowsdb.js) or 'missing' or null;
+/* One history. o.outside: the caller writes rows of the account itself; o.dirs: the build of each phone; o.rows: the rows' database (rowsdb.js) or 'missing' or null;
    o.script: the actions to replay, or o.seed and o.steps to write them from; o.name: the account's name in the
    rows' database. Answers { script, fails: [{ rule, id, said }], acts, C, phones, counts }. */
 async function history(o) {
@@ -206,10 +206,11 @@ async function history(o) {
         if (/notes were not|another checksum/.test(f.why)) fail('rows', f.key, `${Q.name}: ${f.why}`);
         /* A difference is recorded when the documents kept a copy against the order of the times, which takes two
            phones changing one record with no sync between (a clash the documents decide by their own rule). One
-           recorded for a record only one phone touched in a round is the rows' own fault. */
+           recorded for a record only one phone touched in a round is the rows' own fault (unless the caller writes
+           rows itself, from outside the phones: o.outside). */
         const id = f.key.slice(f.key.indexOf('/') + 1), a = acts[id] || [];
         const clash = a.some(x => a.some(y => y.round === x.round && y.p !== x.p));
-        if (!clash && !seenFindings.has(Q.name + f.at + f.key)) fail('rows', f.key, `${Q.name} recorded a difference for ${f.key}, which no two phones changed between two syncs: ${f.why} (${f.mine} | ${f.theirs})`);
+        if (!clash && !o.outside && !seenFindings.has(Q.name + f.at + f.key)) fail('rows', f.key, `${Q.name} recorded a difference for ${f.key}, which no two phones changed between two syncs: ${f.why} (${f.mine} | ${f.theirs})`);
         seenFindings.add(Q.name + f.at + f.key);
       }
       for (const Q of phones) { const d = Q.E.rowsDiag && Q.E.rowsDiag(); if (d && /off \(/.test(d.line)) fail('rows', '', `${Q.name}: ${d.line}`); }
@@ -291,7 +292,7 @@ async function history(o) {
   }
   // What the app logs of a dropped connection, of a write another phone won, and of a record it put back is no error.
   const errors = phones.flatMap(P => P.errors().filter(e => !/offline|unavailable|no answer|raced|Another device|^sync-kept/.test(e)).map(e => `${P.name}: ${e}`));
-  return { script: o.script || script, fails, known, acts, C, phones, errors, clock, run, check, counts: { writes: C.writes.length, calls: C.calls.length, rounds: round } };
+  return { script: o.script || script, fails, known, acts, C, phones, errors, clock, run, check, versions, counts: { writes: C.writes.length, calls: C.calls.length, rounds: round } };
 }
 /** The shortest script found that still fails as `still` asks of its result (a rule's name, or a test of the result): actions taken out one at a time until none can go. */
 async function shrink(o, script, still) {

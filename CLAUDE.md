@@ -167,10 +167,12 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   What it sends is worked out from the log's content against the row it last knew, never from a note that a
   change happened. A row's time is the one the documents hold for the record. A row the account changed, or holds
   as the later copy, is left alone for a minute and a whole read of the documents before the log's copy is sent
-  over it, and that is recorded. The account joins every write itself (the trigger in Part 8): a phone never
+  over it, and that is recorded; the wait is noted by the read that brings the changed row in (`takeIn`), whichever
+  part of the module asked for it. One pass runs at a time across a phone's tabs, on the notes as stored. The account joins every write itself (the trigger in Part 8): a phone never
   decides a row's version by arrival. The layout row (`meta/layout`) says which layer decides and the level of
   build it asks for: a build that does not know it stops syncing and says to update (`rowsGate`, read whatever
-  else failed). The SQL is one text in `SUPABASE.md` (the preview's is the live table's with the name changed);
+  else failed; kept on the phone so the next app open knows before its first request; what cannot be read in it is
+  read as more than the build knows). The SQL is one text in `SUPABASE.md` (the preview's is the live table's with the name changed);
   every suite reaches it through `tests/rowsdb.js`, a real Postgres engine, so no suite keeps a copy of the
   account's rules in JavaScript. A rule added to `rows.ts` or to the SQL gets a copy with that rule broken that
   must fail (`tests/rows.js`, `tests/sql-rows.js`).

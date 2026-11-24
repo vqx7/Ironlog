@@ -39,11 +39,14 @@ const psql = (db, script) => new Promise(res => {
 const q = (db, text) => new Promise((res, rej) => execFile('psql', ['-X', '-q', '-At', '-d', db, '-c', text], { env: process.env, maxBuffer: 64 << 20 }, (e, so, se) => (e ? rej(new Error(se || String(e))) : res(so.trim()))));
 const lit = o => "'" + JSON.stringify(o).replace(/'/g, "''") + "'";
 (async () => {
-  await q('postgres', `create database ${DB}`);
+  // In English order where the server has it, as a Supabase project's database is; else as the server makes one.
+  await q('postgres', `create database ${DB} template template0 lc_collate 'en_US.utf8' lc_ctype 'en_US.utf8'`).catch(() => q('postgres', `create database ${DB}`));
   try {
     let sql = rowsSql().records;
     if (BROKEN === 'lock') sql = sql.replace(/\n\s*perform pg_advisory_xact_lock\([^\n]*\n/g, '\n');
     if (BROKEN === 'lock' && /pg_advisory_xact_lock/.test(sql)) throw new Error('the broken copy still takes the lock');
+    if (BROKEN === 'collate') sql = sql.replace(/ collate "C"/g, '');
+    if (BROKEN === 'collate' && /collate "C"/.test(sql.replace(/text collate "C"/g, ''))) throw new Error('the broken copy still orders by bytes');
     await psql(DB, STUB); await psql(DB, sql);
     await q(DB, `insert into auth.users values ('${V}', 'v@example.com')`);
     console.log('server: ' + (await q(DB, 'select version()')).slice(0, 60) + (BROKEN ? `; the SQL broken on purpose: ${BROKEN}` : ''));
@@ -90,6 +93,24 @@ const lit = o => "'" + JSON.stringify(o).replace(/'/g, "''") + "'";
       if (/rows_draft_stale/.test(a.err + b.err)) refused++; else both++;
     }
     ok(half === 0 && refused + both === R2 && refused > 0, `a tick on one phone against Finish on the other at once, ${R2} times: the session is never saved with the workout still open (one of the two refused whole ${refused} times)`, { half, refused, both });
+
+    /* 3. Order by bytes, whatever the database's own order of text. A phone decides a tie of two copies of one
+       version, and orders the rows for the daily checksum, by bytes; PGlite's own order is by bytes too, so only a
+       server whose order is a language's (Supabase's is) can show the SQL does the same. "a" is after "B" by bytes
+       and before it in English. */
+    const coll = await q(DB, `select datcollate from pg_database where datname = current_database()`);
+    const say = `${AS.replace(/\n/g, ' ')} select 1 from public.records_push`;
+    await q(DB, `${say}(${lit([{ kind: 'session', id: 'tie', body: 'B copy', t: 50, dev: 'devA', a: 1 }])}::jsonb)`);
+    await q(DB, `${say}(${lit([{ kind: 'session', id: 'tie', body: 'a copy', t: 50, dev: 'devA', a: 1 }])}::jsonb)`);
+    await q(DB, `${say}(${lit([{ kind: 'session', id: 'tie', body: 'B copy', t: 50, dev: 'devA', a: 1 }])}::jsonb)`);
+    const tie = await q(DB, `select body from public.records where id = 'tie'`);
+    await q(DB, `${say}(${lit([{ kind: 'zz', id: 'B', body: 'x', t: 1, dev: '' }, { kind: 'zz', id: 'a', body: 'x', t: 1, dev: '' }])}::jsonb)`);
+    const rowsNow = JSON.parse(await q(DB, `select json_agg(json_build_object('kind', kind, 'id', id, 't', t, 'dev', dev, 'a', a, 'sum', sum, 'gone_saw', gone_saw, 'gone_saw_dev', gone_saw_dev, 'gone_good', gone_good)) from public.records`));
+    const bytes = (x, y) => Buffer.compare(Buffer.from(x), Buffer.from(y));
+    const mine = require('crypto').createHash('md5').update(rowsNow.sort((x, y) => bytes(x.kind, y.kind) || bytes(x.id, y.id)).map(x => [x.kind, x.id, x.t, x.dev, x.a, (x.sum ?? '').slice(0, 12), x.gone_saw ?? '', x.gone_saw_dev ?? '', x.gone_good ? 1 : 0].join('\x1f')).join('\x1e'), 'utf8').digest('hex');
+    const dg = JSON.parse(await q(DB, `${AS.replace(/\n/g, ' ')} select public.records_digest()`).then(t => t.split('\n').pop()));
+    ok(tie === 'a copy', `of two copies of one version the one later by bytes is kept, whichever arrives last (the database orders text as ${coll})`, tie);
+    ok(dg.sum === mine && dg.n === rowsNow.length, `the account's one checksum is over its rows in the order of their bytes, as a phone works it out (${dg.n} rows)`, { sql: dg.sum, phone: mine });
   } finally {
     await q('postgres', `drop database if exists ${DB} with (force)`).catch(e => console.log('note could not drop ' + DB + ': ' + e.message));
   }

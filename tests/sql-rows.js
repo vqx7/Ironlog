@@ -74,6 +74,23 @@ function what(r) {
       for (const w of order) await push([w === 'A' ? A : B]);
       ok(what(await row('session', id)) === 'in Recently deleted (B-edit)', L(`edited on two phones in one millisecond and deleted on both, sent ${order}: deleted, by the mark that names the copy kept (its time and its device)`), await row('session', id));
     }
+    for (const order of ['new, old', 'old, new']) {
+      // Two marks that name the same copy: the day shown and the put-aside flag are the kept mark's, not the last sent.
+      const id = 'day' + order.length + order[0]; await push([S(id, 'c5', 5, 'dev0')]);
+      const later = S(id, 'c5', 5, 'dev0', { gone_saw: 5, gone_saw_dev: 'dev0', gone_t: 30, gone_dev: 'devA', gone_good: false, gone_day: '2026-11-22', gone_clash: false });
+      const earlier = S(id, 'c5', 5, 'dev0', { gone_saw: 5, gone_saw_dev: 'dev0', gone_t: 20, gone_dev: 'devB', gone_good: false, gone_day: '2026-11-20', gone_clash: true });
+      for (const w of order.split(', ')) await push([w === 'new' ? later : earlier]);
+      const got = await row('session', id);
+      ok(got.gone_day === '2026-11-22' && got.gone_clash === false && got.gone_t === 30, L(`two marks of one copy, sent ${order}: the day and the put-aside flag stay with the mark kept`), got);
+    }
+    {
+      // What a copy was made over is kept with the copy kept, not with a write the account did not take.
+      await push([S('ov', 'c9', 9, 'devA', { over_t: 5, over_dev: 'dev0' })]);
+      // An earlier copy sent with a mark the account takes: the row changes (its mark), the copy and what it was made over do not.
+      await push([S('ov', 'c7', 7, 'devB', { over_t: 1, over_dev: 'devX', gone_saw: 7, gone_saw_dev: 'devB', gone_t: 40, gone_dev: 'devB' })]);
+      const got = (await R.admin(`select over_t, over_dev from public.${T} where id = 'ov'`))[0];
+      ok(Number(got.over_t) === 5 && got.over_dev === 'dev0' && what(await row('session', 'ov')) === 'in the log (c9)', L('an earlier edit not taken, sent with a mark that is, leaves the kept copy and what it was made over as they were'), got);
+    }
     await push([S('q1', 'c', 1000, 'dev0')]);
     await push([del('q1', 'A-edit', 1001, 'devA', 1002, 'devA')]); await push([S('q1', 'B-edit', 1001, 'devB')]);
     ok(what(await row('session', 'q1')) === 'in the log (B-edit)', L('an edit with the same time on another phone is not the copy the mark names (REV31 S1)'));
@@ -122,6 +139,17 @@ function what(r) {
     ok((await R.call('v', T, 'digest')).sum !== mine, L('and differs once any row differs'));
     const l1 = await R.call('v', T, 'list', [0, 10]), l2 = await R.call('v', T, 'list', [l1[9].seq, 1000]);
     ok(l1.length === 10 && l1.length + l2.length === all.length && [...l1, ...l2].every((x, i, a) => !i || a[i - 1].seq < x.seq) && l1[0].body === undefined && l1[0].sum !== undefined, L('the list pages by change number, in order, with no copies'));
+    {
+      // Deleted for good is part of the checksum: a row in Recently deleted and the same row deleted for good do not read alike.
+      await push([S('dg', 'c', 5, 'dev0')]); await push([del('dg', 'c', 5, 'dev0', 30, 'devA')]);
+      const before = (await R.call('v', T, 'digest')).sum;
+      await push([del('dg', 'c', 5, 'dev0', 30, 'devA', true)]);
+      const rowsNow = await R.rows('v', T);
+      const phone = md5([...rowsNow].sort((x, y) => cmp(x.kind, y.kind) || cmp(x.id, y.id)).map(x => [x.kind, x.id, x.t, x.dev, x.a, (x.sum ?? '').slice(0, 12), x.gone_saw ?? '', x.gone_saw_dev ?? '', x.gone_good ? 1 : 0].join('\x1f')).join('\x1e'));
+      const after = await R.call('v', T, 'digest');
+      const flipped = md5([...rowsNow].sort((x, y) => cmp(x.kind, y.kind) || cmp(x.id, y.id)).map(x => [x.kind, x.id, x.t, x.dev, x.a, (x.sum ?? '').slice(0, 12), x.gone_saw ?? '', x.gone_saw_dev ?? '', 0].join('\x1f')).join('\x1e'));
+      ok(after.sum === phone && after.sum !== before && after.sum !== flipped, L('the checksum tells a row deleted for good from one in Recently deleted'), { after: after.sum, phone, before, flipped });
+    }
     // What a phone cannot do.
     const V = R.uuidOf('v');
     ok(!(await R.tryAs('v', `delete from public.${T} where id = 'e1'`)).ok, L('DELETE is not granted to the signed-in account (REV31 S11)'));
@@ -152,6 +180,17 @@ function what(r) {
     ok(/rows_limit/.test((await push([S('over1', 'x', 1, 'a'), S('over2', 'x', 1, 'a')], undefined, 'big')).err || ''), L('a push past 20,000 rows is refused whole'));
     r = await push([S('r5', 'y', 2, 'a')], undefined, 'big'); ok(!r.err && r.rows[0].took, L('at the limit an existing row can still be changed'));
     ok(!!(await push([S('huge', 'x'.repeat(1048577), 1, 'a')], undefined, 'f')).err, L('a row over 1 MB is refused'));
+    {
+      // 25 MB an account: 24 rows of 1 MB are taken, the 26th megabyte refused, as a new row and as a change of one held.
+      const mb = 'y'.repeat(1048576);
+      let bad = '';
+      for (let i = 0; i < 25 && !bad; i++) { const a = await push([S('m' + i, mb, 1, 'a')], undefined, 'mb'); if (a.err) bad = `row ${i}: ${a.err}`; }
+      ok(!bad, L('25 rows of 1 MB each are taken'), bad);
+      ok(/rows_limit/.test((await push([S('m25', 'y'.repeat(1000), 1, 'a')], undefined, 'mb')).err || ''), L('a new row past 25 MB an account is refused'));
+      await push([S('small', 'z', 1, 'a'), S('small2', 'z'.repeat(1000), 1, 'a')], undefined, 'mb2');
+      for (let i = 0; i < 24; i++) await push([S('m' + i, mb, 1, 'a')], undefined, 'mb2');
+      ok(/rows_limit/.test((await push([S('small', 'z'.repeat(1048576), 2, 'a')], undefined, 'mb2')).err || ''), L('and so is a change that takes a held row past it'));
+    }
     await R.close();
   };
   // SQL_PART=replay runs the order replay and the broken copies alone (a quicker run while working on them).
@@ -244,6 +283,12 @@ function what(r) {
           > (coalesce(cur.gone_saw, -1), cur.gone_good, cur.gone_t, cur.gone_dev)) then`),
       'two copies of one version decided by which arrived first':
         swap(`and (cur.body is null or (new.body is not null and new.body collate "C" > cur.body collate "C")) then null;`, `and cur.body is null then null;`),
+      'the day and the put-aside flag of the mark sent kept with another mark':
+        swap(`new.gone_t := cur.gone_t; new.gone_dev := cur.gone_dev; new.gone_day := cur.gone_day; new.gone_clash := cur.gone_clash;`, `new.gone_t := cur.gone_t; new.gone_dev := cur.gone_dev;`),
+      'what a copy was made over taken from a write whose copy was not':
+        swap(`new.a := cur.a; new.over_t := cur.over_t; new.over_dev := cur.over_dev;`, `new.a := cur.a;`),
+      'the checksum of an account blind to deleted for good':
+        swap(`|| chr(31) || (r.gone_good::int),`, `,`),
       'a copy taken whenever it arrives, whatever its version':
         swap(`else new.body := cur.body; new.t := cur.t; new.dev := cur.dev; new.a := cur.a; new.over_t := cur.over_t; new.over_dev := cur.over_dev;`, `else null;`)
     };
