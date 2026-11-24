@@ -39,8 +39,11 @@ const psql = (db, script) => new Promise(res => {
 const q = (db, text) => new Promise((res, rej) => execFile('psql', ['-X', '-q', '-At', '-d', db, '-c', text], { env: process.env, maxBuffer: 64 << 20 }, (e, so, se) => (e ? rej(new Error(se || String(e))) : res(so.trim()))));
 const lit = o => "'" + JSON.stringify(o).replace(/'/g, "''") + "'";
 (async () => {
-  // In English order where the server has it, as a Supabase project's database is; else as the server makes one.
-  await q('postgres', `create database ${DB} template template0 lc_collate 'en_US.utf8' lc_ctype 'en_US.utf8'`).catch(() => q('postgres', `create database ${DB}`));
+  // In English order where the server has it, as a Supabase project's database is (by its system's locale, else by
+  // ICU's); else as the server makes one.
+  await q('postgres', `create database ${DB} template template0 lc_collate 'en_US.utf8' lc_ctype 'en_US.utf8'`)
+    .catch(() => q('postgres', `create database ${DB} template template0 locale_provider icu icu_locale 'en-US' locale 'C'`))
+    .catch(() => q('postgres', `create database ${DB}`));
   try {
     let sql = rowsSql().records;
     if (BROKEN === 'lock') sql = sql.replace(/\n\s*perform pg_advisory_xact_lock\([^\n]*\n/g, '\n');
@@ -98,7 +101,7 @@ const lit = o => "'" + JSON.stringify(o).replace(/'/g, "''") + "'";
        version, and orders the rows for the daily checksum, by bytes; PGlite's own order is by bytes too, so only a
        server whose order is a language's (Supabase's is) can show the SQL does the same. "a" is after "B" by bytes
        and before it in English. */
-    const coll = await q(DB, `select datcollate from pg_database where datname = current_database()`);
+    const coll = await q(DB, `select case when 'a' < 'B' then 'a language does' else 'bytes are' end`);
     const say = `${AS.replace(/\n/g, ' ')} select 1 from public.records_push`;
     await q(DB, `${say}(${lit([{ kind: 'session', id: 'tie', body: 'B copy', t: 50, dev: 'devA', a: 1 }])}::jsonb)`);
     await q(DB, `${say}(${lit([{ kind: 'session', id: 'tie', body: 'a copy', t: 50, dev: 'devA', a: 1 }])}::jsonb)`);
