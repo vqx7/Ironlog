@@ -1,8 +1,8 @@
 // The install offer in the installable build (dist/): shown only in a
 // browser, never once installed; Android/desktop Chrome use the browser's own
 // install prompt; an iPhone gets the Share > Add to Home Screen guide for its
-// browser; Not now hides it on that device; on Today it sits under the
-// account line (item 55); nothing shows in the source file.
+// browser; Not now hides it on that device; on Today it is the one line a
+// browser shows, the account line waiting behind it; nothing shows in the source file.
 const fs = require('fs'); const os = require('os'); const path = require('path');
 const { engine } = require('./h');
 const { start } = require('./fake-supabase');
@@ -36,8 +36,9 @@ const IPHONE_CHROME = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Ap
   // Android or desktop Chrome: the browser's own install prompt.
   const A = await dev();
   ok(!!(await A.ev(() => document.getElementById('installBar'))), 'in a browser: Today offers Install');
-  // Item 55: signed out in a browser, the account line comes first and Install second.
-  ok(await A.ev(() => { const a = document.getElementById('acctBar'), i = document.getElementById('installBar'), h = document.querySelector('.hero'); return !!a && !!i && a.getBoundingClientRect().bottom <= i.getBoundingClientRect().top + 1 && i.getBoundingClientRect().bottom <= h.getBoundingClientRect().top + 1; }), 'signed out: the account line first, then Install, both above the session card');
+  // One line at a time (V, 2026-11-25, over item 55's two): signed out in a browser, Get the app shows alone, above the
+  // session card, and the account line waits behind it.
+  ok(await A.ev(() => { const a = document.getElementById('acctBar'), i = document.getElementById('installBar'), h = document.querySelector('.hero'); return !a && !!i && document.querySelectorAll('.acctbar').length === 1 && i.getBoundingClientRect().bottom <= h.getBoundingClientRect().top + 1; }), 'signed out in a browser: Get the app alone above the session card, the account line waiting behind it');
   await A.ev(() => { const e = new Event('beforeinstallprompt', { cancelable: true }); e.prompt = () => { window.__prompted = (window.__prompted || 0) + 1; }; e.userChoice = Promise.resolve({ outcome: 'accepted' }); window.dispatchEvent(e); });
   await A.page.waitForTimeout(200);
   await A.page.click('#installBar [data-act="install"]'); await A.page.waitForTimeout(300);
@@ -49,7 +50,7 @@ const IPHONE_CHROME = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Ap
   await A.page.click('#modal [data-act="mClose"]');
   // Not now.
   await A.page.click('#installBar [data-act="installLater"]'); await A.page.waitForTimeout(150);
-  ok(!(await A.ev(() => document.getElementById('installBar'))) && !!(await A.ev(() => document.getElementById('acctBar'))), 'Not now hides it, and the account line stays');
+  ok(!(await A.ev(() => document.getElementById('installBar'))) && !!(await A.ev(() => document.getElementById('acctBar'))) && (await A.ev(() => document.querySelectorAll('.acctbar').length)) === 1, 'Not now hides it, and the account line takes its place, alone');
   await A.ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.ui.folds['settings:data'] = true; L.render(); document.querySelectorAll('#view details').forEach(x => x.open = true); });
   ok(!!(await A.ev(() => document.querySelector('#installPanel [data-act="install"]'))), 'Settings > Your data still offers Install');
   // NEW-140 (V, 2026-11-12): Not now says what it hid and where it stays, from where the lifter is, and that path leads there.

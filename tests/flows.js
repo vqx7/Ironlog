@@ -23,7 +23,7 @@ ok(top.topDiscard&&top.all===2,'discard at the top and beside Finish (item 60)')
 ok(top.tab.trim().toLowerCase()==='session'&&top.live,'today tab reads Session with dot');
 ok(top.wlive,'week bar marks live session today');
 // picker
-await page.evaluate(()=>window.scrollTo(0,document.body.scrollHeight));
+await page.evaluate(()=>(document.getElementById('page')||document.documentElement).scrollTo(0, (document.getElementById('page')||document.documentElement).scrollHeight));
 await page.click('[data-act="pickSession"]');
 await page.waitForTimeout(100);
 const p1=await ev(()=>{const sh=document.querySelector('.sheet.fixed');const ae=document.activeElement;return {fixed:!!sh,h:sh&&sh.getBoundingClientRect().height,groups:[...document.querySelectorAll('.pick-grp')].map(x=>x.innerText),focusIsInput:ae&&ae.tagName==='INPUT',bodyLock:document.body.classList.contains('modal-open')};});
@@ -88,7 +88,7 @@ const pec=cm.indexOf('Pec Deck Fly'),cab=cm.findIndex(n=>/Cable/.test(n));
 ok(pec>=0&&(cab<0||pec<cab),'Cable Fly\'s closest matches have Pec Deck Fly, ahead of the cable lifts: '+cm.join(', '));
 await page.click('#modal [data-act="mClose"]');
 // discard at top
-await ev(()=>window.scrollTo(0,0));
+await ev(()=>(document.getElementById('page')||document.documentElement).scrollTo(0, 0));
 // Reps typed in a set: Discard asks first (a blank session would go at once, see r21.js).
 await page.fill('.sg input[data-f="r"][data-b="0"][data-s="0"]','8');await page.waitForTimeout(30);
 await page.click('.ph [data-act="discard"]');await page.waitForTimeout(50);await page.click('[data-act="mOk"]');await page.waitForTimeout(80);

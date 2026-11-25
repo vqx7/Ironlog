@@ -56,6 +56,7 @@ import { parkSettle } from './park';
 import { fitTargets } from './targets';
 import type { Tap } from './workstate';
 import { pickName } from './machines';
+import { pageTo } from './frame';
 
 declare global {
   interface Window {
@@ -1047,7 +1048,7 @@ export const IMPORT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       closeModal();
       ui.tab = 'today';
       ui.todayDay = null;
-      window.scrollTo(0, 0);
+      pageTo(0);
       render();
       toast(
         `${msg}. Your routine is made from them: ${andList(
@@ -1061,7 +1062,7 @@ export const IMPORT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     }
     closeModal();
     ui.tab = 'history';
-    window.scrollTo(0, 0);
+    pageTo(0);
     render();
     if (first && b.sessions.length) {
       openModal({ kind: 'templates', from: 'welcome', imported: true });

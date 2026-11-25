@@ -41,6 +41,7 @@ import { helpButton, howText, section } from './view';
 import type { Part } from './view';
 import { calBody, calNow, monthPlanned, planWords } from './calendar';
 import type { Routine } from './types';
+import { pageY } from './frame';
 
 /* ---------- the bar ----------
    Week at a glance, in the bar at the top of every tab. Each cell is a day of
@@ -500,7 +501,7 @@ export function pullStart(): void {
       const t = e.touches[0];
       // A calendar still sliding into the bar is as good as closed: a new pull takes its place.
       if (document.querySelector('#modal .sheet.fromtop.going')) closeModal();
-      live = e.touches.length === 1 && !ui.modal && !!t && window.scrollY <= 0;
+      live = e.touches.length === 1 && !ui.modal && !!t && pageY() <= 0;
       on = false;
       dy = 0;
       if (t) {

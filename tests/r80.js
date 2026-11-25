@@ -217,7 +217,7 @@ async function shortAt(page, v) {
       // the plate going reads as its button off; a plate outside the usual and change plates goes from the list too.
       const off = await pg.evaluate(() => { const c = document.querySelector('[data-act="gymPlate"][data-v="1"]'); return { plates: (window.__ironlog.state.settings.gym || {}).plates || null, chip: !!c && c.getAttribute('aria-pressed') !== 'false' }; });
       ok(off.plates === null && !off.chip, '2e. tapped, the added plate goes, and the usual plates are the default again', off);
-      const w = await pg.evaluate(() => document.documentElement.scrollWidth <= innerWidth);
+      const w = await pg.evaluate(() => (document.getElementById('page')||document.documentElement).scrollWidth <= innerWidth);
       ok(w, '2e. no sideways scroll at 390 px');
     }
     await E.browser.close();
@@ -237,7 +237,7 @@ async function shortAt(page, v) {
         mTitle: title('general'), aTitle: title('look'),
         m: ['[data-bind="unit"]', '[data-bind="bwGoalPct"]', '[data-bind="bwEvery"]'].every(q => has('general', q)) && !has('general', '[data-bind="theme"]') && !has('general', '[data-act="accent"]'),
         a: has('look', '[data-bind="theme"]') && has('look', '[data-act="accent"]') && !has('look', '[data-bind="unit"]'),
-        wide: document.documentElement.scrollWidth <= innerWidth
+        wide: (document.getElementById('page')||document.documentElement).scrollWidth <= innerWidth
       };
     });
     ok(/Measurements/.test(r.mTitle) && r.m, '3. Measurements holds units, the bodyweight goal and the weigh-in reminder', r);

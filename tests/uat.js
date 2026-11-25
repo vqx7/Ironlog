@@ -6,7 +6,7 @@ const fails = []; const ok = (c, m) => { if (!c) { fails.push(m); console.log('F
 (async () => {
   const { browser, page, errors } = await open('index.html', { touch: true, w: 390, h: 844, clock: '2026-09-20T10:00:00' });
   const ev = (f, a) => page.evaluate(f, a);
-  const fresh = async () => { await ev(() => { const L = window.__ironlog; L.state.draft = null; L.state.settings.onboarded = true; if (!L.state.sessions.length) L.makeDemo(); L.ui.tab = 'today'; L.ui.todayDay = 0; L.ui.modal = null; document.getElementById('modal').hidden = true; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); window.scrollTo(0, 0); }); };
+  const fresh = async () => { await ev(() => { const L = window.__ironlog; L.state.draft = null; L.state.settings.onboarded = true; if (!L.state.sessions.length) L.makeDemo(); L.ui.tab = 'today'; L.ui.todayDay = 0; L.ui.modal = null; document.getElementById('modal').hidden = true; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); (document.getElementById('page')||document.documentElement).scrollTo(0, 0); }); };
   const start = async () => { await fresh(); await page.click('.hero [data-act="startSession"]:not([data-light])'); await page.waitForTimeout(120); };
   const tick = async (b, s) => { await page.click(`[data-act="sDone"][data-b="${b}"][data-s="${s}"]`); await page.waitForTimeout(60); await ev(() => { const st = document.querySelector('.rirstrip [data-v="1"]'); if (st) st.click(); }); await page.waitForTimeout(40); };
 
@@ -128,7 +128,7 @@ const fails = []; const ok = (c, m) => { if (!c) { fails.push(m); console.log('F
   const pos = await e2(() => { const d = document.querySelectorAll('.day')[3].getBoundingClientRect(); const top = document.querySelector('.top').getBoundingClientRect(); return { d: Math.round(d.top), bar: Math.round(top.bottom) }; });
   ok(pos.d >= pos.bar && pos.d < 200, `opened day starts just below the header (${pos.d} vs bar ${pos.bar})`);
   // RIR strip is not left under the rest bar at 320 x 640.
-  await e2(() => { const L = window.__ironlog; L.state.settings.rirAsk = true; L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); window.scrollTo(0, 0); });
+  await e2(() => { const L = window.__ironlog; L.state.settings.rirAsk = true; L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); (document.getElementById('page')||document.documentElement).scrollTo(0, 0); });
   await X.page.click('.hero [data-act="startSession"]:not([data-light])'); await X.page.waitForTimeout(120);
   await X.page.click('[data-act="sDone"][data-b="0"][data-s="2"]'); await X.page.waitForTimeout(900);
   const st = await e2(() => { const s = document.querySelector('.rirstrip').getBoundingClientRect(); const t = document.getElementById('timer').getBoundingClientRect(); return { s: Math.round(s.bottom), t: Math.round(t.top) }; });

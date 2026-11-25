@@ -835,6 +835,19 @@ grant execute on function public.records_digest() to authenticated;
    - "removed by a sync" counts records that left this phone's log by a sync and not by your deleting them here. On one phone it stays 0. With a second phone it counts what you deleted for good on the other.
    - With two phones, the same record changed on both with no sync between is counted as a difference when the documents kept the copy with the earlier time (an edit on one phone, a delete on the other). That is the check working, not a fault, but it sets the clean days back to 0, so paste it to Claude all the same.
 
+### F2. The bars stay at the bottom (2.78.1; about 5 minutes, on the preview, before you merge 2.78.1)
+
+From 2.78.1 the page scrolls inside its own frame and the screen as a whole never moves, so no iPhone can carry the tab bar or the rest timer up the screen (NEW-218: a friend's tab bar halfway up History). No browser here has an iPhone's keyboard or picker wheel, so this part is checked on iPhones. Do it in the home-screen preview, and once in Safari. Your friend does steps 1 and 2 on his iPhone, the one that showed the fault.
+
+1. History: tap "Show sessions with", pick a lift, close the list, then scroll up and down several times. The tab bar stays on the bottom edge of the screen.
+2. Start a workout. Tap a load field, type a number, tap Done on the keyboard, tick the set. Scroll up and down. The tab bar and the rest timer stay on the bottom edge.
+3. While typing in step 2: the field stays above the keyboard.
+4. On a long page (History), tap the clock at the very top of the screen: the page goes back to its top. If it does not, tell Claude.
+5. Scroll any tab: the top bar with the week goes up with the page and comes back at the top. At the top of Today, pull down on the week bar: the calendar comes down.
+6. Your friend sends his iOS version (Settings > General > About), and whether Settings > Accessibility > Motion has "Reduce Motion" on.
+
+Anything that moves: a screenshot to Claude, and do not merge.
+
 ## Checks on your phone (items 7 and 63)
 Status: to do whenever you are at the gym; tell Claude what you see. Newest first; the rest stay listed until you say they are done.
 - 2.52 to 2.61, in the preview once each is open, in Safari and in the home-screen app:

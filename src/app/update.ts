@@ -21,12 +21,20 @@ declare global {
 }
 
 const upd = { ready: false, later: false };
+// Told when the bar comes or goes: Today's own line waits while it shows, so the screen carries one bar at a time.
+let barChanged: () => void = () => {};
 
-// The bar drawn as it stands: shown while a version waits and Later was not tapped.
+/** Whether the update bar shows: a version waits and Later was not tapped. */
+export function updateShowing(): boolean {
+  return upd.ready && !upd.later;
+}
+
+// The bar drawn as it stands.
 function updRender(): void {
   const el = document.getElementById('updbar');
   if (!el) return;
-  const show = upd.ready && !upd.later;
+  const show = updateShowing();
+  const was = !el.hidden;
   el.hidden = !show;
   render(
     show
@@ -34,10 +42,12 @@ function updRender(): void {
       : nothing,
     el
   );
+  if (was !== show) barChanged();
 }
 
-/** Lets the boot script say a new version is waiting. Called once at start. */
-export function updateStart(): void {
+/** Lets the boot script say a new version is waiting, and `changed` hear when the bar comes or goes. Called once at start. */
+export function updateStart(changed: () => void): void {
+  barChanged = changed;
   window.ironlogUpdateReady = () => {
     upd.ready = true;
     updRender();

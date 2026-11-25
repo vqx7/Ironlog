@@ -995,10 +995,10 @@ async function finish() {
     await H.type('r', 0, 1, 7); await H.tick(0, 1);
     await add('lat pulldown');
     for (let k = 0; k < 3; k++) { if (k === 0) await H.type('w', 1, 0, 140); await H.type('r', 1, k, 10); await H.tick(1, k); }
-    const y0 = await ev(() => window.scrollY);
+    const y0 = await ev(() => (document.getElementById('page')||document.documentElement).scrollTop);
     await wait(2600);
-    const y1 = await ev(() => window.scrollY);
-    const at = await ev(() => ({ benchTop: Math.round(document.getElementById('blk-0').getBoundingClientRect().top), end: Math.round(document.documentElement.scrollHeight - innerHeight) }));
+    const y1 = await ev(() => (document.getElementById('page')||document.documentElement).scrollTop);
+    const at = await ev(() => ({ benchTop: Math.round(document.getElementById('blk-0').getBoundingClientRect().top), end: Math.round((document.getElementById('page')||document.documentElement).scrollHeight - innerHeight) }));
     // The pulldown folding shortens the page, so at its end the screen can only move up by what folded.
     ok((y1 >= y0 - 40 || y1 >= at.end - 2) && !(at.benchTop >= -2 && at.benchTop < 140), '14. the pulldown done, the screen stays there and does not go back up to the bench', { y0, y1, ...at });
     const t0 = await ev(() => window.__ironlog.state.draft.startedAt);
@@ -1072,7 +1072,7 @@ async function finish() {
     ok(saved && JSON.stringify(saved.chk) === '{"sleep":3,"energy":2,"joints":3}' && saved.sets === 1, '15. Finish saves the set and the check-in', saved);
     // Stats, read by taps. The 4 full weeks before this one (Oct 5 to Nov 1) planned 3 sessions each; one was missed.
     const want = { done: 11, need: 12 };
-    await ev(() => { const L = window.__ironlog; L.ui.tab = 'dash'; L.ui.volMode = 'region'; L.render(); window.scrollTo(0, 0); });
+    await ev(() => { const L = window.__ironlog; L.ui.tab = 'dash'; L.ui.volMode = 'region'; L.render(); (document.getElementById('page')||document.documentElement).scrollTo(0, 0); });
     for (const k of ['consistency', 'volume']) { await page.click(`#view > [data-mkey="${k}"] > summary`); await wait(150); }
     const adh = await ev(() => { const p = document.getElementById('adhLine'); const c = p.cloneNode(true); c.querySelectorAll('.tipi').forEach(x => x.remove()); return c.textContent.replace(/\s+/g, ' ').trim(); });
     ok(adh === `Adherence, 4 weeks: ${want.done} of ${want.need}`, '15. adherence as sessions: 11 of the 12 planned in the 4 full weeks before', adh);
@@ -1090,7 +1090,7 @@ async function finish() {
     await page.click(`#view nav.jump [data-act="dashJump"][data-sec="${midSec}"]`); await wait(1200);
     const rd = await ev(sec => {
       const bar = document.querySelector('header.top').getBoundingClientRect(), nav = document.querySelector('#view nav.jump').getBoundingClientRect(), s = document.getElementById('sec-' + sec).getBoundingClientRect();
-      return { y: Math.round(window.scrollY), end: window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2, bar: Math.round(bar.bottom), nav: [Math.round(nav.top), Math.round(nav.bottom)], sec: Math.round(s.top) };
+      return { y: Math.round((document.getElementById('page')||document.documentElement).scrollTop), end: (document.getElementById('page')||document.documentElement).scrollTop + window.innerHeight >= (document.getElementById('page')||document.documentElement).scrollHeight - 2, bar: Math.round(bar.bottom), nav: [Math.round(nav.top), Math.round(nav.bottom)], sec: Math.round(s.top) };
     }, midSec);
     ok(chips.length > 2 && rd.y > 52 && rd.bar <= 0 && rd.nav[0] === 0 && rd.sec >= rd.nav[1] && (rd.sec < rd.nav[1] + 40 || rd.end), '15. down Stats by a chip: the top bar gone up with the page, the chips at the top of the screen, the section just under them', { midSec, rd });
     ok(!H.P.errors.length, '15. no page errors', H.P.errors);
@@ -1111,12 +1111,12 @@ async function finish() {
     for (const s of [0, 1]) { await H.type('w', 0, s, 185); await H.type('r', 0, s, 10); await H.effort(0, s, 2); await H.quiet(); await H.tick(0, s); }
     // The third set missed: 0 reps typed and ticked. The fold that follows is read every frame.
     await H.type('w', 0, 2, 185); await H.type('r', 0, 2, 0);
-    await ev(() => { window.__tr = []; const t0 = performance.now(); const f = () => { const a = document.getElementById('blk-1'); window.__tr.push({ y: Math.round(scrollY), a: a ? Math.round(a.getBoundingClientRect().top) : null }); if (performance.now() - t0 < 2800) requestAnimationFrame(f); }; requestAnimationFrame(f); });
+    await ev(() => { window.__tr = []; const t0 = performance.now(); const f = () => { const a = document.getElementById('blk-1'); window.__tr.push({ y: Math.round((document.getElementById('page')||document.documentElement).scrollTop), a: a ? Math.round(a.getBoundingClientRect().top) : null }); if (performance.now() - t0 < 2800) requestAnimationFrame(f); }; requestAnimationFrame(f); });
     await H.tick(0, 2);
     const missToast = await H.toast();
     for (let k = 0; k < 4; k++) { const m = await ev(() => { const m = window.__ironlog.ui.modal; return m ? m.kind : null; }); if (!m) break; await page.click('#modal [data-act="mOk"]'); await wait(120); }
     await wait(2900);
-    const g = await ev(() => { const a = document.getElementById('blk-1'); const want = a ? parseFloat(getComputedStyle(a).scrollMarginTop) + parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) : null; return { tr: window.__tr, top: a ? Math.round(a.getBoundingClientRect().top) : null, want, folded: !!document.querySelector('#blk-0.folded'), missed: window.__ironlog.state.draft.ex[0].sets[2] }; });
+    const g = await ev(() => { const a = document.getElementById('blk-1'); const want = a ? parseFloat(getComputedStyle(a).scrollMarginTop) + parseFloat(getComputedStyle(document.getElementById('page')||document.documentElement).scrollPaddingTop) : null; return { tr: window.__tr, top: a ? Math.round(a.getBoundingClientRect().top) : null, want, folded: !!document.querySelector('#blk-0.folded'), missed: window.__ironlog.state.draft.ex[0].sets[2] }; });
     ok(g.missed && g.missed.done && +g.missed.r === 0, '16. the third bench set is kept as missed, 0 reps ticked', g.missed);
     // What the toast says is what the app then does (NEW-66): a missed set never earns a step, while a step earned before still stands (below).
     ok(missToast.trim() === 'Logged as missed.', '16. the toast as the 0 is ticked says what the tap did, "Logged as missed." (V, 2026-11-14: the reason is the Guide\'s)', missToast);
@@ -1202,7 +1202,7 @@ async function finish() {
     const { ev, page } = H;
     await seed(H, { unit: 'lb', days: [{ id: 'D1', name: 'Push', items: [['bench', 3, 6, 10, 1, 120, 5]] }], sessions: [{ date: addD(T0, -2), day: 'D1', ex: [['bench', [[135, 8, 1], [135, 8, 1], [135, 8, 1]]]] }] });
     await page.click('#tabs [data-tab="today"]'); await wait(200);
-    await ev(() => window.scrollTo(0, 0)); await wait(100);
+    await ev(() => (document.getElementById('page')||document.documentElement).scrollTo(0, 0)); await wait(100);
     const tp = await touchDriver(page);
     const g = await ev(() => { const h = document.querySelector('header.top').getBoundingClientRect(), b = document.getElementById('wkbar').getBoundingClientRect(); return { x: Math.round(b.left + b.width / 2), y: Math.round(b.top + b.height / 2), barB: Math.round(h.bottom) }; });
     const pull = async n => { await tp('touchStart', g.x, g.y); for (let k = 1; k <= n; k++) { await tp('touchMove', g.x, g.y + k * 15); await wait(16); } await tp('touchEnd', 0, 0); await wait(400); };
@@ -1351,7 +1351,7 @@ async function finish() {
     // At 320 px nothing scrolls sideways on any tab, the titles' gradient included.
     await page.setViewportSize({ width: 320, height: 700 }); await wait(150);
     const wide = [];
-    for (const t of ['today', 'program', 'dash', 'history', 'settings']) { await page.click(`#tabs [data-tab="${t}"]`); await wait(200); const w = await ev(() => document.documentElement.scrollWidth); if (w > 320) wide.push(t + '=' + w); }
+    for (const t of ['today', 'program', 'dash', 'history', 'settings']) { await page.click(`#tabs [data-tab="${t}"]`); await wait(200); const w = await ev(() => (document.getElementById('page')||document.documentElement).scrollWidth); if (w > 320) wide.push(t + '=' + w); }
     ok(!wide.length, '21. at 320 px no tab scrolls sideways', wide);
     await page.setViewportSize({ width: 390, height: 844 }); await wait(100);
     await page.reload(); await page.waitForFunction(() => window.__ironlog && window.__ironlog.state); await wait(200);

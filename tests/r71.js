@@ -63,7 +63,7 @@ async function session(o = {}) {
     const nx = await pg.evaluate(() => ({ label: document.querySelector('#timer [data-t="l"]').textContent, name: window.__ironlog.exName(window.__ironlog.state.draft.ex[1].exId) }));
     ok(nx.label === 'Rest · next: ' + nx.name, '1. after a lift\'s last set it names the next lift', nx);
     // The foot of the session scrolls clear of the card.
-    const foot = await pg.evaluate(async () => { window.scrollTo(0, document.documentElement.scrollHeight); await new Promise(r => setTimeout(r, 300)); const els = [...document.querySelectorAll('#view button, #view .sg')].filter(e => e.getClientRects().length); const last = els[els.length - 1].getBoundingClientRect(); return { lastBottom: Math.round(last.bottom), cardTop: Math.round(document.getElementById('timer').getBoundingClientRect().top) }; });
+    const foot = await pg.evaluate(async () => { (document.getElementById('page')||document.documentElement).scrollTo(0, (document.getElementById('page')||document.documentElement).scrollHeight); await new Promise(r => setTimeout(r, 300)); const els = [...document.querySelectorAll('#view button, #view .sg')].filter(e => e.getClientRects().length); const last = els[els.length - 1].getBoundingClientRect(); return { lastBottom: Math.round(last.bottom), cardTop: Math.round(document.getElementById('timer').getBoundingClientRect().top) }; });
     ok(foot.lastBottom <= foot.cardTop, '1. at the foot of the session the last control sits above the card, not under it', foot);
     ok(!T.errors.length, '1. no page errors', T.errors);
     await T.browser.close();

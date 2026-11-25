@@ -1,5 +1,5 @@
 /* Today: the first pages of a new install (the account, Set
-   up), the lines above the start card (demo data, Set up sync, Get the app,
+   up), the lines above the start card (demo data, Create account, Get the app,
    the new icon), the start card for the plan's day or a blank session, and
    everything under it (This week, At a glance, the coach, injuries, the
    muscle map, the workout preview, the body), drawn by lit-html, with the actions
@@ -169,6 +169,8 @@ import { PICK_DAYS } from './analytics';
 import { DEMO_WEEKS } from './importing';
 import { closeModal, confirmBox, render, rerenderKeepScroll } from './page';
 import { toast } from './toast';
+import { updateShowing } from './update';
+import { pageTo } from './frame';
 
 declare global {
   interface Window {
@@ -450,8 +452,8 @@ function welcomeCard(): Part {
   return nothing;
 }
 /* Signed out: one slim line on Today, because a log that lives only on the
-   phone is the biggest risk to it. It comes before the Install line in a
-   browser. "Not now" hides it on this device until an account is
+   phone is the biggest risk to it. In a browser it waits behind Get the app
+   (topLine). "Not now" hides it on this device until an account is
    used. Never shown inside Claude, during a first run (the welcome card
    offers it there), or before the sign-in check. Someone who just chose
    Continue without an account is not asked again on the next screen (not two bars and a toast on the first Today); the line
@@ -460,7 +462,7 @@ function acctBar(): Part {
   if (!AUTH() || window.claude || !acct.checked || acct.user || cloud.on || !state.settings.onboarded) return nothing;
   if (prefGet(ACCT_LATER)) return nothing;
   if (prefGet(OB_ACCT) === 'later' && !state.sessions.some(x => !x.demo)) return nothing;
-  return html`<div class="acctbar" id="acctBar"><span class="small"><b>Only on this phone.</b><span class="ab-more"> Sync it with an account.</span></span><button class="btn sm primary" data-act="acctOpen" data-mode="signup">Set up sync</button><button class="ib" aria-label="Not now" data-act="acctLater">✕</button></div>`;
+  return html`<div class="acctbar" id="acctBar"><span class="small"><b>Only on this phone.</b><span class="ab-more"> An account keeps it safe.</span></span><button class="btn sm primary" data-act="acctOpen" data-mode="signup">Create account</button><button class="ib" aria-label="Not now" data-act="acctLater">✕</button></div>`;
 }
 /* The new icon. iPhone keeps a home-screen icon exactly as it was when
    added and never refreshes it, so an app installed before r25 shows the old
@@ -502,12 +504,28 @@ function installBar(): Part {
    the menu button. Add photo picks one there and then; Not now hides the
    line on this phone until it signs out, as does a photo added from the menu
    or one the account already has. It
-   waits behind the install and new-icon lines, so Today never stacks two,
-   and stays out of the first run and the demo. */
+   waits behind the other lines (topLine), and stays out of the first run and the demo. */
 function photoBar(): Part {
   if (!AUTH() || window.claude || !acct.checked || !acct.user || !state.settings.onboarded) return nothing;
   if (prefGet(PHOTO_ASKED) || photoUrl() || state.sessions.some(x => x.demo)) return nothing;
   return html`<div class="acctbar" id="photoBar"><span class="small"><b>Add a profile photo.</b><span class="ab-more"> It shows at the top right on any phone you sign in on.</span></span><label class="btn sm primary">Add photo<input type="file" accept="image/*" data-photo hidden></label><button class="ib" aria-label="Not now" data-act="photoLater">✕</button></div>`;
+}
+/* Today carries one line above its start card, never two, and none while the
+   update bar or the demo's note shows: two bars read as two things to do at
+   once, and the second is not read. In order:
+   - Get the app, in a browser: Safari clears a log kept in a tab after a week
+     away, and that log does not move into the installed app by itself, so
+     installing comes first; the account line follows, in the app.
+   - Create account: signed out, the log lives on this phone only.
+   - The new icon: an iPhone install from before the icon changed.
+   - A profile photo. */
+function topLine(): Part {
+  if (updateShowing()) return nothing;
+  for (const line of [installBar, acctBar, iconBar, photoBar]) {
+    const shown = line();
+    if (shown !== nothing) return shown;
+  }
+  return nothing;
 }
 /* A field for a new weigh-in or tape measurement, made again when the unit
    changes: these fields keep what is typed through a draw, and a number
@@ -699,8 +717,8 @@ export function viewToday(): TemplateResult {
      Today opens on a blank session (Settings > Rest timer and logging). The
      plan's day stays one tap away, and Change day shows it as before. */
   const free = state.settings.todayStart === 'free' && chosen == null;
-  const lines = [acctBar(), installBar(), iconBar()];
-  const above = html`${welcomeCard()}${lines}${lines.every(l => l === nothing) ? photoBar() : nothing}`;
+  const welcome = welcomeCard();
+  const above = welcome === nothing ? topLine() : welcome;
   // Stepped away from a workout with Save for later: its card takes the start card's place, so Today offers no second start.
   const open = state.draft && awayFrom() ? state.draft : null;
   if (open)
@@ -1122,7 +1140,7 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       state.deloadWeek = weekStart(today());
     });
     ui.tab = 'today';
-    window.scrollTo(0, 0);
+    pageTo(0);
     render();
     toast(
       `Deload week on until Sunday: ${shareWords(LIGHTER_SET_SHARE)} sets, about ${pctOf(LIGHT_SHARE)}% loads. It clears fatigue; it does not add growth.`,
@@ -1332,12 +1350,12 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   obAcctLater() {
     prefSet(OB_ACCT, 'later');
     obOutClear();
-    window.scrollTo(0, 0);
+    pageTo(0);
     render();
   },
   obAcctBack() {
     prefDel(OB_ACCT);
-    window.scrollTo(0, 0);
+    pageTo(0);
     render();
   },
   obTourPick(t) {
@@ -1377,7 +1395,7 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     ui.todayDay = null;
     ui.tab = 'program';
     ui.planView = 'routine';
-    window.scrollTo(0, 0);
+    pageTo(0);
     render();
     toast('Name your days, then add exercises.', false, BUILD_TOAST_MS);
   },
@@ -1391,7 +1409,7 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     });
     ui.tab = 'today';
     ui.folds = {};
-    window.scrollTo(0, 0);
+    pageTo(0);
     render();
   }
 };

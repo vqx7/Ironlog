@@ -42,7 +42,7 @@ export const WKVIEW_KEY = KEY + '.wkView';
 export const REGION_KEY = KEY + '.regionWk';
 /** The muscle map's view, flat or 3D, per device. */
 export const MAPVIEW_KEY = KEY + '.mapView';
-/** Today's lines dismissed on this device: Set up sync (acctBar), Get the app (installBar), the new icon. */
+/** Today's lines dismissed on this device: Create account (acctBar), Get the app (installBar), the new icon. */
 export const ACCT_LATER = KEY + '.acctLater',
   INSTALL_LATER = KEY + '.installLater',
   ICON_NOTE = KEY + '.icon25';

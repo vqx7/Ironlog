@@ -93,6 +93,7 @@ import { toast } from './toast';
 import { bwWarn } from './bwnudge';
 import { refreshEx, syncDraftPlan } from './worksets';
 import { parkedNames } from './park';
+import { pageTo } from './frame';
 
 /** The fewest sets the volume bars' scale shows, so a light week's bars are not stretched. */
 const BAR_SCALE_MIN = 24;
@@ -674,12 +675,12 @@ export const PLAN_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   },
   planLib() {
     ui.planView = 'library';
-    window.scrollTo(0, 0);
+    pageTo(0);
     render();
   },
   planBack() {
     ui.planView = 'routine';
-    window.scrollTo(0, 0);
+    pageTo(0);
     render();
   }
 };

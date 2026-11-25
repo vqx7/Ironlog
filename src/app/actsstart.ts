@@ -28,6 +28,7 @@ import type { Tap } from './workstate';
 import { draftEntered, keepLiftMachine, newBlock, rowBlank, shortPlan, takeBackMachine } from './worksets';
 import { swapPlan } from './actspick';
 import { nameAsIs } from './machines';
+import { pageTo } from './frame';
 
 /** The most sets a lift done again in a deload records as its full count. */
 const MAX_FULL = 30;
@@ -56,7 +57,7 @@ function begin(d: DraftLike, live: boolean): void {
     },
     { inProgress: true }
   );
-  window.scrollTo(0, 0);
+  pageTo(0);
   render();
   if (live) wakeOn();
 }
@@ -108,7 +109,7 @@ function resumeOpen(): boolean {
   if (!state.draft) return false;
   ui.away = null;
   ui.tab = 'today';
-  window.scrollTo(0, 0);
+  pageTo(0);
   render();
   toast('Your workout in progress is open. Finish or discard it first.');
   return true;
@@ -175,7 +176,7 @@ function wkGo(t: Tap): void {
     ui.todayAt = on == null ? null : { d, di: on };
   }
   if (ui.modal) closeModal();
-  window.scrollTo(0, 0);
+  pageTo(0);
   render();
 }
 
@@ -189,7 +190,7 @@ function wkOpen(t: Tap): void {
   // An older session may be past the first page of History: load enough rows to reach it.
   const at = [...state.sessions].sort((a, b) => sessCmp(b, a)).findIndex(x => x.id === id);
   ui.histLimit = Math.max(HIST_PAGE, at + 1);
-  window.scrollTo(0, 0);
+  pageTo(0);
   render();
   try {
     const el = document.querySelector(`[data-act="histToggle"][data-id="${id}"]`);
@@ -435,7 +436,7 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     ui.todayDay = Number(t.dataset.day);
     ui.todayPart = t.dataset.part === '2' ? 2 : 1;
     ui.todayAt = null;
-    window.scrollTo(0, 0);
+    pageTo(0);
     render();
   },
   // Another day of the plan on the card (the old Change day list); in a blank-session Today it shows that day's card.
@@ -446,7 +447,7 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     // The workout picked, its first named as one (tapping Push must not show Arms once Push was done).
     ui.todayPart = t.dataset.part === '2' ? 2 : 1;
     ui.todayAt = null;
-    window.scrollTo(0, 0);
+    pageTo(0);
     render();
   },
   /* Pick for me, before a session: rank the routine's days for today. */
@@ -459,7 +460,7 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     ui.todayPart = t.dataset.part === '2' ? 2 : 1;
     ui.todayAt = null;
     ui.tab = 'today';
-    window.scrollTo(0, 0);
+    pageTo(0);
     render();
   },
   /* Limited equipment: pick what is available, preview the swaps, start. */

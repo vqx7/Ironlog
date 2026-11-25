@@ -396,7 +396,7 @@ const stored = H => H.ev(async secret => {
     const boxed = await H.ev(() => { const a = document.getElementById('blk-0').getBoundingClientRect(), b = document.getElementById('blk-1').getBoundingClientRect(); return Math.round(b.top - a.bottom); });
     ok(boxed <= 1, '3. the two cards meet edge to edge (one box)', boxed);
     await H.ev(() => { const L = window.__ironlog; const d = L.state.draft; d.ex[0].sets[0].w = 225 * 0.45359237; d.ex[0].sets[0].r = 8; d.ex[1].sets[0].w = 135 * 0.45359237; d.ex[1].sets[0].r = 8; L.render(); });
-    await H.ev(() => window.scrollTo(0, 0));
+    await H.ev(() => (document.getElementById('page')||document.documentElement).scrollTo(0, 0));
     await H.page.click('#view [data-act="sDone"][data-b="0"][data-s="0"]'); await wait(900);
     const timer1 = await H.ev(() => !document.getElementById('timer').hidden);
     const seen = await H.ev(() => { const r = document.querySelector('[data-act="sDone"][data-b="1"][data-s="0"]').closest('.sg').getBoundingClientRect(); return r.top >= 0 && r.bottom <= window.innerHeight; });

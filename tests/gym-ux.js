@@ -67,7 +67,7 @@ const fails = []; const ok = (c, m) => { if (!c) { fails.push(m); console.log('F
 
   // 6. Back closes a sheet and stays in the app; typed sheets survive a stray tap.
   const url0 = page.url();
-  await ev(() => window.scrollTo(0, document.body.scrollHeight));
+  await ev(() => (document.getElementById('page')||document.documentElement).scrollTo(0, (document.getElementById('page')||document.documentElement).scrollHeight));
   await page.click('[data-act="pickSession"]'); await page.waitForTimeout(150);
   await page.goBack(); await page.waitForTimeout(250);
   ok(await ev(() => document.getElementById('modal').hidden) && page.url() === url0, 'Back closes the sheet and stays in the app');

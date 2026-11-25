@@ -47,6 +47,7 @@ import { confirmBox, openModal, render } from './page';
 import { stopTimer, wakeOff } from './timer';
 import { toast, undoToastHide } from './toast';
 import type { RoutineUpdate } from './plans';
+import { pageTo } from './frame';
 
 /** An unmarked set lighter than a session's first top set reads as a warm-up at Finish under this share of the top load, when neither its RIR nor the best estimate says (a convention). */
 const WARM_SHARE = { compound: 0.75, isolation: 0.8 } as const;
@@ -358,7 +359,7 @@ export function finishNow(): void {
       wakeOff();
       const back = unpark();
       ui.todayDay = null;
-      window.scrollTo(0, 0);
+      pageTo(0);
       render();
       toast(`Cardio saved. No lifting session was recorded.${back ? BACK_SAID : ''}`);
       return;
@@ -619,7 +620,7 @@ function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioE
   // Read with the session saved, as of its day, as the week counts it.
   const { work, miss, hard } = setCounts(ex, sess.date);
   ui.todayDay = null;
-  window.scrollTo(0, 0);
+  pageTo(0);
   render();
   if (editing) {
     toast(`Session updated.${back ? BACK_SAID : ''}`);

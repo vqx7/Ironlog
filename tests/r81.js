@@ -161,14 +161,14 @@ const draftOf = D => D.page.evaluate(() => { const d = window.__ironlog.state.dr
       const D = await app({ w: 320, dark });
       await startToday(D);
       const m1 = await D.page.evaluate(() => {
-        const sw = document.documentElement.scrollWidth > window.innerWidth;
+        const sw = (document.getElementById('page')||document.documentElement).scrollWidth > window.innerWidth;
         const small = [...document.querySelectorAll('#view [data-act="bwOpen"], #view [data-act="wkAway"]')].map(e => e.getBoundingClientRect()).filter(r => r.height < 44 || r.width < 44).length;
         return { sw, small, n: document.querySelectorAll('#view [data-act="bwOpen"], #view [data-act="wkAway"]').length };
       });
       ok(m1.n === 2 && !m1.sw && !m1.small, `4. the session's new buttons fit 320 px with 44 px targets (${dark ? 'dark' : 'light'})`, m1);
       await D.page.click('#view [data-act="wkAway"]').catch(() => {});
       await wait(300);
-      const m2 = await D.page.evaluate(() => { const r = document.querySelector('#view [data-act="wkResume"]'); const b = r && r.getBoundingClientRect(); return { sw: document.documentElement.scrollWidth > window.innerWidth, h: b ? b.height : 0 }; });
+      const m2 = await D.page.evaluate(() => { const r = document.querySelector('#view [data-act="wkResume"]'); const b = r && r.getBoundingClientRect(); return { sw: (document.getElementById('page')||document.documentElement).scrollWidth > window.innerWidth, h: b ? b.height : 0 }; });
       ok(!m2.sw && m2.h >= 44, `4. the resume card fits 320 px with a 44 px button (${dark ? 'dark' : 'light'})`, m2);
       await D.browser.close();
     }

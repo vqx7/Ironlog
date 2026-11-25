@@ -272,7 +272,7 @@ import { act, undoNext } from './act';
 import { fitTargets, oldFloors } from './targets';
 import { FB_CTX_MAX } from './feedback';
 import { effShow, rirScale } from './effort';
-import { toast, undoToastHide } from './toast';
+import { noteOnce, toast, toastHide, undoToastHide } from './toast';
 import { timer, timerResume, wakeOn } from './timer';
 import { tipsStart } from './tips';
 import { howToUrl } from './sheetslift';
@@ -345,6 +345,7 @@ import { applyPick, swapPlan } from './actspick';
 import type { State } from './store';
 import { workoutStart } from './workfields';
 import { onUnitSteps, unitOnGrid } from './units';
+import { frameSettle, frameStart, pageTo, pageY } from './frame';
 
 declare global {
   interface Window {
@@ -456,6 +457,9 @@ function oldLogFixes(): void {
 function exposeForTests(): void {
   window.__ironlog = {
     act,
+    frameSettle,
+    pageY,
+    pageTo,
     rowsBusy,
     rowsDiag,
     undoNext,
@@ -745,6 +749,8 @@ function exposeForTests(): void {
     howToUrl,
     editFp,
     toast,
+    toastHide,
+    noteOnce,
     regionWk,
     REGION_WKS,
     SAFETY_TXT,
@@ -922,9 +928,14 @@ function start(): void {
   });
   storageStart();
   syncStart();
+  // The screen frame's watch, which puts the document back wherever iOS leaves it moved.
+  frameStart();
   // Fields typed in, and the update bar: started before the page's handlers are added below.
   viewStart();
-  updateStart();
+  // Today's line waits while the update bar shows, so the bar coming or going draws Today again.
+  updateStart(() => {
+    if (ui.tab === 'today') rerenderKeepScroll();
+  });
   /* The account's listeners (a return to the front or online tries the wait
      for a new account's email, or the sync, again), before the page's own. */
   accountStart();

@@ -261,7 +261,7 @@ const PATHS = (s, k) => {
     t1 = await tile();
     ok(await paceNow() === 1 && t1 && /planned ~\d+ min/.test(t1), 'Stats: with the model in use, "planned ~N min" stays' + T, t1);
     // The Guide says it.
-    const g = await q(() => { const L = window.__ironlog; L.ACT.guideOpen(); const s = document.querySelector('#modal'); s.querySelectorAll('details').forEach(d => d.open = true); const t = s.innerText; return { t: /Minutes[\s\S]{0,40}worked out from your sets, reps, and rest/.test(t) && /newest 8/.test(t), over: document.documentElement.scrollWidth > window.innerWidth }; });
+    const g = await q(() => { const L = window.__ironlog; L.ACT.guideOpen(); const s = document.querySelector('#modal'); s.querySelectorAll('details').forEach(d => d.open = true); const t = s.innerText; return { t: /Minutes[\s\S]{0,40}worked out from your sets, reps, and rest/.test(t) && /newest 8/.test(t), over: (document.getElementById('page')||document.documentElement).scrollWidth > window.innerWidth }; });
     ok(g.t && !g.over, 'the Guide explains the minutes, with no overflow' + T, g);
     ok(!Q.errors.length, 'no console errors' + T, Q.errors);
     await Q.ctx.close();

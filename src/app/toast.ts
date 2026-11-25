@@ -15,11 +15,17 @@
        "Band Face Pull added to Day 1" under "created and added", and of a
        sync's notes only the last).
      - News about the log from storage and sync (kind 'notice', which
-       main.ts gives every message storage and sync raise) is never lost:
-       one raised while a tap's message shows waits for it, and one covered
-       by a tap's message before NOTICE_READ_MS comes back once that message
-       has gone. A tap's message is never held back: it answers what the
-       lifter just did. */
+       main.ts gives every message storage and sync raise), and a note the
+       app says once on its own, are never lost: one raised while a tap's
+       message, other news not yet read, or a sheet shows waits its turn, and
+       one covered by a tap's message or a sheet before NOTICE_READ_MS comes
+       back once that has gone. A sheet is the lifter busy with something
+       else, so news never shows over it. A tap's message is never held back:
+       it answers what the lifter just did, a tap in a sheet included.
+     - A note the app says once on its own (noteOnce) waits for a calm
+       moment: no message and no sheet showing. A sheet opening over it
+       sends it away, and a note gone before it could be read is said
+       another time rather than counted as said. */
 
 import { nameLastStep } from './act';
 
@@ -33,15 +39,18 @@ function stayMs(msg: string, ms: number): number {
 /** How long news about the log must have shown before a tap's message may cover it for good (milliseconds). */
 const NOTICE_READ_MS = 4000;
 
-/** The message showing: its parts, whether one offers Undo, whether one marks a record or is news, when it showed, and how long it stays. */
+/** The message showing: its parts, whether one offers Undo, whether one marks a record, is news or a note said once, when it showed, and how long it stays. */
 interface Showing {
   parts: string[];
   undo: boolean;
   pr: boolean;
   notice: boolean;
+  once: boolean;
   at: number;
   ms: number;
 }
+/** How often a note said once looks again for a calm moment, in milliseconds. */
+const CALM_MS = 500;
 /** A message waiting its turn: news about the log, held while a tap's message shows. */
 interface Waiting {
   msg: string;
@@ -66,6 +75,11 @@ function openTask(): void {
   }, 0);
 }
 const box = (): HTMLElement | null => document.getElementById('toast');
+// A sheet open over the page.
+const sheetOpen = (): boolean => {
+  const m = document.getElementById('modal');
+  return !!m && !m.hidden;
+};
 const now = (): number => performance.now();
 
 /* A touch, click or key is the lifter moving on: the next message starts its own, rather than joining the last.
@@ -78,6 +92,32 @@ function watchTaps(): void {
   };
   for (const t of ['pointerdown', 'keydown', 'touchstart'])
     document.addEventListener(t, moved, { capture: true, passive: true });
+  // A sheet opening sends news showing back to wait; one closing lets the news waiting show.
+  const m = document.getElementById('modal');
+  if (m) new MutationObserver(sheetMoved).observe(m, { attributes: true, attributeFilter: ['hidden'] });
+}
+
+/* News showing when a sheet opens goes, and comes back after it unless it was read; when the sheet closes, the news
+   waiting shows. */
+function sheetMoved(): void {
+  const el = box();
+  if (!el) return;
+  if (!sheetOpen()) {
+    if (el.hidden) next(el);
+    return;
+  }
+  if (el.hidden || !cur || cur.undo || !(cur.notice || cur.once)) return;
+  if (cur.notice && now() - cur.at < NOTICE_READ_MS) backToWait(cur);
+  clearTimeout(toastT);
+  el.hidden = true;
+  cur = null;
+}
+
+// News covered before it was read waits again, first in line, for the time it had left.
+function backToWait(c: Showing): void {
+  const left = joined(c.parts);
+  if (!waiting.some(w => w.msg === left))
+    waiting.unshift({ msg: left, ms: Math.max(TOAST_MS.plain, c.ms - (now() - c.at)) });
 }
 
 /* A part ends with a full stop when another follows it, so a message joined from two or more parts reads as
@@ -103,6 +143,8 @@ function draw(el: HTMLElement): void {
     parts.push(b);
   }
   el.replaceChildren(...parts);
+  // Whose message it is, read by the suites: the lifter's tap, news about the log, or a note the app says once.
+  el.dataset.by = c.notice ? 'news' : c.once ? 'note' : 'tap';
   el.hidden = false;
   clearTimeout(toastT);
   toastT = setTimeout(() => gone(el), Math.max(0, c.at + c.ms - now()));
@@ -115,11 +157,12 @@ function gone(el: HTMLElement): void {
   next(el);
 }
 
-/** Shows the next news waiting, if any. */
+/** Shows the next news waiting, if any and no sheet is open. */
 function next(el: HTMLElement): void {
+  if (sheetOpen()) return;
   const w = waiting.shift();
   if (!w) return;
-  cur = { parts: [w.msg], undo: false, pr: false, notice: true, at: now(), ms: w.ms };
+  cur = { parts: [w.msg], undo: false, pr: false, notice: true, once: false, at: now(), ms: w.ms };
   tapSince = false;
   draw(el);
 }
@@ -147,21 +190,30 @@ export function toast(msg: string, undo?: boolean | null, ms?: number | null, ki
     draw(el);
     return;
   }
-  // News while a tap's message shows: it waits for its turn.
-  if (notice && showing && !showing.notice) {
+  // News while a tap's message, news not yet read, or a sheet shows: it waits for its turn.
+  if (notice && (sheetOpen() || (showing && (!showing.notice || t - showing.at < NOTICE_READ_MS)))) {
     if (!waiting.some(w => w.msg === msg)) waiting.push({ msg, ms: len });
     return;
   }
   // A tap's message over news not yet read: the news comes back after it.
-  if (!notice && showing && showing.notice && t - showing.at < NOTICE_READ_MS) {
-    const left = joined(showing.parts);
-    if (!waiting.some(w => w.msg === left))
-      waiting.unshift({ msg: left, ms: Math.max(TOAST_MS.plain, showing.ms - (t - showing.at)) });
-  }
-  cur = { parts: [msg], undo: !!undo, pr: kind === 'pr', notice, at: t, ms: len };
+  if (!notice && showing && showing.notice && t - showing.at < NOTICE_READ_MS) backToWait(showing);
+  cur = { parts: [msg], undo: !!undo, pr: kind === 'pr', notice, once: kind === 'once', at: t, ms: len };
   tapSince = false;
   openTask();
   draw(el);
+}
+
+/** Says a note the app tells once, at a calm moment (no message and no sheet showing), for `ms`; `read` hears, once it
+    could have been read, whether it was still showing then, so a note covered early is said another time. */
+export function noteOnce(msg: string, ms: number, read: (seen: boolean) => void): void {
+  const el = box();
+  if (!el) return;
+  if (!el.hidden || sheetOpen()) {
+    setTimeout(() => noteOnce(msg, ms, read), CALM_MS);
+    return;
+  }
+  toast(msg, false, ms, 'once');
+  setTimeout(() => read(!el.hidden && !!cur && cur.parts.includes(msg)), NOTICE_READ_MS);
 }
 
 /* A note with nothing to undo goes when a session starts: the

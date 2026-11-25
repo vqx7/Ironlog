@@ -258,7 +258,7 @@ async function engineRun(page, cases, gym) {
     ok(await ev(() => window.__ironlog.state.settings.gym === undefined && /usual steps/.test(document.querySelector('[data-sk="settings:gym"] .sec-s').textContent)), 'Clear my gym goes back to the usual steps');
     await ev(() => window.__ironlog.ACT.undo()); await wait(300);
     ok(await ev(() => !!window.__ironlog.state.settings.gym && window.__ironlog.state.settings.gym.db.hi === 50), 'and Undo brings the gym back');
-    const wide = await ev(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
+    const wide = await ev(() => (document.getElementById('page')||document.documentElement).scrollWidth <= window.innerWidth + 1);
     ok(wide && !P.errors.length, 'Your gym fits the screen, with no page errors', P.errors);
     await P.ctx.close().catch(() => {});
   }
@@ -470,7 +470,7 @@ async function engineRun(page, cases, gym) {
     const tour = await W.ev(() => {
       const sl = [...document.querySelectorAll('#obTrack .ob-slide')]; const vw = innerWidth;
       const r = sl.map(e => e.getBoundingClientRect());
-      return { titles: sl.map(e => e.querySelector('h2').textContent), lines: sl.map(e => e.querySelectorAll('p').length), pics: sl.every(e => e.querySelector('.obv[aria-hidden="true"]')), pips: [...document.querySelectorAll('.ob-pips button')].map(b => b.getAttribute('aria-current')), first: r[0].left >= 0 && r[0].right <= vw, peek: r[1].left < vw && r[1].left > vw - 60, role: document.querySelector('.ob-tour').getAttribute('aria-roledescription'), label: sl[0].getAttribute('aria-label'), fits: document.documentElement.scrollHeight <= innerHeight + 2, wide: document.documentElement.scrollWidth <= vw, h44: [...document.querySelectorAll('.ob-pips button')].every(b => { const r = b.getBoundingClientRect(); return r.height >= 44 && r.width >= 44; }),
+      return { titles: sl.map(e => e.querySelector('h2').textContent), lines: sl.map(e => e.querySelectorAll('p').length), pics: sl.every(e => e.querySelector('.obv[aria-hidden="true"]')), pips: [...document.querySelectorAll('.ob-pips button')].map(b => b.getAttribute('aria-current')), first: r[0].left >= 0 && r[0].right <= vw, peek: r[1].left < vw && r[1].left > vw - 60, role: document.querySelector('.ob-tour').getAttribute('aria-roledescription'), label: sl[0].getAttribute('aria-label'), fits: (document.getElementById('page')||document.documentElement).scrollHeight <= innerHeight + 2, wide: (document.getElementById('page')||document.documentElement).scrollWidth <= vw, h44: [...document.querySelectorAll('.ob-pips button')].every(b => { const r = b.getBoundingClientRect(); return r.height >= 44 && r.width >= 44; }),
         log: sl[0].querySelector('.obv').innerText.replace(/\s+/g, ' ') };
     });
     // r34 (V): the titles name what the app does for a lifter, with no line under each.
@@ -507,7 +507,7 @@ async function engineRun(page, cases, gym) {
     const M = await device({ auto: true, reduce: true }); await wait(6200);
     ok(await M.ev(() => window.__ironlog.obTour.i === 0 && !window.__ironlog.obTour.auto), 'with reduced motion it never moves on its own');
     const N = await device({ w: 320 });
-    ok(await N.ev(() => document.documentElement.scrollWidth <= 320 && [...document.querySelectorAll('.ob-slide')][0].getBoundingClientRect().right <= 320), 'at 320 px the slide fits and nothing spills sideways');
+    ok(await N.ev(() => (document.getElementById('page')||document.documentElement).scrollWidth <= 320 && [...document.querySelectorAll('.ob-slide')][0].getBoundingClientRect().right <= 320), 'at 320 px the slide fits and nothing spills sideways');
     // Done with the four first-page devices; left open they kept talking to the server until it closed.
     for (const [d, n] of [[W, 'W'], [A, 'A'], [M, 'M'], [N, 'N']]) await settle(d.ctx.close(), `closing device ${n}`);
 

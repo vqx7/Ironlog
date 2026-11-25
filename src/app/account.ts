@@ -42,6 +42,7 @@ import { obOutClear } from './today';
 import { NO_ANSWER, fbCheckReader } from './report';
 import { captchaTake, captchaWait } from './captcha';
 import type { Tap } from './workstate';
+import { pageTo } from './frame';
 
 /** The confirmation's wait, in milliseconds: how long it tries at most, when it slows, how often it tries before and after, the least gap between two tries, and how long a browser that opened the link reads the marker as this one's. */
 const WAIT_MS = {
@@ -756,7 +757,7 @@ export const ACCOUNT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         );
       if (!mid) {
         ui.tab = 'today';
-        window.scrollTo(0, 0);
+        pageTo(0);
       }
       render();
       toast(remove ? 'Signed out' : 'Signed out. A copy stays on this phone.');

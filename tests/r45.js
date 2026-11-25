@@ -111,7 +111,7 @@ const PW = 'correct horse 45';
   // ---- 5. At 320 px: on screen, 44 px targets, no sideways scroll.
   const F = await device(320);
   await signUp(F, 'f@x.test');
-  const lay = await F.ev(() => { const r = s => document.querySelector(s).getBoundingClientRect(); return { over: document.documentElement.scrollWidth > innerWidth, code: Math.round(r('#modal [data-abind="code"]').height), btn: Math.round(r('#modal [data-act="acctCode"]').height), link: Math.round(r('#modal [data-act="acctResend"]').height), inp: document.querySelector('#modal [data-abind="code"]').getAttribute('autocomplete') + '/' + document.querySelector('#modal [data-abind="code"]').getAttribute('inputmode') }; });
+  const lay = await F.ev(() => { const r = s => document.querySelector(s).getBoundingClientRect(); return { over: (document.getElementById('page')||document.documentElement).scrollWidth > innerWidth, code: Math.round(r('#modal [data-abind="code"]').height), btn: Math.round(r('#modal [data-act="acctCode"]').height), link: Math.round(r('#modal [data-act="acctResend"]').height), inp: document.querySelector('#modal [data-abind="code"]').getAttribute('autocomplete') + '/' + document.querySelector('#modal [data-abind="code"]').getAttribute('inputmode') }; });
   ok(!lay.over && lay.code >= 44 && lay.btn >= 44 && lay.link >= 44 && lay.inp === 'one-time-code/numeric', '320 px: the field, the button and the link are 44 px, the phone offers the code from the email, nothing scrolls sideways', lay);
   await F.ctx.close();
 

@@ -396,7 +396,7 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
        scrolls, on a 393 px phone. */
     const T = await lifter({ settings: { autoDone: false }, w: 393, items: [['bench', 3, 6, 10, REST_BENCH], ['dbLateral', 3, 10, 15, REST_RAISE], ['triPushdown', 3, 10, 15, REST_RAISE]] });
     await start(T);
-    const at = () => T.ev(() => { const t = document.getElementById('timer').getBoundingClientRect(); const rows = [...document.querySelectorAll('#view .sg')].filter(r => r.querySelector('[data-act="sDone"][data-b="0"]')).map(r => Math.round(r.getBoundingClientRect().bottom)); return { top: Math.round(t.top), rows, y: Math.round(window.scrollY) }; });
+    const at = () => T.ev(() => { const t = document.getElementById('timer').getBoundingClientRect(); const rows = [...document.querySelectorAll('#view .sg')].filter(r => r.querySelector('[data-act="sDone"][data-b="0"]')).map(r => Math.round(r.getBoundingClientRect().bottom)); return { top: Math.round(t.top), rows, y: Math.round((document.getElementById('page')||document.documentElement).scrollTop) }; });
     await T.tap(tick(0, 0), 900); const a1 = await at();
     ok(a1.y === 0 && a1.rows[1] <= a1.top, 'L-14: after the first tick the next set is clear of the rest timer, and the page stays where it was', a1);
     await T.tap(tick(0, 1), 900); const a2 = await at();
@@ -891,7 +891,7 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     let ok = okAs('L-23');
     const { browser, page, errors } = await open(FILE, { touch: true, w: 390, h: 844, clock: '2026-09-20T10:00:00' });
     const ev = (f, a) => page.evaluate(f, a);
-    const fresh = async () => { await ev(() => { const L = window.__ironlog; L.state.draft = null; L.state.settings.onboarded = true; if (!L.state.sessions.length) L.makeDemo(); /* r30: history here, not sample data */ for (const k of ['sessions', 'bodyweights', 'measurements']) for (const x of (L.state[k] || [])) delete x.demo; L.invalidate && L.invalidate(); L.state.deloadWeek = null; L.ui.tab = 'today'; L.ui.todayDay = 0; L.ui.modal = null; document.getElementById('modal').hidden = true; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); window.scrollTo(0, 0); }); };
+    const fresh = async () => { await ev(() => { const L = window.__ironlog; L.state.draft = null; L.state.settings.onboarded = true; if (!L.state.sessions.length) L.makeDemo(); /* r30: history here, not sample data */ for (const k of ['sessions', 'bodyweights', 'measurements']) for (const x of (L.state[k] || [])) delete x.demo; L.invalidate && L.invalidate(); L.state.deloadWeek = null; L.ui.tab = 'today'; L.ui.todayDay = 0; L.ui.modal = null; document.getElementById('modal').hidden = true; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); (document.getElementById('page')||document.documentElement).scrollTo(0, 0); }); };
     // r35: a lighter day starts from the card's Change sheet.
     const start = async (light) => { await fresh(); if (light) { await page.click('.hero [data-act="startAltOpen"]'); await page.waitForTimeout(80); await page.click('#modal [data-go="startSession"][data-light="1"]'); } else await page.click('.hero [data-act="startSession"]:not([data-light])'); await page.waitForTimeout(120); };
     const work = (bi) => ev(b => { const x = window.__ironlog.state.draft.ex[b]; return x ? x.sets.filter(s => !s.warm && !s.drop).length : -1; }, bi);

@@ -80,9 +80,9 @@ const server = http.createServer((req, res) => {
   const sizes = await page.evaluate(() => [...document.querySelectorAll('#updbar button')].map(b => Math.round(b.getBoundingClientRect().height)));
   ok(sizes.length === 2 && sizes.every(h => h >= 44), 'both buttons are 44 px tall or more (' + sizes.join(', ') + ')');
   const layout = await page.evaluate(() => { const b = document.getElementById('updbar').getBoundingClientRect(); const h = document.querySelector('header.top').getBoundingClientRect();
-    return { below: b.top >= h.bottom - 1, fits: document.documentElement.scrollWidth <= window.innerWidth }; });
+    return { below: b.top >= h.bottom - 1, fits: (document.getElementById('page')||document.documentElement).scrollWidth <= window.innerWidth }; });
   ok(layout.below && layout.fits, 'the bar sits under the header without widening the page');
-  await page.evaluate(() => window.scrollTo(0, 2000)); await page.waitForTimeout(100);
+  await page.evaluate(() => (document.getElementById('page')||document.documentElement).scrollTo(0, 2000)); await page.waitForTimeout(100);
   ok(await page.evaluate(() => { const b = document.getElementById('updbar').getBoundingClientRect(); return b.top >= 0 && b.bottom <= window.innerHeight; }), 'the bar stays in view while scrolling');
 
   await page.click('#updbar [data-act="appUpdateLater"]'); await page.waitForTimeout(100);

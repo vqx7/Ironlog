@@ -772,6 +772,30 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     }
     ok(hits.length === 0, 'localStorage and IndexedDB are named only in storage.ts and sync.ts, and JSON is parsed only by records.ts (every stored value comes through one reader)', hits);
   }
+  // The screen frame (2.78.1, NEW-218): the page scrolls inside #page and the document never does, so every scroll
+  // goes through frame.ts, and nothing else scrolls or reads the document's scroll. And every message goes through
+  // toast.ts's rules (NEW-217): no other module looks at the toast to time a message of its own. Read from the syntax
+  // tree, so a mention in a comment is not one.
+  {
+    const hits = [];
+    const SCROLL = new Set(['scrollTo', 'scrollBy', 'scrollY', 'scrollX', 'pageYOffset', 'pageXOffset', 'scrollingElement']);
+    for (const id of MODS) {
+      if (id === 'frame') continue;
+      const f = id + '.ts', txt = fs.readFileSync(path.join(APP, f), 'utf8');
+      const sf = ts.createSourceFile(f, txt, ts.ScriptTarget.Latest, true);
+      const at = n => `${f}:${sf.getLineAndCharacterOfPosition(n.getStart()).line + 1}`;
+      const walk = n => {
+        // window.scrollTo and the like, or document.scrollingElement.
+        if (ts.isPropertyAccessExpression(n) && SCROLL.has(n.name.text) && ts.isIdentifier(n.expression) && ['window', 'document', 'self', 'globalThis'].includes(n.expression.text)) hits.push(at(n) + ' ' + n.getText());
+        // A bare scrollY read off the global.
+        if (ts.isIdentifier(n) && ['scrollY', 'pageYOffset'].includes(n.text) && !(n.parent && ts.isPropertyAccessExpression(n.parent) && n.parent.name === n)) hits.push(at(n) + ' ' + n.text);
+        if (id !== 'toast' && ts.isCallExpression(n) && n.getText().replace(/\s+/g, '') === "document.getElementById('toast')") hits.push(at(n) + " document.getElementById('toast')");
+        ts.forEachChild(n, walk);
+      };
+      walk(sf);
+    }
+    ok(hits.length === 0, 'the page is scrolled only through frame.ts, and only toast.ts looks at the toast (one frame, one set of message rules)', hits);
+  }
   // The unit a load was entered in is stored with it (2.73, the full review's L01-1): no module reads it back from
   // the number. A load's unit is read from its number (`unitOnGrid`) only where that is the rule: a load the app made
   // is in the unit its equipment's steps are in (session.ts, worktaps.ts, worksets.ts, loadsteps.ts, and history.ts

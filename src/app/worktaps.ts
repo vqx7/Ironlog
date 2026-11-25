@@ -90,6 +90,7 @@ import { closeModal, confirmBox, openModal, render, renderModal, rerenderKeepScr
 import { toast } from './toast';
 import { startTimer, stopTimer, wakeOff } from './timer';
 import { stripIs } from './workout';
+import { pageTo } from './frame';
 /** After an auto-mark, a tap on that set's checkmark within this many milliseconds confirms it rather than undoing it. */
 const AUTO_CONFIRM_MS = 15000;
 /** An exercise a tick moved up goes back when its sets are all unticked within this many milliseconds. */
@@ -742,14 +743,14 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
      app again all open the workout. */
   wkAway() {
     ui.away = state.draft ? state.draft.id : null;
-    window.scrollTo(0, 0);
+    pageTo(0);
     render();
     toast('Saved. Resume it from Today.');
   },
   wkResume() {
     ui.away = null;
     ui.tab = 'today';
-    window.scrollTo(0, 0);
+    pageTo(0);
     render();
   },
   // Today's card for a workout set aside that did not come back by itself: it comes back and opens.
@@ -757,7 +758,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (!unpark()) return;
     ui.away = null;
     ui.tab = 'today';
-    window.scrollTo(0, 0);
+    pageTo(0);
     render();
   },
   // Folded by hand, done or not, and every place it was opened at forgotten, so a move leaves nothing behind.
@@ -952,7 +953,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       wakeOff();
       // A workout set aside for this one comes back, offered on Today.
       if (unpark()) setTimeout(() => toast(BACK_SAID.trim()), 0);
-      window.scrollTo(0, 0);
+      pageTo(0);
       render();
     };
     if (!d.editingId && !draftEntered(d)) {

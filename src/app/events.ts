@@ -39,6 +39,7 @@ import { START_ACTS } from './actsstart';
 import { LIFT_ACTS } from './actslift';
 import { PIC_ACTS, picChange } from './notepics';
 import { WORKOUT_ACTS } from './worktaps';
+import { pageTo } from './frame';
 
 /** How often a page on the screen checks whether the day has turned, in milliseconds. */
 const NEW_DAY_MS = 30000;
@@ -182,7 +183,7 @@ function onClick(e: MouseEvent): void {
     // Back to the tab from anywhere opens the workout in progress (V: Today defaults to it).
     ui.away = null;
     if (ui.tab === 'program') ui.planView = 'routine';
-    window.scrollTo(0, 0);
+    pageTo(0);
     render();
     return;
   }

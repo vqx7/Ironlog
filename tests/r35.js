@@ -38,7 +38,7 @@ const FILE = 'index.html';
     });
     ok(card.starts === 1 && card.primary && card.change && !card.select, 'the Today card has one Start and a Change button, no list of starts or day select' + T, card);
     await ev(() => document.querySelector('.hero [data-act="startAltOpen"]').click()); await wait(80);
-    const sheet = await ev(() => { const m = document.getElementById('modal'); return { title: m.querySelector('h3').textContent, opts: [...m.querySelectorAll('.ob-opt b')].map(b => b.textContent), days: [...m.querySelectorAll('[data-act="dayPick"]')].map(b => b.innerText.replace(/\s+/g, ' ')), cur: m.querySelectorAll('[data-act="dayPick"][aria-current="true"]').length, wide: document.documentElement.scrollWidth <= innerWidth, h: Math.min(...[...m.querySelectorAll('button')].map(b => b.getBoundingClientRect().height)) }; });
+    const sheet = await ev(() => { const m = document.getElementById('modal'); return { title: m.querySelector('h3').textContent, opts: [...m.querySelectorAll('.ob-opt b')].map(b => b.textContent), days: [...m.querySelectorAll('[data-act="dayPick"]')].map(b => b.innerText.replace(/\s+/g, ' ')), cur: m.querySelectorAll('[data-act="dayPick"][aria-current="true"]').length, wide: (document.getElementById('page')||document.documentElement).scrollWidth <= innerWidth, h: Math.min(...[...m.querySelectorAll('button')].map(b => b.getBoundingClientRect().height)) }; });
     ok(sheet.title === 'Start something else' && sheet.opts.join('|') === 'Lighter day|Short on time|Blank session|Pick for me' && sheet.days.length >= 3 && sheet.cur === 1, 'Change: Lighter day, Short on time, Blank session, Pick for me, and the plan\'s days with today\'s marked' + T, sheet);
     ok(sheet.wide && sheet.h >= 44, 'the Change sheet fits the screen with 44 px buttons' + T, sheet.h);
     // Another day: the card shows it.
@@ -72,7 +72,7 @@ const FILE = 'index.html';
     ok(setFill, 'Fill in suggested loads is still in Settings for anyone who wants it' + T);
 
     // ---------- 4. Settings: Demo data, Diagnostics and Erase in one More group at the bottom ----------
-    const st = await ev(() => { const keys = [...document.querySelectorAll('#view details.sec')].map(d => d.dataset.mkey); const more = document.querySelector('#view [data-mkey="more"]'); return { keys, last: keys[keys.length - 1], has: more ? more.querySelectorAll('[data-act="demoLoad"],[data-act="demoClear"]').length === 1 && /Version \d/.test(more.textContent) && !!more.querySelector('[data-act="resetAll"]') : false, wide: document.documentElement.scrollWidth <= innerWidth }; });
+    const st = await ev(() => { const keys = [...document.querySelectorAll('#view details.sec')].map(d => d.dataset.mkey); const more = document.querySelector('#view [data-mkey="more"]'); return { keys, last: keys[keys.length - 1], has: more ? more.querySelectorAll('[data-act="demoLoad"],[data-act="demoClear"]').length === 1 && /Version \d/.test(more.textContent) && !!more.querySelector('[data-act="resetAll"]') : false, wide: (document.getElementById('page')||document.documentElement).scrollWidth <= innerWidth }; });
     // Since r55 (V, 2026-10-19) Demo data is one button, Load or Clear, and Diagnostics shows the version until an error is logged (tests/r55.js).
     ok(st.last === 'more' && !st.keys.some(k => ['demo', 'reset', 'diag'].includes(k)) && st.has && st.wide, 'Settings ends with one More group holding Demo data, the version and Erase everything' + T, st);
 

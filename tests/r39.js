@@ -139,7 +139,7 @@ const near = (a, b) => a.every((x, i) => Math.abs(x - b[i]) <= 2);
       const chip = [...m.querySelectorAll('[data-act="secToggle"]')].find(b => !b.classList.contains('on') && b.dataset.m === 'abs'); chip.click(); await new Promise(r => setTimeout(r, 60));
       o.b = groups();
       const sel = m.querySelector('[data-ebind="primary"]'); sel.value = 'lats'; sel.dispatchEvent(new Event('change', { bubbles: true })); await new Promise(r => setTimeout(r, 60));
-      o.c = groups(); tog().click(); await new Promise(r => setTimeout(r, 60)); o.shut = m.querySelectorAll('.exbody .mx').length; o.wide = document.documentElement.scrollWidth <= innerWidth; window.__ironlog.ACT.mClose();
+      o.c = groups(); tog().click(); await new Promise(r => setTimeout(r, 60)); o.shut = m.querySelectorAll('.exbody .mx').length; o.wide = (document.getElementById('page')||document.documentElement).scrollWidth <= innerWidth; window.__ironlog.ACT.mClose();
       return o;
     });
     ok(ed.closed.figs === 0 && ed.closed.label === 'Show on body' && ed.closed.exp === 'false' && ed.closed.h >= 44, 'the editor names the muscles and keeps the body behind Show on body (44 px)' + T, ed.closed);
@@ -152,7 +152,7 @@ const near = (a, b) => a.every((x, i) => Math.abs(x - b[i]) <= 2);
     // ---------- 5. 320 px ----------
     await page.setViewportSize({ width: 320, height: 640 });
     await ev(() => window.__ironlog.openModal({ kind: 'exMus', exId: 'bench' })); await wait(300);
-    const narrow = await ev(() => ({ wide: document.documentElement.scrollWidth <= innerWidth, canvas: !!document.querySelector('#bm3dx canvas'), w: (document.querySelector('#bm3dx canvas') || { getBoundingClientRect: () => ({ width: 0 }) }).getBoundingClientRect().width, chipH: Math.min(...[...document.querySelectorAll('#modal .chip')].map(b => b.getBoundingClientRect().height)) }));
+    const narrow = await ev(() => ({ wide: (document.getElementById('page')||document.documentElement).scrollWidth <= innerWidth, canvas: !!document.querySelector('#bm3dx canvas'), w: (document.querySelector('#bm3dx canvas') || { getBoundingClientRect: () => ({ width: 0 }) }).getBoundingClientRect().width, chipH: Math.min(...[...document.querySelectorAll('#modal .chip')].map(b => b.getBoundingClientRect().height)) }));
     ok(narrow.wide && narrow.canvas && narrow.w <= 320 && narrow.chipH >= 44, 'at 320 px the sheet and its body fit, with 44 px buttons' + T, narrow);
     await ev(() => window.__ironlog.ACT.mClose());
 

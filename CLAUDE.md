@@ -3,7 +3,7 @@
 A hypertrophy and strength tracker for one lifter, V, used on a phone at the gym. It ships as a standalone
 installable web app: built from `src/` into one page, served by GitHub Pages at https://ironapp.org, working
 offline, with the log on the phone and an optional account that syncs it. Every pull request also publishes a
-preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r125, version 2.78, state schema v5.
+preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r126, version 2.78.1, state schema v5.
 
 The Claude artifact version was retired by V on 2026-09-27 (`OWNER.md` Done): never work on it or republish it.
 `cloudProvider()` still takes Claude's db when `window.claude` exists, because the sync suites use it as their
@@ -244,7 +244,14 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   news about the log from storage and sync, or a one-time tip shown when nothing else is; an ask or advice lives
   where it applies (a card, a line on the item, a tip), never in a message, and nothing repeats what is on screen.
   One tap is one message: what one tap says is joined, never one over another, and news about the log is never lost
-  (`toast.ts`; `tests/messages.js`).
+  (`toast.ts`; `tests/messages.js`). A sheet is the lifter busy with something else: news and the app's one-time notes
+  never show over one, and a one-time note goes through `noteOnce`, never its own wait for the toast (2.78.1). Today
+  carries one line above its start card, never two (V, 2026-11-25). Only `toast.ts` looks at the toast
+  (`tests/hygiene.js`).
+- **Screen frame (2.78.1, NEW-218):** the page scrolls inside `#page`; the document never scrolls, so nothing an
+  iPhone does to the visible area can carry the bars along the bottom up the screen. Every scroll goes through
+  `frame.ts` (`tests/hygiene.js`, `tests/frame.js`). An iPhone's keyboard and pickers are checked on the preview on an
+  iPhone before a merge (OWNER.md F2), since no engine here has them.
 - **Phone:** 44 px touch targets, no sideways scroll at 320 px, light and dark both checked. Rows of seven (the
   week bar, the calendar, Consistency) reach 44 px from 375 px phones up; at 320 px seven cannot. No code follows the
   on-screen keyboard (Safari does not shrink the page for it, and code that did fought iOS): a sheet you type in

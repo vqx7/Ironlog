@@ -109,7 +109,7 @@ const platesShown = D => D.page.evaluate(re => { const v = document.getElementBy
             const v = R(g.querySelector('.stepr-v b'));
             return { drawn, g: R(g), mi, pl, v, val: g.querySelector('.stepr-v').innerText };
           });
-          return { label: st.querySelector('.stepr-h').innerText, head, st: R(st), groups, sideways: document.scrollingElement.scrollWidth - innerWidth };
+          return { label: st.querySelector('.stepr-h').innerText, head, st: R(st), groups, sideways: (document.getElementById('page')||document.documentElement).scrollWidth - innerWidth };
         });
         const tag = `${w} px${dark ? ', dark' : ''}`;
         if (!ok(m && m.groups.length === 2, `3. ${tag}: the pills are drawn`, m)) { await D.browser.close(); continue; }

@@ -151,7 +151,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     await page.setViewportSize({ width: 320, height: 700 }); await ev(() => window.__ironlog.render()); await wait(200);
     /* On screen first: since 2.52 the next exercise glides to the top of the screen, the top bar having scrolled away
        (NEW-138), so the one just folded is above it, off the screen, where no point hits its handle. */
-    const w320 = await ev(() => { const f = document.querySelector('#view section.block.folded'); if (f) f.scrollIntoView({ block: 'center' }); const r = f && f.getBoundingClientRect(); const gr = f && f.querySelector('.bgrip'); const g = gr && gr.getBoundingClientRect(); const cy = g && g.top + g.height / 2, cx = g && g.left + g.width / 2; let hit = 0; if (g) for (let dx = -40; dx <= 40; dx++) if (document.elementFromPoint(cx + dx, cy) === gr) hit++; return { folded: !!f, sw: document.documentElement.scrollWidth, right: r && Math.round(r.right), grip: hit, h: g && Math.round(g.height) }; });
+    const w320 = await ev(() => { const f = document.querySelector('#view section.block.folded'); if (f) f.scrollIntoView({ block: 'center' }); const r = f && f.getBoundingClientRect(); const gr = f && f.querySelector('.bgrip'); const g = gr && gr.getBoundingClientRect(); const cy = g && g.top + g.height / 2, cx = g && g.left + g.width / 2; let hit = 0; if (g) for (let dx = -40; dx <= 40; dx++) if (document.elementFromPoint(cx + dx, cy) === gr) hit++; return { folded: !!f, sw: (document.getElementById('page')||document.documentElement).scrollWidth, right: r && Math.round(r.right), grip: hit, h: g && Math.round(g.height) }; });
     ok(w320.folded && w320.sw <= 320 && w320.right <= 320 && w320.grip >= 44 && w320.h >= 44, 'at 320 px a folded exercise and its 44 px handle (touch area) fit, no sideways scroll', w320);
     ok(!P.errors.length, 'no page errors (review fixes, session)', P.errors);
     await P.browser.close();
@@ -183,24 +183,24 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const last = a1.length - 1;
     await page.locator(`.bgrip[data-b="${last}"]`).scrollIntoViewIfNeeded();
     gb = await page.locator(`.bgrip[data-b="${last}"]`).boundingBox(); x0 = gb.x + gb.width / 2; y0 = gb.y + gb.height / 2;
-    const sy0 = await ev(() => window.scrollY);
+    const sy0 = await ev(() => (document.getElementById('page')||document.documentElement).scrollTop);
     /* 23 px into the band at the top of the space the exercises scroll in: under the top bar while it was pinned (75 px
        down), under the status bar since 2.52, when the bar scrolls away with the page (NEW-138). */
     const yT = await ev(() => Math.round(Math.max(parseFloat(getComputedStyle(document.documentElement).paddingTop) || 0, document.querySelector('header.top').getBoundingClientRect().bottom)) + 23);
     await tp('touchStart', x0, y0); await wait(60);
     for (let k = 1; k <= 10; k++) { await tp('touchMove', x0, y0 + (yT - y0) * k / 10); await wait(30); }
     for (let k = 0; k < 50; k++) { await tp('touchMove', x0, yT + (k % 2)); await wait(40); }
-    const sy1 = await ev(() => window.scrollY);
+    const sy1 = await ev(() => (document.getElementById('page')||document.documentElement).scrollTop);
     await tp('touchEnd', x0, yT); await wait(400);
     const a2 = await ids();
     ok(sy0 > 200 && sy1 < sy0 - 200 && a2[0] === a1[last], 'held at the top edge, the page scrolls and the last exercise reaches the top', { sy0, sy1, yT, to: a2.indexOf(a1[last]) });
     // A drop keeps the page where it was: the exercise moved is on screen afterwards.
-    await ev(() => { window.scrollTo(0, 0); });
-    await page.locator('.bgrip[data-b="3"]').scrollIntoViewIfNeeded(); await ev(() => window.scrollBy(0, 200)); await wait(100);
+    await ev(() => { (document.getElementById('page')||document.documentElement).scrollTo(0, 0); });
+    await page.locator('.bgrip[data-b="3"]').scrollIntoViewIfNeeded(); await ev(() => (document.getElementById('page')||document.documentElement).scrollBy(0, 200)); await wait(100);
     gb = await page.locator('.bgrip[data-b="3"]').boundingBox(); x0 = gb.x + gb.width / 2; y0 = gb.y + gb.height / 2;
-    const b0 = await ids(); const sy2 = await ev(() => window.scrollY);
+    const b0 = await ids(); const sy2 = await ev(() => (document.getElementById('page')||document.documentElement).scrollTop);
     await tp('touchStart', x0, y0); await wait(60); await tp('touchMove', x0, y0 + 2); await wait(150); await tp('touchEnd', x0, y0 + 2); await wait(400);
-    const jit = await ev((id) => { const i = window.__ironlog.state.draft.ex.findIndex(b => b.exId === id); const r = document.querySelector(`#view section.block[data-bi="${i}"] .bgrip`).getBoundingClientRect(); return { i, top: Math.round(r.top), sy: window.scrollY }; }, b0[3]);
+    const jit = await ev((id) => { const i = window.__ironlog.state.draft.ex.findIndex(b => b.exId === id); const r = document.querySelector(`#view section.block[data-bi="${i}"] .bgrip`).getBoundingClientRect(); return { i, top: Math.round(r.top), sy: (document.getElementById('page')||document.documentElement).scrollTop }; }, b0[3]);
     ok(jit.i === 3 && Math.abs(jit.top - Math.round(gb.y)) < 30 && jit.sy > 0, 'a 2 px wiggle on a handle leaves the exercise in place and the page where it was', { jit, before: Math.round(gb.y), sy2 });
     await tp('touchStart', x0, y0); await wait(60); await tp('touchMove', x0, y0 + 3); await wait(150);
     const y4 = await ev(() => { const bs = [...document.querySelectorAll('#view section.block')].filter(b => !b.classList.contains('sortable-chosen')); return Math.round(bs[4].getBoundingClientRect().top + 30); });
@@ -209,17 +209,17 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const drop = await ev((id) => { const i = window.__ironlog.state.draft.ex.findIndex(b => b.exId === id); const r = document.querySelector(`#view section.block[data-bi="${i}"]`).getBoundingClientRect(); return { i, top: Math.round(r.top), bottom: Math.round(r.bottom), vh: window.innerHeight }; }, b0[3]);
     ok(drop.i >= 4 && drop.top < drop.vh && drop.bottom > 52, 'after a drop the exercise moved is on screen, not back at the top of the session', drop);
     // The bottom edge sits above the rest timer when it shows.
-    await ev(() => { window.scrollTo(0, 0); });
+    await ev(() => { (document.getElementById('page')||document.documentElement).scrollTo(0, 0); });
     const tk = await ev(() => { const s = document.querySelector('[data-act="sDone"][data-b="1"][data-s="0"]'); s.scrollIntoView({ block: 'center' }); return true; });
     await page.tap('[data-act="sDone"][data-b="1"][data-s="0"]'); await wait(300);
     const tm = await ev(() => { const t = document.getElementById('timer'); return t && !t.hidden ? Math.round(t.getBoundingClientRect().top) : null; });
-    await ev(() => { window.scrollTo(0, 0); }); await wait(100);
+    await ev(() => { (document.getElementById('page')||document.documentElement).scrollTo(0, 0); }); await wait(100);
     gb = await page.locator('.bgrip[data-b="0"]').boundingBox(); x0 = gb.x + gb.width / 2; y0 = gb.y + gb.height / 2;
-    const sy5 = await ev(() => window.scrollY);
+    const sy5 = await ev(() => (document.getElementById('page')||document.documentElement).scrollTop);
     await tp('touchStart', x0, y0); await wait(60);
     for (let k = 1; k <= 10; k++) { await tp('touchMove', x0, y0 + (tm - 20 - y0) * k / 10); await wait(30); }
     for (let k = 0; k < 40; k++) { await tp('touchMove', x0, tm - 20 + (k % 2)); await wait(40); }
-    const sy6 = await ev(() => window.scrollY);
+    const sy6 = await ev(() => (document.getElementById('page')||document.documentElement).scrollTop);
     await tp('touchEnd', x0, tm - 20); await wait(400);
     ok(tk && tm && sy6 > sy5 + 100, 'with the rest timer showing, a finger just above it scrolls the page down', { timerTop: tm, sy5, sy6 });
     ok(!(await ev(() => document.body.classList.contains('blkdrag') || !!document.getElementById('view').style.paddingBottom)), 'nothing from the drag is left on the page', null);

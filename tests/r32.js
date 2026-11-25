@@ -363,7 +363,7 @@ const seed = (L, unit, exId, list, rr) => {
     await new Promise(r => setTimeout(r, 200));
     await P.page.click('[data-act="bMenu"][data-b="0"]'); await new Promise(r => setTimeout(r, 150));
     await P.page.click('#modal [data-op="bHist"]'); await new Promise(r => setTimeout(r, 200));
-    const h = await ev(() => { const m = document.querySelector('#modal'); return { kind: window.__ironlog.ui.modal && window.__ironlog.ui.modal.kind, text: m.innerText, svg: !!m.querySelector('svg polyline'), rows: m.querySelectorAll('li').length, over: document.documentElement.scrollWidth > innerWidth, link: !!m.querySelector('[data-act="goDash"][data-ex="bench"]') }; });
+    const h = await ev(() => { const m = document.querySelector('#modal'); return { kind: window.__ironlog.ui.modal && window.__ironlog.ui.modal.kind, text: m.innerText, svg: !!m.querySelector('svg polyline'), rows: m.querySelectorAll('li').length, over: (document.getElementById('page')||document.documentElement).scrollWidth > innerWidth, link: !!m.querySelector('[data-act="goDash"][data-ex="bench"]') }; });
     ok(h.kind === 'exhist' && h.rows === 4 && h.svg && /82\.5×9 @1/.test(h.text) && h.link, '205: an exercise\'s ⋯ menu opens its history (4 sessions, sets as logged), a chart, and Open in Stats', h);
     ok(!/NaN|undefined/.test(h.text) && !h.over, '205: nothing reads NaN, and it fits 320 px', h.text.slice(0, 200));
     await ev(() => window.__ironlog.ACT.mClose());

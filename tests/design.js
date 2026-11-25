@@ -17,7 +17,7 @@ const fails = []; const ok = (c, m) => { if (!c) { fails.push(m); console.log('F
   ok(await ev(() => { const el = document.querySelector('[data-sk="today:week"]'); return el && el.open; }), 'tapping the ring opens This week');
 
   // Logger.
-  await ev(() => window.scrollTo(0, 0));
+  await ev(() => (document.getElementById('page')||document.documentElement).scrollTo(0, 0));
   await page.click('.hero [data-act="startSession"]:not([data-light])'); await page.waitForTimeout(150);
   const n0 = await ev(() => { const b = window.__ironlog.state.draft.ex[0]; return { n: b.sets.length, lastR: b.lastR.slice(), grey: window.__ironlog.greyR(b, 0), load: !!(b.tgt && b.tgt.kind === 'load') }; });
   await page.click('[data-act="sDone"][data-b="0"][data-s="0"]'); await page.waitForTimeout(120);
