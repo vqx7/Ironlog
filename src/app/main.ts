@@ -335,6 +335,7 @@ import {
 } from './worksets';
 import { readyCard } from './workout';
 import { fbContext, fbShrink } from './report';
+import { rowsBusy, rowsDiag } from './rows';
 import { accountStart, acctInit, syncLine, waiting } from './account';
 import { impBuild, impMatch, importData, impStart, liveLogFetch, routineFromLog } from './importflow';
 import { makeDemo } from './demo';
@@ -455,6 +456,8 @@ function oldLogFixes(): void {
 function exposeForTests(): void {
   window.__ironlog = {
     act,
+    rowsBusy,
+    rowsDiag,
     undoNext,
     liftRead,
     draftMachine,

@@ -698,22 +698,35 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       ok(saidB1.some(t => t.includes('The workout in progress was saved in another tab. What was done here since was added to it.')), 'S-6: and the tab behind says so, as another tab (REV12-6, NEW-136)', saidB1);
       await A1.close();
     }
-    {
-      // REV-2: a note changed in tab A, then in tab B, which has not heard it; Undo in B's Settings keeps A's note.
+    /* REV-2: a note changed in tab A, then in tab B, which has not heard it; Undo in B's Settings keeps A's note. Both
+       ways the two copies can meet: with tab A's edit time not yet written (A's own save decides, B's change is not
+       made) and with it written, where B's later edit is kept and its Undo goes back to A's note, the copy it
+       replaced, not to the one tab B held before it (NEW-204). Tab A writes its edit times 0.8 s after a save. */
+    for (const timed of [false, true]) {
       const A2 = await phone({ seed: function (S) { S.sessions.push({ id: 'k3', date: '2026-11-05', dayIdx: 0, dayName: 'Day 1', notes: 'first', ex: [{ exId: 'bench', sets: [{ w: 62.5, r: 8, rir: 2, done: true }] }] }); S.settings.lastExport = '2026-11-11'; } });
       const B2 = await tab(A2, FILE); B2.ev = (f, a) => B2.page.evaluate(f, a); await wait(300);
       await B2.ev(() => { window.__deaf = true; });
       const skew2 = Math.max(0, Date.parse(await clockOf(A2)) - Date.parse(await clockOf(B2)));
+      const timeOf = () => A2.ev(k => { try { const n = JSON.parse(localStorage.getItem(k + '.sync') || 'null'); for (const d of Object.values((n && n.recAt) || {})) if (d && d['sessions/k3'] > 0) return d['sessions/k3']; } catch (e) { return 0; } return 0; }, KEY);
+      const t0 = await timeOf();
       await A2.ev(() => { const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 'k3').notes = 'typed in tab A'; }); });
+      // Timed: until tab A's notes hold the edit's time (never a fixed wait: a slow machine made the other case this one).
+      let written = false;
+      if (timed) for (let i = 0; i < 100 && !written; i++) { written = (await timeOf()) > t0; if (!written) await wait(50); }
       await wait(skew2 + 150);
       await B2.ev(() => { const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 'k3').notes = 'typed in tab B'; }, { undo: true }); });
-      await wait(400);
+      await B2.page.waitForFunction(k => { try { return JSON.parse(localStorage.getItem(k)).sessions.find(s => s.id === 'k3').notes !== 'first' && !!window.__ironlog; } catch (e) { return false; } }, KEY, { timeout: 5000 }).catch(() => {});
+      await wait(250);
+      const merged = (await A2.stored()).sessions.find(s => s.id === 'k3').notes;
       await B2.ev(() => { window.__deaf = false; }); await wait(200);
       await B2.page.click('#tabs [data-tab="settings"]'); await wait(200);
       await B2.ev(() => { const d = document.getElementById('dataSec'); if (d && d.tagName === 'DETAILS' && !d.open) d.querySelector('summary').click(); }); await wait(200);
       if (await B2.ev(() => !document.querySelector('#dataSec [data-act="undo"]').disabled)) { await B2.page.click('#dataSec [data-act="undo"]'); await wait(500); }
       const note = (await A2.stored()).sessions.find(s => s.id === 'k3').notes;
-      ok(note === 'typed in tab A', 'S-6: Undo in the tab that was behind never takes away the note the other tab typed (REV-2)', note);
+      if (timed) ok(written && merged === 'typed in tab B', 'S-6: (setup) with tab A\'s edit time written, the later edit, tab B\'s, is the one kept', { written, merged });
+      ok(note === 'typed in tab A', `S-6: Undo in the tab that was behind never takes away the note the other tab typed, ${timed ? 'with that tab\'s edit time written: Undo goes back to the note it replaced (NEW-204)' : 'its edit time not yet written (REV-2)'}`, note);
+      const inA = await A2.ev(() => window.__ironlog.state.sessions.find(s => s.id === 'k3').notes);
+      ok(inA === 'typed in tab A', `S-6: and the other tab shows its note (${timed ? 'time written' : 'time not written'})`, inA);
       await A2.close();
     }
     {
@@ -1459,6 +1472,49 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
     ok(za === 'from B' && zb === 'from B', 'S-11: changed on both, the copy edited later is kept on both phones', { za, zb });
     const said = await B.toasts();
     ok(said.includes('1 item was edited on two devices. The later edit was kept.'), 'S-11: and the phone that merged says "1 item was edited on two devices. The later edit was kept."', said);
+    /* NEW-205: Undo of an edit that replaced another phone's edit it had not seen goes back to that edit, not to the
+       copy this phone held before: phone A's note is never taken away by Undo on phone B. */
+    {
+      await A.sync(); await B.sync();
+      await note(A, 'z', 'typed on A'); await A.flush(); await wait(300);
+      await B.ev(() => { const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 'z').notes = 'typed on B'; }, { undo: true }); });
+      await B.flush(); await B.sync();
+      const kept = (await notesOf(B)).z;
+      await B.ev(() => window.__ironlog.ACT.undo()); await wait(300);
+      await B.flush(); await B.sync(); await A.sync();
+      const got = { kept, a: (await notesOf(A)).z, b: (await notesOf(B)).z };
+      ok(got.kept === 'typed on B' && got.a === 'typed on A' && got.b === 'typed on A', "S-7: Undo of an edit that replaced another phone's edit, not seen when it was made, goes back to that edit on both phones (NEW-205)", got);
+    }
+    /* The same when the edit is not the newest change: three more changes with Undo are made on phone B before it syncs,
+       so the step that goes back to phone A's edit is the fourth from the top, one the merge looks in after its own
+       stretch of work. Undo four times, at once after the sync. */
+    {
+      await A.sync(); await B.sync();
+      await note(A, 'z', 'third on A'); await A.flush(); await wait(300);
+      await B.ev(() => { const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 'z').notes = 'third on B'; }, { undo: true }); for (const n of ['one', 'two', 'three']) L.act(() => { L.state.settings.userName = n; }, { undo: true }); });
+      await B.flush(); await B.sync();
+      const kept = (await notesOf(B)).z;
+      await B.ev(() => { for (let i = 0; i < 4; i++) window.__ironlog.ACT.undo(); }); await wait(300);
+      await B.flush(); await B.sync(); await A.sync();
+      const got = { kept, a: (await notesOf(A)).z, b: (await notesOf(B)).z, name: await B.ev(() => window.__ironlog.state.settings.userName) };
+      ok(got.kept === 'third on B' && got.a === 'third on A' && got.b === 'third on A' && got.name !== 'one' && got.name !== 'two' && got.name !== 'three', "S-7: and when three more changes were made after it: the fourth Undo goes back to the other phone's edit", got);
+    }
+    /* And after the app is closed and opened again on phone B between the sync that kept its edit and Undo: the copy
+       to go back to is in the step as stored, not only in the open page (REV32-1). Last of the three: a page opened
+       again starts its clock again. */
+    {
+      await A.sync(); await B.sync();
+      await note(A, 'z', 'last on A'); await A.flush(); await wait(300);
+      await B.ev(() => { const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 'z').notes = 'last on B'; }, { undo: true }); });
+      await B.flush(); await B.sync();
+      const kept = (await notesOf(B)).z;
+      await wait(400);
+      await B.page.reload(); await B.page.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart); await wait(800); await B.settled();
+      await B.ev(() => window.__ironlog.ACT.undo()); await wait(300);
+      await B.flush(); await B.sync(); await A.sync();
+      const got = { kept, a: (await notesOf(A)).z, b: (await notesOf(B)).z };
+      ok(got.kept === 'last on B' && got.a === 'last on A' && got.b === 'last on A', "S-7: and after the app is closed and opened again on that phone before Undo (REV32-1)", got);
+    }
     // Changed on one side, deleted on the other: it is kept.
     await del(A, 'x'); await note(B, 'x', 'kept on B'); await A.flush(); await B.flush(); await A.sync(); await B.sync();
     const xa = (await notesOf(A)).x, xb = (await notesOf(B)).x;

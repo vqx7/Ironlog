@@ -50,7 +50,7 @@ import {
   sameRecord,
   storedJson
 } from './merge';
-import type { Wins } from './merge';
+import type { Lost, Wins } from './merge';
 import { keptOnSession, unname } from './machines';
 import { draftCardio, draftSession } from './session';
 import type { DraftLike } from './session';
@@ -69,6 +69,17 @@ import { FIRST_MACHINE } from './model';
 import { invalidate } from './live';
 import { AUTH, codeOf } from './providers';
 import { photoHeld, photoNote, photoOf, photoPending, photoSent, photoTake } from './photo';
+import {
+  ROWS_UPDATE,
+  rowsAsked,
+  rowsBlocked,
+  rowsForget,
+  rowsGate,
+  rowsLogKeys,
+  rowsRemoved,
+  rowsSoon,
+  rowsStart
+} from './rows';
 import { acct, cloud, fx, setState, state, ui } from './store';
 import type {
   Base,
@@ -85,6 +96,7 @@ import type {
 import {
   KEY,
   capturePost,
+  undoKeeps,
   demoRestore,
   device,
   log,
@@ -384,6 +396,8 @@ let notesEp = 0;
 /** The notes in this tab now describe a new log (above): forgotten, or another account's. */
 const newEp = (): void => {
   notesEp = Math.max(Date.now(), notesEp + 1);
+  // The rows' notes describe the log the notes before did: forgotten with them.
+  rowsForget();
 };
 /** The moment stored notes last stopped describing the log before them; 0 when they say none. */
 const epOf = (m: Rec | null): number => (m && typeof m.ep === 'number' ? m.ep : 0);
@@ -615,6 +629,16 @@ export function setCloud(st: CloudStatus, err?: string | undefined): void {
   cloud.err = err || null;
   fx.setSaveState();
   fx.syncLine();
+  // The documents are in step with the account: the account's rows are made to say what the log says (rows.ts).
+  if (st === 'synced') rowsSoon();
+}
+/** Stops the sync on an account whose layout asks for a newer build than this one, and says so: nothing more is read from the account or written to it. True when it stopped. */
+function rowsStop(): boolean {
+  if (!rowsBlocked()) return false;
+  // Asked again at each try, never waited for: an account that goes back to a layout this build knows syncs at the try after.
+  void rowsGate();
+  setCloud('offline', ROWS_UPDATE);
+  return true;
 }
 /** The account's document by id. Only called while the sync is on, when there is a db. */
 function ref(id: string): CloudRef {
@@ -1524,6 +1548,10 @@ export async function cloudFlush(): Promise<void> {
      would find nothing to send and say Synced, the account's own changes
      never read. */
   if (!pulled) return cloudPull();
+  // Nothing is sent while the account's layout, asked for when the read before this send began, is on its way (it answers, or is given up on within the sync's own wait for an answer).
+  const asked = rowsAsked();
+  if (asked) await asked;
+  if (rowsStop()) return;
   if (trackT || cloud.pendAt) trackEdits();
   const todo = changedDocs();
   /* The draft goes up last: Finish empties it and adds the
@@ -1548,7 +1576,7 @@ export async function cloudFlush(): Promise<void> {
     let adopted = false,
       moreBody = false,
       again = false;
-    const stat = { conflicts: 0 };
+    const stat: { conflicts: number; lost: Lost[] } = { conflicts: 0, lost: [] };
     let dn: {
       prev: DraftLike | null;
       sessions0: unknown;
@@ -1607,7 +1635,8 @@ export async function cloudFlush(): Promise<void> {
             const remoteWins = ret > (cloud.editAt[x.id] || 0),
               rt = timesIn(b.rt);
             const mine = parseJson(json);
-            const clashed = stat.conflicts;
+            const clashed = stat.conflicts,
+              lostBefore = stat.lost.length;
             const merged = mergeChunk(x.id, baseFor(x.id, m, legB), mine, rd, clashRule(x.id, rt, remoteWins), stat);
             // The workout here before this flush took anything in, for what is said after it; each merge reads the one here now.
             const prev = x.id === 'draft' ? state.draft : null;
@@ -1624,6 +1653,7 @@ export async function cloudFlush(): Promise<void> {
               /* This document's merge is dropped, to be made again by the pull, which says its clashes; those of the
                  documents taken in before it are said with them (or at once, when the send gives up). */
               stat.conflicts = clashed;
+              stat.lost.length = lostBefore;
               if (++handedOver > HAND_OVERS) {
                 handedOver = 0;
                 tellTakenIn();
@@ -1638,7 +1668,11 @@ export async function cloudFlush(): Promise<void> {
             cloud.editAt[x.id] = Math.max(cloud.editAt[x.id] || 0, ret);
             if (x.id === 'draft' && !dn) dn = { prev, sessions0: state.sessions, kept: null, lost: null };
             const agreed = x.id === 'draft' && m && m.b ? m.b.draft : null;
+            const before = rowsLogKeys();
             applyChunk(x.id, merged);
+            rowsRemoved(before);
+            // Undo of a change kept here over the account's copy goes back to that copy (undoKeeps).
+            undoKeeps(stat.lost.splice(lostBefore));
             adopted = true;
             writeTakenIn();
             took = { h: hashStr(b.json), at: Number(b.at), b: baseOf(x.id, rd) };
@@ -2071,7 +2105,11 @@ async function pullAll(said: number): Promise<void> {
     setCloud('offline');
     return;
   }
+  if (rowsStop()) return;
   setCloud('connecting');
+  const began = Date.now();
+  // The account's layout is asked for beside its documents: what it says stops this sync below, or its send (cloudFlush).
+  void rowsGate();
   let snap: Awaited<ReturnType<ReturnType<CloudDb['collection']>['get']>>;
   try {
     snap = await withTimeout(cloud.db.collection(`data/users/${cloud.uid}`).get(), SYNC_MS.net, 'sync-pull');
@@ -2083,6 +2121,10 @@ async function pullAll(said: number): Promise<void> {
   }
   cloud.lastPull = Date.now();
   pulled = true;
+  if (rowsStop()) {
+    conflictNote({ conflicts: said });
+    return;
+  }
   // What the other tab synced while this one waited for the account is read before this tab's notes are.
   notesCatchUp();
   // The profile photo, from the same listing: a document of its own, so nothing below reads it.
@@ -2100,6 +2142,7 @@ async function pullAll(said: number): Promise<void> {
       fx.render();
       fx.toast('Demo data cleared. It never goes into an account.');
     }
+    readBegan = began;
     await cloudFlush();
     return;
   }
@@ -2119,7 +2162,7 @@ async function pullAll(said: number): Promise<void> {
     merged = false,
     draftIn = false,
     keptDraft = false;
-  const stat = { conflicts: said };
+  const stat: { conflicts: number; lost: Lost[] } = { conflicts: said, lost: [] };
   const adoptedIds = new Set<string>();
   const leg: { bodyweights: unknown[]; measurements: unknown[] } = { bodyweights: [], measurements: [] };
   const legB = legacyBodyBase();
@@ -2149,7 +2192,10 @@ async function pullAll(said: number): Promise<void> {
     lost: Kept = null;
   if (parts) {
     const aside = laterCopiesKept(parts, stat);
+    const before = rowsLogKeys();
     setState(assemble(parts));
+    rowsRemoved(before);
+    undoKeeps(stat.lost);
     putCopiesAside(aside);
     keepLastCopies(held);
     absorbLegacy(leg);
@@ -2203,6 +2249,7 @@ async function pullAll(said: number): Promise<void> {
     // Nothing taken in here: what a send took in before handing over is still said.
     conflictNote(stat);
   }
+  readBegan = began;
   await cloudFlush();
 }
 
@@ -2225,6 +2272,7 @@ function stillSeen(d: Rec | null, seen: CloudSeen): boolean {
    whose documents live in one test's page or are written one request at a time. */
 function storeOf(raw: CloudDbIn): CloudDb {
   return {
+    rows: raw.rows,
     collection: p => raw.collection(p),
     doc(path) {
       const d = raw.doc(path);
@@ -2270,6 +2318,8 @@ let starting: Promise<void> | null = null;
 let starts = 0;
 let firstPull = false;
 let pulled = false;
+/** When the last whole read of the account that this tab took in was asked for: a document written before then is in the log (what rows.ts waits for before it sends the log over a row). */
+let readBegan = 0;
 /** Settles once no start of the sync is under way, so the sync then reads on or off: what a sign-in says waits for it. */
 export async function cloudDecided(): Promise<void> {
   while (starting) await starting;
@@ -2720,7 +2770,7 @@ function mergeIn(text: string, own: boolean): void {
   // above resyncLocalH).
   trackEdits();
   const held = heldNow();
-  const stat = { conflicts: 0, byTime: 0 };
+  const stat: { conflicts: number; byTime: number; lost: Lost[] } = { conflicts: 0, byTime: 0, lost: [] };
   // The workout here before the merge: the copy that may lose it (below), and what is then said.
   const dr0 = state.draft;
   let kept: Kept = null;
@@ -2750,6 +2800,8 @@ function mergeIn(text: string, own: boolean): void {
     for (const id in parts) recordTimesAfter(id, L[id], Rr[id], parts[id], other ? other[id] || null : null);
     const aside = laterCopiesKept(parts, stat);
     setState(assemble(parts));
+    // Undo of a change kept here over the other tab's copy goes back to that copy (undoKeeps).
+    undoKeeps(stat.lost);
     putCopiesAside(aside);
     /* The copy of the workout that lost the merge keeps its sets, as on two phones (keepLost): this tab's when it held
        something logged the other tab's save lacked, the other tab's when it did and this tab's copy stood. Logged means
@@ -2825,13 +2877,15 @@ export function syncStart(): void {
      was last agreed with the cloud, so the first pull adopts the cloud copy
      instead of the first flush writing an empty state over it. */
   if (!device.hadLocal) {
-    // Writes sent from a log no longer here are not this log's: forgotten with the notes.
+    // Writes sent from a log no longer here are not this log's: forgotten with the notes, and the rows' notes with them.
+    rowsForget();
     cloud.meta = {};
     cloud.sent = {};
     cloud.editAt = {};
     cloud.recAt = {};
   }
   resyncLocalH();
+  rowsStart({ ep: () => notesEp, unsent: hasUnsent, pulledAt: () => readBegan, stop: rowsStop });
   window.addEventListener('storage', onStorage);
   document.addEventListener('visibilitychange', onVisibility);
   window.addEventListener('pagehide', onPageHide);

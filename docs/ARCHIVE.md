@@ -315,6 +315,48 @@ major.minor.patch for a small release put in before the next minor one (V: "call
   exactly as in Standard), `tests/design.js` (every text pair in both palettes under any accent), `tests/personas.js`
   21, `tests/hygiene.js` (the night palette one set; day and night name the same tokens), `tests/wayback.js`.
 
+
+### r125 (2026-11-23, version 2.78; one row per record, first phase; tracker rows NEW-201, NEW-203 to NEW-213, REV31)
+
+The sync layer between a phone and the account is being replaced in three releases (V's go of 2026-11-23 on
+`claude/ironlog-2.78-design.md` and `-2.md` in the project, reviewed once as REV31): 2.78 writes one row per record
+beside the documents and checks that both say the same; 2.79 switches each account to its rows; 2.80 removes the
+document code. In 2.78 the documents still decide what the log is, and nothing changes for a lifter.
+
+- **Undo and an unseen edit (NEW-204, NEW-205):** a merge that keeps this device's copy over one it had not seen names
+  what it replaced (`Lost`, merge.ts `merge3List` and `merge3Val`), and `undoKeeps` (storage.ts) gives that copy to
+  the Undo step that changed the record, so Undo goes back to the other tab's or phone's edit and not to the copy
+  before both; called in `cloudFlush`, `pullAll` and `mergeIn` (sync.ts).
+- **The SQL (`SUPABASE.md` Part 8, `OWNER.md` F1):** `records` and `records_preview`: a copy (`body`), the database's own
+  checksum of it (`sum`), the copy's version (`t`, `dev`, `a`), the deletion mark (`gone_*`), the change number (`seq`);
+  the trigger `records_join` (the later version of the copy, the mark that names the later copy, an account's writes
+  one at a time); `records_push`, `records_pull`, `records_digest`; the limits; error names `rows_*`.
+- **`md5.ts` (layer 1):** `md5`, the checksum Postgres gives the same text.
+- **`rows.ts` (layer 3):** the notes under `ironlog.v1.rows` (`Held`, a row as last known, one short line a row); the
+  log as rows (`recsOf`, `mineNow`, read again only for a document whose fingerprint moved); `takeIn` (the list for a
+  phone with no notes, else the rows since its number), `send` (200 rows and 400 KB a write at most), `inStep`,
+  `takes`, `versionOf`, `rowFor`, `pass` (nothing asked of the account when nothing differs), `draftRow`, `check` (the
+  daily checksum), `deviceRow`; what the sync calls: `rowsStart`, `rowsSoon` (from `setCloud('synced')`), `rowsGate`
+  and `rowsBlocked` (the layout a build must know; `rowsStop` in sync.ts), `rowsForget` (from `newEp`), `rowsLogKeys`
+  and `rowsRemoved` (records a sync took out of the log), `rowsDiag` (Settings > "More" and "Copy diagnostics"),
+  `rowsBusy` (the suites).
+- **The account code:** `db.rows` in scripts/cloud-supabase.js (`push`, `pull`, `digest`, `list`; null where the project
+  has no such table); `CloudRows` and `RowIn` (store.ts); `storeOf` passes `rows` through.
+- **Checks:** `tests/rowsdb.js` (the SQL on PGlite for every suite), `tests/sql-rows.js`, `tests/sql-two.js` with the
+  workflow's `sqltwo` job, `tests/sim.js` and `tests/simlib.js` (phones in Node and whole histories), `tests/rows.js`
+  with `tests/sim-cases.json`, `tests/storage-sync-account.js` S-34, `tests/fake-supabase.js` (`recordsOn`),
+  `tests/storage-sync.js` S-6 and S-7 (Undo), `tests/mixed.js` (the pin reads the older build's merge, NEW-203).
+- **After the one review of the built stack (REV32):** `undoKeeps` marks the step it changes as not stored, reads each
+  step's log once (`keepLook`), the two newest at once (`KEEP_NOW`) and the older ones a turn each (`keepLater`),
+  and `undoKeepsNow` finishes them before a step is taken back (`undoStep`). In `rows.ts`: a changed row waits from
+  the read that brings it in (`takeIn`); `oneTab` (one pass at a time across a phone's tabs) and notes read as stored;
+  `notesOut(N, own)` keeps what was written during a pass; the layout kept on the phone (`LAYOUT_KEY`, `rowsBlocked`),
+  `rowsAsked` (a send waits for the layout's read under way), a stopped phone asking again (`rowsStop`), a level
+  that cannot be read stopping the sync (`layoutOf`); `warm` and `pause` (a visit's first read of the log a document
+  a turn); the photo's checksum kept in the notes (`Notes.ph`).
+- **Found by the histories and not changed here (NEW-206, NEW-207, NEW-209):** with one workout open on two phones
+  the documents can drop a ticked set around Finish; older than this release; the rows are designed to end it.
+
 ### r72 (2026-11-04, version 2.27; V's report of the fold's jump on live r71 and the 387 audit of the engines, with V's rulings of 2026-11-04; tracker rows NEW-63, 387-B1 to 387-B7, 387-B9, 387-C1, 387-D)
 
 - **The fold's glide (NEW-63):** `autoFold` (worksets.ts) hands the next exercise to `foldGlide`, which holds the space the fold took away as a margin above it and gives it back over `FOLD_MS.glide` while the page scrolls, ending where `scrollIntoView` put it (the exercise's scroll margin and the page's scroll padding); a touch or a wheel stops it, reduced motion goes straight there, a focused field in it keeps it still. Until r71 the anchoring `scrollBy` stopped at the top when the fold took away more than the page was scrolled, so the screen showed the session's title and glided back down (r60 and later).

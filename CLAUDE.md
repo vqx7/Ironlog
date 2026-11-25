@@ -3,7 +3,7 @@
 A hypertrophy and strength tracker for one lifter, V, used on a phone at the gym. It ships as a standalone
 installable web app: built from `src/` into one page, served by GitHub Pages at https://ironapp.org, working
 offline, with the log on the phone and an optional account that syncs it. Every pull request also publishes a
-preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r124, version 2.77.1, state schema v5.
+preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r125, version 2.78, state schema v5.
 
 The Claude artifact version was retired by V on 2026-09-27 (`OWNER.md` Done): never work on it or republish it.
 `cloudProvider()` still takes Claude's db when `window.claude` exists, because the sync suites use it as their
@@ -26,7 +26,8 @@ stand-in cloud.
 
 1. One release is one pull request. GitHub runs every suite in Chromium and in WebKit (the engine of every iPhone
    browser) and publishes the preview; V tries it on the phone and merges on GitHub's website. That run is the
-   gate (V, 2026-11-02): all eight jobs green on the exact head commit, read from GitHub's API. It runs the list
+   gate (V, 2026-11-02): every job green on the exact head commit, read from GitHub's API: the four shards in
+   Chromium, the four in WebKit and, since 2.78, the rows' SQL on a Postgres server (`sqltwo`, twice). It runs the list
    `npm test` runs (`tests/run.js --shard`), so the full local run is not repeated; locally, `npx tsc --noEmit -p .`,
    `npm run join:check`, `tests/hygiene.js` and every suite a change touches.
 2. A change a lifter can see gets a test that fails without it, written before the fix, and run on the build
@@ -158,6 +159,23 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   has seen (`laterThanSeen`). These times move only for the lifter's change: what the app writes on its own (a fix
   made at start, its own bookkeeping, a name it keeps, a newer build's reading of an old log) is sent, but moves none
   (`app` in act.ts, `editsNoted` and `seenAsIs` in sync.ts).
+- **The account's rows (2.78, first phase; `rows.ts`, `SUPABASE.md` Part 8; the design is in the project,
+  claude/ironlog-2.78-design.md and its second part):** the account also holds one row per record, and the documents still decide
+  what the log is. `rows.ts` makes the rows say what the log says after each sync of the documents and never
+  changes the log (it never calls `setState`), never writes the document sync's notes, and sends its requests
+  outside the sync's queue; a failure turns it off until the app is opened again and is said in Settings > "More".
+  What it sends is worked out from the log's content against the row it last knew, never from a note that a
+  change happened. A row's time is the one the documents hold for the record. A row the account changed, or holds
+  as the later copy, is left alone for a minute and a whole read of the documents before the log's copy is sent
+  over it, and that is recorded; the wait is noted by the read that brings the changed row in (`takeIn`), whichever
+  part of the module asked for it. One pass runs at a time across a phone's tabs, on the notes as stored. The account joins every write itself (the trigger in Part 8): a phone never
+  decides a row's version by arrival. The layout row (`meta/layout`) says which layer decides and the level of
+  build it asks for: a build that does not know it stops syncing and says to update (`rowsGate`, read whatever
+  else failed; kept on the phone so the next app open knows before its first request; what cannot be read in it is
+  read as more than the build knows). The SQL is one text in `SUPABASE.md` (the preview's is the live table's with the name changed);
+  every suite reaches it through `tests/rowsdb.js`, a real Postgres engine, so no suite keeps a copy of the
+  account's rules in JavaScript. A rule added to `rows.ts` or to the SQL gets a copy with that rule broken that
+  must fail (`tests/rows.js`, `tests/sql-rows.js`).
 - **Numbers:** no number without a source in `docs/EVIDENCE.md`; a convention is labelled as one there and as a rule of thumb on screen. Studies are named in the Guide's Sources, not in tips (V, 2026-11-08).
   Trends are never shown as a 1RM; a muscle with no clear lift reads unclear, never 0%; weight lifted is never a
   percentage against last week; no projections. Deloads and lighter loads are whole steps, never under the bar on a

@@ -10,6 +10,10 @@ that changes any of it.
 - **The log** is on the phone (the browser's storage for the site). Signed in, a copy syncs to the Supabase project,
   one row per document, readable only by its own account (row level security) and by V as the project's owner
   (Table Editor).
+- **One row per record** (2.78): from 2.78 the same project also holds each record of the log as a row of its own
+  (`records`, and `records_preview` for the preview), beside the documents, under the same row level security and
+  visible to V in the Table Editor. A phone can add and change its account's rows and never delete one; the
+  database works out each row's checksum itself. Deleting an account deletes them.
 - **Problem reports** go to the `feedback` table: anyone signed in can add one, only accounts in `feedback_readers`
   (V) can read them. A server function turns each into an issue in V's private `ironlog-feedback` repository.
 - **The profile photo** (2.33; the account's since 2.34, R79-1) is one small JPEG, synced as a document of its own
@@ -99,6 +103,9 @@ Now:
 - Row level security on every table: `docs` and `docs_preview` own rows only, `feedback` add your own and only
   readers read, `feedback_readers` your own row (`SUPABASE.md`; `tests/sql.js` runs that SQL in a real Postgres and
   tries every crossing). The stand-in server in the browser suites keeps the same rule (`tests/fake-supabase.js`).
+  `records` and `records_preview` (2.78): own rows only, nothing for signed-out visitors, no delete, the functions
+  run with the caller's own rights and are not open to `anon` (`tests/sql-rows.js` tries each); behind the stand-in
+  server they are the SQL itself (`tests/rowsdb.js`).
 - The app holds only the public key; the secret key never enters the repository (`scripts/build.js` refuses one;
   `tests/accounts.js` checks the build).
 - Deleting an account deletes its rows (`on delete cascade`; `supabase/functions/delete-account/index.ts`).

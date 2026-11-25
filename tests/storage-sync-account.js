@@ -1196,8 +1196,117 @@ async function from_r80b() {
     await fake.close();
 }
 
+/* ---------- S-34: one row per record, first phase: the built app, its own account code (scripts/cloud-supabase.js)
+   and the SQL of SUPABASE.md, Part 8, on a real Postgres engine behind the stand-in server. tests/rows.js checks the
+   rules on whole histories in Node; here the page is the one a phone opens. ---------- */
+async function rows_first_phase() {
+  const ok = okAs('S-34');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ironlog-rows-'));
+  fs.cpSync(SRC, tmp, { recursive: true });
+  const PW = 'correct horse 9';
+  const fake = await start(tmp);
+  const ip = path.join(tmp, 'index.html');
+  fs.writeFileSync(ip, H.cspFix(fs.readFileSync(ip, 'utf8').replace(/"url":"https:\/\/[a-z0-9]+\.supabase\.co"/, `"url":"${fake.base}"`), fake.base));
+  const APP = fake.base + '/ironlog/';
+  const browser = await H.engine.launch();
+  const errors = [];
+  async function device() {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, serviceWorkers: 'block' });
+    await quietHibp(ctx);
+    const page = await ctx.newPage();
+    page.on('pageerror', e => errors.push('page error: ' + e.message));
+    page.on('console', m => { if (m.type() === 'error' && !/Failed to load resource|status of 4\d\d/.test(m.text())) errors.push('console: ' + m.text()); });
+    const ready = () => page.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart, null, { timeout: 15000 });
+    await page.goto(APP); await ready();
+    await page.evaluate(() => { localStorage.setItem('ironlog.v1.installLater', '1'); localStorage.setItem('ironlog.v1.tipWake', '1'); const L = window.__ironlog; L.state.settings.onboarded = true; L.saveNow(); L.render(); });
+    const D = { ctx, page, ev: (f, a) => page.evaluate(f, a) };
+    /** Synced, and the rows' own pass, which runs after the sync, ended. */
+    D.settled = async () => {
+      const synced = await page.waitForFunction(() => { const c = window.__ironlog.cloudState(); return c.on && c.status === 'synced'; }, null, { timeout: 15000 }).then(() => true, () => false);
+      await wait(300);
+      await page.waitForFunction(() => !window.__ironlog.rowsBusy(), null, { timeout: 15000 }).catch(() => {});
+      return synced;
+    };
+    D.reload = async () => { await page.reload(); await ready(); await wait(1200); await D.settled(); };
+    D.signIn = async email => {
+      await page.click('#saveState'); await wait(250); await page.click('#modal [data-act="acctOpen"][data-mode="signin"]'); await wait(200);
+      await page.fill('#modal [data-abind="email"]', email); await page.fill('#modal [data-abind="pw"]', PW);
+      await page.click('#modal [data-act="acctSubmit"]');
+      await page.waitForFunction(() => { const m = window.__ironlog.ui.modal; return !m || !m.busy; }, null, { timeout: 10000 });
+      await D.settled(); await wait(1500); await D.settled();
+      await page.evaluate(() => { if (window.__ironlog.ui.modal) { const x = document.querySelector('#modal [data-act="mClose"], #modal .sheet-h [aria-label="Close"]'); if (x) x.click(); } });
+    };
+    D.pull = async () => { await page.evaluate(() => window.__ironlog.sync()); await wait(800); await D.settled(); };
+    /** What Settings > "More" shows of the rows, and what "Copy diagnostics" holds. */
+    D.more = () => page.evaluate(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.render(); const line = document.getElementById('rowsLine'); const more = document.querySelector('#view [data-mkey="more"]'); return { line: line ? line.textContent : null, copy: !!(more && more.querySelector('[data-act="diagCopy"]')) }; });
+    return D;
+  }
+  const mk = (id, date, note) => ({ id, date, dayIdx: 0, dayId: null, dayName: 'Day', routineId: '', free: true, notes: note, ex: [{ exId: 'bench', sets: [{ w: 100, r: 5, rir: 2, warm: false, drop: false }] }] });
+  const asked = () => fake.log.filter(l => /\/rest\/v1\/(rpc\/)?records/.test(l));
+  const U = fake.addUser('rows@example.com', PW);
+
+  // ---- The project has no rows tables yet (their SQL not run): the app asks once a visit, shows nothing, syncs as before.
+  const A = await device();
+  await A.ev(s => { const L = window.__ironlog; L.state.sessions = s; L.state = L.normalize(L.state); L.invalidate(); L.saveNow(); L.render(); }, [mk('r1', '2026-11-03', 'one'), mk('r2', '2026-10-20', 'two')]);
+  await A.signIn('rows@example.com');
+  let more = await A.more();
+  ok(asked().length === 1 && /rpc\/records_pull/.test(asked()[0]) && more.line === null, 'a project without the rows tables: the app asks for the layout once, shows no "Rows check" line, and syncs', { asked: asked(), more });
+  await A.ev(() => { const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 'r1').notes = 'edited before the tables'; }); });
+  await wait(2500); await A.settled();
+  ok(asked().length === 1 && (await A.ev(() => window.__ironlog.cloudState().status)) === 'synced', 'and never asks again that visit, whatever is saved', asked());
+
+  // ---- The SQL run: at the next visit the log goes into the rows, and Settings > "More" says how the check stands.
+  const R = await fake.recordsOn();
+  await A.reload();
+  const rowsOf = async () => R.rows(U.id, 'records');
+  const live = r => r.body !== null && !(r.gone_saw !== null && r.gone_saw === r.t && r.gone_saw_dev === r.dev);
+  let rows = await rowsOf();
+  const sess = () => rows.filter(r => r.kind === 'session').map(r => r.id + ':' + JSON.parse(r.body).notes + ':' + (live(r) ? 'log' : 'deleted')).sort();
+  more = await A.more();
+  ok(JSON.stringify(sess()) === JSON.stringify(['r1:edited before the tables:log', 'r2:two:log']) && rows.some(r => r.kind === 'meta' && r.id === 'layout') && rows.filter(r => r.kind === 'device').length === 1, 'with the tables: each session of the log is a row, with the layout and this phone\'s own row', { sess: sess(), kinds: [...new Set(rows.map(r => r.kind))] });
+  ok(more.line === 'Rows check: 1 clean day, 0 differences, 0 removed by a sync' && more.copy, 'Settings > "More" shows "Rows check: 1 clean day, 0 differences, 0 removed by a sync" and "Copy diagnostics" under it', more);
+  await A.page.click('#view [data-mkey="more"] [data-act="diagCopy"]', { force: true }).catch(async () => { await A.ev(() => { document.querySelectorAll('#view details').forEach(d => { d.open = true; }); }); await A.page.click('#view [data-mkey="more"] [data-act="diagCopy"]'); });
+  await wait(300);
+  const sheet = await A.ev(() => { const t = document.querySelector('#modal textarea'); return t ? t.value : ''; });
+  ok(/"rows": \{\s+"line": "Rows check: 1 clean day, 0 differences, 0 removed by a sync"/.test(sheet), 'the "Diagnostics" sheet holds the same line', sheet.slice(0, 300));
+  await A.ev(() => { const L = window.__ironlog; if (L.ui.modal) { const x = document.querySelector('#modal [data-act="mClose"], #modal .sheet-h [aria-label="Close"]'); if (x) x.click(); } L.ui.tab = 'today'; L.render(); });
+
+  // ---- An edit and a delete made in the app reach the rows; the log and the documents are what they would be without rows.
+  await A.ev(() => { const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 'r1').notes = 'edited with the tables'; }); });
+  await wait(2500); await A.settled();
+  await A.ev(() => { const L = window.__ironlog; L.act(() => { const s = L.state.sessions.find(x => x.id === 'r2'); L.state.trash = [{ id: s.id, kind: 'session', date: '2026-11-23', data: JSON.parse(JSON.stringify(s)) }, ...L.state.trash]; L.state.sessions = L.state.sessions.filter(x => x.id !== 'r2'); }); });
+  await wait(2500); await A.settled();
+  rows = await rowsOf();
+  const r2 = rows.find(r => r.kind === 'session' && r.id === 'r2');
+  ok(JSON.stringify(sess()) === JSON.stringify(['r1:edited with the tables:log', 'r2:two:deleted']) && r2.gone_day === '2026-11-23' && r2.gone_good === false, 'an edit and a delete made in the app: the edited copy in its row, the deleted session\'s row marked with its day and its copy kept', { sess: sess(), r2: r2 && [r2.gone_day, r2.gone_good] });
+
+  // ---- A second phone: the same log, and of the rows only its own device row added.
+  const before = JSON.stringify(rows.filter(r => r.kind !== 'device'));
+  const B = await device();
+  await B.signIn('rows@example.com');
+  rows = await rowsOf();
+  const bLog = await B.ev(() => window.__ironlog.state.sessions.map(s => s.id + ':' + s.notes).join());
+  ok(bLog === 'r1:edited with the tables' && JSON.stringify(rows.filter(r => r.kind !== 'device')) === before && rows.filter(r => r.kind === 'device').length === 2 && (await B.more()).line === 'Rows check: 1 clean day, 0 differences, 0 removed by a sync', 'a second phone signed in: the same log, no row of the log written again, its own device row added, its check clean', { bLog, devices: rows.filter(r => r.kind === 'device').length, line: (await B.more()).line, wait: await B.ev(() => JSON.parse(localStorage.getItem('ironlog.v1.rows') || '{}').wait), changed: rows.filter(r => r.kind !== 'device' && !before.includes(JSON.stringify(r))).map(r => r.kind + '/' + r.id) });
+
+  // ---- The account's layout asks for a newer build: this build stops syncing and says to update; the log stays.
+  const layout = JSON.parse(rows.find(r => r.kind === 'meta' && r.id === 'layout').body);
+  await R.call(U.id, 'records', 'push', [[{ kind: 'meta', id: 'layout', body: JSON.stringify({ ...layout, decides: 'rows', level: 2 }), t: Date.now() + 1000, dev: 'dev-new', a: 0 }]]);
+  const docsBefore = JSON.stringify([...fake.rows.values()].filter(r => r.user_id === U.id).map(r => r.data.json));
+  await A.ev(() => { const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 'r1').notes = 'typed after the switch'; }); });
+  await wait(2500); await A.pull(); await A.pull();
+  const st = await A.ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.render(); document.querySelectorAll('#view details').forEach(d => { d.open = true; }); return { c: L.cloudState(), shown: document.getElementById('view').innerText.includes('Update the app to keep syncing. Your log stays on this phone.'), note: L.state.sessions.find(s => s.id === 'r1').notes, line: (document.getElementById('rowsLine') || {}).textContent }; });
+  await A.ev(() => { const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 'r1').notes = 'typed later still'; }); });
+  await wait(2500); await A.pull();
+  const docsAfter = [...fake.rows.values()].filter(r => r.user_id === U.id).map(r => r.data.json).join();
+  ok(st.c.status === 'offline' && st.c.err === 'Update the app to keep syncing. Your log stays on this phone.' && st.shown && st.line === 'Rows check: this account needs a newer version of the app', 'an account whose layout asks for a newer build: the app stops syncing and Settings says "Update the app to keep syncing. Your log stays on this phone."', st);
+  ok(!docsAfter.includes('typed later still') && (await A.ev(() => window.__ironlog.state.sessions.find(s => s.id === 'r1').notes)) === 'typed later still', 'nothing typed after that is written to the account, and it stays in the log on the phone', { docsBefore: docsBefore.length });
+  ok(errors.length === 0, 'no error on any page', errors.slice(0, 3));
+  await browser.close();
+  await fake.close();
+}
+
 (async () => {
-  for (const [name, f] of [['r55b', from_r55b], ['r55-1b', from_r55_1b], ['r56-1b', from_r56_1b], ['r65b', from_r65b], ['r80b', from_r80b]]) {
+  for (const [name, f] of [['r55b', from_r55b], ['r55-1b', from_r55_1b], ['r56-1b', from_r56_1b], ['r65b', from_r65b], ['r80b', from_r80b], ['rows', rows_first_phase]]) {
     if (ONLY && !ONLY.includes(name)) continue;
     await f();
   }

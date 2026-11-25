@@ -227,10 +227,46 @@ export interface CloudRef {
       when another device wrote it first (the caller reads it again, merges and tries again). */
   setIf(doc: CloudDoc, seen: CloudSeen): Promise<boolean>;
 }
-/** The account's document store the sync uses: documents by path, and a listing of a collection's documents. */
+/** One record's row as a phone sends it (SUPABASE.md, Part 8): the record's kind and id, its copy as text (null once
+    deleted for good), the copy's version (when the lifter last edited it, on which device, and how many times the
+    app has written it since), its deletion mark when it has one (the copy it names, whether for good, when and on
+    which device it was made, the day Recently deleted shows, whether it is a copy put aside), and the version of
+    the copy this write was made over. */
+export interface RowIn {
+  kind: string;
+  id: string;
+  body: string | null;
+  t: number;
+  dev: string;
+  a: number;
+  gone_saw?: number | null;
+  gone_saw_dev?: string | null;
+  gone_good?: boolean;
+  gone_t?: number;
+  gone_dev?: string;
+  gone_day?: string | null;
+  gone_clash?: boolean;
+  over_t?: number | null;
+  over_dev?: string | null;
+}
+/** The account's rows, one per record (rows.ts): each call answers with what the account's own function returned,
+    or null when the account has no such table yet (its SQL not run), and throws as a document read does. */
+export interface CloudRows {
+  /** Writes the rows in one step; with `top`, only while the account's last change is still numbered `top`. */
+  push(rows: RowIn[], top?: number | null): Promise<unknown>;
+  /** The rows changed since change number `since`, in order, at most `most`. */
+  pull(since: number, most: number): Promise<unknown>;
+  /** The count of the account's rows and one checksum over them all. */
+  digest(): Promise<unknown>;
+  /** The rows changed since change number `since`, in order, without their copies, at most `most`: what a phone with no notes reads first. */
+  list(since: number, most: number): Promise<unknown>;
+}
+/** The account's document store the sync uses: documents by path, a listing of a collection's documents, and, where
+    the backend has them, the account's rows. */
 export interface CloudDb {
   doc(path: string): CloudRef;
   collection(path: string): { get(): Promise<{ docs: (CloudSnap & { id: string })[] }> };
+  rows?: CloudRows | undefined;
 }
 /** A document store as a backend hands it over: scripts/cloud-supabase.js writes conditionally (`setIf`); the
     suites' stand-in, Claude's db (`cloudProvider`, sync.ts), writes plainly (`set`), and the sync gives it a
@@ -242,6 +278,7 @@ export interface CloudDbIn {
     setIf?(doc: CloudDoc, seen: CloudSeen): Promise<boolean>;
   };
   collection(path: string): { get(): Promise<{ docs: (CloudSnap & { id: string })[] }> };
+  rows?: CloudRows | undefined;
 }
 
 /** The merge base a sync note keeps for a document (baseOf, sync.ts): per

@@ -50,9 +50,9 @@ src/01-03, 99       the page's markup and styles
 - **Modules with one-way dependencies**: config at the bottom, then data, engine and analytics (pure functions of their inputs), then storage and sync, then the screens. A module never reaches into another's internals. Every file under `src/app/`, at any depth, is a `.ts` module named by its path, in a move or written new, formatted by Prettier, with a comment on every export. Since r51 `tests/hygiene.js` holds each module to its layer in the list below, the one place the layers are written: an import goes only to the same layer or below, a new module is added to the list, and no import goes round in a circle (the bundle turns a module's `const` into `var`, so in a circle a value read before its module has run is `undefined`, not an error).
 
 Layer 0, config and record shapes: config, types
-Layer 1, data: util, units, library, routines, formulas, records, machines, gym, profile, model, layout
+Layer 1, data: util, units, library, routines, formulas, records, machines, gym, profile, model, layout, md5
 Layer 2, engine and analytics: session, loads, setread, usual, prs, trend, volume, goals, importing, format, charts, analytics, bests, time, weeks, coach, loadsteps, engine, oddloads, adjust, plans, pick
-Layer 3, storage and sync: chunks, merge, modals, store, live, providers, normalize, storage, sync, act, targets, pics, photo, park
+Layer 3, storage and sync: chunks, merge, modals, store, live, providers, normalize, storage, sync, act, targets, pics, photo, park, rows
 Layer 4, screens: icons, feedback, effort, toast, timer, tips, guide, sheets, sheetsmisc, notepics, bwnudge, sheetslift, sheetsplan, sheetsexercise, sheetspicker, sheetsapp, captcha, sheetsaccount, sheetsimport, env, outside, display, view, page, update, history, settings, graphs, plan, stats, calendar, week, map, today, workstate, worksets, workfinish, workout, worktaps, workfields, workdrag, report, account, importflow, demo, actsapp, actsroutine, actspick, actsstart, actslift, screens, events
 Layer 5, the page's start: main
 

@@ -17,7 +17,10 @@ import type { Session } from './types';
 import type { DraftLike } from './session';
 
 /** The conflicts a merge counted, and how many of them each record's own edit times decided (byTime). */
-type Stat = { conflicts: number; byTime?: number };
+/** A copy that lost a clash to this side's: its key (recordKey), the fingerprint of the copy both sides had agreed on, and the copy itself. */
+export type Lost = { key: string; base: string | undefined; copy: unknown };
+/** What a merge counts: its clashes, those decided by the records' own times, and, when the caller keeps them (`lost`), the other side's copies that lost one. */
+type Stat = { conflicts: number; byTime?: number; lost?: Lost[] };
 
 /* Which copy a clash keeps (a record changed on both sides since the copy both agreed): the later edit. Where the sync
    knows when each side last edited that record (sync.ts recAt, sent beside a document as `rt`), the record's own times
@@ -194,7 +197,9 @@ export function merge3List(
       continue;
     }
     stat.conflicts++;
-    out.push(winsFor(remoteWins, recordKey(list, id), stat) ? keptOn(b, a) : keptOn(a, b));
+    const theirs = winsFor(remoteWins, recordKey(list, id), stat);
+    if (!theirs && known) stat.lost?.push({ key: recordKey(list, id), base: bh, copy: b });
+    out.push(theirs ? keptOn(b, a) : keptOn(a, b));
   }
   return out;
 }
@@ -208,7 +213,9 @@ export function merge3Val<V>(bh: string | undefined, a: V, b: V, remoteWins: Win
   if (ah === rh || rh === bh) return a;
   if (ah === bh) return b;
   stat.conflicts++;
-  return winsFor(remoteWins, key, stat) ? b : a;
+  const theirs = winsFor(remoteWins, key, stat);
+  if (!theirs && key) stat.lost?.push({ key, base: bh, copy: b });
+  return theirs ? b : a;
 }
 
 /** A record's key in its document, as its edit time is kept by (sync.ts recordKeys): its list and its id, or a value's name. */
