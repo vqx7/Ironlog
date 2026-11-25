@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-S8FAbJynVyMJIEwZhds89JF25agb/leVUlpcisPzucM=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-zwxo5N6eZwT7ENAONEX4TkpDrALf/UNPx20H2L76pPk=' 'sha256-huPMTGr6cVObgHsnurSzS3VFHnVgOZK23rNVnZ1rNYI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-S8FAbJynVyMJIEwZhds89JF25agb/leVUlpcisPzucM=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-9GIqa61bSLKgz2/tIxbcLrgZNoQGDJt73hpxodgDGUg=' 'sha256-huPMTGr6cVObgHsnurSzS3VFHnVgOZK23rNVnZ1rNYI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.21-r124">
+<meta name="app-build" content="2026.11.23-r125">
 <title>Ironlog</title>
 <script>window.IRONLOG_APP=true;window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
@@ -1546,11 +1546,11 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     shift1: 16,
     shift2: 13
   };
-  function hashStr(str) {
+  function hashStr(str2) {
     const C2 = CYRB53;
     let h1 = C2.seed1, h22 = C2.seed2;
-    for (let i5 = 0; i5 < str.length; i5++) {
-      const c4 = str.charCodeAt(i5);
+    for (let i5 = 0; i5 < str2.length; i5++) {
+      const c4 = str2.charCodeAt(i5);
       h1 = Math.imul(h1 ^ c4, C2.mul1);
       h22 = Math.imul(h22 ^ c4, C2.mul2);
     }
@@ -2314,8 +2314,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.77.1";
-  var APP_VERSION = "2026.11.21-r124";
+  var DISPLAY_VERSION = "2.78";
+  var APP_VERSION = "2026.11.23-r125";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -2591,6 +2591,414 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var loadReadIn = (M3, kg2, t4) => loadReadAs(kg2, t4, UIn(M3));
   var loadReadOfIn = (M3, ex, kg2, t4) => loadReadIn(liftModelIn(M3, ex), kg2, t4);
   var planStepUnit = (v3) => unitOnGrid(v3);
+
+  // src/app/machines.ts
+  function keptName(key) {
+    return { mc: key, kp: true };
+  }
+  function nameAsIs(b2) {
+    return b2.mc ? b2.kp ? keptName(b2.mc) : { mc: b2.mc } : {};
+  }
+  function savedName(key, from) {
+    if (!key) return {};
+    return from.some((b2) => b2.mc === key && b2.kp) ? keptName(key) : { mc: key };
+  }
+  function pickName(b2, key) {
+    b2.mc = key;
+    delete b2.kp;
+  }
+  function unname(b2) {
+    delete b2.mc;
+    delete b2.kp;
+  }
+  function copyName(to, from) {
+    if (!from.mc) return;
+    to.mc = from.mc;
+    if (from.kp) to.kp = true;
+    else delete to.kp;
+  }
+  function cleanName(b2) {
+    return typeof b2.mc === "string" && b2.mc ? { mc: fixId(b2.mc), ...b2.kp === true ? { kp: true } : {} } : {};
+  }
+  function blocksOf(x2) {
+    const R2 = rec(x2);
+    if (!R2) return null;
+    const ex = arr(R2.ex);
+    if (ex) return { R: R2, inData: false, ex };
+    const D2 = rec(R2.data);
+    const dx = D2 && arr(D2.ex);
+    return dx ? { R: R2, inData: true, ex: dx } : null;
+  }
+  function withBlocks(R2, inData, ex) {
+    return inData ? { ...R2, data: { ...rec(R2.data), ex } } : { ...R2, ex };
+  }
+  var liftOf = (exId, light) => typeof exId === "string" ? `${exId}|${light ? 1 : 0}` : null;
+  function unkept(x2) {
+    const at2 = blocksOf(x2);
+    if (!at2 || !at2.ex.some((b2) => rec(b2)?.kp === true)) return x2;
+    return withBlocks(
+      at2.R,
+      at2.inData,
+      at2.ex.map((b2) => {
+        const B5 = rec(b2);
+        if (!B5 || B5.kp !== true) return b2;
+        const o3 = {};
+        for (const k2 of Object.keys(B5)) if (k2 !== "mc" && k2 !== "kp") o3[k2] = B5[k2];
+        return o3;
+      })
+    );
+  }
+  function keptOf(q) {
+    const kept = /* @__PURE__ */ new Map();
+    for (const b2 of blocksOf(q)?.ex || []) {
+      const B5 = rec(b2);
+      const k2 = B5 && B5.kp === true && typeof B5.mc === "string" ? liftOf(B5.exId, B5.light) : null;
+      if (B5 && k2 && typeof B5.mc === "string" && !kept.has(k2)) kept.set(k2, B5.mc);
+    }
+    return kept;
+  }
+  function keptOn(p3, q) {
+    const P2 = blocksOf(p3), kept = keptOf(q);
+    if (!P2 || !kept.size) return p3;
+    let put = false;
+    const ex = P2.ex.map((b2) => {
+      const B5 = rec(b2);
+      const k2 = B5 && !B5.mc ? liftOf(B5.exId, B5.light) : null;
+      const key = k2 ? kept.get(k2) : void 0;
+      if (!B5 || key === void 0) return b2;
+      put = true;
+      return { ...B5, ...keptName(key) };
+    });
+    return put ? withBlocks(P2.R, P2.inData, ex) : p3;
+  }
+  function keptOnSession(p3, q) {
+    const kept = keptOf(q);
+    let put = false;
+    const ex = p3.ex.map((b2) => {
+      const k2 = b2.mc ? null : liftOf(b2.exId, b2.light);
+      const key = k2 ? kept.get(k2) : void 0;
+      if (key === void 0) return b2;
+      put = true;
+      return { ...b2, ...keptName(key) };
+    });
+    return put ? { ...p3, ex } : p3;
+  }
+
+  // src/app/merge.ts
+  function winsFor(w2, key, stat) {
+    if (typeof w2 === "boolean") return w2;
+    const r4 = w2.rec(key);
+    if (r4 === null) return w2.doc;
+    stat.byTime = (stat.byTime || 0) + 1;
+    return r4;
+  }
+  var docWins = (w2) => typeof w2 === "boolean" ? w2 : w2.doc;
+  var UNIT_FIELD = {
+    u: "w",
+    incU: "inc",
+    maxLoadU: "maxLoad",
+    barU: "barKg",
+    goalU: "goal"
+  };
+  function givenUnit(f3, k2) {
+    const of = UNIT_FIELD[k2];
+    if (!of) return false;
+    const v3 = f3[k2], n0 = f3[of];
+    const n3 = of === "goal" ? rec(n0)?.w : n0;
+    return (v3 === "kg" || v3 === "lb") && typeof n3 === "number" && unitOnGrid(n3) === v3;
+  }
+  function savedEquip(f3, k2) {
+    if (k2 !== "equip" || typeof f3.id !== "string" || typeof f3.equip !== "string") return void 0;
+    const was = equipAsSaved({
+      id: f3.id,
+      equip: f3.equip,
+      custom: f3.custom === true,
+      equipOwn: f3.equipOwn === true ? true : void 0
+    });
+    return was !== f3.equip ? was : void 0;
+  }
+  function storedJson(x2) {
+    return JSON.stringify(x2, function(k2, v3) {
+      const f3 = rec(this);
+      if (!f3) return v3;
+      return givenUnit(f3, k2) ? void 0 : savedEquip(f3, k2) ?? v3;
+    });
+  }
+  function canon(x2) {
+    if (x2 === void 0) return "null";
+    if (x2 === null || typeof x2 !== "object") return JSON.stringify(x2);
+    const list = arr(x2);
+    if (list) return "[" + list.map(canon).join(",") + "]";
+    const f3 = rec(x2) || {};
+    return "{" + Object.keys(f3).filter((k2) => f3[k2] !== void 0 && !givenUnit(f3, k2)).sort().map((k2) => JSON.stringify(k2) + ":" + canon(savedEquip(f3, k2) ?? f3[k2])).join(",") + "}";
+  }
+  var Hx = (x2) => hashStr(canon(unkept(x2)));
+  var sameRecord = (a2, b2) => canon(unkept(a2)) === canon(unkept(b2));
+  function oneCopy(a2, b2) {
+    return canon(a2) <= canon(b2) ? keptOn(a2, b2) : keptOn(b2, a2);
+  }
+  function oneSession(a2, b2) {
+    return canon(a2) <= canon(b2) ? keptOnSession(a2, b2) : keptOnSession(b2, a2);
+  }
+  function merge3List(base, l4, r4, remoteWins, stat, list = "") {
+    const known = !!base;
+    base = base || {};
+    const L2 = /* @__PURE__ */ new Map(), Rm = /* @__PURE__ */ new Map();
+    for (const x2 of arr(l4) || []) {
+      const R2 = rec(x2);
+      if (R2 && typeof R2.id === "string") L2.set(R2.id, R2);
+    }
+    for (const x2 of arr(r4) || []) {
+      const R2 = rec(x2);
+      if (R2 && typeof R2.id === "string") Rm.set(R2.id, R2);
+    }
+    const out = [];
+    for (const id of [...L2.keys(), ...[...Rm.keys()].filter((k2) => !L2.has(k2))]) {
+      const a2 = L2.get(id), b2 = Rm.get(id), bh = known ? base[id] : "?";
+      const ah = a2 ? Hx(a2) : void 0, rh = b2 ? Hx(b2) : void 0;
+      if (a2 && b2 && ah === rh) {
+        out.push(oneCopy(a2, b2));
+        continue;
+      }
+      if (!a2 || !b2) {
+        const p3 = a2 || b2, ph = a2 ? ah : rh;
+        if (known && ph === bh) continue;
+        out.push(p3);
+        continue;
+      }
+      if (ah === bh) {
+        out.push(keptOn(b2, a2));
+        continue;
+      }
+      if (rh === bh) {
+        out.push(keptOn(a2, b2));
+        continue;
+      }
+      stat.conflicts++;
+      const theirs = winsFor(remoteWins, recordKey(list, id), stat);
+      if (!theirs && known) stat.lost?.push({ key: recordKey(list, id), base: bh, copy: b2 });
+      out.push(theirs ? keptOn(b2, a2) : keptOn(a2, b2));
+    }
+    return out;
+  }
+  function merge3Val(bh, a2, b2, remoteWins, stat, key = "") {
+    const ah = Hx(a2), rh = Hx(b2);
+    if (ah === rh || rh === bh) return a2;
+    if (ah === bh) return b2;
+    stat.conflicts++;
+    const theirs = winsFor(remoteWins, key, stat);
+    if (!theirs && key) stat.lost?.push({ key, base: bh, copy: b2 });
+    return theirs ? b2 : a2;
+  }
+  var recordKey = (list, id) => `${list}/${id}`;
+  var held = (r4) => canon({ ...r4, rid: void 0 });
+  function rowKeys(sets) {
+    let n3 = 0;
+    return sets.map((r4) => [typeof r4.rid === "string" ? r4.rid : "#" + n3++, r4]);
+  }
+  function contentKeys(to, sets, side) {
+    const ids = new Set(sets.map((r4) => r4.rid));
+    const free = to.map(([k2, r4]) => ({ k: k2, h: held(r4), taken: ids.has(k2) }));
+    let n3 = 0;
+    return sets.map((r4) => {
+      if (typeof r4.rid === "string") return [r4.rid, r4];
+      const h3 = held(r4);
+      const b2 = free.find((x2) => !x2.taken && x2.h === h3);
+      if (b2) {
+        b2.taken = true;
+        return [b2.k, r4];
+      }
+      return [side + "#" + n3++, r4];
+    });
+  }
+  function weave(base, sides) {
+    const out = [...base];
+    for (const keys of sides) {
+      let at2 = -1;
+      for (const k2 of keys) {
+        const i5 = out.indexOf(k2);
+        if (i5 >= 0) at2 = i5;
+        else out.splice(++at2, 0, k2);
+      }
+    }
+    return out;
+  }
+  function mergeRows(base, l4, r4, remoteWins, stat, match) {
+    const bk = rowKeys(base || []);
+    let lk, rk;
+    if (match === "place") {
+      lk = rowKeys(l4);
+      rk = rowKeys(r4);
+    } else if (base) {
+      lk = contentKeys(bk, l4, "l");
+      rk = contentKeys(bk, r4, "r");
+    } else {
+      rk = contentKeys([], r4, "r");
+      lk = contentKeys(rk, l4, "l");
+    }
+    const B5 = new Map(bk), L2 = new Map(lk), R2 = new Map(rk);
+    const same = (x2, y2) => held(x2) === held(y2);
+    const either = (x2, y2) => typeof x2.rid === "string" || typeof y2.rid !== "string" ? x2 : y2;
+    const out = [];
+    const order = match === "place" ? weave([...B5.keys()], [[...L2.keys()], [...R2.keys()]]) : [.../* @__PURE__ */ new Set([...R2.keys(), ...B5.keys(), ...L2.keys()])];
+    for (const k2 of order) {
+      const b2 = B5.get(k2), a2 = L2.get(k2), c4 = R2.get(k2);
+      if (a2 && c4) {
+        if (same(a2, c4)) out.push(either(a2, c4));
+        else if (b2 && same(c4, b2)) out.push(a2);
+        else if (b2 && same(a2, b2)) out.push(c4);
+        else {
+          stat.conflicts++;
+          out.push(remoteWins ? c4 : a2);
+        }
+      } else if (a2) {
+        if (!(b2 && same(a2, b2))) out.push(a2);
+      } else if (c4) {
+        if (!(b2 && same(c4, b2))) out.push(c4);
+      }
+    }
+    return out;
+  }
+  function mergeFields(out, base, l4, r4, skip, remoteWins, stat) {
+    for (const f3 of /* @__PURE__ */ new Set([...Object.keys(l4), ...Object.keys(r4)])) {
+      if (skip.includes(f3)) continue;
+      if (!base && l4[f3] === void 0 !== (r4[f3] === void 0)) {
+        out[f3] = l4[f3] === void 0 ? r4[f3] : l4[f3];
+        continue;
+      }
+      const v3 = merge3Val(base ? Hx(base[f3]) : "?", l4[f3], r4[f3], remoteWins, stat);
+      if (v3 === void 0) delete out[f3];
+      else out[f3] = v3;
+    }
+  }
+  function blockKeys(list) {
+    const seen = {};
+    return list.map((b2) => [
+      typeof b2.bid === "string" && b2.bid ? "b:" + b2.bid : b2.exId + "#" + (seen[b2.exId] = (seen[b2.exId] || 0) + 1),
+      b2
+    ]);
+  }
+  function mergeExercises(base, local, remote, remoteWins, stat, match) {
+    const B5 = new Map(blockKeys(base || [])), L2 = new Map(blockKeys(local)), R2 = new Map(blockKeys(remote));
+    const bo = [...B5.keys()].join("|"), lo = [...L2.keys()].join("|"), ro = [...R2.keys()].join("|");
+    let order;
+    if (!base) order = [...R2.keys()];
+    else if (lo === ro || ro === bo) order = [...L2.keys()];
+    else if (lo === bo) order = [...R2.keys()];
+    else {
+      stat.conflicts++;
+      order = remoteWins ? [...R2.keys()] : [...L2.keys()];
+    }
+    for (const k2 of [...L2.keys(), ...R2.keys()]) if (!order.includes(k2)) order.push(k2);
+    const out = [];
+    for (const k2 of order) {
+      const b2 = B5.get(k2), a2 = L2.get(k2), c4 = R2.get(k2);
+      if (a2 && c4) {
+        const x2 = { ...a2, sets: mergeRows(base ? b2 ? b2.sets : [] : null, a2.sets, c4.sets, remoteWins, stat, match) };
+        mergeFields(rec(x2) || {}, b2 ? rec(b2) : null, rec(a2) || {}, rec(c4) || {}, ["sets"], remoteWins, stat);
+        out.push(x2);
+      } else if (a2) {
+        if (!(b2 && canon(a2) === canon(b2))) out.push(a2);
+      } else if (c4) {
+        if (!(b2 && canon(c4) === canon(b2))) out.push(c4);
+      }
+    }
+    return out;
+  }
+  function cardioBase(list) {
+    const o3 = {};
+    for (const x2 of arr(list) || []) {
+      const R2 = rec(x2);
+      if (R2 && typeof R2.id === "string") o3[R2.id] = Hx(x2);
+    }
+    return o3;
+  }
+  function mergeWorkout(base, local, remote, remoteWins, stat) {
+    const out = { ...local, ex: mergeExercises(base.ex, local.ex, remote.ex, remoteWins, stat, "place") };
+    for (const b2 of out.ex) {
+      const a2 = b2.adj;
+      const i5 = a2 && typeof a2.rid === "string" ? b2.sets.findIndex((x2) => x2.rid === a2.rid) : -1;
+      if (a2 && i5 >= 0 && i5 !== a2.at) b2.adj = { ...a2, at: i5 };
+    }
+    const O = rec(out) || {}, Bf = rec(base) || {}, Lf = rec(local) || {}, Rf = rec(remote) || {};
+    mergeFields(O, Bf, Lf, Rf, ["ex", "id", "cardio", "begunAt"], remoteWins, stat);
+    let first = null;
+    for (const t4 of [local.begunAt, remote.begunAt])
+      if (typeof t4 === "number" && t4 > 0 && (first == null || t4 < first)) first = t4;
+    if (first != null) O.begunAt = first;
+    const cardio = merge3List(cardioBase(Bf.cardio), Lf.cardio, Rf.cardio, remoteWins, stat);
+    if (cardio.length || Lf.cardio !== void 0 || Rf.cardio !== void 0) O.cardio = cardio;
+    return out;
+  }
+  function mergeSession(base, local, remote, remoteWins, stat) {
+    const out = {
+      ...local,
+      ex: mergeExercises(base ? base.ex : null, local.ex, remote.ex, remoteWins, stat, "content")
+    };
+    mergeFields(
+      rec(out) || {},
+      base ? rec(base) : null,
+      rec(local) || {},
+      rec(remote) || {},
+      ["ex", "id", "t"],
+      remoteWins,
+      stat
+    );
+    const t4 = remote.t ?? local.t;
+    if (t4 !== void 0) out.t = t4;
+    else delete out.t;
+    return out;
+  }
+  function undoDraftOf(v3) {
+    const d3 = rec(v3);
+    const ex = d3 && arr(d3["ex"]);
+    if (!d3 || typeof d3["id"] !== "string" || !ex) return null;
+    const blocks2 = [];
+    for (const b0 of ex) {
+      const b2 = rec(b0);
+      if (!b2 || typeof b2["exId"] !== "string") return null;
+      blocks2.push({ ...b2, exId: b2["exId"] });
+    }
+    return { ...d3, id: d3["id"], ex: blocks2 };
+  }
+  function mergeDraft(base0, cur0, pre0, saved) {
+    const base = undoDraftOf(base0), cur2 = undoDraftOf(cur0), pre = undoDraftOf(pre0);
+    if (pre && (!base || base.id !== pre.id) && canon(cur0) === canon(base0) && !saved(pre.id)) return pre0;
+    if (!pre || !cur2 || !base || pre.id !== cur2.id || base.id !== cur2.id) return cur0 === void 0 ? null : cur0;
+    const keyed = (list) => blockKeys(list || []);
+    const B5 = new Map(keyed(base.ex)), C2 = keyed(cur2.ex), P2 = keyed(pre.ex);
+    const Cm = new Map(C2);
+    const pick2 = (k2) => {
+      const b2 = B5.get(k2), c4 = Cm.get(k2), p3 = P2.find((x2) => x2[0] === k2);
+      const pv = p3 ? p3[1] : void 0;
+      const bh = b2 ? canon(b2) : null, ch = c4 ? canon(c4) : null, ph = pv ? canon(pv) : null;
+      if (ch === bh) return pv;
+      if (ph === bh) return c4;
+      return c4;
+    };
+    const out = [];
+    const ord = (l4) => l4.map((x2) => x2[0]).join("|");
+    const keep = ord(keyed(base.ex)) === ord(P2);
+    for (const [k2] of keep ? C2 : P2) {
+      const v3 = pick2(k2);
+      if (v3) out.push(v3);
+    }
+    for (const [k2, _c] of C2) {
+      if (!P2.some((x2) => x2[0] === k2)) {
+        const v3 = pick2(k2);
+        if (v3 && !out.includes(v3)) out.push(v3);
+      }
+    }
+    const res = { ...cur2, ex: out };
+    for (const f3 of ["notes", "dayName", "deload", "light", "limited", "cardio", "chk"]) {
+      if (canon(cur2[f3]) === canon(base[f3])) res[f3] = pre[f3];
+    }
+    if (canon(cur2.pics) === canon(base.pics)) {
+      if (pre.pics === void 0) delete res.pics;
+      else res.pics = pre.pics;
+    }
+    return res;
+  }
 
   // src/app/formulas.ts
   var E1_MAX_REPS = 12;
@@ -2910,98 +3318,6 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var effLeast = (scale, rir) => scale === "rpe" ? `RPE ${effAt(scale, rir)} or less` : `${effAt(scale, rir)} or more reps in reserve`;
   var effLeastShort = (scale, rir) => scale === "rpe" ? `RPE ${effAt(scale, rir)} or less` : `${effAt(scale, rir)}+ RIR`;
 
-  // src/app/machines.ts
-  function keptName(key) {
-    return { mc: key, kp: true };
-  }
-  function nameAsIs(b2) {
-    return b2.mc ? b2.kp ? keptName(b2.mc) : { mc: b2.mc } : {};
-  }
-  function savedName(key, from) {
-    if (!key) return {};
-    return from.some((b2) => b2.mc === key && b2.kp) ? keptName(key) : { mc: key };
-  }
-  function pickName(b2, key) {
-    b2.mc = key;
-    delete b2.kp;
-  }
-  function unname(b2) {
-    delete b2.mc;
-    delete b2.kp;
-  }
-  function copyName(to, from) {
-    if (!from.mc) return;
-    to.mc = from.mc;
-    if (from.kp) to.kp = true;
-    else delete to.kp;
-  }
-  function cleanName(b2) {
-    return typeof b2.mc === "string" && b2.mc ? { mc: fixId(b2.mc), ...b2.kp === true ? { kp: true } : {} } : {};
-  }
-  function blocksOf(x2) {
-    const R2 = rec(x2);
-    if (!R2) return null;
-    const ex = arr(R2.ex);
-    if (ex) return { R: R2, inData: false, ex };
-    const D2 = rec(R2.data);
-    const dx = D2 && arr(D2.ex);
-    return dx ? { R: R2, inData: true, ex: dx } : null;
-  }
-  function withBlocks(R2, inData, ex) {
-    return inData ? { ...R2, data: { ...rec(R2.data), ex } } : { ...R2, ex };
-  }
-  var liftOf = (exId, light) => typeof exId === "string" ? `${exId}|${light ? 1 : 0}` : null;
-  function unkept(x2) {
-    const at2 = blocksOf(x2);
-    if (!at2 || !at2.ex.some((b2) => rec(b2)?.kp === true)) return x2;
-    return withBlocks(
-      at2.R,
-      at2.inData,
-      at2.ex.map((b2) => {
-        const B5 = rec(b2);
-        if (!B5 || B5.kp !== true) return b2;
-        const o3 = {};
-        for (const k2 of Object.keys(B5)) if (k2 !== "mc" && k2 !== "kp") o3[k2] = B5[k2];
-        return o3;
-      })
-    );
-  }
-  function keptOf(q) {
-    const kept = /* @__PURE__ */ new Map();
-    for (const b2 of blocksOf(q)?.ex || []) {
-      const B5 = rec(b2);
-      const k2 = B5 && B5.kp === true && typeof B5.mc === "string" ? liftOf(B5.exId, B5.light) : null;
-      if (B5 && k2 && typeof B5.mc === "string" && !kept.has(k2)) kept.set(k2, B5.mc);
-    }
-    return kept;
-  }
-  function keptOn(p3, q) {
-    const P2 = blocksOf(p3), kept = keptOf(q);
-    if (!P2 || !kept.size) return p3;
-    let put = false;
-    const ex = P2.ex.map((b2) => {
-      const B5 = rec(b2);
-      const k2 = B5 && !B5.mc ? liftOf(B5.exId, B5.light) : null;
-      const key = k2 ? kept.get(k2) : void 0;
-      if (!B5 || key === void 0) return b2;
-      put = true;
-      return { ...B5, ...keptName(key) };
-    });
-    return put ? withBlocks(P2.R, P2.inData, ex) : p3;
-  }
-  function keptOnSession(p3, q) {
-    const kept = keptOf(q);
-    let put = false;
-    const ex = p3.ex.map((b2) => {
-      const k2 = b2.mc ? null : liftOf(b2.exId, b2.light);
-      const key = k2 ? kept.get(k2) : void 0;
-      if (key === void 0) return b2;
-      put = true;
-      return { ...b2, ...keptName(key) };
-    });
-    return put ? { ...p3, ex } : p3;
-  }
-
   // src/app/session.ts
   function greyW(b2, si) {
     const s3 = b2 && b2.sets[si];
@@ -3308,11 +3624,11 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     "If the first set is off, change the load.",
     "Next time picks up from here."
   ];
-  function hintOnce(t4, again, kind, seen) {
+  function hintOnce(t4, again2, kind, seen) {
     if (!t4) return "";
-    if (again) {
+    if (again2) {
       const key = "first:" + kind;
-      if (seen.has(key)) return again;
+      if (seen.has(key)) return again2;
       seen.add(key);
       return t4;
     }
@@ -4136,318 +4452,6 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     return { bands, fit: now2 };
   }
 
-  // src/app/merge.ts
-  function winsFor(w2, key, stat) {
-    if (typeof w2 === "boolean") return w2;
-    const r4 = w2.rec(key);
-    if (r4 === null) return w2.doc;
-    stat.byTime = (stat.byTime || 0) + 1;
-    return r4;
-  }
-  var docWins = (w2) => typeof w2 === "boolean" ? w2 : w2.doc;
-  var UNIT_FIELD = {
-    u: "w",
-    incU: "inc",
-    maxLoadU: "maxLoad",
-    barU: "barKg",
-    goalU: "goal"
-  };
-  function givenUnit(f3, k2) {
-    const of = UNIT_FIELD[k2];
-    if (!of) return false;
-    const v3 = f3[k2], n0 = f3[of];
-    const n3 = of === "goal" ? rec(n0)?.w : n0;
-    return (v3 === "kg" || v3 === "lb") && typeof n3 === "number" && unitOnGrid(n3) === v3;
-  }
-  function savedEquip(f3, k2) {
-    if (k2 !== "equip" || typeof f3.id !== "string" || typeof f3.equip !== "string") return void 0;
-    const was = equipAsSaved({
-      id: f3.id,
-      equip: f3.equip,
-      custom: f3.custom === true,
-      equipOwn: f3.equipOwn === true ? true : void 0
-    });
-    return was !== f3.equip ? was : void 0;
-  }
-  function storedJson(x2) {
-    return JSON.stringify(x2, function(k2, v3) {
-      const f3 = rec(this);
-      if (!f3) return v3;
-      return givenUnit(f3, k2) ? void 0 : savedEquip(f3, k2) ?? v3;
-    });
-  }
-  function canon(x2) {
-    if (x2 === void 0) return "null";
-    if (x2 === null || typeof x2 !== "object") return JSON.stringify(x2);
-    const list = arr(x2);
-    if (list) return "[" + list.map(canon).join(",") + "]";
-    const f3 = rec(x2) || {};
-    return "{" + Object.keys(f3).filter((k2) => f3[k2] !== void 0 && !givenUnit(f3, k2)).sort().map((k2) => JSON.stringify(k2) + ":" + canon(savedEquip(f3, k2) ?? f3[k2])).join(",") + "}";
-  }
-  var Hx = (x2) => hashStr(canon(unkept(x2)));
-  var sameRecord = (a2, b2) => canon(unkept(a2)) === canon(unkept(b2));
-  function oneCopy(a2, b2) {
-    return canon(a2) <= canon(b2) ? keptOn(a2, b2) : keptOn(b2, a2);
-  }
-  function oneSession(a2, b2) {
-    return canon(a2) <= canon(b2) ? keptOnSession(a2, b2) : keptOnSession(b2, a2);
-  }
-  function merge3List(base, l4, r4, remoteWins, stat, list = "") {
-    const known = !!base;
-    base = base || {};
-    const L2 = /* @__PURE__ */ new Map(), Rm = /* @__PURE__ */ new Map();
-    for (const x2 of arr(l4) || []) {
-      const R2 = rec(x2);
-      if (R2 && typeof R2.id === "string") L2.set(R2.id, R2);
-    }
-    for (const x2 of arr(r4) || []) {
-      const R2 = rec(x2);
-      if (R2 && typeof R2.id === "string") Rm.set(R2.id, R2);
-    }
-    const out = [];
-    for (const id of [...L2.keys(), ...[...Rm.keys()].filter((k2) => !L2.has(k2))]) {
-      const a2 = L2.get(id), b2 = Rm.get(id), bh = known ? base[id] : "?";
-      const ah = a2 ? Hx(a2) : void 0, rh = b2 ? Hx(b2) : void 0;
-      if (a2 && b2 && ah === rh) {
-        out.push(oneCopy(a2, b2));
-        continue;
-      }
-      if (!a2 || !b2) {
-        const p3 = a2 || b2, ph = a2 ? ah : rh;
-        if (known && ph === bh) continue;
-        out.push(p3);
-        continue;
-      }
-      if (ah === bh) {
-        out.push(keptOn(b2, a2));
-        continue;
-      }
-      if (rh === bh) {
-        out.push(keptOn(a2, b2));
-        continue;
-      }
-      stat.conflicts++;
-      out.push(winsFor(remoteWins, recordKey(list, id), stat) ? keptOn(b2, a2) : keptOn(a2, b2));
-    }
-    return out;
-  }
-  function merge3Val(bh, a2, b2, remoteWins, stat, key = "") {
-    const ah = Hx(a2), rh = Hx(b2);
-    if (ah === rh || rh === bh) return a2;
-    if (ah === bh) return b2;
-    stat.conflicts++;
-    return winsFor(remoteWins, key, stat) ? b2 : a2;
-  }
-  var recordKey = (list, id) => `${list}/${id}`;
-  var held = (r4) => canon({ ...r4, rid: void 0 });
-  function rowKeys(sets) {
-    let n3 = 0;
-    return sets.map((r4) => [typeof r4.rid === "string" ? r4.rid : "#" + n3++, r4]);
-  }
-  function contentKeys(to, sets, side) {
-    const ids = new Set(sets.map((r4) => r4.rid));
-    const free = to.map(([k2, r4]) => ({ k: k2, h: held(r4), taken: ids.has(k2) }));
-    let n3 = 0;
-    return sets.map((r4) => {
-      if (typeof r4.rid === "string") return [r4.rid, r4];
-      const h3 = held(r4);
-      const b2 = free.find((x2) => !x2.taken && x2.h === h3);
-      if (b2) {
-        b2.taken = true;
-        return [b2.k, r4];
-      }
-      return [side + "#" + n3++, r4];
-    });
-  }
-  function weave(base, sides) {
-    const out = [...base];
-    for (const keys of sides) {
-      let at2 = -1;
-      for (const k2 of keys) {
-        const i5 = out.indexOf(k2);
-        if (i5 >= 0) at2 = i5;
-        else out.splice(++at2, 0, k2);
-      }
-    }
-    return out;
-  }
-  function mergeRows(base, l4, r4, remoteWins, stat, match) {
-    const bk = rowKeys(base || []);
-    let lk, rk;
-    if (match === "place") {
-      lk = rowKeys(l4);
-      rk = rowKeys(r4);
-    } else if (base) {
-      lk = contentKeys(bk, l4, "l");
-      rk = contentKeys(bk, r4, "r");
-    } else {
-      rk = contentKeys([], r4, "r");
-      lk = contentKeys(rk, l4, "l");
-    }
-    const B5 = new Map(bk), L2 = new Map(lk), R2 = new Map(rk);
-    const same = (x2, y2) => held(x2) === held(y2);
-    const either = (x2, y2) => typeof x2.rid === "string" || typeof y2.rid !== "string" ? x2 : y2;
-    const out = [];
-    const order = match === "place" ? weave([...B5.keys()], [[...L2.keys()], [...R2.keys()]]) : [.../* @__PURE__ */ new Set([...R2.keys(), ...B5.keys(), ...L2.keys()])];
-    for (const k2 of order) {
-      const b2 = B5.get(k2), a2 = L2.get(k2), c4 = R2.get(k2);
-      if (a2 && c4) {
-        if (same(a2, c4)) out.push(either(a2, c4));
-        else if (b2 && same(c4, b2)) out.push(a2);
-        else if (b2 && same(a2, b2)) out.push(c4);
-        else {
-          stat.conflicts++;
-          out.push(remoteWins ? c4 : a2);
-        }
-      } else if (a2) {
-        if (!(b2 && same(a2, b2))) out.push(a2);
-      } else if (c4) {
-        if (!(b2 && same(c4, b2))) out.push(c4);
-      }
-    }
-    return out;
-  }
-  function mergeFields(out, base, l4, r4, skip, remoteWins, stat) {
-    for (const f3 of /* @__PURE__ */ new Set([...Object.keys(l4), ...Object.keys(r4)])) {
-      if (skip.includes(f3)) continue;
-      if (!base && l4[f3] === void 0 !== (r4[f3] === void 0)) {
-        out[f3] = l4[f3] === void 0 ? r4[f3] : l4[f3];
-        continue;
-      }
-      const v3 = merge3Val(base ? Hx(base[f3]) : "?", l4[f3], r4[f3], remoteWins, stat);
-      if (v3 === void 0) delete out[f3];
-      else out[f3] = v3;
-    }
-  }
-  function blockKeys(list) {
-    const seen = {};
-    return list.map((b2) => [
-      typeof b2.bid === "string" && b2.bid ? "b:" + b2.bid : b2.exId + "#" + (seen[b2.exId] = (seen[b2.exId] || 0) + 1),
-      b2
-    ]);
-  }
-  function mergeExercises(base, local, remote, remoteWins, stat, match) {
-    const B5 = new Map(blockKeys(base || [])), L2 = new Map(blockKeys(local)), R2 = new Map(blockKeys(remote));
-    const bo = [...B5.keys()].join("|"), lo = [...L2.keys()].join("|"), ro = [...R2.keys()].join("|");
-    let order;
-    if (!base) order = [...R2.keys()];
-    else if (lo === ro || ro === bo) order = [...L2.keys()];
-    else if (lo === bo) order = [...R2.keys()];
-    else {
-      stat.conflicts++;
-      order = remoteWins ? [...R2.keys()] : [...L2.keys()];
-    }
-    for (const k2 of [...L2.keys(), ...R2.keys()]) if (!order.includes(k2)) order.push(k2);
-    const out = [];
-    for (const k2 of order) {
-      const b2 = B5.get(k2), a2 = L2.get(k2), c4 = R2.get(k2);
-      if (a2 && c4) {
-        const x2 = { ...a2, sets: mergeRows(base ? b2 ? b2.sets : [] : null, a2.sets, c4.sets, remoteWins, stat, match) };
-        mergeFields(rec(x2) || {}, b2 ? rec(b2) : null, rec(a2) || {}, rec(c4) || {}, ["sets"], remoteWins, stat);
-        out.push(x2);
-      } else if (a2) {
-        if (!(b2 && canon(a2) === canon(b2))) out.push(a2);
-      } else if (c4) {
-        if (!(b2 && canon(c4) === canon(b2))) out.push(c4);
-      }
-    }
-    return out;
-  }
-  function cardioBase(list) {
-    const o3 = {};
-    for (const x2 of arr(list) || []) {
-      const R2 = rec(x2);
-      if (R2 && typeof R2.id === "string") o3[R2.id] = Hx(x2);
-    }
-    return o3;
-  }
-  function mergeWorkout(base, local, remote, remoteWins, stat) {
-    const out = { ...local, ex: mergeExercises(base.ex, local.ex, remote.ex, remoteWins, stat, "place") };
-    for (const b2 of out.ex) {
-      const a2 = b2.adj;
-      const i5 = a2 && typeof a2.rid === "string" ? b2.sets.findIndex((x2) => x2.rid === a2.rid) : -1;
-      if (a2 && i5 >= 0 && i5 !== a2.at) b2.adj = { ...a2, at: i5 };
-    }
-    const O = rec(out) || {}, Bf = rec(base) || {}, Lf = rec(local) || {}, Rf = rec(remote) || {};
-    mergeFields(O, Bf, Lf, Rf, ["ex", "id", "cardio", "begunAt"], remoteWins, stat);
-    let first = null;
-    for (const t4 of [local.begunAt, remote.begunAt])
-      if (typeof t4 === "number" && t4 > 0 && (first == null || t4 < first)) first = t4;
-    if (first != null) O.begunAt = first;
-    const cardio = merge3List(cardioBase(Bf.cardio), Lf.cardio, Rf.cardio, remoteWins, stat);
-    if (cardio.length || Lf.cardio !== void 0 || Rf.cardio !== void 0) O.cardio = cardio;
-    return out;
-  }
-  function mergeSession(base, local, remote, remoteWins, stat) {
-    const out = {
-      ...local,
-      ex: mergeExercises(base ? base.ex : null, local.ex, remote.ex, remoteWins, stat, "content")
-    };
-    mergeFields(
-      rec(out) || {},
-      base ? rec(base) : null,
-      rec(local) || {},
-      rec(remote) || {},
-      ["ex", "id", "t"],
-      remoteWins,
-      stat
-    );
-    const t4 = remote.t ?? local.t;
-    if (t4 !== void 0) out.t = t4;
-    else delete out.t;
-    return out;
-  }
-  function undoDraftOf(v3) {
-    const d3 = rec(v3);
-    const ex = d3 && arr(d3["ex"]);
-    if (!d3 || typeof d3["id"] !== "string" || !ex) return null;
-    const blocks2 = [];
-    for (const b0 of ex) {
-      const b2 = rec(b0);
-      if (!b2 || typeof b2["exId"] !== "string") return null;
-      blocks2.push({ ...b2, exId: b2["exId"] });
-    }
-    return { ...d3, id: d3["id"], ex: blocks2 };
-  }
-  function mergeDraft(base0, cur0, pre0, saved) {
-    const base = undoDraftOf(base0), cur2 = undoDraftOf(cur0), pre = undoDraftOf(pre0);
-    if (pre && (!base || base.id !== pre.id) && canon(cur0) === canon(base0) && !saved(pre.id)) return pre0;
-    if (!pre || !cur2 || !base || pre.id !== cur2.id || base.id !== cur2.id) return cur0 === void 0 ? null : cur0;
-    const keyed = (list) => blockKeys(list || []);
-    const B5 = new Map(keyed(base.ex)), C2 = keyed(cur2.ex), P2 = keyed(pre.ex);
-    const Cm = new Map(C2);
-    const pick2 = (k2) => {
-      const b2 = B5.get(k2), c4 = Cm.get(k2), p3 = P2.find((x2) => x2[0] === k2);
-      const pv = p3 ? p3[1] : void 0;
-      const bh = b2 ? canon(b2) : null, ch = c4 ? canon(c4) : null, ph = pv ? canon(pv) : null;
-      if (ch === bh) return pv;
-      if (ph === bh) return c4;
-      return c4;
-    };
-    const out = [];
-    const ord = (l4) => l4.map((x2) => x2[0]).join("|");
-    const keep = ord(keyed(base.ex)) === ord(P2);
-    for (const [k2] of keep ? C2 : P2) {
-      const v3 = pick2(k2);
-      if (v3) out.push(v3);
-    }
-    for (const [k2, _c] of C2) {
-      if (!P2.some((x2) => x2[0] === k2)) {
-        const v3 = pick2(k2);
-        if (v3 && !out.includes(v3)) out.push(v3);
-      }
-    }
-    const res = { ...cur2, ex: out };
-    for (const f3 of ["notes", "dayName", "deload", "light", "limited", "cardio", "chk"]) {
-      if (canon(cur2[f3]) === canon(base[f3])) res[f3] = pre[f3];
-    }
-    if (canon(cur2.pics) === canon(base.pics)) {
-      if (pre.pics === void 0) delete res.pics;
-      else res.pics = pre.pics;
-    }
-    return res;
-  }
-
   // src/app/layout.ts
   var DSECS = [
     ["volume", "Volume"],
@@ -4904,8 +4908,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     return m3 ? [m3] : [];
   });
   function cleanSettings(s3, f3) {
-    const fresh = s3 === f3;
-    const base = fresh ? f3.settings : { ...f3.settings, autoDone: false, hidden: [] };
+    const fresh2 = s3 === f3;
+    const base = fresh2 ? f3.settings : { ...f3.settings, autoDone: false, hidden: [] };
     const st = { ...base, ...spread(s3.settings || {}) };
     const sIn = rec(s3.settings) || {};
     const accent = pick(st.accent, ["blue", "volt", "ember", "pink", "violet", "cyan", "red"]);
@@ -4922,7 +4926,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const rirScale2 = pick(st.rirScale, ["half", "rpe"]);
     const userName = typeof st.userName === "string" ? st.userName.replace(/\s+/g, " ").trim().slice(0, LIMITS.name) : "";
     const secOrder = (() => {
-      const so = st.secOrder === void 0 && fresh ? defaultOrder() : st.secOrder;
+      const so = st.secOrder === void 0 && fresh2 ? defaultOrder() : st.secOrder;
       const clean = {};
       const O = rec(so);
       if (O)
@@ -5798,8 +5802,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   function log(area, err) {
     try {
       const E2 = rec(err);
-      const said2 = E2 && typeof E2.serverSaid === "string" ? ` (server: ${E2.serverSaid})` : "";
-      const m3 = (E2 && E2.message ? E2.message : E2 ? JSON.stringify(err) : String(err)) + said2;
+      const said3 = E2 && typeof E2.serverSaid === "string" ? ` (server: ${E2.serverSaid})` : "";
+      const m3 = (E2 && E2.message ? E2.message : E2 ? JSON.stringify(err) : String(err)) + said3;
       const st = E2 && typeof E2.stack === "string" ? logCut(E2.stack.split("\n").slice(0, LOG_LIMITS.stackLines).join("\n")).slice(0, LOG_LIMITS.stackChars) : "";
       const t4 = (/* @__PURE__ */ new Date()).toISOString(), msg = logCut(m3).slice(0, LOG_LIMITS.messageChars);
       const last = logBuf[logBuf.length - 1];
@@ -5913,7 +5917,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const now2 = Date.now();
     for (const [id] of read.steps) stepsStored.set(id, "");
     legacyStored = read.legacy != null;
-    const found = [];
+    const found2 = [];
     const seen = /* @__PURE__ */ new Set();
     const take = (v3, id) => {
       const E2 = rec(v3);
@@ -5921,7 +5925,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       if (!key || seen.has(key)) return;
       seen.add(key);
       if (E2 && typeof E2.pre === "string" && now2 - (Number(E2.t) || 0) < UNDO_TTL)
-        found.push({
+        found2.push({
           e: {
             pre: E2.pre,
             post: typeof E2.post === "string" ? E2.post : null,
@@ -5935,8 +5939,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     for (const [id, v3] of read.steps) take(v3, id);
     for (const v3 of arr(read.legacy) || []) take(v3, null);
     if (!undoStack.length) {
-      found.sort((a2, b2) => a2.e.t - b2.e.t);
-      for (const f3 of found.slice(-UNDO_MAX)) {
+      found2.sort((a2, b2) => a2.e.t - b2.e.t);
+      for (const f3 of found2.slice(-UNDO_MAX)) {
         if (f3.id) {
           stepIds.set(f3.e, f3.id);
           stepsStored.set(f3.id, stepSig(f3.e));
@@ -5950,6 +5954,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   function undoForget() {
     undoStack.length = 0;
     undoWaiting = false;
+    keepIn = [];
+    keepLost = [];
     undoDb().then((db) => {
       if (!db) return;
       try {
@@ -5978,6 +5984,78 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     }
     while (undoStack.length > UNDO_MAX) undoStack.shift();
     undoPersist();
+  }
+  var keepLost = [];
+  var keepIn = [];
+  var keepT = null;
+  var KEEP_NOW = 2;
+  function heldIn(log2, key) {
+    const cut = key.indexOf("/");
+    if (cut < 0) return null;
+    const list = key.slice(0, cut), id = key.slice(cut + 1);
+    if (list === "" || list === "settings") {
+      const o3 = list ? rec(log2["settings"]) : log2;
+      return o3 ? { v: o3[id], put: (v3) => v3 === void 0 ? delete o3[id] : o3[id] = v3 } : null;
+    }
+    const rows2 = arr(log2[list]);
+    const at2 = rows2 ? rows2.findIndex((r4) => rec(r4)?.["id"] === id) : -1;
+    return rows2 && at2 >= 0 ? { v: rows2[at2], put: (v3) => rows2[at2] = v3 } : null;
+  }
+  function keepLook(e5) {
+    let changed = false;
+    try {
+      const pre = rec(parseJson(e5.pre));
+      if (!pre) return false;
+      let post;
+      keepLost = keepLost.filter((x2) => {
+        const was = heldIn(pre, x2.key);
+        if (!was || Hx(was.v) !== x2.base) return true;
+        if (post === void 0) post = e5.post == null ? null : rec(parseJson(e5.post));
+        const after2 = post ? heldIn(post, x2.key) : null;
+        if (post && after2 && Hx(after2.v) === x2.base) return true;
+        was.put(x2.copy);
+        changed = true;
+        return false;
+      });
+      if (changed) e5.pre = JSON.stringify(pre);
+    } catch (err) {
+      log("undo", err);
+    }
+    return changed;
+  }
+  function keepOne() {
+    const e5 = keepIn.pop();
+    if (!e5 || !keepLost.length) {
+      keepIn = [];
+      keepLost = [];
+      return;
+    }
+    if (keepLook(e5)) {
+      stepsStored.set(stepId(e5), "");
+      undoPersist();
+    }
+    if (!keepLost.length || !keepIn.length) {
+      keepIn = [];
+      keepLost = [];
+    }
+  }
+  function keepLater() {
+    if (keepT || !keepIn.length) return;
+    keepT = setTimeout(() => {
+      keepT = null;
+      keepOne();
+      keepLater();
+    }, 0);
+  }
+  function undoKeeps(lost) {
+    if (!lost.length || !undoStack.length) return;
+    keepLost.push(...lost);
+    keepIn = [...undoStack];
+    for (let n3 = 0; n3 < KEEP_NOW && keepIn.length; n3++) keepOne();
+    keepLater();
+  }
+  function undoKeepsNow() {
+    while (keepIn.length) keepOne();
   }
   function capturePost() {
     const e5 = undoStack[undoStack.length - 1];
@@ -6159,8 +6237,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     if (i5 >= 0) asideIdx.splice(i5, 1);
     asideIdx.push(e5);
   }
-  async function keepAside(acct2, text, notes) {
-    const id = fixId(acct2), at2 = Date.now(), noted = JSON.stringify(notes);
+  async function keepAside(acct2, text, notes2) {
+    const id = fixId(acct2), at2 = Date.now(), noted = JSON.stringify(notes2);
     const S4 = rec(parseJson(text));
     const sessions = S4 ? (arr(S4.sessions) || []).length : 0;
     const ok = await asideWrite((s3) => {
@@ -6393,15 +6471,15 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   }
   async function picsRefresh() {
     if (!ready) return false;
-    let found = false;
+    let found2 = false;
     for (const v3 of await picRowsRead()) {
       const r4 = rowOf(v3);
       if (r4 && !rows.has(r4.id)) {
         rows.set(r4.id, r4);
-        found = true;
+        found2 = true;
       }
     }
-    return found;
+    return found2;
   }
   var picHere = (id) => rows.has(id);
   function picUrl(id) {
@@ -7172,12 +7250,12 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var USUAL_SHARE = 0.97;
   var mid = (v3) => [...v3].sort((a2, b2) => a2 - b2)[Math.floor(v3.length / 2)];
   function setsAt(q, usualW) {
-    const tried = q.miss ? [...q.pts, ...q.miss] : q.pts;
+    const tried2 = q.miss ? [...q.pts, ...q.miss] : q.pts;
     let tw = -Infinity;
     for (const p3 of q.pts) if (Math.abs(p3.w - q.topW) < EPS_SAME) tw = Math.max(tw, p3.load);
-    if (!(tw > 0)) return tried.length;
+    if (!(tw > 0)) return tried2.length;
     let n3 = 0;
-    for (const p3 of tried)
+    for (const p3 of tried2)
       if (p3.load >= tw * LIGHTER_LOAD - EPS && (p3.load * LIGHTER_LOAD <= tw + EPS || p3.w <= usualW + EPS_SAME)) n3++;
     return n3;
   }
@@ -7410,8 +7488,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     return done.some((q) => asStrong(q) && alone(q, -Infinity)) ? null : pr;
   }
   function prCounted(ex, h3, x2, noBody2) {
-    const ORDER2 = ["Rep PR", "e1RM", "Weight PR"];
-    const rank = (t4) => ORDER2.indexOf(t4);
+    const ORDER3 = ["Rep PR", "e1RM", "Weight PR"];
+    const rank = (t4) => ORDER3.indexOf(t4);
     let top = null;
     const before2 = [];
     for (const p3 of x2.pts) {
@@ -7575,9 +7653,9 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     return afterBreak(a2, to) && liftOffIn(M3, exId, a2.mk, a2.date, to) > BACK_DAYS;
   }
   function sinceLongBreakOnIn(M3, exId, xs, T2) {
-    const off = (a2, to) => longBreak(a2, to) && liftOffIn(M3, exId, a2.mk, a2.date, to) > LONG_BREAK_DAYS;
-    if (xs.length && off(xs[xs.length - 1], T2)) return [];
-    for (let i5 = xs.length - 1; i5 > 0; i5--) if (off(xs[i5 - 1], xs[i5].date)) return xs.slice(i5);
+    const off2 = (a2, to) => longBreak(a2, to) && liftOffIn(M3, exId, a2.mk, a2.date, to) > LONG_BREAK_DAYS;
+    if (xs.length && off2(xs[xs.length - 1], T2)) return [];
+    for (let i5 = xs.length - 1; i5 > 0; i5--) if (off2(xs[i5 - 1], xs[i5].date)) return xs.slice(i5);
     return xs.slice();
   }
   function tallyIn(M3, ss, b2, ex, novel, T2) {
@@ -7729,9 +7807,9 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const seen = /* @__PURE__ */ new Set();
     xs.forEach((x2, i5) => {
       if (seen.has(x2.mk)) {
-        const off = daysBetween(xs[i5 - 1].date, x2.date);
-        if (off > BACK_DAYS) x2.br = true;
-        if (off > LONG_BREAK_DAYS) x2.lbr = true;
+        const off2 = daysBetween(xs[i5 - 1].date, x2.date);
+        if (off2 > BACK_DAYS) x2.br = true;
+        if (off2 > LONG_BREAK_DAYS) x2.lbr = true;
       }
       seen.add(x2.mk);
     });
@@ -7952,7 +8030,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       if (sameRR(x2.rr, curRR)) bestCur = bestCur == null ? x2.best : Math.max(bestCur, x2.best);
     }
     for (const x2 of cur2) if (x2.pb != null) byBand[x2.pbb] = Math.max(byBand[x2.pbb] || 0, x2.pb);
-    const fresh = !!lastReal && lastReal.date >= addDays(M3.today(), -BACK_DAYS);
+    const fresh2 = !!lastReal && lastReal.date >= addDays(M3.today(), -BACK_DAYS);
     return {
       n: exps.length,
       stalled,
@@ -7970,7 +8048,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       spanW,
       loadUp,
       useAdj,
-      fresh,
+      fresh: fresh2,
       byBand,
       wN: w2.length,
       trendTv: w2.map((x2) => x2.tv),
@@ -8195,8 +8273,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     M3 = liftModelIn(M3, ex);
     if (u4 == null || u4 === UIn(M3)) return loadLabelIn(M3, ex, kg2);
     const n3 = (v3) => shownNum(u4 === "lb" ? v3 / LB : v3);
-    const num3 = ex.bw ? kg2 > 0 ? `BW+${n3(kg2)}` : `BW−${n3(-kg2)}` : n3(kg2);
-    return `${num3} ${u4}`;
+    const num4 = ex.bw ? kg2 > 0 ? `BW+${n3(kg2)}` : `BW−${n3(-kg2)}` : n3(kg2);
+    return `${num4} ${u4}`;
   }
   function listLabelIn(M3, ex, kg2, t4, named2) {
     const lift = liftUIn(M3, ex), u4 = t4 ?? lift;
@@ -8279,16 +8357,16 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const seen = /* @__PURE__ */ new Map();
     for (const x2 of exps) {
       if (x2.dropOnly) continue;
-      const fresh = [];
+      const fresh2 = [];
       for (const p3 of x2.pts) {
         const d3 = prSameLoad(p3.w, p3.u ?? null, seen) - p3.w, j3 = p3.pl + d3;
         const v3 = noE1(ex) || noBodyIn(M3, ex) ? null : e1(p3.load + d3, p3.r, p3.rq);
         if (v3 != null && (!est || v3 > est.v + EPS_SAME)) est = { v: v3, p: p3, date: x2.date, sid: x2.sid };
         if (!heavy || j3 > heavy.j + EPS_SAME || Math.abs(j3 - heavy.j) < EPS_SAME && p3.r > heavy.p.r)
           heavy = { p: p3, j: j3, date: x2.date, sid: x2.sid };
-        if (!front.some((q) => q.j >= j3 - EPS_SAME && q.p.r >= p3.r)) fresh.push({ p: p3, j: j3 });
+        if (!front.some((q) => q.j >= j3 - EPS_SAME && q.p.r >= p3.r)) fresh2.push({ p: p3, j: j3 });
       }
-      for (const { p: p3, j: j3 } of fresh) {
+      for (const { p: p3, j: j3 } of fresh2) {
         if (front.some((q) => q.j >= j3 - EPS_SAME && q.p.r >= p3.r)) continue;
         for (let k2 = front.length - 1; k2 >= 0; k2--)
           if (j3 >= front[k2].j - EPS_SAME && p3.r >= front[k2].p.r) front.splice(k2, 1);
@@ -8359,11 +8437,11 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     if (!onStep(st, TYPED_STEP)) return null;
     const o3 = inUnitIn(M3, loadFloorIn(M3, ex));
     const at2 = (k2) => o3 + k2 * st;
-    const off = (v3) => {
+    const off2 = (v3) => {
       const k2 = (inUnitIn(M3, v3) - o3) / st;
       return Math.abs(k2 - Math.round(k2)) > OFF_STEP;
     };
-    if (!off(top) || !off(w2) || hereIn(M3, ex, top)) return null;
+    if (!off2(top) || !off2(w2) || hereIn(M3, ex, top)) return null;
     const x2 = inUnitIn(M3, w2);
     const lo = at2(Math.floor((x2 - o3) / st + EPS));
     const loaded = !ex.bw && !ex.assist;
@@ -8388,20 +8466,20 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const t4 = res.tgt;
     if (t4 && t4.kind === "reps") {
       const lbl = `${loadLabelIn(M3, ex, nw)}${ex.bw ? "" : " " + UIn(M3)}${loadNote(ex)}`;
-      const said2 = (target2) => `${res.last ? res.last + " " : ""}${lbl} is ${why} to what you did: aim for ${target2}.`;
+      const said3 = (target2) => `${res.last ? res.last + " " : ""}${lbl} is ${why} to what you did: aim for ${target2}.`;
       const at2 = t4.w ?? res.w, rs = t4.rs || [], up = nw > at2 + EPS;
       if (up && !smallMoveIn(M3, ex, at2, nw, rs))
         return {
           ...out,
-          text: said2(`${plan.repMin}+ reps in every set`),
+          text: said3(`${plan.repMin}+ reps in every set`),
           target: `${lbl} for ${plan.repMin}+ reps in every set`,
           tgt: { kind: "load", w: nw, repMin: +plan.repMin, prevBest: t4.prevBest }
         };
       const a2 = repsAtIn(M3, ex, plan, at2, nw, rs);
       const over = / (in one set|over (?:your first )?\d+ sets) at /.exec(out.target)?.[1];
-      if (!a2 || a2.same || !over) return up ? { ...out, text: said2(out.target) } : out;
+      if (!a2 || a2.same || !over) return up ? { ...out, text: said3(out.target) } : out;
       const target = `${a2.total + 1}+ reps ${over} at ${lbl}`;
-      const moved = { ...out, text: said2(target), target, tgt: { ...t4, w: nw, total: a2.total, rs: a2.rs } };
+      const moved = { ...out, text: said3(target), target, tgt: { ...t4, w: nw, total: a2.total, rs: a2.rs } };
       delete moved.buildTo;
       return moved;
     }
@@ -8502,11 +8580,11 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const Ls = loadsForIn(M3, ex, plan, top ?? null);
     if (Ls.kind !== "rack" && Ls.kind !== "grid") return res;
     if (Ls.has(w2)) return res;
-    const again = top != null && Math.abs(w2 - top) < EPS_SAME;
-    if (again && !otherIn(M3, ex, w2)) return res;
+    const again2 = top != null && Math.abs(w2 - top) < EPS_SAME;
+    if (again2 && !otherIn(M3, ex, w2)) return res;
     const f3 = Ls.floor(w2);
     let nw;
-    if (again) {
+    if (again2) {
       const u4 = f3 != null ? Ls.above(f3) : Ls.first;
       nw = f3 == null ? u4 : u4 == null ? f3 : u4 - w2 < w2 - f3 ? u4 : f3;
     } else if (top != null && w2 > top) {
@@ -8767,8 +8845,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     M3 = liftModelIn(M3, EXIn(M3, exId));
     opts = opts || {};
     const ex = EXIn(M3, exId);
-    const off = !(opts.deload || opts.light) && !ex.timed ? backDaysIn(M3, exId, plan, opts) : 0;
-    const back2 = off > BACK_DAYS;
+    const off2 = !(opts.deload || opts.light) && !ex.timed ? backDaysIn(M3, exId, plan, opts) : 0;
+    const back2 = off2 > BACK_DAYS;
     if (!(opts.deload || opts.light || back2) || ex.timed) {
       const core = suggestCoreIn(M3, exId, plan, opts);
       return core.same ? core : snapUnitIn(M3, ex, plan, core);
@@ -8785,7 +8863,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       };
     }
     if (!base.last || base.w == null) return base;
-    const word = opts.deload ? "Deload" : opts.light ? "Lighter day" : `Back after ${Math.round(off / WEEK_DAYS)} weeks`;
+    const word2 = opts.deload ? "Deload" : opts.light ? "Lighter day" : `Back after ${Math.round(off2 / WEEK_DAYS)} weeks`;
     const step = incOfIn(M3, ex, plan);
     const w0 = base.top != null ? Math.min(base.w, base.top) : base.w;
     const bl = bwRefLoadIn(M3, ex);
@@ -8808,7 +8886,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
           w: lw,
           text: `${base.last} Injury flagged (${injLabel(base.inj)}): stay at or below ${lbl(lw)}, keep ${effLeast(effScale(M3.s.settings.rirScale), LIGHT_RIR)}, stop on pain.`,
           lastR: lw < base.w - EPS ? Array(n3).fill(+plan.repMin) : base.lastR,
-          ...back2 ? { back: Math.round(off / WEEK_DAYS) } : {}
+          ...back2 ? { back: Math.round(off2 / WEEK_DAYS) } : {}
         },
         true
       );
@@ -8823,14 +8901,14 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
           prev: base.prev,
           prevOff: base.prevOff,
           w: w2,
-          text: `${base.last} ${word}: about ${lbl(w2)} for ${repSpan(plan.repMin, plan.repMax, "-")} with ${BACK_RIR} or more reps in reserve. Next time picks up from here.`,
+          text: `${base.last} ${word2}: about ${lbl(w2)} for ${repSpan(plan.repMin, plan.repMax, "-")} with ${BACK_RIR} or more reps in reserve. Next time picks up from here.`,
           lastR: Array(n3).fill(+plan.repMin),
           basis: base.basis,
           last: base.last,
           target: "",
           tgt: null,
           easier: null,
-          back: Math.round(off / WEEK_DAYS)
+          back: Math.round(off2 / WEEK_DAYS)
         },
         true
       );
@@ -8843,7 +8921,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         prev: base.prev,
         prevOff: base.prevOff,
         w: w2,
-        text: `${base.last} ${word}: about ${lbl(w2)} for ${repSpan(plan.repMin, plan.repMax, "-")} with ${effLeast(effScale(M3.s.settings.rirScale), LIGHT_RIR)}. Half the usual sets, nothing to beat.`,
+        text: `${base.last} ${word2}: about ${lbl(w2)} for ${repSpan(plan.repMin, plan.repMax, "-")} with ${effLeast(effScale(M3.s.settings.rirScale), LIGHT_RIR)}. Half the usual sets, nothing to beat.`,
         lastR: Array(n3).fill(+plan.repMin),
         basis: base.basis,
         last: base.last,
@@ -9092,8 +9170,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         kin: kin.ex.id
       };
     const text = ex.assist ? `${lead}: set the help for ${reps}, ${spare}.` : ex.bw ? `${lead}: bodyweight only, ${reps}, ${spare}.` : `${lead}: pick a load for ${reps}, ${spare}.`;
-    const again = text;
-    return { ...was, w: w0, text, again, lastR: [], last: "", target: "", tgt: null };
+    const again2 = text;
+    return { ...was, w: w0, text, again: again2, lastR: [], last: "", target: "", tgt: null };
   }
   function sgEasyIn(M3, C2) {
     const {
@@ -9492,20 +9570,20 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         easier: null,
         same: true
       };
-    const off = backDaysIn(M3, ex.id, plan, opts);
-    if (off > BACK_DAYS)
+    const off2 = backDaysIn(M3, ex.id, plan, opts);
+    if (off2 > BACK_DAYS)
       return {
         prev: L0.prev,
         prevOff: L0.prevOff,
         w: at2,
-        text: `${lastS} Back after ${Math.round(off / WEEK_DAYS)} weeks: the same load, holds about ${pctOf(LIGHT_SHARE)}% as long, stopping before shaking. Next time picks up from here.`,
+        text: `${lastS} Back after ${Math.round(off2 / WEEK_DAYS)} weeks: the same load, holds about ${pctOf(LIGHT_SHARE)}% as long, stopping before shaking. Next time picks up from here.`,
         lastR: lastR.map((r4) => Math.max(1, Math.round(r4 * LIGHT_SHARE))),
         basis,
         last: lastS,
         target: "",
         tgt: null,
         easier: null,
-        back: Math.round(off / WEEK_DAYS)
+        back: Math.round(off2 / WEEK_DAYS)
       };
     const step = incOfIn(M3, ex, plan, at2);
     const cap = capOfIn(M3, ex, plan, at2);
@@ -10449,16 +10527,16 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const week = (k2) => !!I2.lightWk[k2] && (k2 < cur2 || T2[k2].light >= 2);
     for (const x2 of M3.s.sessions)
       if (x2.date >= from && lighter2(x2.id) && week(weekStart(x2.date)) && (!d3 || x2.date > d3)) d3 = x2.date;
-    const off = [];
+    const off2 = [];
     const f3 = firstDate(M3.s.sessions);
     if (f3) {
       for (let w2 = weekStart(f3) > weekStart(from) ? weekStart(f3) : weekStart(from); w2 < cur2; w2 = addDays(w2, WEEK_DAYS))
-        if (!T2[w2]) off.push(w2);
+        if (!T2[w2]) off2.push(w2);
     }
     for (const w2 of [
       ...M3.s.settings.restWeeks || [],
       ...M3.s.deloadWeek && !T2[M3.s.deloadWeek] ? [M3.s.deloadWeek] : [],
-      ...off
+      ...off2
     ]) {
       const e5 = addDays(w2, SUNDAY) < M3.today() ? addDays(w2, SUNDAY) : M3.today();
       if (e5 >= from && w2 <= M3.today() && (!d3 || e5 > d3)) d3 = e5;
@@ -10782,8 +10860,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         for (const d3 of R2.days) for (const it of d3.items) if (forM(it.exId) && !inR.includes(it.exId)) inR.push(it.exId);
         const logged2 = Object.keys(I2.byEx).filter((id2) => forM(id2) && M3.s.exercises.some((e5) => e5.id === id2 && !e5.archived)).sort((x2, y2) => I2.byEx[y2][I2.byEx[y2].length - 1].date.localeCompare(I2.byEx[x2][I2.byEx[x2].length - 1].date));
         const id = inR.filter(usable).find(done) || logged2.filter(usable)[0] || inR.filter(usable)[0] || null;
-        const blocked = !id && [...inR, ...logged2].some((x2) => !!exInjuryIn(M3, EXIn(M3, x2)));
-        return { id, blocked };
+        const blocked2 = !id && [...inR, ...logged2].some((x2) => !!exInjuryIn(M3, EXIn(M3, x2)));
+        return { id, blocked: blocked2 };
       };
       const under = MK.filter((m3) => !inj.has(m3) && mst[m3].st === "under" && !liftFor(m3).blocked).map((m3) => ({
         m: m3,
@@ -10827,8 +10905,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const stalled = stalledIdsIn(M3).filter((id) => !falling.includes(id));
     const rising = moversIn(M3).map((x2) => x2.id);
     const up = rising.length, flat = stalled.length, down = falling.length;
-    const word = quietWeekIn(M3) || up + flat + down === 0 ? null : up > flat + down ? "Progressing" : down > up ? "Regressing" : "Stalled";
-    return { word, tone: word ? VERDICT_TONE[word] : "blue", rising, stalled, falling };
+    const word2 = quietWeekIn(M3) || up + flat + down === 0 ? null : up > flat + down ? "Progressing" : down > up ? "Regressing" : "Stalled";
+    return { word: word2, tone: word2 ? VERDICT_TONE[word2] : "blue", rising, stalled, falling };
   }
   function musTrend(sc) {
     if (!sc.clear)
@@ -11335,6 +11413,952 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     prefDel(PHOTO_ASKED);
   }
 
+  // src/app/md5.ts
+  var SHIFT = [
+    7,
+    12,
+    17,
+    22,
+    7,
+    12,
+    17,
+    22,
+    7,
+    12,
+    17,
+    22,
+    7,
+    12,
+    17,
+    22,
+    5,
+    9,
+    14,
+    20,
+    5,
+    9,
+    14,
+    20,
+    5,
+    9,
+    14,
+    20,
+    5,
+    9,
+    14,
+    20,
+    4,
+    11,
+    16,
+    23,
+    4,
+    11,
+    16,
+    23,
+    4,
+    11,
+    16,
+    23,
+    4,
+    11,
+    16,
+    23,
+    6,
+    10,
+    15,
+    21,
+    6,
+    10,
+    15,
+    21,
+    6,
+    10,
+    15,
+    21,
+    6,
+    10,
+    15,
+    21
+  ];
+  var WORD_SPAN = 2 ** 32;
+  var ADD = Array.from({ length: 64 }, (_2, i5) => Math.floor(Math.abs(Math.sin(i5 + 1)) * WORD_SPAN));
+  var BITS = 8, WORD = 4, BLOCK = 16, STEPS = 64;
+  var BYTE = 255, END = 128;
+  var BLOCK_SHIFT = 6, TAIL = 8;
+  var HIGH = 2 ** 29;
+  var START = [1732584193, 4023233417, 2562383102, 271733878];
+  var ORDER = [
+    [1, 0],
+    [5, 1],
+    [3, 5],
+    [7, 0]
+  ];
+  var hexLE = (w2) => {
+    let out = "";
+    for (let i5 = 0; i5 < WORD; i5++) out += (w2 >>> BITS * i5 & BYTE).toString(BLOCK).padStart(2, "0");
+    return out;
+  };
+  function md5(text) {
+    const bytes = new TextEncoder().encode(text);
+    const n3 = bytes.length;
+    const words = new Uint32Array(((n3 + TAIL >>> BLOCK_SHIFT) + 1) * BLOCK);
+    for (let i5 = 0; i5 < n3; i5++) words[i5 >> 2] = (words[i5 >> 2] ?? 0) | (bytes[i5] ?? 0) << i5 % WORD * BITS;
+    words[n3 >> 2] = (words[n3 >> 2] ?? 0) | END << n3 % WORD * BITS;
+    words[words.length - 2] = n3 * BITS >>> 0;
+    words[words.length - 1] = Math.floor(n3 / HIGH);
+    let [a0, b0, c0, d0] = START;
+    for (let off2 = 0; off2 < words.length; off2 += BLOCK) {
+      let A2 = a0, B5 = b0, C2 = c0, D2 = d0;
+      for (let i5 = 0; i5 < STEPS; i5++) {
+        const round = Math.floor(i5 / BLOCK);
+        const [mul, plus] = ORDER[round] ?? [1, 0];
+        const g2 = (mul * i5 + plus) % BLOCK;
+        let F3;
+        if (round === 0) F3 = B5 & C2 | ~B5 & D2;
+        else if (round === 1) F3 = D2 & B5 | ~D2 & C2;
+        else if (round === 2) F3 = B5 ^ C2 ^ D2;
+        else F3 = C2 ^ (B5 | ~D2);
+        F3 = F3 + A2 + (ADD[i5] ?? 0) + (words[off2 + g2] ?? 0) >>> 0;
+        const s3 = SHIFT[i5] ?? 0;
+        A2 = D2;
+        D2 = C2;
+        C2 = B5;
+        B5 = B5 + (F3 << s3 | F3 >>> WORD * BITS - s3) >>> 0;
+      }
+      a0 = a0 + A2 >>> 0;
+      b0 = b0 + B5 >>> 0;
+      c0 = c0 + C2 >>> 0;
+      d0 = d0 + D2 >>> 0;
+    }
+    return hexLE(a0) + hexLE(b0) + hexLE(c0) + hexLE(d0);
+  }
+
+  // src/app/rows.ts
+  var ROWS_KEY = KEY + ".rows";
+  var LAYOUT_KEY = ROWS_KEY + ".layout";
+  var LEVEL = 1;
+  var ROWS_UPDATE = "Update the app to keep syncing. Your log stays on this phone.";
+  var SUM_LEN = 12;
+  var PAGE = 500, WRITE_ROWS = 200, WRITE_BYTES = 4e5;
+  var WAIT_MS = 6e4;
+  var FIND_MAX = 20;
+  var PAST_ALL = Number.MAX_SAFE_INTEGER;
+  var B36 = 36;
+  var WORDS_MARKED = 9, WORDS_NAMED = 4;
+  var NO_TABLE = "not set up";
+  var WHY_MAX = 120;
+  var UNIT_TOP = 65535;
+  var KIND = {
+    sessions: "session",
+    cardio: "cardio",
+    bodyweights: "bodyweight",
+    measurements: "measurement",
+    routines: "routine",
+    exercises: "exercise",
+    injuries: "injury"
+  };
+  var MIRRORED = /* @__PURE__ */ new Set([...Object.values(KIND), "setting", "core", "photo"]);
+  var TRASHED = /* @__PURE__ */ new Set(["session", "cardio", "routine"]);
+  var ctx = null;
+  var notes = null;
+  var off = null;
+  var blocked = false;
+  var layoutFor = null;
+  var layoutText = null;
+  var asked = null;
+  var running = null;
+  var again = false;
+  var asking = 0;
+  var written = null;
+  function heed(L2) {
+    const was = blocked;
+    blocked = needsNewer(L2);
+    layoutFor = cloud.uid;
+    if (cloud.uid) {
+      const text = JSON.stringify({ acct: cloud.uid, decides: L2 ? L2.decides : "docs", level: L2 ? L2.level : 1 });
+      if (text !== layoutText && (blocked || layoutText !== null)) prefSet(LAYOUT_KEY, text);
+      layoutText = text;
+    }
+    if (blocked && !was && ctx) ctx.stop();
+  }
+  var said2 = (e5) => {
+    const m3 = rec(e5)?.["message"];
+    return typeof m3 === "string" ? m3 : String(e5);
+  };
+  var keyOf = (kind, id) => kind + "/" + id;
+  function soon(p3) {
+    let t4;
+    return Promise.race([
+      p3.finally(() => {
+        clearTimeout(t4);
+      }),
+      new Promise((_2, rej) => {
+        t4 = setTimeout(() => {
+          rej(new Error("rows: no answer in time"));
+        }, NET_MS);
+      })
+    ]);
+  }
+  var num = (v3) => typeof v3 === "number" && Number.isFinite(v3) ? v3 : 0;
+  var str = (v3) => typeof v3 === "string" ? v3 : "";
+  var sumOf = (body) => md5(body).slice(0, SUM_LEN);
+  function heldOf(x2) {
+    return {
+      t: num(x2["t"]),
+      dev: str(x2["dev"]),
+      a: num(x2["a"]),
+      s: str(x2["sum"]).slice(0, SUM_LEN),
+      saw: x2["gone_saw"] == null ? null : num(x2["gone_saw"]),
+      sawDev: str(x2["gone_saw_dev"]),
+      good: x2["gone_good"] === true,
+      day: str(x2["gone_day"]),
+      clash: x2["gone_clash"] === true
+    };
+  }
+  function placeOf2(h3) {
+    if (h3.saw === null || h3.saw !== h3.t || h3.sawDev !== h3.dev) return "log";
+    return h3.good ? "good" : "trash";
+  }
+  var sameHeld = (a2, b2) => !!a2 && a2.t === b2.t && a2.dev === b2.dev && a2.a === b2.a && a2.s === b2.s && a2.saw === b2.saw && a2.sawDev === b2.sawDev && a2.good === b2.good && a2.day === b2.day && a2.clash === b2.clash;
+  var word = (dev) => encodeURIComponent(dev);
+  function heldText(h3) {
+    if (h3.saw !== null)
+      return [
+        h3.t.toString(B36),
+        word(h3.dev),
+        h3.a,
+        h3.s,
+        h3.saw.toString(B36),
+        word(h3.sawDev),
+        h3.good ? 1 : 0,
+        h3.day,
+        h3.clash ? 1 : 0
+      ].join(" ");
+    return h3.dev === "" && h3.a === 0 ? h3.t.toString(B36) + " " + h3.s : [h3.t.toString(B36), word(h3.dev), h3.a, h3.s].join(" ");
+  }
+  function heldIn2(v3) {
+    if (typeof v3 !== "string") return null;
+    const p3 = v3.split(" ");
+    const plain = p3.length === 2;
+    if (!plain && p3.length !== WORDS_NAMED && p3.length !== WORDS_MARKED) return null;
+    const [t36 = "", w1 = "", w2 = "", w3 = "", saw36 = "", sawWord = "", good = "", day = "", clash = ""] = p3;
+    const t4 = parseInt(t36, B36), a2 = plain ? 0 : Number(w2);
+    if (!Number.isFinite(t4) || !Number.isFinite(a2)) return null;
+    const saw = p3.length === WORDS_MARKED ? parseInt(saw36, B36) : null;
+    if (saw !== null && !Number.isFinite(saw)) return null;
+    let dev, sawDev;
+    try {
+      dev = plain ? "" : decodeURIComponent(w1);
+      sawDev = decodeURIComponent(sawWord);
+    } catch (e5) {
+      log("rows-notes", e5);
+      return null;
+    }
+    return { t: t4, dev, a: a2, s: plain ? w1 : w3, saw, sawDev, good: good === "1", day, clash: clash === "1" };
+  }
+  var fresh = (acct2, ep) => ({
+    acct: acct2,
+    ep,
+    made: null,
+    n: 0,
+    rows: {},
+    wait: {},
+    chk: { day: null, clean: 0, diffs: 0, removed: 0 },
+    find: [],
+    devDay: null,
+    ph: null
+  });
+  function notesIn(acct2, ep, text = prefGet(ROWS_KEY)) {
+    let m3 = null;
+    try {
+      m3 = rec(parseJson(text || "null"));
+    } catch (e5) {
+      log("rows-notes", e5);
+      return null;
+    }
+    if (!m3 || m3["acct"] !== acct2 || m3["ep"] !== ep) return null;
+    const out = fresh(acct2, ep);
+    out.made = typeof m3["made"] === "string" ? m3["made"] : null;
+    out.n = num(m3["n"]);
+    const rows2 = rec(m3["rows"]) || {};
+    for (const k2 in rows2) {
+      const h3 = heldIn2(rows2[k2]);
+      if (!h3) return null;
+      out.rows[k2] = h3;
+    }
+    const wait2 = rec(m3["wait"]) || {};
+    for (const k2 in wait2) if (typeof wait2[k2] === "number") out.wait[k2] = num(wait2[k2]);
+    const c4 = rec(m3["chk"]) || {};
+    out.chk = {
+      day: typeof c4["day"] === "string" ? c4["day"] : null,
+      clean: num(c4["clean"]),
+      diffs: num(c4["diffs"]),
+      removed: num(c4["removed"])
+    };
+    for (const f3 of arr(m3["find"]) || []) {
+      const F3 = rec(f3);
+      if (F3)
+        out.find.push({
+          at: str(F3["at"]),
+          key: str(F3["key"]),
+          why: str(F3["why"]),
+          mine: str(F3["mine"]),
+          theirs: str(F3["theirs"])
+        });
+    }
+    out.devDay = typeof m3["devDay"] === "string" ? m3["devDay"] : null;
+    const ph = rec(m3["ph"]);
+    if (ph && typeof ph["s"] === "string") out.ph = { at: num(ph["at"]), len: num(ph["len"]), s: ph["s"] };
+    return out;
+  }
+  function notesOut(N2, own2 = true) {
+    if (!device.ok) return;
+    const stored = prefGet(ROWS_KEY);
+    if (stored !== null && stored !== written) {
+      const other = notesIn(N2.acct, N2.ep, stored);
+      if (other) {
+        N2.chk.removed = Math.max(N2.chk.removed, other.chk.removed);
+        for (const f3 of other.find)
+          if (!N2.find.some((x2) => x2.at === f3.at && x2.key === f3.key && x2.why === f3.why)) {
+            N2.find.push(f3);
+            N2.chk.diffs++;
+            N2.chk.clean = 0;
+          }
+        N2.find.sort((a2, b2) => a2.at < b2.at ? -1 : a2.at > b2.at ? 1 : 0);
+        while (N2.find.length > FIND_MAX) N2.find.shift();
+      }
+    }
+    const rows2 = {};
+    for (const k2 in N2.rows) {
+      const h3 = N2.rows[k2];
+      if (h3) rows2[k2] = heldText(h3);
+    }
+    const text = JSON.stringify({ ...N2, rows: rows2 });
+    if (text === stored) {
+      if (own2) written = text;
+      return;
+    }
+    if (prefSet(ROWS_KEY, text) && own2) written = text;
+  }
+  function rowsForget() {
+    notes = null;
+    written = null;
+    off = null;
+    blocked = false;
+    layoutFor = null;
+    asked = null;
+    docSeen.clear();
+    tried.clear();
+    prefDel(ROWS_KEY);
+  }
+  function found(N2, key, why, mine, theirs) {
+    N2.find.push({ at: (/* @__PURE__ */ new Date()).toISOString(), key, why, mine, theirs });
+    while (N2.find.length > FIND_MAX) N2.find.shift();
+    N2.chk.diffs++;
+    N2.chk.clean = 0;
+  }
+  var docSeen = /* @__PURE__ */ new Map();
+  var bodyOf = (x2) => canon(x2);
+  function recsOf(doc, D2) {
+    const out = [];
+    const live2 = /* @__PURE__ */ new Set();
+    for (const list in KIND) {
+      const kind = KIND[list];
+      if (!kind) continue;
+      for (const x2 of arr(D2[list]) || []) {
+        const R2 = rec(x2);
+        if (!R2 || typeof R2["id"] !== "string") continue;
+        live2.add(keyOf(kind, R2["id"]));
+        out.push({ kind, id: R2["id"], doc, rk: recordKey(list, R2["id"]), s: sumOf(bodyOf(R2)), place: "log" });
+      }
+    }
+    if (doc !== "core") return out;
+    for (const x2 of arr(D2["trash"]) || []) {
+      const R2 = rec(x2);
+      const kind = R2 ? str(R2["kind"]) : "";
+      const data = R2 ? rec(R2["data"]) : null;
+      if (!R2 || !data || typeof R2["id"] !== "string" || !TRASHED.has(kind) || live2.has(keyOf(kind, R2["id"]))) continue;
+      out.push({
+        kind,
+        id: R2["id"],
+        doc,
+        rk: recordKey("trash", R2["id"]),
+        s: sumOf(bodyOf(data)),
+        place: "trash",
+        day: str(R2["date"]),
+        clash: R2["clash"] === true
+      });
+    }
+    for (const k2 of CORE_FIELDS)
+      if (k2 !== "version")
+        out.push({ kind: "core", id: k2, doc, rk: recordKey("", k2), s: sumOf(bodyOf(D2[k2] ?? null)), place: "log" });
+    const set = rec(D2["settings"]) || {};
+    for (const k2 in set)
+      out.push({ kind: "setting", id: k2, doc, rk: recordKey("settings", k2), s: sumOf(bodyOf(set[k2])), place: "log" });
+    return out;
+  }
+  var pause = () => new Promise((r4) => {
+    setTimeout(r4, 0);
+  });
+  async function warm() {
+    const ch = chunksOf(state);
+    for (const id in ch) {
+      if (id === "draft") continue;
+      const h3 = cloud.meta[id]?.h;
+      if (!h3 || docSeen.get(id)?.h === h3) continue;
+      const doc = chunksOf(state)[id];
+      if (!doc || hashStr(storedJson(doc)) !== h3) continue;
+      docSeen.set(id, { h: h3, recs: recsOf(id, doc) });
+      await pause();
+    }
+  }
+  function mineNow(ch) {
+    const out = /* @__PURE__ */ new Map();
+    for (const id of [...docSeen.keys()]) if (!(id in ch)) docSeen.delete(id);
+    for (const id in ch) {
+      if (id === "draft") continue;
+      const h3 = cloud.meta[id]?.h;
+      let seen = docSeen.get(id);
+      if (!seen || !h3 || seen.h !== h3) {
+        seen = { h: h3, recs: recsOf(id, ch[id] || {}) };
+        docSeen.set(id, seen);
+      }
+      for (const m3 of seen.recs) out.set(keyOf(m3.kind, m3.id), m3);
+    }
+    return out;
+  }
+  function copyOf(ch, m3) {
+    if (m3.photo) return JSON.stringify(photoHeld());
+    const D2 = ch[m3.doc];
+    if (!D2) return null;
+    if (m3.kind === "core") return bodyOf(D2[m3.id] ?? null);
+    if (m3.kind === "setting") {
+      const set = rec(D2["settings"]) || {};
+      return m3.id in set ? bodyOf(set[m3.id]) : null;
+    }
+    if (m3.place === "trash") {
+      for (const x2 of arr(D2["trash"]) || []) {
+        const R2 = rec(x2);
+        if (R2 && R2["id"] === m3.id && R2["kind"] === m3.kind && rec(R2["data"])) return bodyOf(R2["data"]);
+      }
+      return null;
+    }
+    const list = Object.keys(KIND).find((k2) => KIND[k2] === m3.kind);
+    for (const x2 of list && arr(D2[list]) || []) {
+      const R2 = rec(x2);
+      if (R2 && R2["id"] === m3.id) return bodyOf(R2);
+    }
+    return null;
+  }
+  function timeOf(m3) {
+    if (m3.at !== void 0) return m3.at;
+    const t4 = cloud.recAt[m3.doc]?.[m3.rk];
+    return t4 !== void 0 && t4 > 0 ? t4 : 0;
+  }
+  function rowsLogKeys() {
+    const out = /* @__PURE__ */ new Set();
+    const S4 = state;
+    for (const list of ["sessions", "cardio", "bodyweights", "measurements", "routines"]) {
+      const kind = KIND[list];
+      for (const x2 of arr(S4[list]) || []) {
+        const R2 = rec(x2);
+        if (kind && R2 && typeof R2["id"] === "string") out.add(keyOf(kind, R2["id"]));
+      }
+    }
+    for (const t4 of state.trash) out.add(keyOf(t4.kind, t4.id));
+    return out;
+  }
+  function rowsRemoved(before2) {
+    if (!ctx || !cloud.uid || !cloud.db || !cloud.db.rows || off) return;
+    const now2 = rowsLogKeys();
+    let n3 = 0;
+    for (const k2 of before2) if (!now2.has(k2)) n3++;
+    if (!n3) return;
+    const stored = prefGet(ROWS_KEY);
+    const N2 = notesIn(cloud.uid, ctx.ep(), stored);
+    if (!N2 || !N2.n) return;
+    N2.chk.removed += n3;
+    if (!running) {
+      notes = N2;
+      written = stored;
+    }
+    notesOut(N2, !running);
+  }
+  function layoutOf(v3) {
+    if (typeof v3 !== "string") return null;
+    let L2 = null;
+    try {
+      L2 = rec(parseJson(v3));
+    } catch (e5) {
+      log("rows-layout", e5);
+    }
+    if (!L2) return null;
+    const lv = L2["level"];
+    return {
+      made: typeof L2["made"] === "string" ? L2["made"] : null,
+      decides: L2["decides"] === void 0 ? "docs" : typeof L2["decides"] === "string" ? L2["decides"] : "?",
+      level: lv === void 0 ? 1 : typeof lv === "number" && Number.isFinite(lv) && lv >= 1 ? lv : Infinity
+    };
+  }
+  var needsNewer = (L2) => !!L2 && (L2.decides !== "docs" || L2.level > LEVEL);
+  async function takeIn(R2, N2) {
+    const note = (x2) => {
+      const X = rec(x2);
+      if (!X || typeof X["kind"] !== "string" || typeof X["id"] !== "string") return 0;
+      const k2 = keyOf(X["kind"], X["id"]), h3 = heldOf(X);
+      if (!sameHeld(N2.rows[k2], h3)) {
+        if (MIRRORED.has(X["kind"])) N2.wait[k2] ??= Date.now();
+      }
+      N2.rows[k2] = h3;
+      return num(X["seq"]);
+    };
+    const none = () => N2.n === 0 && !Object.keys(N2.rows).length;
+    let p3 = rec(await soon(none() ? R2.pull(PAST_ALL, 1) : R2.pull(N2.n, PAGE)));
+    if (!p3) return false;
+    const L2 = layoutOf(p3["layout"]);
+    heed(L2);
+    if (!none() && (num(p3["top"]) < N2.n || N2.made !== null && (!L2 || L2.made !== N2.made))) {
+      N2.rows = {};
+      N2.wait = {};
+      N2.n = 0;
+    }
+    N2.made = L2 ? L2.made : null;
+    if (none()) {
+      let at2 = 0;
+      for (; ; ) {
+        const page = arr(await soon(R2.list(at2, PAGE)));
+        if (!page) return false;
+        let last = at2;
+        for (const x2 of page) last = Math.max(last, note(x2));
+        const moved = last > at2;
+        at2 = last;
+        if (page.length < PAGE || !moved) break;
+      }
+      N2.n = at2;
+      return true;
+    }
+    for (; ; ) {
+      const rows2 = arr(p3["rows"]) || [];
+      let last = N2.n;
+      for (const x2 of rows2) last = Math.max(last, note(x2));
+      if (rows2.length < PAGE || last === N2.n) {
+        N2.n = last;
+        break;
+      }
+      N2.n = last;
+      p3 = rec(await soon(R2.pull(N2.n, PAGE)));
+      if (!p3) return false;
+    }
+    return true;
+  }
+  async function send(R2, N2, rows2, sums) {
+    let at2 = 0;
+    while (at2 < rows2.length) {
+      const part = [];
+      let bytes = 0;
+      while (at2 < rows2.length && part.length < WRITE_ROWS) {
+        const r4 = rows2[at2];
+        if (!r4) break;
+        const size = r4.body ? r4.body.length : 0;
+        if (part.length && bytes + size > WRITE_BYTES) break;
+        part.push(r4);
+        bytes += size;
+        at2++;
+      }
+      const ans = rec(await soon(R2.push(part)));
+      if (!ans) return false;
+      const L2 = layoutOf(ans["layout"]);
+      heed(L2);
+      if (L2 && L2.made && !N2.made) N2.made = L2.made;
+      let own2 = 0;
+      for (const x2 of arr(ans["rows"]) || []) {
+        const X = rec(x2);
+        if (!X || typeof X["kind"] !== "string" || typeof X["id"] !== "string") continue;
+        const k2 = keyOf(X["kind"], X["id"]);
+        const h3 = heldOf(X);
+        N2.rows[k2] = h3;
+        if (X["took"] === true && num(X["seq"]) > N2.n) own2++;
+        const sentRow = part.find((r4) => r4.kind === X["kind"] && r4.id === X["id"]);
+        if (X["took"] === true && X["body"] === void 0 && sentRow && sentRow.body !== null && h3.s) {
+          const s3 = sums?.get(k2) ?? sumOf(sentRow.body);
+          if (s3 !== h3.s && h3.t === sentRow.t && h3.dev === sentRow.dev && h3.a === sentRow.a)
+            found(N2, k2, "the account holds another checksum than the copy sent", s3, h3.s);
+        }
+      }
+      const top = num(ans["top"]);
+      if (top - N2.n === own2) N2.n = top;
+    }
+    return true;
+  }
+  function inStep(m3, h3) {
+    if (!m3) return !h3 || placeOf2(h3) === "good";
+    if (!h3 || placeOf2(h3) !== m3.place || h3.s !== m3.s) return false;
+    if (m3.place === "log") return timeOf(m3) <= h3.t;
+    return h3.day === (m3.day || "") && h3.clash === (m3.clash === true);
+  }
+  function versionOf(t4, h3, over) {
+    if (over && h3) return { t: Math.max(Date.now(), h3.t + 1), dev: cloud.devId || "", a: 0 };
+    if (h3 && t4 === h3.t) return { t: h3.t, dev: h3.dev, a: h3.a + 1 };
+    return { t: t4, dev: "", a: 0 };
+  }
+  function takes(m3, h3) {
+    if (!m3 || !h3) return true;
+    const t4 = timeOf(m3);
+    if (m3.place === "trash") return h3.s === m3.s || t4 >= h3.t;
+    return t4 > h3.t || t4 === h3.t && placeOf2(h3) === "log";
+  }
+  function rowFor(ch, k2, m3, h3, over) {
+    const made = h3 ? { over_t: h3.t, over_dev: h3.dev } : {};
+    if (!m3) {
+      if (!h3) return null;
+      const cut = k2.indexOf("/");
+      return {
+        kind: k2.slice(0, cut),
+        id: k2.slice(cut + 1),
+        body: null,
+        t: h3.t,
+        dev: h3.dev,
+        a: h3.a,
+        gone_saw: h3.t,
+        gone_saw_dev: h3.dev,
+        gone_good: true,
+        gone_t: Date.now(),
+        gone_dev: cloud.devId || "",
+        ...made
+      };
+    }
+    const body = copyOf(ch, m3);
+    if (body === null) return null;
+    const t4 = timeOf(m3);
+    if (m3.place === "log") {
+      return { kind: m3.kind, id: m3.id, body, ...versionOf(t4, h3, over), ...made };
+    }
+    const v3 = h3 && h3.s === m3.s ? { t: h3.t, dev: h3.dev, a: h3.a } : versionOf(t4, h3, over);
+    return {
+      kind: m3.kind,
+      id: m3.id,
+      body,
+      ...v3,
+      gone_saw: v3.t,
+      gone_saw_dev: v3.dev,
+      gone_good: false,
+      gone_t: over ? Date.now() : t4 || Date.now(),
+      gone_dev: cloud.devId || "",
+      gone_day: m3.day || null,
+      gone_clash: m3.clash === true,
+      ...made
+    };
+  }
+  function photoMine(N2) {
+    if (photoPending()) return null;
+    const n3 = photoNote();
+    const held3 = photoHeld();
+    const at2 = n3 ? n3.et : 0, len = held3 === null ? -1 : held3.length;
+    if (!N2.ph || N2.ph.at !== at2 || N2.ph.len !== len) N2.ph = { at: at2, len, s: sumOf(JSON.stringify(held3)) };
+    return { kind: "photo", id: "photo", doc: "photo", rk: "", s: N2.ph.s, place: "log", photo: true, at: at2 };
+  }
+  function logNow(N2) {
+    const ch = chunksOf(state);
+    const mine = mineNow(ch);
+    const photo = photoMine(N2);
+    if (photo && (photoHeld() !== null || N2.rows["photo/photo"])) mine.set("photo/photo", photo);
+    return { ch, mine, photo: !!photo };
+  }
+  function keysOf(N2, L2) {
+    const keys = new Set(L2.mine.keys());
+    for (const k2 in N2.rows) if (MIRRORED.has(k2.slice(0, k2.indexOf("/"))) && (L2.photo || k2 !== "photo/photo")) keys.add(k2);
+    return keys;
+  }
+  var tried = /* @__PURE__ */ new Map();
+  var mineText = (m3) => m3 ? `${m3.place} ${m3.s} ${timeOf(m3).toString(B36)}${m3.place === "trash" ? " " + (m3.day || "") : ""}` : "not in the log";
+  async function pass() {
+    const R2 = cloud.db && cloud.db.rows;
+    const C2 = ctx;
+    const acct2 = cloud.uid;
+    if (!R2 || !C2 || !acct2 || !cloud.on || off || blocked || !device.ok) return;
+    await pause();
+    await warm();
+    if (!cloud.on || cloud.uid !== acct2) return;
+    const ep = C2.ep();
+    const still = () => cloud.on && cloud.uid === acct2 && C2.ep() === ep && !off && !blocked;
+    const quiet = () => cloud.status === "synced" && !C2.unsent();
+    if (!quiet()) return;
+    const stored = prefGet(ROWS_KEY);
+    if (!notes || notes.acct !== acct2 || notes.ep !== ep || stored !== written) {
+      notes = notesIn(acct2, ep, stored) || fresh(acct2, ep);
+      written = stored;
+      tried.clear();
+    }
+    const N2 = notes;
+    const day = today();
+    let L2 = logNow(N2);
+    for (const k2 in N2.wait)
+      if (inStep(L2.mine.get(k2), N2.rows[k2])) {
+        delete N2.wait[k2];
+        tried.delete(k2);
+      }
+    const differs = () => {
+      for (const k2 of keysOf(N2, L2)) if (!inStep(L2.mine.get(k2), N2.rows[k2])) return true;
+      return false;
+    };
+    const daily = N2.chk.day !== day || N2.devDay !== day;
+    if (!N2.made || daily || differs()) {
+      if (!await takeIn(R2, N2)) {
+        off = NO_TABLE;
+        return;
+      }
+      if (!still()) return;
+      if (!N2.made) {
+        const layout = JSON.stringify({ made: uid(), decides: "docs", level: LEVEL, gen: 1, at: 0 });
+        const row = { kind: "meta", id: "layout", body: layout, t: Date.now(), dev: cloud.devId || "", a: 0 };
+        if (!await send(R2, N2, [row])) {
+          off = NO_TABLE;
+          return;
+        }
+        if (!still()) return;
+      }
+      if (!quiet()) {
+        notesOut(N2);
+        return;
+      }
+      L2 = logNow(N2);
+      const now2 = Date.now();
+      const out = [];
+      const sums = /* @__PURE__ */ new Map();
+      const forced = /* @__PURE__ */ new Set();
+      for (const k2 of keysOf(N2, L2)) {
+        const m3 = L2.mine.get(k2), h3 = N2.rows[k2];
+        if (inStep(m3, h3)) {
+          delete N2.wait[k2];
+          tried.delete(k2);
+          continue;
+        }
+        const since = N2.wait[k2];
+        const ripe = since !== void 0 && now2 - since >= WAIT_MS && C2.pulledAt() > since;
+        const plain = since === void 0 ? takes(m3, h3) : !!m3 && (!h3 || timeOf(m3) > h3.t) && tried.get(k2) !== mineText(m3);
+        if (!plain && !ripe) {
+          N2.wait[k2] ??= now2;
+          continue;
+        }
+        const r4 = rowFor(L2.ch, k2, m3, h3, !plain);
+        if (!r4) continue;
+        out.push(r4);
+        if (m3) sums.set(k2, m3.s);
+        if (!plain) {
+          forced.add(k2);
+          found(
+            N2,
+            k2,
+            m3 ? "the documents kept a copy the rows held a later version of; the log was sent over it" : "the rows held a record the documents do not; it was marked deleted",
+            mineText(m3),
+            h3 ? `${placeOf2(h3)} ${heldText(h3)}` : "no row"
+          );
+        }
+      }
+      if (out.length && !await send(R2, N2, out, sums)) {
+        off = NO_TABLE;
+        return;
+      }
+      if (!still()) return;
+      for (const r4 of out) {
+        const k2 = keyOf(r4.kind, r4.id);
+        const m3 = L2.mine.get(k2);
+        if (inStep(m3, N2.rows[k2])) {
+          delete N2.wait[k2];
+          tried.delete(k2);
+          continue;
+        }
+        if (forced.has(k2)) {
+          const h3 = N2.rows[k2];
+          found(N2, k2, "the account did not take the copy sent over it", mineText(m3), h3 ? heldText(h3) : "no row");
+          N2.wait[k2] = Date.now();
+        } else {
+          tried.set(k2, mineText(m3));
+          N2.wait[k2] ??= Date.now();
+        }
+      }
+    }
+    await draftRow(R2, N2);
+    if (!still()) return;
+    if (daily) {
+      if (!Object.keys(N2.wait).length && N2.chk.day !== day) await check(R2, N2);
+      if (!still()) return;
+      await deviceRow(R2, N2);
+    }
+    if (still()) notesOut(N2);
+  }
+  async function draftRow(R2, N2) {
+    for (let n3 = 0; n3 < 2; n3++) {
+      const body = state.draft ? bodyOf(state.draft) : "null";
+      const h3 = N2.rows["draft/draft"];
+      if (h3 ? h3.s === sumOf(body) : !state.draft) return;
+      const row = {
+        kind: "draft",
+        id: "draft",
+        body,
+        t: Math.max(cloud.editAt["draft"] || 0, h3 ? h3.t + 1 : 1),
+        dev: cloud.devId || "",
+        a: 0,
+        ...h3 ? { over_t: h3.t, over_dev: h3.dev } : {}
+      };
+      try {
+        await send(R2, N2, [row]);
+        return;
+      } catch (e5) {
+        if (n3 || !/rows_draft_(stale|time)/.test(said2(e5))) throw e5;
+        if (!await takeIn(R2, N2)) return;
+      }
+    }
+  }
+  function bytesCmp(a2, b2) {
+    if (a2 === b2) return 0;
+    const n3 = Math.min(a2.length, b2.length);
+    for (let i5 = 0; i5 < n3; i5++) {
+      const x2 = a2.codePointAt(i5) ?? 0, y2 = b2.codePointAt(i5) ?? 0;
+      if (x2 !== y2) return x2 < y2 ? -1 : 1;
+      if (x2 > UNIT_TOP) i5++;
+    }
+    return a2.length < b2.length ? -1 : 1;
+  }
+  async function check(R2, N2) {
+    const d3 = rec(await soon(R2.digest()));
+    if (!d3) return;
+    if (num(d3["top"]) !== N2.n) return;
+    const keys = Object.keys(N2.rows).sort((a2, b2) => {
+      const ca = a2.indexOf("/"), cb = b2.indexOf("/");
+      return bytesCmp(a2.slice(0, ca), b2.slice(0, cb)) || bytesCmp(a2.slice(ca + 1), b2.slice(cb + 1));
+    });
+    const text = keys.map((k2) => {
+      const h3 = N2.rows[k2];
+      const cut = k2.indexOf("/");
+      return h3 ? [
+        k2.slice(0, cut),
+        k2.slice(cut + 1),
+        h3.t,
+        h3.dev,
+        h3.a,
+        h3.s,
+        h3.saw === null ? "" : h3.saw,
+        h3.saw === null ? "" : h3.sawDev,
+        h3.good ? 1 : 0
+      ].join("") : "";
+    }).join("");
+    if (num(d3["n"]) === keys.length && str(d3["sum"]) === md5(text)) {
+      if (N2.chk.day !== today()) N2.chk.clean++;
+      N2.chk.day = today();
+      return;
+    }
+    found(
+      N2,
+      "",
+      "the notes were not what the account holds; they were made again",
+      `${keys.length} rows`,
+      `${num(d3["n"])} rows`
+    );
+    N2.chk.day = today();
+    N2.rows = {};
+    N2.n = 0;
+    if (!await takeIn(R2, N2)) off = NO_TABLE;
+  }
+  async function deviceRow(R2, N2) {
+    const id = cloud.devId;
+    if (!id || N2.devDay === today()) return;
+    const body = JSON.stringify({
+      build: APP_VERSION,
+      level: LEVEL,
+      seen: today(),
+      checked: N2.chk.day,
+      clean: N2.chk.clean,
+      diffs: N2.chk.diffs,
+      removed: N2.chk.removed
+    });
+    if (await send(R2, N2, [{ kind: "device", id, body, t: Date.now(), dev: id, a: 0 }])) N2.devDay = today();
+  }
+  async function oneTab(fn) {
+    const L2 = typeof navigator !== "undefined" ? navigator.locks : void 0;
+    if (!L2 || typeof L2.request !== "function") return fn();
+    await L2.request(ROWS_KEY, { ifAvailable: true }, async (lock) => {
+      if (lock) await fn();
+    });
+  }
+  function rowsStart(c4) {
+    ctx = c4;
+  }
+  function rowsSoon() {
+    if (off || !cloud.on || !cloud.db || !cloud.db.rows) return;
+    if (running) {
+      again = true;
+      return;
+    }
+    running = oneTab(pass).catch((e5) => {
+      log("rows", e5);
+      const c4 = codeOf(e5);
+      if (navigator.onLine !== false && c4 !== "timeout" && c4 !== "revoked" && c4 !== "gone" && !/no answer in time|unavailable|offline|Failed to fetch|NetworkError|Load failed/i.test(said2(e5)))
+        off = said2(e5).slice(0, WHY_MAX);
+    }).finally(() => {
+      running = null;
+      if (again) {
+        again = false;
+        rowsSoon();
+      }
+    });
+  }
+  function rowsGate() {
+    const p3 = gate();
+    asked = p3;
+    void p3.finally(() => {
+      if (asked === p3) asked = null;
+    });
+    return p3;
+  }
+  async function gate() {
+    const R2 = cloud.db && cloud.db.rows;
+    if (!R2 || off === NO_TABLE) return false;
+    asking++;
+    try {
+      const p3 = rec(await soon(R2.pull(PAST_ALL, 1)));
+      if (!p3) {
+        off = NO_TABLE;
+        return false;
+      }
+      heed(layoutOf(p3["layout"]));
+    } catch (e5) {
+      log("rows-gate", e5);
+    } finally {
+      asking--;
+    }
+    return blocked;
+  }
+  function rowsBlocked() {
+    if (layoutFor !== cloud.uid && cloud.uid && cloud.db && cloud.db.rows) {
+      layoutFor = cloud.uid;
+      layoutText = prefGet(LAYOUT_KEY);
+      let L2 = null;
+      try {
+        L2 = rec(parseJson(layoutText || "null"));
+      } catch (e5) {
+        log("rows-layout", e5);
+      }
+      blocked = !!L2 && L2["acct"] === cloud.uid && needsNewer(layoutOf(layoutText));
+    }
+    return blocked;
+  }
+  var rowsAsked = () => asked;
+  function rowsDiag() {
+    if (!cloud.on || !cloud.db || !cloud.db.rows) return null;
+    if (off === NO_TABLE) return null;
+    if (off) return { line: `Rows check: off (${off})`, findings: notes ? notes.find : [] };
+    if (blocked) return { line: "Rows check: this account needs a newer version of the app", findings: [] };
+    if (!notes) return { line: "Rows check: not run yet", findings: [] };
+    const c4 = notes.chk;
+    const n3 = (k2, one, many) => `${k2} ${k2 === 1 ? one : many}`;
+    return {
+      line: `Rows check: ${n3(c4.clean, "clean day", "clean days")}, ${n3(c4.diffs, "difference", "differences")}, ${c4.removed} removed by a sync${Object.keys(notes.wait).length ? `, ${Object.keys(notes.wait).length} waiting` : ""}`,
+      findings: notes.find
+    };
+  }
+  var rowsBusy = () => !!running || again || asking > 0;
+
   // src/app/sync.ts
   var SYNC_MS = {
     save: 400,
@@ -11487,7 +12511,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     }
     return out;
   }
-  var notesIn = (m3, from) => {
+  var notesIn2 = (m3, from) => {
     const M3 = rec(m3.meta), E2 = rec(m3.editAt), T2 = rec(m3.recAt);
     let meta = null, editAt = null;
     if (M3) {
@@ -11518,14 +12542,15 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var notesEp = 0;
   var newEp = () => {
     notesEp = Math.max(Date.now(), notesEp + 1);
+    rowsForget();
   };
   var epOf = (m3) => m3 && typeof m3.ep === "number" ? m3.ep : 0;
   var notesSeen = null;
   var sameNote = (a2, b2) => a2 === b2 || !!a2 && !!b2 && a2.h === b2.h && a2.at === b2.at;
   function joinNotes(m3, text) {
-    const { meta, editAt, recAt, last } = notesIn(m3, "tabs");
+    const { meta, editAt, recAt, last } = notesIn2(m3, "tabs");
     const seenRec = rec(parseJson(notesSeen || "null"));
-    const base = seenRec && notesIn(seenRec, "tabs").meta || {};
+    const base = seenRec && notesIn2(seenRec, "tabs").meta || {};
     const theirs = meta || {};
     let mine = false;
     for (const k2 of /* @__PURE__ */ new Set([...Object.keys(cloud.meta), ...Object.keys(theirs)])) {
@@ -11678,6 +12703,13 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     cloud.err = err || null;
     fx.setSaveState();
     fx.syncLine();
+    if (st === "synced") rowsSoon();
+  }
+  function rowsStop() {
+    if (!rowsBlocked()) return false;
+    void rowsGate();
+    setCloud("offline", ROWS_UPDATE);
+    return true;
   }
   function ref(id) {
     if (!cloud.db) throw new Error("not syncing");
@@ -12038,7 +13070,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const cards = new Set(was ? (was.cardio || []).map((c4) => canon(c4)) : []);
     return d3.ex.some((b2) => b2.sets.some((x2) => x2.done && !rows2.has(canon(x2)))) || (d3.cardio || []).some((c4) => !!c4.min && !cards.has(canon(c4)));
   }
-  function keepLost(lost, now2, agreed, remoteWins, tabs = false) {
+  function keepLost2(lost, now2, agreed, remoteWins, tabs = false) {
     if (!lost || lost.editingId || now2 && now2.id === lost.id) return null;
     const kept = draftSession(lost), cardio = draftCardio(lost);
     if (!kept && !cardio.length) return null;
@@ -12285,6 +13317,9 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     if (!cloud.on) return;
     notesCatchUp();
     if (!pulled) return cloudPull();
+    const asked2 = rowsAsked();
+    if (asked2) await asked2;
+    if (rowsStop()) return;
     if (trackT || cloud.pendAt) trackEdits();
     const todo = changedDocs();
     todo.sort((a2, b2) => +(a2.id === "draft") - +(b2.id === "draft"));
@@ -12303,8 +13338,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     }
     setCloud("saving");
     try {
-      let adopted = false, moreBody2 = false, again = false;
-      const stat = { conflicts: 0 };
+      let adopted = false, moreBody2 = false, again2 = false;
+      const stat = { conflicts: 0, lost: [] };
       let dn = null;
       const tooBig = [];
       const raced = [];
@@ -12343,13 +13378,14 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
               const ret = Number(b2.et) || Number(b2.at);
               const remoteWins = ret > (cloud.editAt[x2.id] || 0), rt2 = timesIn(b2.rt);
               const mine = parseJson(json);
-              const clashed = stat.conflicts;
+              const clashed = stat.conflicts, lostBefore = stat.lost.length;
               const merged = mergeChunk(x2.id, baseFor(x2.id, m3, legB), mine, rd, clashRule(x2.id, rt2, remoteWins), stat);
               const prev = x2.id === "draft" ? state.draft : null;
               const mergedDraft = x2.id === "draft" ? draftOf(merged) : null;
               const alone = x2.id === "draft" ? !(prev && (!mergedDraft || mergedDraft.id !== prev.id)) || await sessionFromCloud(prev, legB) : !movesBetweenDocs(x2.id, mine, merged);
               if (!alone) {
                 stat.conflicts = clashed;
+                stat.lost.length = lostBefore;
                 if (++handedOver > HAND_OVERS) {
                   handedOver = 0;
                   tellTakenIn();
@@ -12364,16 +13400,19 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
               cloud.editAt[x2.id] = Math.max(cloud.editAt[x2.id] || 0, ret);
               if (x2.id === "draft" && !dn) dn = { prev, sessions0: state.sessions, kept: null, lost: null };
               const agreed = x2.id === "draft" && m3 && m3.b ? m3.b.draft : null;
+              const before2 = rowsLogKeys();
               applyChunk(x2.id, merged);
+              rowsRemoved(before2);
+              undoKeeps(stat.lost.splice(lostBefore));
               adopted = true;
               writeTakenIn();
               took = { h: hashStr(b2.json), at: Number(b2.at), b: baseOf(x2.id, rd) };
               if (x2.id === "draft" && dn) {
                 const remoteDraft = draftOf(rec(rd));
-                if (loggedSince(prev, agreed)) dn.kept = keepLost(prev, mergedDraft, agreed, remoteWins) || dn.kept;
+                if (loggedSince(prev, agreed)) dn.kept = keepLost2(prev, mergedDraft, agreed, remoteWins) || dn.kept;
                 if (loggedSince(remoteDraft, agreed))
-                  dn.lost = keepLost(remoteDraft, mergedDraft, agreed, remoteWins) || dn.lost;
-                if (dn.kept || dn.lost || canon(state.sessions) !== canon(dn.sessions0)) again = true;
+                  dn.lost = keepLost2(remoteDraft, mergedDraft, agreed, remoteWins) || dn.lost;
+                if (dn.kept || dn.lost || canon(state.sessions) !== canon(dn.sessions0)) again2 = true;
               }
               if (x2.id === "core" && absorbLegacy(legacyBody(rec(rd)))) moreBody2 = true;
               resyncLocalH();
@@ -12434,7 +13473,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       }
       cloud.retry = 0;
       handedOver = 0;
-      if (moreBody2 || again) cloudSoon();
+      if (moreBody2 || again2) cloudSoon();
       if (tooBig.length) {
         saveMeta();
         setCloud("offline", tooBigSaid(tooBig));
@@ -12679,26 +13718,33 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   async function cloudPull() {
     return pullAll(0);
   }
-  async function pullAll(said2) {
+  async function pullAll(said3) {
     if (!cloud.on || !cloud.db) return;
     if (trackT || cloud.pendAt) trackEdits();
     if (offline()) {
-      conflictNote({ conflicts: said2 });
+      conflictNote({ conflicts: said3 });
       setCloud("offline");
       return;
     }
+    if (rowsStop()) return;
     setCloud("connecting");
+    const began = Date.now();
+    void rowsGate();
     let snap;
     try {
       snap = await withTimeout(cloud.db.collection(`data/users/${cloud.uid}`).get(), SYNC_MS.net, "sync-pull");
     } catch (e5) {
       log("sync-pull", e5);
-      conflictNote({ conflicts: said2 });
+      conflictNote({ conflicts: said3 });
       cloudFail(e5);
       return;
     }
     cloud.lastPull = Date.now();
     pulled = true;
+    if (rowsStop()) {
+      conflictNote({ conflicts: said3 });
+      return;
+    }
     notesCatchUp();
     const ph = snap.docs.find((x2) => x2.id === PHOTO_DOC && x2.exists);
     await photoReconcile(ph ? rec(ph.data()) : null);
@@ -12713,6 +13759,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         fx.render();
         fx.toast("Demo data cleared. It never goes into an account.");
       }
+      readBegan = began;
       await cloudFlush();
       return;
     }
@@ -12723,7 +13770,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const agreedDraft = cloud.meta.draft && cloud.meta.draft.b ? cloud.meta.draft.b.draft : null;
     let draftMerged = false, draftRemoteWins = false;
     let parts = null, merged = false, draftIn = false, keptDraft = false;
-    const stat = { conflicts: said2 };
+    const stat = { conflicts: said3, lost: [] };
     const adoptedIds = /* @__PURE__ */ new Set();
     const leg = { bodyweights: [], measurements: [] };
     const legB = legacyBodyBase();
@@ -12750,15 +13797,18 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     let kept = null, lost = null;
     if (parts) {
       const aside = laterCopiesKept(parts, stat);
+      const before2 = rowsLogKeys();
       setState(assemble(parts));
+      rowsRemoved(before2);
+      undoKeeps(stat.lost);
       putCopiesAside(aside);
       keepLastCopies(held3);
       absorbLegacy(leg);
       if (draftMerged) {
         const remoteDraft = remote.draft ? draftOf(rec(remote.draft.data)) : null;
-        if (loggedSince(dr0, agreedDraft)) kept = keepLost(dr0, state.draft, agreedDraft, draftRemoteWins);
+        if (loggedSince(dr0, agreedDraft)) kept = keepLost2(dr0, state.draft, agreedDraft, draftRemoteWins);
         if (loggedSince(remoteDraft, agreedDraft))
-          lost = keepLost(remoteDraft, state.draft, agreedDraft, draftRemoteWins);
+          lost = keepLost2(remoteDraft, state.draft, agreedDraft, draftRemoteWins);
       }
     }
     if (parts || merged) {
@@ -12792,6 +13842,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       if (first) for (const id of rids) cloud.meta[id] = { h: "x", at: remote[id].at, b: null };
       conflictNote(stat);
     }
+    readBegan = began;
     await cloudFlush();
   }
   var cloudChecked = false;
@@ -12803,6 +13854,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   }
   function storeOf(raw) {
     return {
+      rows: raw.rows,
       collection: (p3) => raw.collection(p3),
       doc(path) {
         const d3 = raw.doc(path);
@@ -12837,11 +13889,12 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var starts = 0;
   var firstPull = false;
   var pulled = false;
+  var readBegan = 0;
   async function cloudDecided() {
     while (starting) await starting;
   }
   var cloudFirstPull = () => cloud.on && firstPull;
-  async function oneTab(fn) {
+  async function oneTab2(fn) {
     const L2 = typeof navigator !== "undefined" ? navigator.locks : void 0;
     if (L2 && typeof L2.request === "function") return await L2.request(KEY + ".account", () => fn());
     return fn();
@@ -12863,7 +13916,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     }
     notesEp = epOf(m3);
     notesSeen = text;
-    const n3 = notesIn(m3, "tabs");
+    const n3 = notesIn2(m3, "tabs");
     cloud.meta = n3.meta || {};
     cloud.sent = {};
     cloud.editAt = n3.editAt || {};
@@ -12908,10 +13961,10 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     return joined2;
   }
   async function keepHere(from) {
-    const notes = { meta: cloud.meta, editAt: cloud.editAt, last: cloud.last };
+    const notes2 = { meta: cloud.meta, editAt: cloud.editAt, last: cloud.last };
     for (let i5 = 0; i5 < KEEP_TRIES; i5++) {
       const text = storedJson(state);
-      if (!await keepAside(from, text, notes)) return "room";
+      if (!await keepAside(from, text, notes2)) return "room";
       if (storedJson(state) === text) return "kept";
     }
     log("aside", new Error("the log kept changing while it was being kept aside"));
@@ -12964,7 +14017,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         return false;
       }
     }
-    const n3 = aside ? notesIn({ meta: aside.meta, editAt: aside.editAt, last: aside.last }, "aside") : null;
+    const n3 = aside ? notesIn2({ meta: aside.meta, editAt: aside.editAt, last: aside.last }, "aside") : null;
     const own2 = () => {
       const o3 = { ...state, routines: state.routines.filter((r4) => !plainTemplate(r4) && !routineEmpty(r4)) };
       stripDemo(o3);
@@ -12983,8 +14036,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     }
     cloud.acct = id;
     newEp();
-    const written = !device.boot || (!next2 || device.ok) && saveMeta();
-    if (!written) {
+    const written2 = !device.boot || (!next2 || device.ok) && saveMeta();
+    if (!written2) {
       setState(before2.state);
       cloud.meta = before2.meta;
       cloud.sent = {};
@@ -13033,7 +14086,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       const pv = await cloudProvider();
       if (!pv) return;
       const db = pv.db, id = pv.userId;
-      const go = await oneTab(async () => {
+      const go = await oneTab2(async () => {
         const now2 = await cloudProvider();
         return !!now2 && now2.userId === id && await takeAccount(id);
       });
@@ -13092,7 +14145,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         } else if (m3 && epOf(m3) === notesEp && (typeof m3.acct === "string" ? m3.acct : null) === cloud.acct) {
           if (joinNotes(m3, ev.newValue)) saveMeta();
         } else if (m3) {
-          const { meta, editAt, recAt, last } = notesIn(m3, "tabs");
+          const { meta, editAt, recAt, last } = notesIn2(m3, "tabs");
           if (meta) cloud.meta = meta;
           cloud.sent = sentIn(m3.sent);
           if (editAt) cloud.editAt = editAt;
@@ -13122,7 +14175,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       if (text == null || text === notesSeen) return null;
       const m3 = rec(parseJson(text));
       if (!m3 || epOf(m3) !== notesEp || (typeof m3.acct === "string" ? m3.acct : null) !== cloud.acct) return null;
-      return notesIn(m3, "tabs").recAt;
+      return notesIn2(m3, "tabs").recAt;
     } catch (e5) {
       log("tabs", e5);
       return null;
@@ -13151,7 +14204,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const other = otherTabTimes();
     trackEdits();
     const held3 = heldNow();
-    const stat = { conflicts: 0, byTime: 0 };
+    const stat = { conflicts: 0, byTime: 0, lost: [] };
     const dr0 = state.draft;
     let kept = null;
     if (!base || canon(state) === canon(base)) setState(incoming);
@@ -13169,10 +14222,11 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       for (const id in parts) recordTimesAfter(id, L2[id], Rr[id], parts[id], other ? other[id] || null : null);
       const aside = laterCopiesKept(parts, stat);
       setState(assemble(parts));
+      undoKeeps(stat.lost);
       putCopiesAside(aside);
       const agreed = base.draft;
-      if (loggedSince(dr0, agreed)) kept = keepLost(dr0, state.draft, agreed, true, true);
-      if (loggedSince(incoming.draft, agreed)) keepLost(incoming.draft, state.draft, agreed, true, true);
+      if (loggedSince(dr0, agreed)) kept = keepLost2(dr0, state.draft, agreed, true, true);
+      if (loggedSince(incoming.draft, agreed)) keepLost2(incoming.draft, state.draft, agreed, true, true);
     }
     keepLastCopies(held3);
     device.lastSaved = text;
@@ -13209,7 +14263,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       const m3 = rec(parseJson(text || "null"));
       notesSeen = text;
       if (m3) {
-        const { meta, editAt, recAt, last } = notesIn(m3, "sync-meta");
+        const { meta, editAt, recAt, last } = notesIn2(m3, "sync-meta");
         cloud.meta = meta || {};
         cloud.last = last || null;
         cloud.editAt = editAt || {};
@@ -13224,12 +14278,14 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     }
     if (!cloud.devId) cloud.devId = "dev-" + uid();
     if (!device.hadLocal) {
+      rowsForget();
       cloud.meta = {};
       cloud.sent = {};
       cloud.editAt = {};
       cloud.recAt = {};
     }
     resyncLocalH();
+    rowsStart({ ep: () => notesEp, unsent: hasUnsent, pulledAt: () => readBegan, stop: rowsStop });
     window.addEventListener("storage", onStorage);
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("pagehide", onPageHide);
@@ -13349,9 +14405,9 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const cutoff = trashCutoff();
     return state.trash.filter((t4) => t4.clash || t4.date >= cutoff);
   }
-  function nameLastStep(said2) {
+  function nameLastStep(said3) {
     if (!lastStep || lastStep.said || !undoStack.includes(lastStep)) return;
-    lastStep.said = said2;
+    lastStep.said = said3;
     lastStep = void 0;
     undoPersist();
   }
@@ -13367,6 +14423,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     return !!was && typeof was["id"] === "string" && was["id"] !== d3.id && !after2;
   }
   function undoStep() {
+    undoKeepsNow();
     const top = undoStack[undoStack.length - 1];
     if (top && waitsForWorkout(top)) return "open";
     const e5 = undoStack.pop();
@@ -13438,8 +14495,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
 
   // src/app/display.ts
   function undoLabel() {
-    const said2 = undoNext();
-    return said2 === null ? "Nothing to undo" : said2 ? `Undo: ${said2}` : "Undo the last change";
+    const said3 = undoNext();
+    return said3 === null ? "Nothing to undo" : said3 ? `Undo: ${said3}` : "Undo the last change";
   }
   function noLog() {
     return !state.sessions.length;
@@ -13561,8 +14618,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   }
   function tonnageNow() {
     const cur2 = weekStart(today());
-    const off = daysBetween(cur2, today());
-    const now2 = weekVolume(cur2, off), prev = weekVolume(addDays(cur2, -WEEK_DAYS), off), prevFull = weekVolume(addDays(cur2, -WEEK_DAYS));
+    const off2 = daysBetween(cur2, today());
+    const now2 = weekVolume(cur2, off2), prev = weekVolume(addDays(cur2, -WEEK_DAYS), off2), prevFull = weekVolume(addDays(cur2, -WEEK_DAYS));
     return { now: now2, prev, prevFull, delta: prev > 0 ? (now2 / prev - 1) * PERCENT : null };
   }
   var BW_RATE = { from: 14, to: 42 };
@@ -14419,19 +15476,19 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       if (!C2) return;
       if (!actx) actx = new C2();
       if (actx.state === "suspended") actx.resume();
-      const ctx = actx;
-      const t0 = ctx.currentTime;
-      BEEP.at.forEach((off, i5) => {
-        const o3 = ctx.createOscillator(), g2 = ctx.createGain();
+      const ctx2 = actx;
+      const t0 = ctx2.currentTime;
+      BEEP.at.forEach((off2, i5) => {
+        const o3 = ctx2.createOscillator(), g2 = ctx2.createGain();
         o3.type = "sine";
         o3.frequency.value = BEEP.hz[i5];
-        g2.gain.setValueAtTime(BEEP.quiet, t0 + off);
-        g2.gain.exponentialRampToValueAtTime(BEEP.peak, t0 + off + BEEP.rise);
-        g2.gain.exponentialRampToValueAtTime(BEEP.quiet, t0 + off + BEEP.fall);
+        g2.gain.setValueAtTime(BEEP.quiet, t0 + off2);
+        g2.gain.exponentialRampToValueAtTime(BEEP.peak, t0 + off2 + BEEP.rise);
+        g2.gain.exponentialRampToValueAtTime(BEEP.quiet, t0 + off2 + BEEP.fall);
         o3.connect(g2);
-        g2.connect(ctx.destination);
-        o3.start(t0 + off);
-        o3.stop(t0 + off + BEEP.len);
+        g2.connect(ctx2.destination);
+        o3.start(t0 + off2);
+        o3.stop(t0 + off2 + BEEP.len);
       });
     } catch (e5) {
       log("audio", e5);
@@ -14823,11 +15880,11 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     }
     const v3 = document.getElementById("view");
     if (!v3) return;
-    const said2 = e5 && typeof e5 === "object" && "message" in e5 && e5.message || String(e5);
+    const said3 = e5 && typeof e5 === "object" && "message" in e5 && e5.message || String(e5);
     drawScreen(
       v3,
       b`<div class="card"><h2>Something broke on this screen</h2><p class="small">Your data is safe. If this keeps happening, copy the backup below and keep it.</p>
-  <p class="small muted">Error: ${String(said2)} · version ${VERSION_LINE}</p>
+  <p class="small muted">Error: ${String(said3)} · version ${VERSION_LINE}</p>
   <div class="row"><button class="btn primary" data-act="crashRetry">Try again</button><button class="btn" data-act="fbOpen" data-cat="bug" data-crash="1">Report this</button></div>
   <label class="field u-mt10">Backup text<textarea readonly class="u-minh160_fs12">${txt}</textarea></label></div>`
     );
@@ -15026,8 +16083,8 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     }
   }
   function openModal(m3) {
-    const fresh = !ui.modal;
-    if (fresh) {
+    const fresh2 = !ui.modal;
+    if (fresh2) {
       modalReturn = document.activeElement;
       modalPush();
     }
@@ -15045,7 +16102,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       }
       return;
     }
-    if (!fresh) return;
+    if (!fresh2) return;
     const noKb = (m3.kind === "picker" || m3.kind === "past") && coarse();
     const target = !noKb && el.querySelector("input,select,textarea") || el.querySelector(".sheet");
     if (target instanceof HTMLElement)
@@ -15987,7 +17044,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   }
   function askedLine(ex, sets) {
     if (!state.settings.askedShow) return A;
-    const said2 = sets.flatMap(
+    const said3 = sets.flatMap(
       (x2) => !x2.sg ? [] : [
         x2.sg[0] != null && x2.sg[1] != null ? (
           // The load the app asked, made on its equipment's steps in that equipment's unit (unitOnGrid).
@@ -15995,7 +17052,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
         ) : x2.sg[1] != null ? `${x2.sg[1]} ${ex.timed ? "s" : "reps"}` : listLabel(ex, x2.sg[0] ?? 0, unitOnGrid(x2.sg[0] ?? 0))
       ]
     );
-    return said2.length ? b`<br /><span class="muted">Asked: ${said2.join(", ")}</span>` : A;
+    return said3.length ? b`<br /><span class="muted">Asked: ${said3.join(", ")}</span>` : A;
   }
   var IMPORT_TIP = "From notes, a spreadsheet, or an export from another app. You check it before anything is saved.";
   function viewHistory() {
@@ -16127,8 +17184,8 @@ ${more}`;
     });
   }
   function prBadge(n3) {
-    const said2 = `${n3} ${n3 === 1 ? "PR" : "PRs"} smashed`;
-    return b` <span class="prb" role="img" aria-label=${said2} data-tip=${said2}>${markup(PR_ICON)}</span>`;
+    const said3 = `${n3} ${n3 === 1 ? "PR" : "PRs"} smashed`;
+    return b` <span class="prb" role="img" aria-label=${said3} data-tip=${said3}>${markup(PR_ICON)}</span>`;
   }
   function sessionRow(s3, perDay, nSets, vol, wd, wTag, prs) {
     const open = ui.histOpen === s3.id;
@@ -16393,8 +17450,8 @@ ${more}`;
   var monthNum = (w2) => MON[w2.slice(0, MON_LONG)] || MON[w2.slice(0, MON_SHORT)];
   var MONTHS2 = 12, MONTH_DAYS = 31, CENTURY = 100, Y2K = 2e3, IMPORT_YEARS = 20;
   var SERIAL = { epoch: Date.UTC(1899, 11, 30), min: 2e4, max: 8e4 };
-  function dateText(str) {
-    return String(str || "").toLowerCase().replace(/(\d)(st|nd|rd|th)\b/g, "$1").trim();
+  function dateText(str2) {
+    return String(str2 || "").toLowerCase().replace(/(\d)(st|nd|rd|th)\b/g, "$1").trim();
   }
   var NUM_DATE = /\b(\d{1,2})[/.-](\d{1,2})(?:[/.-](\d{2,4}))?\b/;
   var YEAR_FIRST = /(?<!\d)(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?!\d)/;
@@ -16411,8 +17468,8 @@ ${more}`;
     }
     return dm > 0 && md === 0 ? "dm" : void 0;
   }
-  function impDate(str, ref2, order) {
-    const s3 = dateText(str);
+  function impDate(str2, ref2, order) {
+    const s3 = dateText(str2);
     if (!s3) return null;
     const t4 = ref2 || today();
     const ty = +yearOf(t4);
@@ -16781,13 +17838,13 @@ ${more}`;
   };
   var csvGuard = (s3) => needsMark(s3) ? "'" + s3 : s3;
   var csvUnguard = (s3) => s3.startsWith("'") && needsMark(s3.slice(1)) ? s3.slice(1) : s3;
-  var num = (v3) => {
+  var num2 = (v3) => {
     const n3 = parseFloat(String(v3 == null ? "" : v3).replace(",", "."));
     return isFinite(n3) ? n3 : null;
   };
   function ownCardio(date, ex, minCell, hrCell, note) {
     const kind = (CARDIO.find(([, l4]) => l4 === ex) || ["other"])[0];
-    const min = num(minCell), hr = num(hrCell);
+    const min = num2(minCell), hr = num2(hrCell);
     const o3 = { date, kind, secs: min != null && min > 0 ? min * MINUTE_S : 0, dist: 0, name: ex };
     if (min != null && min > 0) o3.min = Math.round(min);
     if (hr != null && hr > 0) o3.hr = Math.round(hr);
@@ -16805,8 +17862,8 @@ ${more}`;
   function rowSet(cell, w2, reps, secs, missed, numTypes, u4) {
     const ty = cell("type").toLowerCase();
     const yes = (v3) => /^(1|true|yes|y|x)$/i.test(v3);
-    const rpe = num(cell("rpe"));
-    let rir = num(cell("rir"));
+    const rpe = num2(cell("rpe"));
+    let rir = num2(cell("rir"));
     if (rir == null && rpe != null && rpe >= RPE_LOW && rpe <= EFFORT_TOP) rir = Math.max(0, EFFORT_TOP - rpe);
     const code = numTypes ? ty : "";
     if (ty === "f" || ty === "failure" || code === "4") rir = 0;
@@ -16850,7 +17907,7 @@ ${more}`;
       const raw = (f3) => map[f3] == null ? "" : String(r4[map[f3]] == null ? "" : r4[map[f3]]).trim();
       const cell = (f3) => ours ? csvUnguard(raw(f3)) : raw(f3);
       let date = cell("date");
-      date = date ? impDate(date, void 0, order) || impSerial(num(date)) : lastDate;
+      date = date ? impDate(date, void 0, order) || impSerial(num2(date)) : lastDate;
       const ex = cell("ex") || lastEx;
       if (!date || !ex) {
         skipped++;
@@ -16861,8 +17918,8 @@ ${more}`;
       lastEx = ex;
       const name = cell("name") || (cell("date") ? "" : lastName);
       lastName = name;
-      const reps = num(cell("r")), secs = num(cell("secs"));
-      const w2 = num(cell("w")) || 0;
+      const reps = num2(cell("r")), secs = num2(cell("secs"));
+      const w2 = num2(cell("w")) || 0;
       if (/^rest timer$/i.test(ex) || /rest/i.test(cell("type"))) {
         skipped++;
         continue;
@@ -16874,7 +17931,7 @@ ${more}`;
         continue;
       }
       const ck = impCardioKind(ex);
-      const dist = num(cell("dist"));
+      const dist = num2(cell("dist"));
       if (dist > 0 || ck && !(reps > 0)) {
         cardio++;
         const k3 = date + "|" + (ck || "other");
@@ -16889,7 +17946,7 @@ ${more}`;
         skipped++;
         continue;
       }
-      const tu = at2(r4, cTypedU), tw = num(at2(r4, cTyped));
+      const tu = at2(r4, cTypedU), tw = num2(at2(r4, cTyped));
       const tuK = tu === "kg" ? "kg" : tu === "lb" ? "lb" : null;
       const asTyped2 = tuK && tw != null && (tw >= 0 || w2 < 0) ? { w: tw, u: tuK } : null;
       const set = rowSet(cell, asTyped2 ? asTyped2.w : w2, reps, secs, missed, numTypes, asTyped2 ? asTyped2.u : rowUnit(r4));
@@ -16898,7 +17955,7 @@ ${more}`;
       const ss = S4.get(k2);
       const sn = ours ? at2(r4, cNote) : cell("snote");
       if (!ss.note && sn) ss.note = sn;
-      const dm = ours ? num(at2(r4, cMin)) : impSpan(strong ? cell("dur") : "", cell("date"), cell("end"), order);
+      const dm = ours ? num2(at2(r4, cMin)) : impSpan(strong ? cell("dur") : "", cell("date"), cell("end"), order);
       if (ss.durMin == null && dm != null && dm >= 1 && dm <= LIMITS.minutes) ss.durMin = Math.round(dm);
       if (/^(yes|true|1|y)$/i.test(String(cell("deload") || "").trim())) ss.deload = true;
       let it = ss.items.get(ex);
@@ -16910,7 +17967,7 @@ ${more}`;
       if (machine && !it.machine) it.machine = machine;
       const en = String(cell("note") || "").trim();
       if (en && !it.note.split("; ").includes(en)) it.note = (it.note ? it.note + "; " + en : en).slice(0, LIMITS.note);
-      const n3 = Math.min(Math.max(Math.round(num(cell("sets")) || 1), 1), ROW_SETS);
+      const n3 = Math.min(Math.max(Math.round(num2(cell("sets")) || 1), 1), ROW_SETS);
       for (let j3 = 0; j3 < n3; j3++) it.sets.push({ ...set });
     }
     return {
@@ -17376,8 +18433,8 @@ ${more}`;
   function warmDropR(b2, si) {
     const s3 = b2.sets[si];
     if (!s3) return null;
-    const warm = !!s3.warm;
-    const same = (x2) => warm ? !!x2.warm : !x2.warm && !!x2.drop;
+    const warm2 = !!s3.warm;
+    const same = (x2) => warm2 ? !!x2.warm : !x2.warm && !!x2.drop;
     let k2 = 0;
     for (let i5 = 0; i5 < si; i5++) {
       const x2 = b2.sets[i5];
@@ -17387,7 +18444,7 @@ ${more}`;
     const bi = d3 ? d3.ex.indexOf(b2) : -1;
     const lr = d3 && !(bi > 0 && lastDup(d3, bi)) ? lastRowR(b2.exId, d3, same, k2) : null;
     if (lr != null) return lr;
-    if (!warm) {
+    if (!warm2) {
       const x2 = si > 0 ? b2.sets[si - 1] : void 0;
       if (!x2) return null;
       return +(x2.r ?? 0) > 0 ? +(x2.r ?? 0) : greyR(b2, si - 1);
@@ -17757,8 +18814,8 @@ ${more}`;
       delete b2.adj;
       adjSrc.delete(b2);
     }
-    const off = !adjOn() || b2.adjOff || !s3.done || s3.warm || s3.drop || !rest || d3.past || d3.editingId || d3.deload || d3.light || b2.light;
-    if (!off) {
+    const off2 = !adjOn() || b2.adjOff || !s3.done || s3.warm || s3.drop || !rest || d3.past || d3.editingId || d3.deload || d3.light || b2.light;
+    if (!off2) {
       const a2 = nextSets(b2, si, lastRFor(b2, si));
       if (a2) {
         b2.adj = a2;
@@ -17794,7 +18851,7 @@ ${more}`;
     if (g2 == null) return;
     setLoad(s3, g2, greyU(b2, si));
   }
-  function setDone(bi, si, val, again, then) {
+  function setDone(bi, si, val, again2, then) {
     const d3 = state.draft;
     const b2 = d3 && d3.ex[bi];
     const s3 = b2 && b2.sets[si];
@@ -17809,7 +18866,7 @@ ${more}`;
     }
     if (val && unloaded.has(s3)) {
       unloaded.delete(s3);
-      again = true;
+      again2 = true;
     }
     const okKey = `${bi}:${si}:${s3.r}:${effW(b2, si)}`;
     const far = val && W.oddOk !== okKey && !oddReps(b2, s3) ? oddLoad(b2, si, d3.date) : null;
@@ -17823,7 +18880,7 @@ ${more}`;
         lz ? "Log it as missed" : "Log it",
         () => {
           W.oddOk = okKey;
-          setDone(bi, si, true, again);
+          setDone(bi, si, true, again2);
           rerenderKeepScroll();
           if (then && s3.done) then();
         },
@@ -17832,7 +18889,7 @@ ${more}`;
           label: "Fix it",
           only: true,
           fn: () => {
-            if (again) ui.refix = { b: blkRef(bi), s: si };
+            if (again2) ui.refix = { b: blkRef(bi), s: si };
             const f3 = document.querySelector(
               `.sg input[data-f="${fix}"][data-b="${bi}"][data-s="${si}"]`
             );
@@ -17861,7 +18918,7 @@ ${more}`;
     if (val && !d3.editingId && blockDone(b2) && !blkIsOpen(bi, b2)) W.foldWait.add(b2);
     onLiftDraw(bi, redraw);
     if (!wasPR) prMoment(bi, si);
-    let autoRest = val && !again && !s3.warm && !d3.editingId && !d3.past && +b2.plan.rest > 0 && state.settings.timerMode === "auto";
+    let autoRest = val && !again2 && !s3.warm && !d3.editingId && !d3.past && +b2.plan.rest > 0 && state.settings.timerMode === "auto";
     if (autoRest && b2.plan.ss) {
       const grp = d3.ex.filter((x2) => x2.plan && x2.plan.ss === b2.plan.ss);
       const k2 = grp.indexOf(b2);
@@ -17875,8 +18932,8 @@ ${more}`;
     const askRir = val && state.settings.rirAsk === true && !s3.warm && s3.rir == null && rirShow(EX(b2.exId)) && !!document.querySelector(`.rirb[data-b="${bi}"][data-s="${si}"]`);
     if (askRir) rirShowStrip(bi, si);
     else if (!val) rirClose();
-    if (val && !again && !askRir && !d3.editingId && b2.plan.ss && !(nx && nx.drop && !nx.done)) ssNext(b2);
-    else if (val && !again && !askRir && !d3.editingId && !b2.plan.ss && !blockDone(b2)) nextSetClear(bi);
+    if (val && !again2 && !askRir && !d3.editingId && b2.plan.ss && !(nx && nx.drop && !nx.done)) ssNext(b2);
+    else if (val && !again2 && !askRir && !d3.editingId && !b2.plan.ss && !blockDone(b2)) nextSetClear(bi);
     if (val && !askRir && !d3.editingId && blockDone(b2)) {
       const rf = blkRef(bi);
       W.foldT = setTimeout(() => autoFold(rf), FOLD_MS.tick);
@@ -17884,9 +18941,9 @@ ${more}`;
     if (val && b2.sets.filter((x2) => x2.done).length === 1 && orderAt(b2) >= 0) orderSoon(b2);
   }
   function prMoment(bi, si) {
-    const said2 = prSaid(bi, si);
-    if (!said2) return;
-    toast(said2, false, PR_TOAST_MS, "pr");
+    const said3 = prSaid(bi, si);
+    if (!said3) return;
+    toast(said3, false, PR_TOAST_MS, "pr");
     const btn = document.querySelector(`[data-act="sDone"][data-b="${bi}"][data-s="${si}"]`);
     const row = btn && btn.closest(".sg");
     if (row instanceof HTMLElement) {
@@ -17917,7 +18974,7 @@ ${more}`;
     const b2 = d3 && d3.ex[bi];
     const s3 = b2 && b2.sets[si];
     if (!d3 || !b2 || !s3 || !s3.done) return false;
-    const said2 = saidAtFocus && saidAtFocus.s === s3 ? saidAtFocus.msg : prSaid(bi, si);
+    const said3 = saidAtFocus && saidAtFocus.s === s3 ? saidAtFocus.msg : prSaid(bi, si);
     saidAtFocus = null;
     if (W.foldT && W.foldWait.has(b2)) {
       clearTimeout(W.foldT);
@@ -17930,7 +18987,7 @@ ${more}`;
       return true;
     }
     act(() => assessSet(bi, si), { inProgress: true });
-    prRetell(said2, bi, si);
+    prRetell(said3, bi, si);
     return false;
   }
   var saidAtFocus = null;
@@ -17949,10 +19006,10 @@ ${more}`;
     const ex = EX(b2.exId);
     return `${pr === "Best" ? isCompound(ex) ? "New best estimate" : "PR" : pr}: ${exName(b2.exId)}, ${setShort(ex, { w: +(s3.w ?? 0) || 0, r: s3.r, u: s3.u })}${prBeat(b2.exId, s3, d3, pr, earlierSets(b2, si))}`;
   }
-  function prRetell(said2, bi, si) {
+  function prRetell(said3, bi, si) {
     const now2 = prSaid(bi, si);
-    if (now2 === said2) return;
-    if (said2) toastTakeBack(said2);
+    if (now2 === said3) return;
+    if (said3) toastTakeBack(said3);
     if (now2) toast(now2, false, PR_TOAST_MS, "pr");
   }
   function nextLift(d3, i5) {
@@ -18088,10 +19145,10 @@ ${more}`;
     const key = d3.id + ":" + bi;
     if (mixSeen.has(key)) return;
     mixSeen.add(key);
-    const said2 = (w2, u4) => u4 && u4 !== liftU(ex) ? typedLabel(ex, w2, u4) : fmtWOf(ex, w2);
+    const said3 = (w2, u4) => u4 && u4 !== liftU(ex) ? typedLabel(ex, w2, u4) : fmtWOf(ex, w2);
     const lu = unitAt(lastX.pts, last);
     toast(
-      `${s3.u && s3.u !== liftU(ex) ? said2(+(s3.w ?? 0), s3.u) : `${fmtWOf(ex, +(s3.w ?? 0))} ${liftU(ex)}`} is ${r4 > 1 ? "well above" : "well below"} last time's ${said2(last, lu)}. This one is logged as ${loadWords(ex)}.`,
+      `${s3.u && s3.u !== liftU(ex) ? said3(+(s3.w ?? 0), s3.u) : `${fmtWOf(ex, +(s3.w ?? 0))} ${liftU(ex)}`} is ${r4 > 1 ? "well above" : "well below"} last time's ${said3(last, lu)}. This one is logged as ${loadWords(ex)}.`,
       false,
       MIX_TOAST_MS
     );
@@ -18161,9 +19218,9 @@ ${more}`;
       clear();
       const keep = window.scrollY + a1.getBoundingClientRect().top - r4;
       window.scrollTo(0, keep < 0 ? y1 : keep);
-      off();
+      off2();
     };
-    const off = () => {
+    const off2 = () => {
       window.removeEventListener("touchstart", stop);
       window.removeEventListener("wheel", stop);
     };
@@ -18173,7 +19230,7 @@ ${more}`;
       if (stopped) return;
       if (!a1.isConnected) {
         stopped = true;
-        off();
+        off2();
         return;
       }
       const k2 = Math.max(0, Math.min(1, (now2 - t0) / FOLD_MS.glide));
@@ -18188,7 +19245,7 @@ ${more}`;
       stopped = true;
       clear();
       window.scrollTo(0, Math.max(0, window.scrollY + a1.getBoundingClientRect().top - vEnd));
-      off();
+      off2();
     };
     frame2(t0);
   }
@@ -18916,6 +19973,7 @@ ${MUSCLES.map(
 `;
   }
   function moreBody(hasDemo2) {
+    const rows2 = rowsDiag();
     return b`<div class="card stack">
 <div>
 <p class="small u-m0-0-6"><b>Demo data</b> ${tipButton(
@@ -18926,11 +19984,12 @@ ${MUSCLES.map(
 </div>
 <div>
 <p class="small u-m0-0-6"><b>Version</b> ${VERSION_LINE}${logBuf.length ? b` <span class="muted">· cloud ${cloud.on ? cloud.status : "off"} · ${logBuf.length} logged error${logBuf.length === 1 ? "" : "s"}</span>` : A}</p>
-${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
+${rows2 ? b`<p class="small muted u-m0-0-6" id="rowsLine">${rows2.line}</p>
+` : A}${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       (x2) => b`<li><span class="small"><b>${x2.a}</b> ${x2.m}${x2.n ? ` (${x2.n} times)` : ""}</span><span class="small muted">${stampShort(x2.t)}</span></li>
 `
     )}</ul>
-` : A}${logBuf.length ? b`<div class="row"><button class="btn sm" data-act="diagCopy">Copy diagnostics</button><button class="btn sm" data-act="diagClear">Clear log</button></div>
+` : A}${logBuf.length || rows2 ? b`<div class="row"><button class="btn sm" data-act="diagCopy">Copy diagnostics</button>${logBuf.length ? b`<button class="btn sm" data-act="diagClear">Clear log</button>` : A}</div>
 ` : A}${window.IRONLOG_APP ? b`<p class="small u-m8-0-0"><a href="LICENSES.txt" target="_blank" rel="noopener" class="u-diflex_aicenter_minh44">Open-source licenses</a></p>
 ` : A}</div>
 <div><button class="btn danger" data-act="resetAll">Erase everything</button></div>
@@ -19756,7 +20815,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     )}</div>${tipButton(COMMON_TIP, "About Most common and Less common")}</div></div>
   <div id="libList">${libCards()}</div>`;
   }
-  var num2 = (v3) => +(v3 ?? NaN);
+  var num3 = (v3) => +(v3 ?? NaN);
   function namesLift(data, id) {
     const named2 = (xs) => (arr(xs) || []).some((b2) => rec(b2)?.["exId"] === id);
     return named2(data["ex"]) || (arr(data["days"]) || []).some((d3) => named2(rec(d3)?.["items"]));
@@ -19767,24 +20826,24 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       rerenderKeepScroll();
     },
     iUp(t4) {
-      const d3 = curRoutineB().days[num2(t4.dataset.day)];
+      const d3 = curRoutineB().days[num3(t4.dataset.day)];
       if (!d3) return;
-      act(() => move(d3.items, num2(t4.dataset.i), num2(t4.dataset.i) - 1));
+      act(() => move(d3.items, num3(t4.dataset.i), num3(t4.dataset.i) - 1));
       rerenderKeepScroll();
     },
     iDown(t4) {
-      const d3 = curRoutineB().days[num2(t4.dataset.day)];
+      const d3 = curRoutineB().days[num3(t4.dataset.day)];
       if (!d3) return;
-      act(() => move(d3.items, num2(t4.dataset.i), num2(t4.dataset.i) + 1));
+      act(() => move(d3.items, num3(t4.dataset.i), num3(t4.dataset.i) + 1));
       rerenderKeepScroll();
     },
     iDel(t4) {
-      const d3 = curRoutineB().days[num2(t4.dataset.day)];
+      const d3 = curRoutineB().days[num3(t4.dataset.day)];
       if (!d3) return;
       let gone2;
       act(
         () => {
-          [gone2] = d3.items.splice(num2(t4.dataset.i), 1);
+          [gone2] = d3.items.splice(num3(t4.dataset.i), 1);
         },
         { undo: true }
       );
@@ -19925,7 +20984,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     },
     dUp(t4) {
       const R2 = curRoutineB();
-      const i5 = num2(t4.dataset.day);
+      const i5 = num3(t4.dataset.day);
       if (!(i5 >= 1)) return;
       act(() => move(R2.days, i5, i5 - 1));
       ui.todayDay = null;
@@ -19933,7 +20992,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     },
     dDown(t4) {
       const R2 = curRoutineB();
-      const i5 = num2(t4.dataset.day);
+      const i5 = num3(t4.dataset.day);
       if (!(i5 < R2.days.length - 1)) return;
       act(() => move(R2.days, i5, i5 + 1));
       ui.todayDay = null;
@@ -19941,7 +21000,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     },
     dDel(t4) {
       const R2 = curRoutineB();
-      const i5 = num2(t4.dataset.day);
+      const i5 = num3(t4.dataset.day);
       if (R2.schedule === "weekly") return;
       if (R2.days.length < 2) {
         toast("A cycle needs at least one day");
@@ -20095,7 +21154,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       return true;
     }
     if (t4.dataset.dayname != null) {
-      const d3 = curRoutineB().days[num2(t4.dataset.dayname)];
+      const d3 = curRoutineB().days[num3(t4.dataset.dayname)];
       if (d3)
         act(
           () => {
@@ -20106,7 +21165,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       return true;
     }
     if (t4.dataset.daypm != null) {
-      const d3 = curRoutineB().days[num2(t4.dataset.daypm)];
+      const d3 = curRoutineB().days[num3(t4.dataset.daypm)];
       const v3 = t4.value.trim().slice(0, LIMITS.name);
       if (d3)
         act(
@@ -20142,7 +21201,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       return true;
     }
     if (t4.dataset.dayname != null) {
-      const d3 = curRoutineB().days[num2(t4.dataset.dayname)];
+      const d3 = curRoutineB().days[num3(t4.dataset.dayname)];
       if (d3)
         act(() => {
           d3.name = within(t4.value, d3.name, LIMITS.name);
@@ -20155,7 +21214,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       return true;
     }
     if (t4.dataset.dayrest != null) {
-      const d3 = curRoutineB().days[num2(t4.dataset.dayrest)];
+      const d3 = curRoutineB().days[num3(t4.dataset.dayrest)];
       if (!d3) return true;
       const on = t4 instanceof HTMLInputElement && t4.checked;
       act(
@@ -20260,7 +21319,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     }, 0);
   };
   function dropItem(evt) {
-    const from = num2(evt.from.dataset.day), to = num2(evt.to.dataset.day);
+    const from = num3(evt.from.dataset.day), to = num3(evt.to.dataset.day);
     const oi = evt.oldIndex ?? -1, ni = evt.newIndex ?? -1;
     if (from === to && oi === ni) {
       dragDrop();
@@ -20302,7 +21361,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       return;
     }
     if (evt.clone && evt.clone !== evt.item) evt.clone.remove();
-    const to = num2(evt.to.dataset.day);
+    const to = num3(evt.to.dataset.day);
     const exId = evt.item.dataset.ex;
     const ni = evt.newIndex ?? 0;
     after(() => {
@@ -20318,7 +21377,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
   }
   function dayKey(dg, up) {
     const R2 = curRoutineB();
-    const i5 = num2(dg.dataset.di);
+    const i5 = num3(dg.dataset.di);
     const j3 = i5 + (up ? -1 : 1);
     if (R2.schedule === "weekly" || !R2.days[i5] || j3 < 0 || j3 >= R2.days.length) return;
     act(() => move(R2.days, i5, j3));
@@ -20664,7 +21723,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     if (!rows2.length)
       return b`<p class="muted">Log tape measurements at least ${TAPE_WEEKS.from} weeks apart on the Today tab, under Body, then Tape measurements. Arm, chest, thigh, and calf are read against the hard sets their muscles got in between.</p>`;
     const ms = [...state.measurements].sort((a2, b2) => a2.date < b2.date ? -1 : 1);
-    const ctx = (r4) => {
+    const ctx2 = (r4) => {
       const w2 = ms.filter((m3) => (m3.waist ?? 0) > 0 && m3.date >= r4.from && m3.date <= r4.to);
       const w0 = w2[0], w1 = w2[w2.length - 1];
       const wd = w2.length >= 2 && w0 && w1 ? (w1.waist ?? 0) - (w0.waist ?? 0) : null;
@@ -20679,11 +21738,11 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     const mdc = (k2) => k2 === "chest" ? TAPE_NOISE_CM.chest : TAPE_NOISE_CM.other;
     const span = (r4) => `${fmtDate(r4.from)} to ${fmtDate(r4.to)}`;
     const r0 = rows2[0];
-    const one = !!r0 && rows2.every((r4) => span(r4) === span(r0) && ctx(r4) === ctx(r0));
-    const c0 = r0 ? ctx(r0) : "";
+    const one = !!r0 && rows2.every((r4) => span(r4) === span(r0) && ctx2(r4) === ctx2(r0));
+    const c0 = r0 ? ctx2(r0) : "";
     const top = one && r0 ? b`<p class="small muted u-m0-0-4">${span(r0)}${c0 ? c0.replace(/^ Same stretch: /, ": ") : "."}</p>` : A;
     return b`${top}${rows2.map(
-      (r4) => b`<div class="u-p6-0_bb1-solid-line"><div class="row spread"><b>${ML2[r4.k]}</b><span class="num">${Math.abs(r4.d) < mdc(r4.k) ? b`<span class="tag">within tape error</span> ` : A}${sgn(r4.d)} ${LU()}</span></div><p class="small muted u-m2-0-0">${one ? "" : `${span(r4)}, `}${sizeWhat(r4)}.${one ? "" : ctx(r4)}</p></div>`
+      (r4) => b`<div class="u-p6-0_bb1-solid-line"><div class="row spread"><b>${ML2[r4.k]}</b><span class="num">${Math.abs(r4.d) < mdc(r4.k) ? b`<span class="tag">within tape error</span> ` : A}${sgn(r4.d)} ${LU()}</span></div><p class="small muted u-m2-0-0">${one ? "" : `${span(r4)}, `}${sizeWhat(r4)}.${one ? "" : ctx2(r4)}</p></div>`
     )}<p class="small muted hastip u-mt8" data-tip="Same spot, same time of day, before training, relaxed or flexed the same way each time. Under about 1 cm on arms, thighs, calves, and neck (1.5 cm on the chest) is within what a tape repeats to.">How to measure</p>`;
   }
   function bwRateText() {
@@ -22473,9 +23532,9 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
     const cs = weekly ? null : cycleState(R2);
     if (typeof ui.todayDay === "number" && ui.todayDay >= R2.days.length) ui.todayDay = null;
     const chosen = typeof ui.todayDay === "number" ? ui.todayDay : null;
-    const off = offeredDay(R2);
-    const offer = chosen == null ? off.offer : null;
-    const di = chosen == null ? off.di : chosen;
+    const off2 = offeredDay(R2);
+    const offer = chosen == null ? off2.offer : null;
+    const di = chosen == null ? off2.di : chosen;
     const day0 = R2.days[di] || { id: "", name: "", rest: true, items: [] };
     const t4 = today();
     const at2 = ui.todayAt;
@@ -22580,19 +23639,19 @@ ${howText("starts", STARTS_HELP)}${moreRow(deload, playable, di, part)}</section
       return st && st.stalled;
     }).length;
     const letters = ssLetters(day.items);
-    let fresh = 0;
+    let fresh2 = 0;
     const rows2 = day.items.map((it, k2) => {
       const ex = EX(it.exId);
       const sg = suggest(it.exId, it, { deload, before: today() });
       const none = !sg.last && !sg.inj && !sg.target && !sg.away;
-      if (none) fresh++;
+      if (none) fresh2++;
       const text = String(sg.text || "");
       const short = none ? "" : sg.target ? `Today: ${sg.target}` : sg.inj ? "Injury flagged: start light, stop on pain." : sg.last && text.startsWith(sg.last) ? text.slice(sg.last.length).trim() : text;
       return b`<div class="pvi" style=${k2 ? "border-top:1px solid var(--line-soft);padding-top:10px;margin-top:10px" : A}><div class="row spread"><span><b>${ex.name}</b> <span class="muted small">${it.sets} × ${repSpan(it.repMin, it.repMax, "-")}${ex.timed ? "s" : ""}${ex.perSide ? " per side" : ""}${rirShow(ex) ? `, ${effTgt(it.rir)}` : ""}</span>${it.ss ? b` <span class="tag blue">Superset ${letters[it.ss]}</span>` : A}${sg.inj ? b` <span class="tag red">Injury: ${injLabel(sg.inj)}</span>` : A}</span>${liftTags(
         it.exId
       )}</div>${short ? b`<p class="small muted hastip u-mb0" data-tip=${text}>${short}</p>` : A}${((b2) => b2 ? b`<p class="small muted u-mb0 pvbest">${b2}</p>` : A)(bestSetLine(it.exId))}</div>`;
     });
-    const first = fresh ? b`<p class="small muted u-m0-0n10">${fresh === day.items.length ? "First time" : `${fresh} new`}: start lighter than you think and stop while the reps still move well. Warm up on the first big lift. ${tipButton(
+    const first = fresh2 ? b`<p class="small muted u-m0-0n10">${fresh2 === day.items.length ? "First time" : `${fresh2} new`}: start lighter than you think and stop while the reps still move well. Warm up on the first big lift. ${tipButton(
       "No history yet, so there is no target. Pick a load you think you could lift for the top of the rep range plus the reps in reserve shown, erring light, and stop when the reps start to slow. On a barbell or other big lift, do 1 or 2 lighter sets of 5 first. From the next session the app works the load out, catching up quickly over the first few.",
       "About first sessions"
     )}</p>` : A;
@@ -23079,20 +24138,20 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       return markedNew(d3, exId) ? b` · <span class="tag" data-tip=${NEW_TIP}>New machine</span>` : "";
     const k2 = draftMachine(exId);
     const name = k2 ? machineName(exId, k2) : null;
-    const said2 = name || (k2 === NEW_MACHINE ? "New machine" : null);
-    return said2 ? (
+    const said3 = name || (k2 === NEW_MACHINE ? "New machine" : null);
+    return said3 ? (
       // The dot before it goes with it when the line wraps.
-      b` <span class="u-wsnw">· <button type="button" class="tag mctag" data-act="machineOpen" data-b=${String(bi)} aria-label=${`Machine: ${said2}. Change`}>${said2}</button></span>`
+      b` <span class="u-wsnw">· <button type="button" class="tag mctag" data-act="machineOpen" data-b=${String(bi)} aria-label=${`Machine: ${said3}. Change`}>${said3}</button></span>`
     ) : "";
   }
   var CARDIO_ADD_GAP_PX = 10;
   var visitKeys = /* @__PURE__ */ new WeakMap();
   function repeatKeyed(xs, id, part) {
-    const ks = keysOf(xs, id);
+    const ks = keysOf2(xs, id);
     return c3(xs, (_2, i5) => ks[i5], part);
   }
   var visitN = 0;
-  function keysOf(xs, id) {
+  function keysOf2(xs, id) {
     const seen = /* @__PURE__ */ new Set();
     return xs.map((x2, i5) => {
       let k2 = id(x2);
@@ -23220,13 +24279,13 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     if (!s3 || d3.editingId || !liftsOn(d3).has(b2)) return "";
     const wn = b2.sets.slice(0, si + 1).filter((x2) => !x2.warm && !x2.drop).length;
     const name = s3.warm ? "Warm-up" : s3.drop ? "Drop set" : `Set ${wn}`;
-    const said2 = name;
+    const said3 = name;
     const w2 = effW(b2, si) ?? 0;
     const r4 = +(s3.r ?? greyR(b2, si) ?? 0) || 0;
-    const btn = (f3, dir, off, label, txt) => b`<button type="button" class="stepr-b" data-act="sStep" data-b=${bi} data-s=${si} data-sf=${f3} data-d=${dir} aria-label=${`${name}: ${label}`} ?disabled=${off}>${txt}</button>`;
+    const btn = (f3, dir, off2, label, txt) => b`<button type="button" class="stepr-b" data-act="sStep" data-b=${bi} data-s=${si} data-sf=${f3} data-d=${dir} aria-label=${`${name}: ${label}`} ?disabled=${off2}>${txt}</button>`;
     const lw = s3.w != null ? s3.w : effW(b2, si);
     const pill = (f3, v3, unit, dn, up, less, more) => b`<span class="stepr-g">${btn(f3, "-1", dn, less, "−")}<span class="stepr-v" aria-hidden="true"><b>${v3}</b><small>${unit}</small></span>${btn(f3, "1", up, more, "+")}</span>`;
-    return b`<div class="stepr" role="group" aria-label=${`${name}: load and ${ex.timed ? "seconds" : "reps"}`}><div class="stepr-h"><span class="stepr-l">${said2}</span></div><div class="stepr-row">${ex.assist ? "" : pill(
+    return b`<div class="stepr" role="group" aria-label=${`${name}: load and ${ex.timed ? "seconds" : "reps"}`}><div class="stepr-h"><span class="stepr-l">${said3}</span></div><div class="stepr-row">${ex.assist ? "" : pill(
       "w",
       lw == null ? "–" : loadIn(ex, lw),
       liftU(ex),
@@ -23767,7 +24826,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       }
     };
     const d3 = safe(() => state.draft, null);
-    const ctx = {
+    const ctx2 = {
       build: APP_VERSION,
       version: DISPLAY_VERSION,
       env: ENV,
@@ -23791,11 +24850,11 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       ),
       errors: logBuf.slice(-CTX.errors)
     };
-    const bytes = () => safe(() => new TextEncoder().encode(JSON.stringify(ctx)).length, 0);
-    while (ctx.errors.length > 1 && bytes() > FB_CTX_MAX) ctx.errors.shift();
+    const bytes = () => safe(() => new TextEncoder().encode(JSON.stringify(ctx2)).length, 0);
+    while (ctx2.errors.length > 1 && bytes() > FB_CTX_MAX) ctx2.errors.shift();
     if (bytes() > FB_CTX_MAX)
-      ctx.errors = ctx.errors.map(({ s: s3, ...x2 }) => ({ ...x2, m: String(x2.m).slice(0, CTX.words) }));
-    return ctx;
+      ctx2.errors = ctx2.errors.map(({ s: s3, ...x2 }) => ({ ...x2, m: String(x2.m).slice(0, CTX.words) }));
+    return ctx2;
   }
   function fbShrink(file) {
     return new Promise((res, rej) => {
@@ -23839,11 +24898,11 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     for (const el of document.querySelectorAll("#modal [data-fbind]"))
       if (el instanceof HTMLTextAreaElement && el.dataset.fbind === "msg") m3.msg = el.value;
   }
-  var asText = (cat, msg, ctx) => `${APP_NAME}: ${FB_TITLE[cat] || FB_TITLE["bug"]}
+  var asText = (cat, msg, ctx2) => `${APP_NAME}: ${FB_TITLE[cat] || FB_TITLE["bug"]}
 
 ${msg}
 
-${JSON.stringify(ctx, null, 1)}`;
+${JSON.stringify(ctx2, null, 1)}`;
   async function copied(txt) {
     try {
       if (navigator.clipboard) {
@@ -24021,6 +25080,7 @@ ${JSON.stringify(ctx, null, 1)}`;
           build: APP_VERSION,
           version: DISPLAY_VERSION,
           cloud: { on: cloud.on, status: cloud.status, err: cloud.err, last: cloud.last },
+          rows: rowsDiag(),
           log: logBuf
         },
         null,
@@ -24101,11 +25161,11 @@ ${JSON.stringify(ctx, null, 1)}`;
     const el = document.querySelector("#modal [data-captcha]");
     if (!(el instanceof HTMLElement) || box2 && box2.el === el || failedFor === el) return;
     if (!loading) loading = loadScript(TURNSTILE_URL);
-    const asked = loading;
-    asked.then((loaded) => {
+    const asked2 = loading;
+    asked2.then((loaded) => {
       const ts = window.turnstile;
       if (!loaded || !ts) {
-        if (loading === asked) loading = null;
+        if (loading === asked2) loading = null;
         failedFor = el;
         return;
       }
@@ -24154,7 +25214,7 @@ ${JSON.stringify(ctx, null, 1)}`;
   }
 
   // src/app/account.ts
-  var WAIT_MS = {
+  var WAIT_MS2 = {
     most: 30 * 6e4,
     slowAfter: 5 * 6e4,
     every: 2e4,
@@ -24219,7 +25279,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     if (wait.timer) clearTimeout(wait.timer);
     wait.timer = null;
     const age = Date.now() - wait.since;
-    if (age > WAIT_MS.most) {
+    if (age > WAIT_MS2.most) {
       waitStop();
       const m3 = waitSheet();
       if (m3) {
@@ -24230,14 +25290,14 @@ ${JSON.stringify(ctx, null, 1)}`;
       }
       return;
     }
-    wait.timer = setTimeout(() => waitTry(false), age < WAIT_MS.slowAfter ? WAIT_MS.every : WAIT_MS.slowEvery);
+    wait.timer = setTimeout(() => waitTry(false), age < WAIT_MS2.slowAfter ? WAIT_MS2.every : WAIT_MS2.slowEvery);
   }
   var unconfirmed2 = (e5) => codeOf(e5) === "email_not_confirmed" || /Confirm your email/i.test(said(e5, ""));
   async function waitTry(manual) {
     const A2 = AUTH();
     const w2 = wait;
     if (!A2 || !w2 || flight) return;
-    if (!manual && (document.visibilityState !== "visible" || Date.now() - lastTry < WAIT_MS.gap)) {
+    if (!manual && (document.visibilityState !== "visible" || Date.now() - lastTry < WAIT_MS2.gap)) {
       waitSchedule();
       return;
     }
@@ -24332,7 +25392,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       } catch (e5) {
       }
       const t4 = rec(mine);
-      if (t4 && Date.now() - (+(t4["t"] || 0) || 0) < WAIT_MS.marker) {
+      if (t4 && Date.now() - (+(t4["t"] || 0) || 0) < WAIT_MS2.marker) {
         prefDel(ACCT_WAIT);
         if (typeof A2.release === "function") A2.release();
         openModal({
@@ -25017,7 +26077,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     const fp = (ss) => ss.date + "|" + ss.ex.map((b2) => b2.exId + ":" + b2.sets.map((q) => `${q.r}@${asWritten(q)}`).join(",")).sort().join(";");
     const have = new Set(state.sessions.map(fp));
     const seen = /* @__PURE__ */ new Set();
-    const fresh = [];
+    const fresh2 = [];
     let dup = 0;
     for (const ss of out) {
       const k2 = fp(ss);
@@ -25026,9 +26086,9 @@ ${JSON.stringify(ctx, null, 1)}`;
         continue;
       }
       seen.add(k2);
-      fresh.push(ss);
+      fresh2.push(ss);
     }
-    return { fresh, dup };
+    return { fresh: fresh2, dup };
   }
   function fileCardio(m3) {
     const cardio = [];
@@ -25125,12 +26185,12 @@ ${JSON.stringify(ctx, null, 1)}`;
           light: false
         });
     }
-    const { fresh, dup: dupSessions } = notInLog(out);
-    const machineNames2 = fileMachines(fresh, labelled);
+    const { fresh: fresh2, dup: dupSessions } = notInLog(out);
+    const machineNames2 = fileMachines(fresh2, labelled);
     const { cardio, cardioNoTime, dup: dupCardio } = fileCardio(m3);
     const dup = dupSessions + dupCardio;
     return {
-      sessions: fresh,
+      sessions: fresh2,
       ssOf,
       cardio,
       cardioNoTime,
@@ -25138,7 +26198,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       bad,
       odd,
       timedOff,
-      newEx: Object.values(newEx2).filter((e5) => fresh.some((ss) => ss.ex.some((b2) => b2.exId === e5.id))),
+      newEx: Object.values(newEx2).filter((e5) => fresh2.some((ss) => ss.ex.some((b2) => b2.exId === e5.id))),
       machineNames: machineNames2
     };
   }
@@ -25175,7 +26235,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     rounds: 3,
     name: 40
   };
-  var ORDER = { older: 100, none: 999 };
+  var ORDER2 = { older: 100, none: 999 };
   var USUAL_RANGES = [
     [3, [1, 3]],
     [5, [3, 5]],
@@ -25203,13 +26263,13 @@ ${JSON.stringify(ctx, null, 1)}`;
   var workSets = (b2) => b2.sets.filter((q) => !q.warm && !q.drop);
   function offSessions() {
     const I2 = IDX();
-    const tot = {}, off = {};
+    const tot = {}, off2 = {};
     for (const id in I2.byEx)
       for (const x2 of I2.byEx[id] || []) {
         tot[x2.sid] = (tot[x2.sid] || 0) + 1;
-        if (offTarget(x2)) off[x2.sid] = (off[x2.sid] || 0) + 1;
+        if (offTarget(x2)) off2[x2.sid] = (off2[x2.sid] || 0) + 1;
       }
-    return (x2) => x2.deload || x2.light || (tot[x2.id] || 0) > 0 && (off[x2.id] || 0) * 2 >= (tot[x2.id] || 0);
+    return (x2) => x2.deload || x2.light || (tot[x2.id] || 0) > 0 && (off2[x2.id] || 0) * 2 >= (tot[x2.id] || 0);
   }
   function groupSessions(rec2, named2, offS) {
     const groups = [];
@@ -25259,9 +26319,9 @@ ${JSON.stringify(ctx, null, 1)}`;
       for (let k2 = recent.length - 1; k2 >= 0; k2--) {
         const s3 = recent[k2];
         const i5 = s3 ? s3.ex.findIndex((b2) => b2.exId === id) : -1;
-        if (i5 >= 0) return k2 === recent.length - 1 ? i5 : ORDER.older + i5;
+        if (i5 >= 0) return k2 === recent.length - 1 ? i5 : ORDER2.older + i5;
       }
-      return ORDER.none;
+      return ORDER2.none;
     };
     const ids = [...cnt.keys()].filter((id) => (cnt.get(id) || 0) * 2 >= recent.length && state.exercises.some((e5) => e5.id === id && !e5.archived)).sort((a2, b2) => order(a2) - order(b2));
     const items = ids.map((id) => {
@@ -28321,7 +29381,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         else if (typedNotDone(x2)) typedWork++;
       }
     if (!any || left === 0) return false;
-    const asked = () => {
+    const asked2 = () => {
       const dd = state.draft;
       if (dd) dd._leftAsked = true;
     };
@@ -28334,14 +29394,14 @@ ${JSON.stringify(ctx, null, 1)}`;
         `${andList(typed.map((u4) => `${u4.name} (${u4.n} set${u4.n > 1 ? "s" : ""})`))} ${typed.length > 1 ? "have" : "has"} reps and no checkmark. ${left > 1 ? `The other ${left} are empty and left out.` : "The other set is empty and left out."} ${fewer}`,
         `Mark ${total > 1 ? "them" : "it"} done and save`,
         () => {
-          asked();
+          asked2();
           markAll();
         },
         false,
         {
           label: "Save without them",
           fn: () => {
-            asked();
+            asked2();
             saveAfterRamps();
           }
         }
@@ -28353,7 +29413,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       `Finish now and they are left out. ${fewer}`,
       "Finish now",
       () => {
-        asked();
+        asked2();
         finish();
       },
       false,
@@ -28651,9 +29711,9 @@ ${JSON.stringify(ctx, null, 1)}`;
         invalidate();
       }
       state.trash = state.trash.filter((t4) => !(t4.kind === "session" && t4.id === sess.id));
-      const tried = d3.ex.filter((b2) => b2.tgt && b2.sets.some((x2) => x2.done && !x2.warm) && effTarget(b2) === b2.tgt);
-      targets = tried.length;
-      beaten = tried.filter((b2) => {
+      const tried2 = d3.ex.filter((b2) => b2.tgt && b2.sets.some((x2) => x2.done && !x2.warm) && effTarget(b2) === b2.tgt);
+      targets = tried2.length;
+      beaten = tried2.filter((b2) => {
         const pr = blockProgress(b2);
         return pr && pr.beat;
       }).length;
@@ -29110,7 +30170,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       const n3 = left.length;
       const sets = `${n3} set${n3 === 1 ? "" : "s"}`;
       const repeats = left.some((x2) => !x2.s.warm && !x2.s.drop) ? " Skipped sets are fewer than usual, so the target repeats next time." : "";
-      const blocked = left.find(
+      const blocked2 = left.find(
         ({ s: s3, si }) => !ex.bw && !ex.timed && s3.w == null && greyW(b2, si) == null || !(+(s3.r ?? 0) > 0) && !isMissed(s3) && !((greyR(b2, si) ?? 0) > 0) || isMissed(s3) && !s3.warm && !s3.drop && lightZero(b2, si, d3.date) || s3.w != null && !s3.warm && !s3.drop && oddLoad(b2, si, d3.date) || oddReps(b2, s3)
       );
       const ref2 = blkRef(bi);
@@ -29157,10 +30217,10 @@ ${JSON.stringify(ctx, null, 1)}`;
           shown2.map((x2) => x2.s)
         );
       };
-      if (blocked)
+      if (blocked2)
         confirmBox(
           `${exName(b2.exId)}: ${sets} left`,
-          `Set ${blocked.si + 1} has no weight or reps to take, or looks far off, so tick it on its own. Or skip the sets left.${repeats}`,
+          `Set ${blocked2.si + 1} has no weight or reps to take, or looks far off, so tick it on its own. Or skip the sets left.${repeats}`,
           "Skip them",
           skip
         );
@@ -29242,7 +30302,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       const s3 = b2 && b2.sets[si];
       if (!d3 || !b2 || !s3) return;
       const n3 = numIn(t4.dataset.v || "");
-      const said2 = prSaid(bi, si);
+      const said3 = prSaid(bi, si);
       act(
         () => {
           s3.rir = n3 == null ? null : Math.min(Math.max(n3, 0), EFFORT_TOP);
@@ -29252,7 +30312,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       );
       rirClose();
       redraw();
-      prRetell(said2, bi, si);
+      prRetell(said3, bi, si);
       const btn = document.querySelector(`.rirb[data-b="${bi}"][data-s="${si}"]`);
       if (btn)
         try {
@@ -29587,8 +30647,8 @@ ${JSON.stringify(ctx, null, 1)}`;
     }, NEW_DAY_MS);
     const picsAgain = () => {
       picsRefresh().then(
-        (found) => {
-          if (found) {
+        (found2) => {
+          if (found2) {
             if (ui.modal) renderModal();
             else rerenderKeepScroll();
           }
@@ -29972,7 +31032,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     const email = b`<label class="field">Email<input type="email" data-abind="email" .value=${l3(m3.email || "")} autocomplete="email" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="email" enterkeyhint="next"></label>`;
     const pw = (label, ac, min) => b`<label class="field">${label}<input type="password" data-abind="pw" .value=${l3(m3.pw || "")} autocomplete=${ac} minlength=${min ? "8" : A} enterkeyhint="go"></label>`;
     const err = b`<p class="small u-cred_m0" role="alert" ?hidden=${!m3.err}>${m3.err || ""}</p>`;
-    const check = captchaOn() ? b`<div data-captcha></div>` : A;
+    const check2 = captchaOn() ? b`<div data-captcha></div>` : A;
     const go = (label) => b`<button type="submit" class="btn primary fullw" data-act="acctSubmit" ?disabled=${!!m3.busy}>${m3.busy ? BUSY[m3.mode] || "One moment" : label}</button>`;
     const link = (mode, label) => b`<button type="button" class="linkbtn tall" data-act="acctMode" data-mode=${mode}>${label}</button>`;
     const T2 = {
@@ -29984,7 +31044,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       wait: "Check your email",
       where: m3.title || "Email confirmed"
     };
-    const b2 = m3.mode === "signin" ? b`${email}${pw("Password", "current-password", false)}${err}${m3.needCode ? codeField(m3) : A}${check}${go("Sign in")}<div class="row spread">${link("forgot", "Forgot password?")}${link("signup", "Create an account")}</div>` : m3.mode === "signup" ? b`${email}${pw("Password (8 or more characters)", "new-password", true)}${err}${check}${go("Create account")}<p class="small muted u-m0">An email confirms the address. It is only used for signing in.</p><div class="row">${link("signin", "I have an account")}</div>` : m3.mode === "forgot" ? b`${email}${err}${check}${go("Email me a reset link")}<p class="small muted u-m0">Set the new password from the email's link, then sign in here.</p><div class="row">${link("signin", "Back to sign in")}</div>` : m3.mode === "newpw" ? b`${pw("New password (8 or more characters)", "new-password", true)}${err}${go("Save new password")}` : m3.mode === "wait" ? b`<p class="u-m0">We sent a confirmation email to <b>${m3.email || ""}</b>. Type its code here, or tap its link and come back: ${APP_NAME} signs you in by itself.</p>${codeField(m3)}<p class="small muted waitline u-m0" aria-live="polite">${m3.busy ? "Checking" : "Waiting for the confirmation"}</p>${err}${check}<button type="button" class="btn fullw" data-act="acctWaitNow" ?disabled=${!!m3.busy}>I have confirmed</button><div class="row">${link("signup", "Use a different email")}</div>` : m3.mode === "where" ? b`<p class="u-m0">Where do you use ${APP_NAME}?</p><button type="button" class="btn primary fullw" data-act="acctWhere" data-v="app">The home-screen app</button><button type="button" class="btn fullw" data-act="acctWhere" data-v="here">Here in this browser</button>` : b`<p class="u-m0">${m3.msg || ""}</p><button type="button" class="btn primary fullw" data-act="mClose">OK</button>`;
+    const b2 = m3.mode === "signin" ? b`${email}${pw("Password", "current-password", false)}${err}${m3.needCode ? codeField(m3) : A}${check2}${go("Sign in")}<div class="row spread">${link("forgot", "Forgot password?")}${link("signup", "Create an account")}</div>` : m3.mode === "signup" ? b`${email}${pw("Password (8 or more characters)", "new-password", true)}${err}${check2}${go("Create account")}<p class="small muted u-m0">An email confirms the address. It is only used for signing in.</p><div class="row">${link("signin", "I have an account")}</div>` : m3.mode === "forgot" ? b`${email}${err}${check2}${go("Email me a reset link")}<p class="small muted u-m0">Set the new password from the email's link, then sign in here.</p><div class="row">${link("signin", "Back to sign in")}</div>` : m3.mode === "newpw" ? b`${pw("New password (8 or more characters)", "new-password", true)}${err}${go("Save new password")}` : m3.mode === "wait" ? b`<p class="u-m0">We sent a confirmation email to <b>${m3.email || ""}</b>. Type its code here, or tap its link and come back: ${APP_NAME} signs you in by itself.</p>${codeField(m3)}<p class="small muted waitline u-m0" aria-live="polite">${m3.busy ? "Checking" : "Waiting for the confirmation"}</p>${err}${check2}<button type="button" class="btn fullw" data-act="acctWaitNow" ?disabled=${!!m3.busy}>I have confirmed</button><div class="row">${link("signup", "Use a different email")}</div>` : m3.mode === "where" ? b`<p class="u-m0">Where do you use ${APP_NAME}?</p><button type="button" class="btn primary fullw" data-act="acctWhere" data-v="app">The home-screen app</button><button type="button" class="btn fullw" data-act="acctWhere" data-v="here">Here in this browser</button>` : b`<p class="u-m0">${m3.msg || ""}</p><button type="button" class="btn primary fullw" data-act="mClose">OK</button>`;
     const title = T2[m3.mode] || "Account";
     return b`<div class="sheet" role="dialog" aria-modal="true" aria-label=${title}><div class="sheet-h"><h3>${title}</h3>${closeX()}</div><form class="stack" id="acctForm" novalidate>${b2}</form></div>`;
   }
@@ -30000,7 +31060,7 @@ ${JSON.stringify(ctx, null, 1)}`;
   var stepWords = (st, kg2) => kg2 ? `${st.kg} kg` : `${st.lb} lb`;
   var OTHER_WKS = orList(REGION_WKS.map(([n3]) => n3).filter((n3) => n3 !== REGION_WK_DEFAULT));
   function guideSheet(m3) {
-    const off = state.settings.rirMode === "off";
+    const off2 = state.settings.rirMode === "off";
     const kg2 = appU() === "kg";
     const inClaude2 = !!(window.claude && typeof window.claude.use === "function");
     const accts = !inClaude2 && !!AUTH();
@@ -30032,7 +31092,7 @@ ${JSON.stringify(ctx, null, 1)}`;
    <p><b>Auto-mark</b> (Settings): a set ticks itself when you leave its reps field.</p>
    <p><b>A missed set</b>: type 0 reps and tick it (auto-mark ticks it too). It is kept and shown as missed, and counts toward no volume, PR, or estimate. The next target reads it as a set short of the range, so it never earns a step up, and as 0 reps, so the last target repeats. The next set's grey numbers come from the last set you completed.</p>
    <p><b>A number far off</b> asks before the set is logged, Log it or Fix it: reps over ${ODD_REPS} and more than ${timesWord(ODD_REPS_TIMES)} the top of your range or your most ever, whichever is more, or a load more than ${timesWord(ODD_SESSION)}, or under ${shareWords(1 / ODD_SESSION)} of, the heaviest set you ticked today, or more than ${timesWord(ODD_BEST)} the heaviest you have logged on the exercise (rules of thumb, to catch a slipped digit or the other unit). On a bodyweight lift, so does added load of ${pctOf(ODD_ADDED_BW)}% or more of your bodyweight, or more than ${timesWord(ODD_ADDED_BEST)} the most you have added (rules of thumb too). So does a load under the empty bar, on any set of a lift on the full bar typed as the total (the bar in Settings, or the exercise's own).</p>
-   <p><b>RIR</b>, reps in reserve: how many more reps you could have done. Tap a set's RIR box for 0 to ${RIR_CALL_TOP} (Settings can switch it to half reps or RPE; RPE ${effAt("rpe", 2)} is RIR 2). ${off ? "RIR is off in Settings, so every working set counts as hard." : `It is optional: a blank reads as your usual RIR on that lift once you have rated ${RIR_USUAL_MIN} of its sets in ${CAL_WEEKS} weeks, and until then as hard.`}</p>
+   <p><b>RIR</b>, reps in reserve: how many more reps you could have done. Tap a set's RIR box for 0 to ${RIR_CALL_TOP} (Settings can switch it to half reps or RPE; RPE ${effAt("rpe", 2)} is RIR 2). ${off2 ? "RIR is off in Settings, so every working set counts as hard." : `It is optional: a blank reads as your usual RIR on that lift once you have rated ${RIR_USUAL_MIN} of its sets in ${CAL_WEEKS} weeks, and until then as hard.`}</p>
    <p><b>RIR check</b>: once you have rated your sets in ${CAL_OFFER.sessions} sessions, one machine or cable exercise may ask for one set to failure, to see how far your RIR calls are off. Not now, or finishing without it, waits ${CAL_OFFER.weeks} weeks.</p>
    <p><b>Last</b>, beside each set, is what you did on that set last time at your working weight, from the session named above the sets; a top single or lighter sets stay in that line. <b>W and D</b>: tap a set's number once for a warm-up (kept, never analysed), twice for a drop set (counts ${shareWords(DROP_CREDIT)} a set of volume, never as a PR or target). <b>+ Drop</b> beside + Set adds one at about ${pctOf(DROP_START)}% once a set is done; warm-ups are in the exercise's ⋯ menu.</p>
    <p><b>Supersets</b>: an exercise's ⋯ menu, Superset with the next one (Finish then offers to keep it in your plan), or Plan's Superset with next. The rest timer waits until the partners are done, and session minutes leave out the rest between them.</p>
@@ -30082,7 +31142,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       [
         "stats",
         "Volume and Stats",
-        `<p><b>A hard set</b> is a working set at RIR ${HARD_RIR} or less${off ? " (with RIR off, every working set)" : ""}. Helper muscles count ${shareWords(HELPER_CREDIT)} a set; which muscles are helpers on each lift is the library's own call, a rule of thumb. With Settings, Count ${halfLbl()} as half a set on, a working set past RIR ${HARD_RIR} counts ${shareWords(HALF_SET)} toward your weekly sets and targets, planned ones too (rule of thumb); estimates, PRs, recovery, and the per-workout flag still count hard sets only.</p>
+        `<p><b>A hard set</b> is a working set at RIR ${HARD_RIR} or less${off2 ? " (with RIR off, every working set)" : ""}. Helper muscles count ${shareWords(HELPER_CREDIT)} a set; which muscles are helpers on each lift is the library's own call, a rule of thumb. With Settings, Count ${halfLbl()} as half a set on, a working set past RIR ${HARD_RIR} counts ${shareWords(HALF_SET)} toward your weekly sets and targets, planned ones too (rule of thumb); estimates, PRs, recovery, and the per-workout flag still count hard sets only.</p>
    <p><b>Weekly targets</b> are per muscle in Settings, Weekly set targets. ${USUAL_RANGE[0]} to ${USUAL_RANGE[1]} hard sets a week for major muscles is typical, not a ceiling. The muscles lifters train directly for size (${TARGETED_SAID}) have a target to start, since the dose-response studies measure such muscles. Every other muscle (${TRACKED_SAID}) is tracked only: counted and shown, with no target, until you give it one with Set a target in Weekly set targets or name it a focus (any but ${NO_FOCUS_SAID}); then it counts everywhere a target counts. A target starting at 0 is met with no sets. A muscle is below target when its weekly average, to one decimal as shown, is under the minimum. On a routine run as a cycle, weeks can differ in which of its days fall in them (two days in turn, three times a week). A muscle under its minimum only because fewer of the days that train it fell in the weeks averaged reads <b>on plan</b> when every session and set the cycle had due in those weeks was done and the plan reaches the target over the whole cycle. The radar on Stats measures each region against its minimum, so on or past the ring is on target. It averages your last ${REGION_WK_DEFAULT} full weeks, from the week after your first; the chips above it switch to ${OTHER_WKS} weeks, for the radar only. During the week, short of the minimum shows as under way, not below.</p>
    <p><b>Lagging strength</b>: a muscle whose lifts are falling, or flat with one stalled (rule of thumb). No clear trend but a stalled lift: <b>A lift stalled</b>. All lifts within day-to-day noise: <b>unclear</b>, never 0%.</p>
    <p><b>Your target and the usual range</b>: picking a ready-made routine sets your minimums to what it plans, so Stats measures you against your plan. Plan, Weekly volume names the muscles that plan puts under the usual range.</p>
@@ -31153,6 +32213,8 @@ ${JSON.stringify(ctx, null, 1)}`;
   function exposeForTests() {
     window.__ironlog = {
       act,
+      rowsBusy,
+      rowsDiag,
       undoNext,
       liftRead,
       draftMachine,

@@ -411,6 +411,26 @@
       };
     }
   };
+  /* One row per record (SUPABASE.md, Part 8). Each call answers with what the account's own function returned, or
+     null when the account has no rows table yet (its SQL not run): the app then syncs by the documents alone. An
+     error the rows' own SQL raises keeps its name (rows_draft_stale and the rest), which the app reads; the name is
+     never shown. */
+  const RECORDS = PREVIEW ? 'records_preview' : 'records';
+  const LISTED = 'kind,id,sum,t,dev,a,gone_saw,gone_saw_dev,gone_good,gone_day,gone_clash,seq';
+  const noRows = e => /PGRST202|PGRST205|42P01|42883/.test(String((e && e.code) || ''));
+  async function rowsCall(run) {
+    const { data, error } = await authed(run);
+    if (!error) return data;
+    if (noRows(error)) return null;
+    const name = (String(error.message || '').match(/rows_[a-z_]+/) || [])[0];
+    throw name ? Object.assign(new Error(name), { code: 'error' }) : friendly(error);
+  }
+  db.rows = {
+    push: (rows, top) => rowsCall(() => sb.rpc(RECORDS + '_push', top == null ? { p: rows } : { p: rows, only_if_top: top })),
+    pull: (since, most) => rowsCall(() => sb.rpc(RECORDS + '_pull', { since, most })),
+    digest: () => rowsCall(() => sb.rpc(RECORDS + '_digest')),
+    list: (since, most) => rowsCall(() => sb.from(RECORDS).select(LISTED).gt('seq', since).order('seq').limit(most))
+  };
   /* Feedback (PENDING 58): anyone can add a report, signed in or out; only
      accounts listed in feedback_readers (the app owner) can read them. The
      table rules in SUPABASE.md, Part 4, enforce both. */
