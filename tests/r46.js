@@ -124,6 +124,8 @@ const CLOCK = '2026-10-14T10:00:00';
       // b. A pending auto-mark waiting on the effort strip, with a rebuild in between: the set must still tick.
       L.state.draft = null; L.saveNow(); L.ui.tab = 'today'; L.render(); document.querySelector('[data-act="startSession"]').click(); await w(150);
       const d = L.state.draft; d.ex.forEach(b => { if (b.plan) delete b.plan.ss; }); L.saveNow(); L.render();
+      // Found again by its id: ticked ahead of the untouched first exercise, it moves up once the screen is calm.
+      const bid1 = d.ex[1].bid;
       const r2 = document.querySelector('[data-f="r"][data-b="1"][data-s="0"]'); r2.value = '9';
       r2.dispatchEvent(new Event('input', { bubbles: true }));
       const box = document.querySelector('.rirb[data-b="1"][data-s="0"]');
@@ -131,7 +133,7 @@ const CLOCK = '2026-10-14T10:00:00';
       r2.dispatchEvent(new Event('change', { bubbles: true })); await w(120);
       L.state = L.normalize(L.state); L.invalidate();   // a sync lands while the strip is open
       const pick = document.querySelector('[data-act="rirPick"][data-v="1"]'); if (pick) pick.click(); await w(400);
-      const b1 = L.state.draft.ex[1];
+      const b1 = L.state.draft.ex.find(b => b.bid === bid1);
       return { ids: ids.every(x => typeof x === 'string' && x), confirmKept, pendDone: b1.sets[0].done, pendReps: b1.sets[0].r };
     });
     ok(r.ids, 'every exercise in a session carries an id of its own');

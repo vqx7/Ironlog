@@ -102,10 +102,11 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   const sw = await ev(() => { const b = window.__ironlog.state.draft.ex[1]; return { ws: b.sets.map(x => x.w), sw: b.sw, ph: document.querySelector('.sg input[data-f="w"][data-b="1"][data-s="0"]').placeholder }; });
   ok(sw.ws.every(w => w === null) && (sw.sw == null ? true : sw.ph === String(sw.sw) || sw.ph !== ''), 'a swapped-in exercise starts with grey loads', sw);
 
-  // ---- 10. Bodyweight lift: grey 0, ticking stores 0 added load.
+  // ---- 10. Bodyweight lift: grey 0, ticking stores 0 added load. Its set is read on the exercise itself: ticked ahead
+  // of untouched ones, it moves up once the screen is calm.
   const bw = await ev(async () => { const L = window.__ironlog; const d = L.state.draft; const bwEx = L.state.exercises.find(e => e.bw && !e.assist && !e.timed && !e.archived && !L.IDX().byEx[e.id]); const nb = L.newBlock(bwEx.id, { sets: 2, repMin: 6, repMax: 10, rir: 1, rest: 90, inc: 2.27 }, { before: d.date }); d.ex.push(nb); L.saveNow(); L.render(); const bi = d.ex.length - 1;
     const f = document.querySelector(`.sg input[data-f="w"][data-b="${bi}"][data-s="0"]`); const ph = f.placeholder; const r = document.querySelector(`.sg input[data-f="r"][data-b="${bi}"][data-s="0"]`); r.value = '8'; r.dispatchEvent(new Event('input', { bubbles: true }));
-    document.querySelector(`[data-act="sDone"][data-b="${bi}"][data-s="0"]`).click(); await new Promise(r => setTimeout(r, 80)); const x = d.ex[bi].sets[0]; return { ph, w: x.w, done: x.done }; });
+    document.querySelector(`[data-act="sDone"][data-b="${bi}"][data-s="0"]`).click(); await new Promise(r => setTimeout(r, 80)); const x = nb.sets[0]; return { ph, w: x.w, done: x.done }; });
   ok(bw.ph === '0' && bw.done && (bw.w === 0 || bw.w === null), 'a bodyweight lift with no history shows 0 in grey and saves no added load', bw);
 
   // ---- 11. A session left open by r24 (loads filled in) carries on unchanged.

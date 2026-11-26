@@ -23,7 +23,7 @@
 //      loads on the kilogram step, the plates per side, a PR in kilograms;
 //   5  at home with bodyweight work: the bodyweight question, pull-ups with
 //      no load moving by reps, an assisted lift moving by less help, a plank
-//      in seconds;
+//      in seconds, started ahead of the assisted lift and moved up;
 //   6  the lifter who slips: a load of 0 on the bench (under the bar), a load
 //      with a digit too many and reps typed as 105 are asked about and fixed
 //      in place, − Set and Undo, a change of units mid-session (nothing
@@ -97,14 +97,15 @@
 //      says none; All-time bests keeps 315 x 1 with its year and shows the best since you came back beside it.
 //  19  dumbbells marked in kg at a gym in pounds (2.66, 390's Release B): two weeks of 185 lb bench and 50 lb
 //      dumbbells; in the session, the dumbbells' LB tapped to KG: their rows ask the nearest load in kg, said so, the
-//      bench stays in lb; the sets done as asked and Finish; History shows the dumbbells in kg and the bench in lb; and
+//      bench stays in lb; the sets done as asked, the dumbbells first, which moves them up above the bench, and Finish;
+//      History shows the dumbbells in kg and the bench in lb; and
 //      the week after the dumbbells read last time in kg, nothing converted back, the bench in lb.
 //  21  Sunset Coast (2.77.1): Style picked in Settings by a tap; Today's card with the sun and palms, Start in the
 //      sunset gradient with dark text, and today in the week bar once trained; the rest timer a dusk strip that turns neon pink as rest ends; the
 //      sets saved as typed; no sideways scroll at 320 px on any tab; kept after a reload; Standard again brings Ember back.
 // Run on r59 (`node tests/personas.js baselines/r59.html`) to see which of
 // these the build before already got wrong. PERSONAS=1,3 runs some of them.
-const { open, engine, touchDriver } = require('./h');
+const { open, engine, touchDriver, placeOf } = require('./h');
 let browser;
 const FILE = process.argv[2] || process.env.IRONLOG_FILE || 'index.html';
 const fails = [];
@@ -130,6 +131,8 @@ async function phone(start, o = {}) {
     // A field typed into as a thumb does: focus, the old text replaced, then left (the change).
     type: async (f, b, s, v) => { const q = sel(f, b, s); await page.click(q); await page.fill(q, ''); await page.keyboard.type(String(v)); await ev(() => { const a = document.activeElement; if (a && a.blur) a.blur(); }); await wait(60); },
     tick: async (b, s) => { await page.click(`#view [data-act="sDone"][data-b="${b}"][data-s="${s}"]`); await wait(120); },
+    // Where an exercise is in the workout, once none is due to move up (h.js settled says why a suite waits).
+    at: id => placeOf(page, id),
     // The effort strip: its button on the row, then the number.
     // Whether the row has the button (a lift with no effort reading, a timed hold, has none).
     effort: async (b, s, v) => { const q = `#view [data-act="rirOpen"][data-b="${b}"][data-s="${s}"]`; if (!(await page.$(q))) return false; await page.click(q); await wait(80); await page.click(`#view [data-act="rirPick"][data-b="${b}"][data-s="${s}"][data-v="${v}"]`); await wait(80); return true; },
@@ -144,17 +147,14 @@ async function phone(start, o = {}) {
     // Finish, answering each question as one who means to save what was done: finish now, keep the sets as typed, save the ticked ones.
     finish: async () => {
       await page.click('#view [data-act="finish"]'); const asked = [];
-      /* Each question answered as it comes, until the workout is saved (closed, or the recap open), up to 5 s: on a
-         loaded machine a later question (the ramp-up sets) can come after a pause, and the loop that stopped at the
-         first pause left it unanswered and the workout open (a full run of 2.78.2 at two suites at a time). */
-      for (let k = 0; k < 40; k++) {
+      for (let k = 0; k < 6; k++) {
         await wait(120);
-        const q = await ev(() => { const L = window.__ironlog, m = L.ui.modal; return { open: !!L.state.draft, kind: m ? m.kind : null, title: m ? m.title || '' : '' }; });
-        if (!q.open || (q.kind && q.kind !== 'confirm')) break;
-        if (q.kind !== 'confirm') continue;
+        const q = await ev(() => { const m = window.__ironlog.ui.modal; return m ? { kind: m.kind, title: m.title || '' } : null; });
+        if (!q || q.kind !== 'confirm') break;
         asked.push(q.title);
         await page.click(/sets not done/.test(q.title) ? '#modal [data-act="mOk"]' : '#modal [data-act="mAlt"]');
       }
+      await wait(150);
       const m = await ev(() => { const L = window.__ironlog; const m = L.ui.modal; const t = m && document.getElementById('modal') ? document.getElementById('modal').innerText : ''; if (m) L.ACT.mClose(); return { kind: m && m.kind, text: t }; });
       return { asked, recap: m };
     }
@@ -468,8 +468,11 @@ async function finish() {
     for (const [s, r] of [[0, 9], [1, 7], [2, 6]]) { await H.type('r', 0, s, r); await H.tick(0, s); }
     d = await H.draft();
     ok(d.ex[0].sets.every(x => x.done), '5. pull-ups tick with no load typed', d.ex[0].sets.map(x => [x.w, x.r, x.done]));
-    // The plank in seconds.
-    for (const s of [0, 1, 2]) { await H.type('r', 2, s, 50); await H.tick(2, s); }
+    // The plank in seconds. Started while the assisted pull-up is untouched, it moves up to just after the pull-ups.
+    await H.type('r', 2, 0, 50); await H.tick(2, 0);
+    const pk = await H.at('plank');
+    ok(pk === 1, '5. the plank, started ahead of the untouched assisted pull-up, moves up to just after the pull-ups', pk);
+    for (const s of [1, 2]) { await H.type('r', pk, s, 50); await H.tick(pk, s); }
     const fin = await H.finish();
     const saved = await H.ev(() => { const s = window.__ironlog.state.sessions.find(x => x.date === '2026-10-19'); return s && s.ex.map(b => ({ exId: b.exId, sets: b.sets.map(x => [x.w, x.r]) })); });
     const pl = saved && saved.find(b => b.exId === 'plank');
@@ -1247,8 +1250,13 @@ async function finish() {
     // 50 lb is 22.68 kg: the nearest dumbbell in kg is a whole half kilogram within 4% of it.
     ok(h0[db] === 'lb EACH' && h1[db] === 'kg EACH' && h1[bb] === 'lb TOTAL' && /in kg/.test(t1) && Math.abs(w - 22.68) / 22.68 < 0.04 && Math.abs(w * 2 - Math.round(w * 2)) < 1e-9 && rows.every(r => Number(r.w) === w) && /at \d+(\.\d)? kg per dumbbell/.test(hint) && !/ lb/.test(hint.replace(/^Last[^.]*\.\s*/, '')) && /^Heaviest 50 lb×10/.test(heavy),
       '19. kg picked in the dumbbells\' sheet: their badge kg, their rows the nearest dumbbell in kg, the target in kg, last time and the heaviest quoted as typed (50 lb), the bench still in lb', { h0, h1, t1, rows, hint, heavy });
-    // The sets done as asked: the reps in grey typed, at 2 in reserve, each ticked.
-    for (const [b, s, r] of [[db, 0, rows[0].r], [db, 1, rows[1].r], [db, 2, rows[2].r], [bb, 0, 8], [bb, 1, 8], [bb, 2, 8]]) { await H.type('r', b, s, r); await H.effort(b, s, 2); await H.quiet(); await H.tick(b, s); }
+    // The sets done as asked: the reps in grey typed, at 2 in reserve, each ticked. The dumbbells come first, while the
+    // bench is untouched, so they move up above it.
+    const set = async (b, s, r) => { await H.type('r', b, s, r); await H.effort(b, s, 2); await H.quiet(); await H.tick(b, s); };
+    await set(db, 0, rows[0].r);
+    const db1 = await H.at('dbBench'), bb1 = await H.at('bench');
+    ok(db1 === 0 && bb1 === 1, '19. the dumbbells, started ahead of the untouched bench, move up above it', { db1, bb1 });
+    for (const [b, s, r] of [[db1, 1, rows[1].r], [db1, 2, rows[2].r], [bb1, 0, 8], [bb1, 1, 8], [bb1, 2, 8]]) await set(b, s, r);
     const fin = await H.finish();
     const saved = await H.ev(() => { const L = window.__ironlog; const s = [...L.state.sessions].sort((a, b) => (a.date < b.date ? 1 : -1))[0]; const x = s.ex.find(b => b.exId === 'dbBench'); return { sid: s.id, w: x.sets.map(t => t.w), units: x.sets.map(t => L.typedLabel(L.EX('dbBench'), t.w)) }; });
     await H.ev(sid => { const L = window.__ironlog; L.ui.tab = 'history'; L.ui.histOpen = sid; L.render(); }, saved.sid); await wait(200);

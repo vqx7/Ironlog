@@ -2,6 +2,8 @@
 
 Moved out of CLAUDE.md in r44 so every session starts with less to read; this is the same table. `tests/run.js` runs them all (side by side since r44), `node tests/<name>.js` runs one. Add a row here for every new suite. Since 2026-10-14 `npm run test:webkit` (or `IRONLOG_BROWSER=webkit node tests/<name>.js`) runs the same suites in WebKit; the few left out are in `WEBKIT_SKIP` in `tests/run.js`, each with its reason.
 
+A suite taps a row by its exercise's place in the workout (`data-b`). An exercise ticked ahead of untouched ones moves up once the screen is calm, so after such a tick a suite waits for it (`settled` or `placeOf` in `tests/h.js`) before tapping on; otherwise it passes only on a fast machine. A copy of `index.html` with `ORDER_MS` set to `{ soon: 1, again: 1500 }`, run as `IRONLOG_FILE`, finds a suite that does not wait.
+
 | Suite | Covers |
 |---|---|
 | unit-math | 1RM formulas, inverses, rep bands, hard sets, drop credit, load modes, tonnage, load steps, time model |

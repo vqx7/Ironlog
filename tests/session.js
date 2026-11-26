@@ -6,7 +6,7 @@
 // what the rule gives, with the rule's numbers and the app's own words. A failure names its rule. Each rule was changed
 // in a copy of the page to show its check fails there (PENDING, CA-1). The targets themselves are tests/progression.js's
 // (P-1 to P-37); saving and sync tests/storage-sync.js's. SESSION_ONLY=L-1,L-5 runs some rules.
-const { open } = require('./h');
+const { open, settled, placeOf } = require('./h');
 const fails = [];
 const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 1200) : ''); } else console.log('ok  ', m); return !!c; };
 const FILE = process.argv[2] || 'index.html';
@@ -430,9 +430,13 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
   if (run('L-16')) {
     const P = await lifter({ settings: { autoDone: false } });
     await start(P);
+    const id = (await P.draft()).ex[1].exId;
     await P.tap(tick(1, 0));
+    // Ticked ahead of the untouched first exercise, the second moves up above it.
+    const at = await placeOf(P.page, id);
+    ok(at === 0, 'L-16: the second exercise, ticked first, moves up above the untouched first', at);
     // Remove, from the exercise's ⋯ menu: one with a set logged asks first.
-    await P.tap(btn('bMenu', 1), 250); await P.tap('#modal [data-act="bMenuDo"][data-op="bDel"]', 250);
+    await P.tap(btn('bMenu', at), 250); await P.tap('#modal [data-act="bMenuDo"][data-op="bDel"]', 250);
     const m = await P.modal();
     ok(m && m.kind === 'confirm', 'L-16: removing an exercise with a set logged asks first', m);
     if (m && m.kind === 'confirm') await mOk(P);
@@ -440,7 +444,7 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     ok(d.ex.length === 1 && (await P.toasts()).includes('Exercise removed'), 'L-16: then it goes, saying "Exercise removed", with Undo', { n: d.ex.length, t: await P.toasts() });
     await P.tap('#toast button', 250);
     const d2 = await P.draft();
-    ok(d2.ex.length === 2 && d2.ex[1].sets[0].done, 'L-16: Undo brings it back with its ticked set', d2.ex.map(b => b.exId));
+    ok(d2.ex.length === 2 && d2.ex[at].exId === id && d2.ex[at].sets[0].done, 'L-16: Undo brings it back with its ticked set', d2.ex.map(b => b.exId));
     await P.close();
   }
 
@@ -631,9 +635,14 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
        started now asks, a step up (185 + 10 = 195 lb), with last time as saved; the raises, started, keep what they
        started with. Before, it came back asking for 24+ reps at 185 lb beside the old last time. */
     const P = await lifter({ settings: { autoDone: false } });
-    await start(P); await P.tap(tick(1, 0));
+    await start(P);
+    const rid = (await P.draft()).ex[1].exId;
+    await P.tap(tick(1, 0));
+    // Ticked ahead of the untouched bench, the raises move up above it; each lift is then read by name.
+    const ri = await placeOf(P.page, rid);
+    ok(ri === 0, 'L-19: the raises, ticked ahead of the untouched bench, move up above it', ri);
     // Its target, the load it asked and its rows, compared by value (the copy set aside is read back with its keys in another order).
-    const raises = () => P.ev(() => { const b = window.__ironlog.state.draft.ex[1]; const t = b.tgt || {}; return JSON.stringify({ tgt: Object.keys(t).sort().map(k => [k, t[k]]), sw: b.sw, sets: b.sets.map(x => [x.w, x.r, !!x.done]) }); });
+    const raises = () => P.ev(id => { const b = window.__ironlog.state.draft.ex.find(x => x.exId === id); const t = b.tgt || {}; return JSON.stringify({ tgt: Object.keys(t).sort().map(k => [k, t[k]]), sw: b.sw, sets: b.sets.map(x => [x.w, x.r, !!x.done]) }); }, rid);
     const raisesBefore = await raises();
     await P.tap('#tabs [data-tab="history"]', 200);
     await P.tap('#view [data-act="histToggle"][data-id="last"]', 150); await P.tap('#view [data-act="histEdit"][data-id="last"]', 300);
@@ -644,7 +653,7 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     const saved = await P.ev(() => window.__ironlog.state.sessions.find(x => x.id === 'last').ex.find(b => b.exId === 'bench').sets.map(x => x.r));
     if (saved.join() !== '10,10,10') ok(false, 'L-19: (setup) the edit saved the bench as 10, 10, 10', saved);
     await P.tap('#tabs [data-tab="today"]', 300);
-    const bench = await P.ev(() => { const e = document.getElementById('blk-0'); return { grey: [...e.querySelectorAll('input[data-f="w"]')].map(i => i.value || i.placeholder), text: e.innerText.replace(/\s+/g, ' ') }; });
+    const bench = await P.ev(() => { const e = document.getElementById('blk-' + window.__ironlog.state.draft.ex.findIndex(b => b.exId === 'bench')); return { grey: [...e.querySelectorAll('input[data-f="w"]')].map(i => i.value || i.placeholder), text: e.innerText.replace(/\s+/g, ' ') }; });
     const up = String(185 + BAR_STEP_LB);
     ok(bench.grey.length === 3 && bench.grey.every(v => v === up) && bench.text.includes(`${up} lb`) && /185×10 – ✓ 2 185×10 – ✓ 3 185×10/.test(bench.text) && !/185×7/.test(bench.text), `L-19: the workout set aside comes back with the bench, not started, at ${up} lb, read from last week as the edit saved it (NEW-152)`, bench);
     ok((await raises()) === raisesBefore, 'L-19: the raises, started before, keep what they started with (NEW-152)', { before: raisesBefore, after: await raises() });
@@ -1853,7 +1862,8 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
       tag: (b = 0) => P.ev(b => { const t = document.querySelector(`#blk-${b} .mctag`); return t ? t.textContent.trim() : null; }, b),
       names: () => P.ev(() => { const e = window.__ironlog.state.exercises.find(x => x.id === 'machPress'); return e.machines ? JSON.parse(JSON.stringify(e.machines)) : null; }),
       edit: async id => { await P.ev(() => { const L = window.__ironlog; L.ui.tab = 'history'; L.render(); }); await wait(150); await P.tap(`#view [data-act="histToggle"][data-id="${id}"]`, 150); await P.tap(`#view [data-act="histEdit"][data-id="${id}"]`, 300); },
-      sets: async (b, w, rs) => { for (let i = 0; i < rs.length; i++) { await P.page.fill(field('w', b, i), String(w)); await P.page.fill(field('r', b, i), String(rs[i])); await P.ev(() => { const a = document.activeElement; if (a && a.blur) a.blur(); }); await wait(60); if (!(await P.ev(([b, i]) => window.__ironlog.state.draft.ex[b].sets[i].done, [b, i]))) await P.tap(tick(b, i), 120); } },
+      // Each set on its exercise where it is now (its id kept): a lift added again and ticked ahead of untouched ones moves up.
+      sets: async (b, w, rs) => { const bid = await P.ev(b => window.__ironlog.state.draft.ex[b].bid, b); for (let i = 0; i < rs.length; i++) { await settled(P.page); b = await P.ev(id => window.__ironlog.state.draft.ex.findIndex(x => x.bid === id), bid); await P.page.fill(field('w', b, i), String(w)); await P.page.fill(field('r', b, i), String(rs[i])); await P.ev(() => { const a = document.activeElement; if (a && a.blur) a.blur(); }); await wait(60); if (!(await P.ev(([b, i]) => window.__ironlog.state.draft.ex[b].sets[i].done, [b, i]))) await P.tap(tick(b, i), 120); } await settled(P.page); },
       finish: async () => { await P.ev(() => { const t = document.getElementById('toast'); if (t) t.hidden = true; }); await P.tap('#view [data-act="finish"]', 300); for (let k = 0; k < 6; k++) { const m = await P.modal(); if (!m) break; if (m.kind === 'confirm') await mOk(P); else { await P.ev(() => window.__ironlog.ACT.mClose()); await wait(150); } } },
       week: async t => { await P.ev(t => window.__setClock(t), t); await P.ev(() => { const L = window.__ironlog; L.invalidate(); L.ui.tab = 'today'; L.render(); }); await wait(150); }
     });

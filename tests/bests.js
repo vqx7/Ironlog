@@ -12,7 +12,7 @@
 // what your PR was during a today session?", "Is that what you mean by target, a target or a PR?", "Can someone who
 // just started still input a PR they hit before the app?") under B-17 to B-19, and tests/r32b.js's part 1, bodyweight
 // PRs, under B-13 (its part 2, a close variation's first session, is tests/progression.js's P-13), every check kept.
-const { open } = require('./h');
+const { open, placeOf } = require('./h');
 const fails = [];
 const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 1200) : ''); } else console.log('ok  ', m); return !!c; };
 // The build under test; another (`node tests/bests.js baselines/r99.html`) shows a new check fails there.
@@ -137,8 +137,11 @@ async function stats(P) {
     // A lift new to a log with history: its first session makes no PR either, and the recap says there were none.
     P = await lifter({ items: [['bench', 3, 6, 10], ['dbLateral', 2, 10, 15], ['cableCurl', 2, 10, 15]] });
     await start(P);
-    await logSet(P, 2, 0, 40, 12); await logSet(P, 2, 1, 50, 10);
-    ok((await P.prToasts()).length === 0 && !(await P.gold(2, 0)) && !(await P.gold(2, 1)), 'B-1: a cable curl never done before: 40 x 12 then the heavier 50 x 10 make no PR', await P.toasts());
+    await logSet(P, 2, 0, 40, 12);
+    const cc = await placeOf(P.page, 'cableCurl');
+    ok(cc === 0, 'B-1: the cable curl, started ahead of the untouched bench and raise, moves up to the top', cc);
+    await logSet(P, cc, 1, 50, 10);
+    ok((await P.prToasts()).length === 0 && !(await P.gold(cc, 0)) && !(await P.gold(cc, 1)), 'B-1: a cable curl never done before: 40 x 12 then the heavier 50 x 10 make no PR', await P.toasts());
     rc = await finish(P);
     ok(/No PRs this time\./.test(rc || '') && !/Heaviest yet/.test(rc || ''), 'B-1: the recap says "No PRs this time." and no Heaviest yet: a first session has nothing to beat', rc);
     await P.close();
