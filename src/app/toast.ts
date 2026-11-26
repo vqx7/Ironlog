@@ -216,6 +216,14 @@ export function noteOnce(msg: string, ms: number, read: (seen: boolean) => void)
   setTimeout(() => read(!el.hidden && !!cur && cur.parts.includes(msg)), NOTICE_READ_MS);
 }
 
+/** The message showing and the news waiting its turn, in the order they show: what the lifter sees now and is still
+    to be told, read by the suites (news is never lost, so a check reads it wherever it falls in line). */
+export function toastPending(): string[] {
+  const el = box();
+  const now = el && !el.hidden && cur ? [joined(cur.parts)] : [];
+  return [...now, ...waiting.map(w => w.msg)];
+}
+
 /* A note with nothing to undo goes when a session starts: the
    routine-ready note sat over the session title and Discard. News about
    the log stays: it is never lost (above). */

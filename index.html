@@ -15455,6 +15455,11 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     toast(msg, false, ms, "once");
     setTimeout(() => read(!el.hidden && !!cur && cur.parts.includes(msg)), NOTICE_READ_MS);
   }
+  function toastPending() {
+    const el = box();
+    const now2 = el && !el.hidden && cur ? [joined(cur.parts)] : [];
+    return [...now2, ...waiting.map((w2) => w2.msg)];
+  }
   function toastQuiet() {
     const el = box();
     if (el && !el.hidden && !el.querySelector('[data-act="undo"]') && !(cur && cur.notice)) {
@@ -23580,7 +23585,7 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
   }
   function topLine() {
     if (updateShowing()) return A;
-    for (const line of [installBar, acctBar, iconBar, photoBar]) {
+    for (const line of [installBar, iconBar, acctBar, photoBar]) {
       const shown2 = line();
       if (shown2 !== A) return shown2;
     }
@@ -32586,6 +32591,7 @@ ${JSON.stringify(ctx2, null, 1)}`;
       editFp,
       toast,
       toastHide,
+      toastPending,
       noteOnce,
       regionWk,
       REGION_WKS,

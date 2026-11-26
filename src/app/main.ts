@@ -272,7 +272,7 @@ import { act, undoNext } from './act';
 import { fitTargets, oldFloors } from './targets';
 import { FB_CTX_MAX } from './feedback';
 import { effShow, rirScale } from './effort';
-import { noteOnce, toast, toastHide, undoToastHide } from './toast';
+import { noteOnce, toast, toastHide, toastPending, undoToastHide } from './toast';
 import { timer, timerResume, wakeOn } from './timer';
 import { tipsStart } from './tips';
 import { howToUrl } from './sheetslift';
@@ -750,6 +750,7 @@ function exposeForTests(): void {
     editFp,
     toast,
     toastHide,
+    toastPending,
     noteOnce,
     regionWk,
     REGION_WKS,

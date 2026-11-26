@@ -240,7 +240,10 @@ async function phoneTwo(browser, cloud, uid, fileOrOpts = {}) {
   // Starts the first day with its first exercise only, n rows (4 unless given).
   P.start = (n = 4) => P.ev(n => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); L.ACT.startSession({ dataset: { day: '0', light: '0' } }); const d = L.state.draft; d.ex = d.ex.slice(0, 1); d.ex[0].sets.length = n; d._rampAsked = true; L.saveNow(); }, n);
   P.finish = async () => { await P.ev(() => { const L = window.__ironlog; L.state.draft._leftAsked = true; L.state.draft._rampAsked = true; L.ACT.finishNow(); }); await wait(300); await P.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); }); };
-  P.toast = () => P.ev(() => { const el = document.getElementById('toast'); return el && !el.hidden ? el.innerText : ''; });
+  // The message showing and the news still to show, in order: news is never lost, so news raised while earlier news
+  // is unread is said after it (2.78.1), and a check reads it wherever it falls in line. A build before toastPending:
+  // the message on screen.
+  P.toast = () => P.ev(() => { const L = window.__ironlog; if (L.toastPending) return L.toastPending().join(' | '); const el = document.getElementById('toast'); return el && !el.hidden ? el.innerText : ''; });
   // Every toast shown since the page opened (or reopened), in order, once each.
   P.watch = () => P.ev(() => { window.__toasts = []; const el = document.getElementById('toast'); if (el) new MutationObserver(() => { if (!el.hidden && el.innerText) window.__toasts.push(el.innerText.replace(/\s+/g, ' ')); }).observe(el, { childList: true, subtree: true, characterData: true, attributes: true }); });
   P.toasts = () => P.ev(() => [...new Set(window.__toasts || [])]);

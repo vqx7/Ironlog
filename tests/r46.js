@@ -166,23 +166,31 @@ const CLOCK = '2026-10-14T10:00:00';
     await A.page.evaluate(() => window.__ironlog.flush()); await wait(400);
     const iS = writes.findIndex(w => /^s-/.test(w)), iD = writes.indexOf('draft');
     ok(iS >= 0 && iD > iS, 'Finish: the session document goes up before the emptied draft', writes);
+    // What A said since a step began, every message in turn: news about the log never shows over a sheet, and a
+    // message raised while earlier news is unread is said after it (2.78.1), so each is read wherever it falls. The
+    // recap Finish opened on A is closed, as a lifter closes it.
+    await A.page.evaluate(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); const t = document.getElementById('toast'); window.__said = []; new MutationObserver(() => { const x = t.hidden ? '' : t.innerText; if (x && window.__said[window.__said.length - 1] !== x) window.__said.push(x); }).observe(t, { childList: true, subtree: true, attributes: true, characterData: true }); });
+    const mark = P => P.page.evaluate(() => window.__said.length);
+    const saidSince = async (P, n) => { await wait(3500); return (await P.page.evaluate(() => window.__said)).slice(n).join(' | '); };
     // An edit from History on A, replaced by a workout started on B.
+    let m0 = await mark(A);
     await B.page.evaluate(() => window.__ironlog.sync()); await wait(500);
     await A.page.evaluate(() => { const L = window.__ironlog; L.ui.tab = 'history'; L.render(); L.ACT.histEdit({ dataset: { id: L.state.sessions[L.state.sessions.length - 1].id } }); }); await wait(100);
     await A.page.evaluate(() => window.__ironlog.flush()); await wait(300); await B.page.evaluate(() => window.__ironlog.sync()); await wait(500);
     await B.page.evaluate(() => { const L = window.__ironlog; L.state.draft = null; L.saveNow(); L.ui.tab = 'today'; L.render(); document.querySelector('[data-act="startSession"]').click(); }); await wait(100);
     await B.page.evaluate(() => window.__ironlog.flush()); await wait(300);
     await A.page.evaluate(() => window.__ironlog.sync()); await wait(500);
-    const t = await A.page.evaluate(() => ({ toast: document.getElementById('toast').innerText, ed: !!(window.__ironlog.state.draft && window.__ironlog.state.draft.editingId) }));
+    const t = { toast: await saidSince(A, m0), ed: await A.page.evaluate(() => !!(window.__ironlog.state.draft && window.__ironlog.state.draft.editingId)) };
     ok(/edit in progress was replaced by the workout on another device/.test(t.toast) && !t.ed, 'an edit replaced by a workout started on the other phone says so', t);
     // A finished workout whose session document never arrives (a failed write): never called discarded.
+    m0 = await mark(A);
     await A.page.evaluate(() => { const L = window.__ironlog; L.state.draft = null; L.saveNow(); L.ui.tab = 'today'; L.render(); document.querySelector('[data-act="startSession"]').click(); }); await wait(100);
     await A.page.evaluate(() => window.__ironlog.flush()); await wait(300); await B.page.evaluate(() => window.__ironlog.sync()); await wait(500);
     hold = true;
     await B.page.evaluate(() => { const L = window.__ironlog; const d = L.state.draft; d.ex[0].sets[0].r = 8; d.ex[0].sets[0].w = 50; d.ex[0].sets[0].done = true; d._rampAsked = true; d._leftAsked = true; L.ACT.finishNow(); }); await wait(200);
     await B.page.evaluate(() => window.__ironlog.flush()); await wait(400);
     await A.page.evaluate(() => window.__ironlog.sync()); await wait(500);
-    const t2 = await A.page.evaluate(() => ({ toast: document.getElementById('toast').innerText, n: window.__ironlog.state.sessions.length }));
+    const t2 = { toast: await saidSince(A, m0), n: await A.page.evaluate(() => window.__ironlog.state.sessions.length) };
     ok(/closed on another device/.test(t2.toast) && !/discarded|saved/.test(t2.toast), 'a workout finished on the other phone whose session document never arrived is called closed, never discarded or saved', t2);
     hold = false;
     ok(!A.errors.length && !B.errors.length, 'no page errors (two phones)', [...A.errors, ...B.errors]);

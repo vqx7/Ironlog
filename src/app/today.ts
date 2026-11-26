@@ -516,12 +516,13 @@ function photoBar(): Part {
    - Get the app, in a browser: Safari clears a log kept in a tab after a week
      away, and that log does not move into the installed app by itself, so
      installing comes first; the account line follows, in the app.
+   - The new icon, in an iPhone install from before the icon changed: said
+     once and gone with a tap, so the account line, which stays, waits for it.
    - Create account: signed out, the log lives on this phone only.
-   - The new icon: an iPhone install from before the icon changed.
    - A profile photo. */
 function topLine(): Part {
   if (updateShowing()) return nothing;
-  for (const line of [installBar, acctBar, iconBar, photoBar]) {
+  for (const line of [installBar, iconBar, acctBar, photoBar]) {
     const shown = line();
     if (shown !== nothing) return shown;
   }
