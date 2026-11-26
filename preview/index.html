@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-9GIqa61bSLKgz2/tIxbcLrgZNoQGDJt73hpxodgDGUg=' 'sha256-huPMTGr6cVObgHsnurSzS3VFHnVgOZK23rNVnZ1rNYI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-VEiAWK5FgET1m4L7Z7Y4WFhwPjdOGcLDGKUexJvQDFI=' 'sha256-huPMTGr6cVObgHsnurSzS3VFHnVgOZK23rNVnZ1rNYI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.23-r125">
+<meta name="app-build" content="2026.11.25-r126">
 <title>Ironlog Preview</title>
 <script>window.IRONLOG_APP=true;window.IRONLOG_ENV='preview';window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
@@ -336,7 +336,18 @@ window.addEventListener('appinstalled',()=>{window.__installEvt=null;if(window.i
    which the rule above cannot reach, so padded inputs stuck out of their card. */
 details>*{box-sizing:border-box}
 input[type=file]{max-width:100%;width:100%;font-size:14px}
-html{scroll-padding-top:env(safe-area-inset-top,0px);-webkit-text-size-adjust:100%;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+/* The screen frame. The document never scrolls: the page scrolls inside #page, and the bars along the bottom (the tab
+   bar, the rest timer) and the toast sit over a document that stays where it is. iPhones misplace bars pinned to the
+   screen when the document under them scrolls, in more than one way across iOS versions (one after a keyboard or a
+   picker closes: the tab bar halfway up History). With nothing scrolling under them there is nothing to misplace;
+   frame.ts puts the document back if iOS moves it to show a field above the keyboard. */
+html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+/* The frame begins under the status bar (the root's top padding), so nothing inside it adds the status bar's height:
+   no scroll padding, the bars that stick at its top stick at 0. An element's own scroll margin lands it where it
+   landed while the document scrolled under the status bar. */
+#page{height:100%;overflow-x:hidden;overflow-y:auto;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch}
+body.modal-open #page{overflow-y:hidden}
 /* An app, not a web page (r65.2, PENDING 369): a double tap is a tap, never a zoom (pinch stays, which iOS keeps
    for accessibility whatever a page says); a long press on the app's own words selects nothing and opens no Copy
    and Look Up menu; a tap leaves no grey flash, a button's :active shrink being its feedback. What the lifter
@@ -352,10 +363,10 @@ input,textarea,select,[contenteditable]{-webkit-user-select:text;user-select:tex
    780 px) is shorter than every current iPhone and Today (about 860 to 920)
    than the larger ones, while Stats, History and Settings are taller; Plan
    comes before those three in the bar, so the short viewport may begin on
-   Plan and carry over. That is a reading, not a proof (PENDING 303). In the installed
-   app no page is shorter than the screen now, and none is taller for it:
-   100lvh caps it where iOS has no such bug. Browsers without lvh drop it. */
-@media (display-mode:standalone){html{min-height:min(100lvh,calc(100% + env(safe-area-inset-top,0px)))}}
+   Plan and carry over. In the installed app the document is never shorter
+   than the screen: 100lvh caps it where iOS has no such bug. Browsers without
+   lvh keep 100%. */
+@media (display-mode:standalone){html{height:min(100lvh,calc(100% + env(safe-area-inset-top,0px)))}}
 body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.45 var(--font);-webkit-font-smoothing:antialiased;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 button,input,select,textarea{font:inherit;color:inherit}
 h1,h2,h3{font-family:var(--display);font-weight:700;line-height:1.02;margin:0;text-wrap:balance;letter-spacing:.01em}
@@ -1002,7 +1013,7 @@ table.t td.r,table.t th.r{text-align:right}
 table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .subsec table.t .stick-r{background:var(--surface)}
 .scroll-x{overflow-x:auto}
-.jump{position:sticky;top:env(safe-area-inset-top,0px);z-index:15;display:flex;gap:6px;overflow-x:auto;padding:8px 16px;margin:0 -16px;background:var(--glass);-webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.jump{position:sticky;top:0;z-index:15;display:flex;gap:6px;overflow-x:auto;padding:8px 16px;margin:0 -16px;background:var(--glass);-webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .jump::-webkit-scrollbar{display:none}
 .jump .chip{flex:none;min-height:32px;font-size:13px}
 .sec[id^="sec-"]{scroll-margin-top:calc(56px + env(safe-area-inset-top,0px))}
@@ -1258,7 +1269,6 @@ table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .eqsw{list-style:none;margin:8px 0 0;padding:0}
 .eqsw li{padding:6px 0;border-bottom:1px solid var(--line-soft);font-size:14.5px}
 .eqsw li:last-child{border-bottom:0}
-body.modal-open{overflow:hidden}
 /* Tips: the longer word on a control, shown on hover, keyboard focus, or a
    press-and-hold on touch, so the screen itself stays short. */
 #tip{position:fixed;z-index:80;max-width:min(300px,calc(100vw - 24px));background:var(--ink);color:var(--on-ink);font:500 13.5px/1.4 var(--font);padding:9px 11px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.25);pointer-events:none;white-space:normal;text-align:left;text-transform:none;letter-spacing:0}
@@ -1314,7 +1324,7 @@ details.more>summary .small{display:block;font-weight:400}
    version is noticed without covering anything. Since 2.52 the top bar scrolls
    away, so it stays at the top of the screen, as it did on the first-run pages,
    which hide the bar (r55: 52 px down there, it sat over Set up's back link). */
-#updbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:19;display:flex;align-items:center;gap:8px;padding:6px 16px;background:var(--glass);-webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);border-bottom:1px solid var(--line-soft)}
+#updbar{position:sticky;top:0;z-index:19;display:flex;align-items:center;gap:8px;padding:6px 16px;background:var(--glass);-webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);border-bottom:1px solid var(--line-soft)}
 #updbar[hidden]{display:none}
 .acctbar+.acctbar{margin-top:-6px}
 /* On a phone each line keeps its bold half and its button (item 62). */
@@ -1418,10 +1428,12 @@ body.timer-on main{padding-bottom:calc(168px + env(safe-area-inset-bottom,0px))}
 <script src="cloud.js"></script>
 </head>
 <body>
+<div id="page">
 <header class="top"><h1 class="vh">Ironlog</h1><nav class="wkbar" id="wkbar" aria-label="This week"></nav><button type="button" class="ssb" id="saveState" data-act="menuOpen" aria-haspopup="dialog"></button></header>
 <svg class="holo-defs" aria-hidden="true" focusable="false"><defs><linearGradient id="holoG" x1="0" y1="0" x2="1" y2="1"><stop class="hs1" offset="0"/><stop class="hs2" offset=".4"/><stop class="hs3" offset=".7"/><stop class="hs4" offset="1"/></linearGradient></defs></svg>
 <div id="updbar" role="status" aria-live="polite" hidden></div>
 <main id="view"></main>
+</div>
 <div id="timer" hidden></div>
 <nav class="tabs" id="tabs" aria-label="Sections">
   <button data-tab="today" aria-label="Today"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><span>Today</span></button>
@@ -2314,8 +2326,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.78";
-  var APP_VERSION = "2026.11.23-r125";
+  var DISPLAY_VERSION = "2.78.1";
+  var APP_VERSION = "2026.11.25-r126";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -15339,6 +15351,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     return Math.max(ms, msg.split(/\s+/).filter(Boolean).length * TOAST_MS.word);
   }
   var NOTICE_READ_MS = 4e3;
+  var CALM_MS = 500;
   var toastT;
   var cur = null;
   var waiting = [];
@@ -15354,6 +15367,10 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     }, 0);
   }
   var box = () => document.getElementById("toast");
+  var sheetOpen = () => {
+    const m3 = document.getElementById("modal");
+    return !!m3 && !m3.hidden;
+  };
   var now = () => performance.now();
   function watchTaps() {
     if (watching) return;
@@ -15363,6 +15380,26 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     };
     for (const t4 of ["pointerdown", "keydown", "touchstart"])
       document.addEventListener(t4, moved, { capture: true, passive: true });
+    const m3 = document.getElementById("modal");
+    if (m3) new MutationObserver(sheetMoved).observe(m3, { attributes: true, attributeFilter: ["hidden"] });
+  }
+  function sheetMoved() {
+    const el = box();
+    if (!el) return;
+    if (!sheetOpen()) {
+      if (el.hidden) next(el);
+      return;
+    }
+    if (el.hidden || !cur || cur.undo || !(cur.notice || cur.once)) return;
+    if (cur.notice && now() - cur.at < NOTICE_READ_MS) backToWait(cur);
+    clearTimeout(toastT);
+    el.hidden = true;
+    cur = null;
+  }
+  function backToWait(c4) {
+    const left = joined(c4.parts);
+    if (!waiting.some((w2) => w2.msg === left))
+      waiting.unshift({ msg: left, ms: Math.max(TOAST_MS.plain, c4.ms - (now() - c4.at)) });
   }
   var joined = (parts) => parts.map((p3, i5) => i5 < parts.length - 1 && !/[.!?:]$/.test(p3) ? p3 + "." : p3).join(" ");
   function draw(el) {
@@ -15379,6 +15416,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       parts.push(b2);
     }
     el.replaceChildren(...parts);
+    el.dataset.by = c4.notice ? "news" : c4.once ? "note" : "tap";
     el.hidden = false;
     clearTimeout(toastT);
     toastT = setTimeout(() => gone(el), Math.max(0, c4.at + c4.ms - now()));
@@ -15389,9 +15427,10 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     next(el);
   }
   function next(el) {
+    if (sheetOpen()) return;
     const w2 = waiting.shift();
     if (!w2) return;
-    cur = { parts: [w2.msg], undo: false, pr: false, notice: true, at: now(), ms: w2.ms };
+    cur = { parts: [w2.msg], undo: false, pr: false, notice: true, once: false, at: now(), ms: w2.ms };
     tapSince = false;
     draw(el);
   }
@@ -15414,19 +15453,44 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       draw(el);
       return;
     }
-    if (notice && showing && !showing.notice) {
-      if (!waiting.some((w2) => w2.msg === msg)) waiting.push({ msg, ms: len });
+    if (notice && (sheetOpen() || showing && (!showing.notice || t4 - showing.at < NOTICE_READ_MS))) {
+      if (!waiting.some((w2) => w2.msg === msg) && !(showing && showing.notice && showing.parts.includes(msg)))
+        waiting.push({ msg, ms: len });
       return;
     }
-    if (!notice && showing && showing.notice && t4 - showing.at < NOTICE_READ_MS) {
-      const left = joined(showing.parts);
-      if (!waiting.some((w2) => w2.msg === left))
-        waiting.unshift({ msg: left, ms: Math.max(TOAST_MS.plain, showing.ms - (t4 - showing.at)) });
-    }
-    cur = { parts: [msg], undo: !!undo, pr: kind === "pr", notice, at: t4, ms: len };
+    if (!notice && showing && showing.notice && t4 - showing.at < NOTICE_READ_MS) backToWait(showing);
+    cur = { parts: [msg], undo: !!undo, pr: kind === "pr", notice, once: kind === "once", at: t4, ms: len };
     tapSince = false;
     openTask();
     draw(el);
+  }
+  var onceLine = /* @__PURE__ */ new Set();
+  function noteOnce(msg, ms, read, still = () => true) {
+    const el = box();
+    if (!el || onceLine.has(msg)) return;
+    onceLine.add(msg);
+    const done = (seen) => {
+      onceLine.delete(msg);
+      read(seen);
+    };
+    const look = () => {
+      if (!still()) {
+        done(false);
+        return;
+      }
+      if (!el.hidden || sheetOpen()) {
+        setTimeout(look, CALM_MS);
+        return;
+      }
+      toast(msg, false, ms, "once");
+      setTimeout(() => done(!el.hidden && !!cur && cur.parts.includes(msg)), NOTICE_READ_MS);
+    };
+    look();
+  }
+  function toastPending() {
+    const el = box();
+    const now2 = el && !el.hidden && cur ? [joined(cur.parts)] : [];
+    return [...now2, ...waiting.map((w2) => w2.msg)];
   }
   function toastQuiet() {
     const el = box();
@@ -15459,7 +15523,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   }
 
   // src/app/timer.ts
-  var TIMER_MS = { tick: 250, second: 1e3, tipRetry: 500, tipFirst: 600, tipShow: 6e3 };
+  var TIMER_MS = { tick: 250, second: 1e3, tipFirst: 600, tipShow: 6e3 };
   var ADD_S = 15;
   var BEEP = { hz: [784, 1046], at: [0, 0.22], peak: 0.25, rise: 0.02, fall: 0.18, len: 0.2, quiet: 1e-4 };
   var BUZZ = [200, 100, 200];
@@ -15509,20 +15573,23 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     const k2 = KEY + ".tipWake";
     if (prefGet(k2)) return;
     if (!prefSet(k2, "1")) return;
-    const say = () => {
-      const el = document.getElementById("toast");
-      if (el && !el.hidden) {
-        setTimeout(say, TIMER_MS.tipRetry);
-        return;
-      }
-      toast(
+    prefDel(k2);
+    setTimeout(
+      () => noteOnce(
         "A locked screen holds the rest alert until you unlock. Settings can keep the screen on.",
-        false,
-        TIMER_MS.tipShow
-      );
-    };
-    setTimeout(say, TIMER_MS.tipFirst);
+        TIMER_MS.tipShow,
+        (seen) => {
+          if (seen) prefSet(k2, "1");
+        },
+        resting
+      ),
+      TIMER_MS.tipFirst
+    );
   }
+  var resting = () => {
+    const el = bar();
+    return !!state.draft && !!el && !el.hidden && timer.end > Date.now();
+  };
   var TIMER_KEY = KEY + ".timer";
   var bar = () => document.getElementById("timer");
   function timerSave() {
@@ -15853,16 +15920,65 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       }
     });
     document.addEventListener("focusout", () => tipHide());
-    window.addEventListener(
+    document.addEventListener(
       "scroll",
       () => {
         if (TIP.el) tipHide();
       },
-      { passive: true }
+      { passive: true, capture: true }
     );
     document.addEventListener("keydown", (e5) => {
       if (e5.key === "Escape" && TIP.el) tipHide();
     });
+  }
+
+  // src/app/frame.ts
+  var SETTLE_MS = 250;
+  var ZOOM_SLACK = 0.01;
+  function pageEl() {
+    const el = document.getElementById("page");
+    if (el) return el;
+    const se = document.scrollingElement;
+    return se instanceof HTMLElement ? se : document.documentElement;
+  }
+  function pageY() {
+    return pageEl().scrollTop;
+  }
+  function pageMost() {
+    const el = pageEl();
+    return Math.max(0, el.scrollHeight - el.clientHeight);
+  }
+  function pageTo(y2, smooth) {
+    const el = pageEl();
+    if (smooth) el.scrollTo({ top: y2, behavior: "smooth" });
+    else el.scrollTop = y2;
+  }
+  function pageBy(dy, smooth) {
+    const el = pageEl();
+    if (smooth) el.scrollBy({ top: dy, behavior: "smooth" });
+    else el.scrollTop += dy;
+  }
+  function typing() {
+    const a2 = document.activeElement;
+    if (a2 instanceof HTMLTextAreaElement) return true;
+    if (a2 instanceof HTMLElement && a2.isContentEditable) return true;
+    return a2 instanceof HTMLInputElement && !["button", "checkbox", "radio", "range", "file", "submit"].includes(a2.type);
+  }
+  function frameSettle() {
+    if (typing()) return;
+    const vv = window.visualViewport;
+    if (vv && Math.abs(vv.scale - 1) > ZOOM_SLACK) return;
+    const moved = window.scrollY !== 0 || window.scrollX !== 0 || !!vv && vv.offsetTop !== 0;
+    if (moved) window.scrollTo(0, 0);
+  }
+  function frameStart() {
+    document.addEventListener("focusout", () => setTimeout(frameSettle, SETTLE_MS));
+    window.addEventListener("scroll", frameSettle, { passive: true });
+    const vv = window.visualViewport;
+    if (vv) {
+      vv.addEventListener("resize", frameSettle);
+      vv.addEventListener("scroll", frameSettle);
+    }
   }
 
   // src/app/page.ts
@@ -15912,13 +16028,13 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     return at2.length ? el.tagName.toLowerCase() + at2.join("") : null;
   }
   function rerenderKeepScroll() {
-    const y2 = window.scrollY, el = document.activeElement, key = focusKey(el);
+    const y2 = pageY(), el = document.activeElement, key = focusKey(el);
     const txt = el instanceof HTMLInputElement && el.type === "text" ? el.value : null;
     const sel = el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement ? el : null;
     const ss = sel && typeof sel.selectionStart === "number" ? sel.selectionStart : null;
     const se = sel && typeof sel.selectionEnd === "number" ? sel.selectionEnd : null;
     render();
-    window.scrollTo(0, y2);
+    pageTo(y2);
     if (!key) return;
     let next2 = null;
     try {
@@ -15934,7 +16050,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
         next2.setSelectionRange(ss, se);
     } catch (e5) {
     }
-    window.scrollTo(0, y2);
+    pageTo(y2);
   }
   function applyTheme() {
     const t4 = state.settings.theme;
@@ -15996,7 +16112,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       ui.tab = t4;
       ui.away = null;
       if (t4 === "program") ui.planView = "routine";
-      window.scrollTo(0, 0);
+      pageTo(0);
       render();
     }
   }
@@ -16153,7 +16269,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   }
   var saveShown = "";
   var notSavingSaid = false;
-  var PHOTO_TIP_MS = { first: 1500, retry: 500, show: 7e3 };
+  var PHOTO_TIP_MS = { first: 1500, show: 7e3 };
   var photoMeasured = null;
   function photoTip(ph) {
     if (ph === photoMeasured || prefGet(PHOTO_TIP)) return;
@@ -16161,19 +16277,18 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     void photoKeptSmall(ph).then((small) => {
       if (!small || photoUrl() !== ph || prefGet(PHOTO_TIP)) return;
       if (!prefSet(PHOTO_TIP, "1")) return;
-      const say = () => {
-        const t4 = document.getElementById("toast");
-        if (t4 && !t4.hidden) {
-          setTimeout(say, PHOTO_TIP_MS.retry);
-          return;
-        }
-        toast(
+      prefDel(PHOTO_TIP);
+      setTimeout(
+        () => noteOnce(
           "Your profile photo was kept small by an earlier version, so it looks soft opened large. Open the menu, tap your photo and choose Change photo to keep it sharp.",
-          false,
-          PHOTO_TIP_MS.show
-        );
-      };
-      setTimeout(say, PHOTO_TIP_MS.first);
+          PHOTO_TIP_MS.show,
+          (seen) => {
+            if (seen) prefSet(PHOTO_TIP, "1");
+          },
+          () => photoUrl() === ph
+        ),
+        PHOTO_TIP_MS.first
+      );
     });
   }
   function setSaveState() {
@@ -19048,7 +19163,7 @@ ${more}`;
     if (top == null || !was || !now2 || was.size === now2.size && [...was].every((x2) => now2.has(x2))) return;
     const j3 = blkIdx(ref2);
     const el2 = j3 >= 0 ? document.getElementById("blk-" + j3) : null;
-    if (el2) window.scrollBy(0, el2.getBoundingClientRect().top - top);
+    if (el2) pageBy(el2.getBoundingClientRect().top - top);
   }
   function restNext(bi) {
     const d3 = state.draft;
@@ -19092,8 +19207,7 @@ ${more}`;
       if (!el) return;
       const lim = bottomBarsTop();
       const r4 = el.getBoundingClientRect();
-      if (r4.bottom > lim - BAR_ROOM_PX.edge)
-        window.scrollBy({ top: r4.bottom - lim + BAR_ROOM_PX.gap, behavior: "smooth" });
+      if (r4.bottom > lim - BAR_ROOM_PX.edge) pageBy(r4.bottom - lim + BAR_ROOM_PX.gap, true);
     });
   }
   function autoPending() {
@@ -19120,8 +19234,7 @@ ${more}`;
       if (!st) return;
       const lim = bottomBarsTop();
       const r4 = st.getBoundingClientRect();
-      if (r4.bottom > lim - BAR_ROOM_PX.edge)
-        window.scrollBy({ top: r4.bottom - lim + BAR_ROOM_PX.gap, behavior: "smooth" });
+      if (r4.bottom > lim - BAR_ROOM_PX.edge) pageBy(r4.bottom - lim + BAR_ROOM_PX.gap, true);
     });
   }
   function rirClose() {
@@ -19182,18 +19295,19 @@ ${more}`;
     const a1 = nx >= 0 ? document.getElementById("blk-" + nx) : null;
     if (!a1 || top0 == null) return;
     const ae = document.activeElement;
-    if (ae && a1.contains(ae)) window.scrollBy(0, a1.getBoundingClientRect().top - top0);
+    if (ae && a1.contains(ae)) pageBy(a1.getBoundingClientRect().top - top0);
     else foldGlide(a1, top0);
   }
   var GLIDE_EASE = 3;
   function foldGlide(a1, top0) {
-    const y0 = window.scrollY, a2 = a1.getBoundingClientRect().top;
+    const y0 = pageY(), a2 = a1.getBoundingClientRect().top;
     const cs = getComputedStyle(a1);
     const m0 = parseFloat(cs.marginTop) || 0, sm = parseFloat(cs.scrollMarginTop) || 0;
-    const se = document.scrollingElement;
-    const sp = se ? parseFloat(getComputedStyle(se).scrollPaddingTop) || 0 : 0;
-    const most = se ? se.scrollHeight - window.innerHeight : y0;
-    const y1 = Math.max(0, Math.min(most, y0 + a2 - sm - sp));
+    const pe = pageEl();
+    const sp = parseFloat(getComputedStyle(pe).scrollPaddingTop) || 0;
+    const ft = pe.id === "page" ? pe.getBoundingClientRect().top : 0;
+    const most = pageMost();
+    const y1 = Math.max(0, Math.min(most, y0 + a2 - ft - sm - sp));
     const vEnd = y0 + a2 - y1;
     const held3 = Math.max(0, top0 - a2);
     let calm = false;
@@ -19206,7 +19320,7 @@ ${more}`;
       if (!a1.getAttribute("style")) a1.removeAttribute("style");
     };
     if (calm) {
-      window.scrollTo(0, y1);
+      pageTo(y1);
       return;
     }
     const t0 = performance.now();
@@ -19216,8 +19330,8 @@ ${more}`;
       stopped = true;
       const r4 = a1.getBoundingClientRect().top;
       clear();
-      const keep = window.scrollY + a1.getBoundingClientRect().top - r4;
-      window.scrollTo(0, keep < 0 ? y1 : keep);
+      const keep = pageY() + a1.getBoundingClientRect().top - r4;
+      pageTo(keep < 0 ? y1 : keep);
       off2();
     };
     const off2 = () => {
@@ -19237,14 +19351,14 @@ ${more}`;
       const e5 = 1 - (1 - k2) ** GLIDE_EASE;
       a1.style.marginTop = `${m0 + held3 * (1 - e5)}px`;
       const v3 = top0 + (vEnd - top0) * e5;
-      window.scrollTo(0, Math.max(0, window.scrollY + a1.getBoundingClientRect().top - v3));
+      pageTo(Math.max(0, pageY() + a1.getBoundingClientRect().top - v3));
       if (k2 < 1) {
         requestAnimationFrame(frame2);
         return;
       }
       stopped = true;
       clear();
-      window.scrollTo(0, Math.max(0, window.scrollY + a1.getBoundingClientRect().top - vEnd));
+      pageTo(Math.max(0, pageY() + a1.getBoundingClientRect().top - vEnd));
       off2();
     };
     frame2(t0);
@@ -19288,8 +19402,8 @@ ${more}`;
       return;
     }
     const ae = document.activeElement;
-    const typing = !!ae && (/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) || ae instanceof HTMLElement && ae.isContentEditable);
-    if (sessionShown() && (typing || W.blockDrag || drawing() || ui.modal || W.foldT != null || document.querySelector(".rirstrip"))) {
+    const typing2 = !!ae && (/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) || ae instanceof HTMLElement && ae.isContentEditable);
+    if (sessionShown() && (typing2 || W.blockDrag || drawing() || ui.modal || W.foldT != null || document.querySelector(".rirstrip"))) {
       W.orderT = setTimeout(orderRun, ORDER_MS.again);
       return;
     }
@@ -19311,7 +19425,7 @@ ${more}`;
     if (!moved || !sessionShown()) return;
     rerenderKeepScroll();
     const el1 = document.getElementById("blk-" + d3.ex.indexOf(anchor));
-    if (el1 && top0 != null) window.scrollBy(0, el1.getBoundingClientRect().top - top0);
+    if (el1 && top0 != null) pageBy(el1.getBoundingClientRect().top - top0);
   }
   function acceptGrey(bi, si) {
     const d3 = state.draft;
@@ -21082,12 +21196,12 @@ ${rows2 ? b`<p class="small muted u-m0-0-6" id="rowsLine">${rows2.line}</p>
     },
     planLib() {
       ui.planView = "library";
-      window.scrollTo(0, 0);
+      pageTo(0);
       render();
     },
     planBack() {
       ui.planView = "routine";
-      window.scrollTo(0, 0);
+      pageTo(0);
       render();
     }
   };
@@ -22489,7 +22603,7 @@ ${howText("wk", `Each set counts once; a set at RIR 4 or more is not hard and do
       (e5) => {
         const t4 = e5.touches[0];
         if (document.querySelector("#modal .sheet.fromtop.going")) closeModal();
-        live2 = e5.touches.length === 1 && !ui.modal && !!t4 && window.scrollY <= 0;
+        live2 = e5.touches.length === 1 && !ui.modal && !!t4 && pageY() <= 0;
         on = false;
         dy = 0;
         if (t4) {
@@ -23226,6 +23340,50 @@ ${detail}`
     return b`<div class="bm-legend small"><span><i class="ex-main"></i>Main</span>${exMusParts(e5).help.length ? b`<span><i class="ex-help"></i>Helper</span>` : A}</div>`;
   }
 
+  // src/app/update.ts
+  var upd = { ready: false, later: false };
+  var barChanged = () => {
+  };
+  function updateShowing() {
+    return upd.ready && !upd.later;
+  }
+  function updRender() {
+    const el = document.getElementById("updbar");
+    if (!el) return;
+    const show = updateShowing();
+    const was = !el.hidden;
+    el.hidden = !show;
+    D(
+      show ? b`<span class="ut">Update ready</span><button type="button" class="btn sm primary" data-act="appUpdate">Update</button><button type="button" class="btn sm" data-act="appUpdateLater">Later</button>` : A,
+      el
+    );
+    if (was !== show) barChanged();
+  }
+  function updateStart(changed) {
+    barChanged = changed;
+    window.ironlogUpdateReady = () => {
+      upd.ready = true;
+      updRender();
+    };
+  }
+  var UPDATE_ACTS = {
+    appUpdate() {
+      if (ui.modal && ui.modal.dirty) {
+        toast("Save or cancel first. Your changes are still here.");
+        return;
+      }
+      saveNow();
+      upd.ready = false;
+      updRender();
+      if (typeof window.ironlogApplyUpdate === "function") window.ironlogApplyUpdate();
+      else location.reload();
+    },
+    appUpdateLater() {
+      upd.later = true;
+      updRender();
+    }
+  };
+
   // src/app/today.ts
   var TOUR = {
     loads: { kg: [30, 32.5, 35], lb: [65, 70, 75] },
@@ -23441,7 +23599,7 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
     if (!AUTH() || window.claude || !acct.checked || acct.user || cloud.on || !state.settings.onboarded) return A;
     if (prefGet(ACCT_LATER)) return A;
     if (prefGet(OB_ACCT) === "later" && !state.sessions.some((x2) => !x2.demo)) return A;
-    return b`<div class="acctbar" id="acctBar"><span class="small"><b>Only on this phone.</b><span class="ab-more"> Sync it with an account.</span></span><button class="btn sm primary" data-act="acctOpen" data-mode="signup">Set up sync</button><button class="ib" aria-label="Not now" data-act="acctLater">✕</button></div>`;
+    return b`<div class="acctbar" id="acctBar"><span class="small"><b>Only on this phone.</b><span class="ab-more"> An account keeps it safe.</span></span><button class="btn sm primary" data-act="acctOpen" data-mode="signup">Create account</button><button class="ib" aria-label="Not now" data-act="acctLater">✕</button></div>`;
   }
   function iconNoteDue() {
     if (prefGet(ICON_NOTE)) return false;
@@ -23466,6 +23624,15 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
     if (!AUTH() || window.claude || !acct.checked || !acct.user || !state.settings.onboarded) return A;
     if (prefGet(PHOTO_ASKED) || photoUrl() || state.sessions.some((x2) => x2.demo)) return A;
     return b`<div class="acctbar" id="photoBar"><span class="small"><b>Add a profile photo.</b><span class="ab-more"> It shows at the top right on any phone you sign in on.</span></span><label class="btn sm primary">Add photo<input type="file" accept="image/*" data-photo hidden></label><button class="ib" aria-label="Not now" data-act="photoLater">✕</button></div>`;
+  }
+  function topLine() {
+    if (updateShowing()) return A;
+    const own2 = state.sessions.some((x2) => !x2.demo);
+    for (const line of own2 ? [iconBar, acctBar, installBar, photoBar] : [installBar, iconBar, acctBar, photoBar]) {
+      const shown2 = line();
+      if (shown2 !== A) return shown2;
+    }
+    return A;
   }
   var inUnit = (u4, field2) => i4(u4, field2);
   function bwDueCard() {
@@ -23555,8 +23722,8 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
     const playable = !day.rest && day.items.length > 0;
     const deload = isDeloadWeek();
     const free = state.settings.todayStart === "free" && chosen == null;
-    const lines = [acctBar(), installBar(), iconBar()];
-    const above = b`${welcomeCard()}${lines}${lines.every((l4) => l4 === A) ? photoBar() : A}`;
+    const welcome = welcomeCard();
+    const above = welcome === A ? topLine() : welcome;
     const open = state.draft && awayFrom() ? state.draft : null;
     if (open)
       return b`${above}${resumeCard(open)}${bwDueCard()}${todayRest({ playable: false, di, day, deload, cs })}`;
@@ -23824,7 +23991,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
         state.deloadWeek = weekStart(today());
       });
       ui.tab = "today";
-      window.scrollTo(0, 0);
+      pageTo(0);
       render();
       toast(
         `Deload week on until Sunday: ${shareWords(LIGHTER_SET_SHARE)} sets, about ${pctOf(LIGHT_SHARE)}% loads. It clears fatigue; it does not add growth.`,
@@ -24029,12 +24196,12 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     obAcctLater() {
       prefSet(OB_ACCT, "later");
       obOutClear();
-      window.scrollTo(0, 0);
+      pageTo(0);
       render();
     },
     obAcctBack() {
       prefDel(OB_ACCT);
-      window.scrollTo(0, 0);
+      pageTo(0);
       render();
     },
     obTourPick(t4) {
@@ -24074,7 +24241,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       ui.todayDay = null;
       ui.tab = "program";
       ui.planView = "routine";
-      window.scrollTo(0, 0);
+      pageTo(0);
       render();
       toast("Name your days, then add exercises.", false, BUILD_TOAST_MS);
     },
@@ -24088,7 +24255,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       });
       ui.tab = "today";
       ui.folds = {};
-      window.scrollTo(0, 0);
+      pageTo(0);
       render();
     }
   };
@@ -24723,42 +24890,6 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     document.addEventListener("focusin", workoutFocus);
     document.addEventListener("beforeinput", workoutBeforeInput);
   }
-
-  // src/app/update.ts
-  var upd = { ready: false, later: false };
-  function updRender() {
-    const el = document.getElementById("updbar");
-    if (!el) return;
-    const show = upd.ready && !upd.later;
-    el.hidden = !show;
-    D(
-      show ? b`<span class="ut">Update ready</span><button type="button" class="btn sm primary" data-act="appUpdate">Update</button><button type="button" class="btn sm" data-act="appUpdateLater">Later</button>` : A,
-      el
-    );
-  }
-  function updateStart() {
-    window.ironlogUpdateReady = () => {
-      upd.ready = true;
-      updRender();
-    };
-  }
-  var UPDATE_ACTS = {
-    appUpdate() {
-      if (ui.modal && ui.modal.dirty) {
-        toast("Save or cancel first. Your changes are still here.");
-        return;
-      }
-      saveNow();
-      upd.ready = false;
-      updRender();
-      if (typeof window.ironlogApplyUpdate === "function") window.ironlogApplyUpdate();
-      else location.reload();
-    },
-    appUpdateLater() {
-      upd.later = true;
-      updRender();
-    }
-  };
 
   // src/app/feedback.ts
   var FB_CATS = [
@@ -25802,7 +25933,7 @@ ${JSON.stringify(ctx2, null, 1)}`;
           );
         if (!mid2) {
           ui.tab = "today";
-          window.scrollTo(0, 0);
+          pageTo(0);
         }
         render();
         toast(remove ? "Signed out" : "Signed out. A copy stays on this phone.");
@@ -26613,7 +26744,7 @@ ${JSON.stringify(ctx2, null, 1)}`;
         closeModal();
         ui.tab = "today";
         ui.todayDay = null;
-        window.scrollTo(0, 0);
+        pageTo(0);
         render();
         toast(
           `${msg}. Your routine is made from them: ${andList(
@@ -26627,7 +26758,7 @@ ${JSON.stringify(ctx2, null, 1)}`;
       }
       closeModal();
       ui.tab = "history";
-      window.scrollTo(0, 0);
+      pageTo(0);
       render();
       if (first && b2.sessions.length) {
         openModal({ kind: "templates", from: "welcome", imported: true });
@@ -27036,7 +27167,7 @@ ${JSON.stringify(ctx2, null, 1)}`;
             makeDemo();
           });
           ui.tab = "dash";
-          window.scrollTo(0, 0);
+          pageTo(0);
           render();
           toast("Demo data loaded");
         }
@@ -27391,7 +27522,7 @@ ${JSON.stringify(ctx2, null, 1)}`;
       if (ui.modal) closeModal();
       ui.tab = "settings";
       ui.folds["settings:layout"] = true;
-      window.scrollTo(0, 0);
+      pageTo(0);
       render();
       const el = document.querySelector('#view > [data-mkey="layout"]');
       if (el) el.scrollIntoView({ block: "start" });
@@ -27400,7 +27531,7 @@ ${JSON.stringify(ctx2, null, 1)}`;
       if (ui.modal) closeModal();
       ui.tab = "settings";
       ui.folds["settings:data"] = true;
-      window.scrollTo(0, 0);
+      pageTo(0);
       render();
       const el = document.getElementById("dataSec");
       if (el) el.scrollIntoView({ block: "start" });
@@ -27427,7 +27558,7 @@ ${JSON.stringify(ctx2, null, 1)}`;
         if (raw !== sec) ui.folds["dash:sub:" + raw] = true;
       }
       ui.tab = "dash";
-      window.scrollTo(0, 0);
+      pageTo(0);
       render();
       if (sec) {
         try {
@@ -27453,7 +27584,7 @@ ${JSON.stringify(ctx2, null, 1)}`;
         log("render", e5);
       }
       ui.modal = null;
-      window.scrollTo(0, 0);
+      pageTo(0);
       render();
     },
     undo() {
@@ -27622,7 +27753,7 @@ ${JSON.stringify(ctx2, null, 1)}`;
         });
         ui.todayDay = null;
         ui.tab = "today";
-        window.scrollTo(0, 0);
+        pageTo(0);
         render();
         toast(
           `${r4.name} is ready${pa.length ? ", set to Your training" : ""}${fit ? ". Weekly set targets now match it; change them in Settings." : ""}`,
@@ -28274,7 +28405,7 @@ ${JSON.stringify(ctx2, null, 1)}`;
       },
       { inProgress: true }
     );
-    window.scrollTo(0, 0);
+    pageTo(0);
     render();
     if (live2) wakeOn();
   }
@@ -28306,7 +28437,7 @@ ${JSON.stringify(ctx2, null, 1)}`;
     if (!state.draft) return false;
     ui.away = null;
     ui.tab = "today";
-    window.scrollTo(0, 0);
+    pageTo(0);
     render();
     toast("Your workout in progress is open. Finish or discard it first.");
     return true;
@@ -28364,7 +28495,7 @@ ${JSON.stringify(ctx2, null, 1)}`;
       ui.todayAt = on == null ? null : { d: d3, di: on };
     }
     if (ui.modal) closeModal();
-    window.scrollTo(0, 0);
+    pageTo(0);
     render();
   }
   function wkOpen(t4) {
@@ -28375,7 +28506,7 @@ ${JSON.stringify(ctx2, null, 1)}`;
     ui.histOpen = id;
     const at2 = [...state.sessions].sort((a2, b2) => sessCmp(b2, a2)).findIndex((x2) => x2.id === id);
     ui.histLimit = Math.max(HIST_PAGE, at2 + 1);
-    window.scrollTo(0, 0);
+    pageTo(0);
     render();
     try {
       const el = document.querySelector(`[data-act="histToggle"][data-id="${id}"]`);
@@ -28606,7 +28737,7 @@ ${JSON.stringify(ctx2, null, 1)}`;
       ui.todayDay = Number(t4.dataset.day);
       ui.todayPart = t4.dataset.part === "2" ? 2 : 1;
       ui.todayAt = null;
-      window.scrollTo(0, 0);
+      pageTo(0);
       render();
     },
     // Another day of the plan on the card (the old Change day list); in a blank-session Today it shows that day's card.
@@ -28616,7 +28747,7 @@ ${JSON.stringify(ctx2, null, 1)}`;
       ui.todayDay = i5;
       ui.todayPart = t4.dataset.part === "2" ? 2 : 1;
       ui.todayAt = null;
-      window.scrollTo(0, 0);
+      pageTo(0);
       render();
     },
     /* Pick for me, before a session: rank the routine's days for today. */
@@ -28629,7 +28760,7 @@ ${JSON.stringify(ctx2, null, 1)}`;
       ui.todayPart = t4.dataset.part === "2" ? 2 : 1;
       ui.todayAt = null;
       ui.tab = "today";
-      window.scrollTo(0, 0);
+      pageTo(0);
       render();
     },
     /* Limited equipment: pick what is available, preview the swaps, start. */
@@ -29552,7 +29683,7 @@ ${JSON.stringify(ctx2, null, 1)}`;
         wakeOff();
         const back2 = unpark();
         ui.todayDay = null;
-        window.scrollTo(0, 0);
+        pageTo(0);
         render();
         toast(`Cardio saved. No lifting session was recorded.${back2 ? BACK_SAID : ""}`);
         return;
@@ -29737,7 +29868,7 @@ ${JSON.stringify(ctx2, null, 1)}`;
     const backBest = backBests(ex, prAll, sess.id);
     const { work, miss, hard } = setCounts(ex, sess.date);
     ui.todayDay = null;
-    window.scrollTo(0, 0);
+    pageTo(0);
     render();
     if (editing) {
       toast(`Session updated.${back2 ? BACK_SAID : ""}`);
@@ -30343,14 +30474,14 @@ ${JSON.stringify(ctx2, null, 1)}`;
        app again all open the workout. */
     wkAway() {
       ui.away = state.draft ? state.draft.id : null;
-      window.scrollTo(0, 0);
+      pageTo(0);
       render();
       toast("Saved. Resume it from Today.");
     },
     wkResume() {
       ui.away = null;
       ui.tab = "today";
-      window.scrollTo(0, 0);
+      pageTo(0);
       render();
     },
     // Today's card for a workout set aside that did not come back by itself: it comes back and opens.
@@ -30358,7 +30489,7 @@ ${JSON.stringify(ctx2, null, 1)}`;
       if (!unpark()) return;
       ui.away = null;
       ui.tab = "today";
-      window.scrollTo(0, 0);
+      pageTo(0);
       render();
     },
     // Folded by hand, done or not, and every place it was opened at forgotten, so a move leaves nothing behind.
@@ -30542,7 +30673,7 @@ ${JSON.stringify(ctx2, null, 1)}`;
         stopTimer();
         wakeOff();
         if (unpark()) setTimeout(() => toast(BACK_SAID.trim()), 0);
-        window.scrollTo(0, 0);
+        pageTo(0);
         render();
       };
       if (!d3.editingId && !draftEntered(d3)) {
@@ -30683,7 +30814,7 @@ ${JSON.stringify(ctx2, null, 1)}`;
       ui.tab = tab.dataset.tab || "";
       ui.away = null;
       if (ui.tab === "program") ui.planView = "routine";
-      window.scrollTo(0, 0);
+      pageTo(0);
       render();
       return;
     }
@@ -30865,7 +30996,7 @@ ${JSON.stringify(ctx2, null, 1)}`;
         let v3 = 0;
         if (y2 < top + edge) v3 = -Math.ceil((top + edge - y2) / edge * DRAG.speedPx);
         else if (y2 > bot - edge) v3 = Math.ceil((y2 - (bot - edge)) / edge * DRAG.speedPx);
-        if (v3) window.scrollBy(0, Math.max(-DRAG.maxPx, Math.min(DRAG.maxPx, v3)));
+        if (v3) pageBy(Math.max(-DRAG.maxPx, Math.min(DRAG.maxPx, v3)));
       }
       raf = requestAnimationFrame(step);
     };
@@ -30901,7 +31032,7 @@ ${JSON.stringify(ctx2, null, 1)}`;
     if (v3) v3.style.paddingBottom = "";
     if (t0 != null) {
       const t1 = it.getBoundingClientRect().top;
-      if (t1 !== t0) window.scrollBy(0, t1 - t0);
+      if (t1 !== t0) pageBy(t1 - t0);
     }
   }
   function mountBlockDrag() {
@@ -30927,10 +31058,9 @@ ${JSON.stringify(ctx2, null, 1)}`;
           }
         const it = e5.item, t0 = it.getBoundingClientRect().top;
         document.body.classList.add("blkdrag");
-        const se = document.scrollingElement;
-        const want = window.scrollY + it.getBoundingClientRect().top - t0, room = want - ((se ? se.scrollHeight : 0) - window.innerHeight);
+        const want = pageY() + it.getBoundingClientRect().top - t0, room = want - pageMost();
         if (room > 0) v3.style.paddingBottom = Math.ceil(room) + "px";
-        window.scrollTo(0, want);
+        pageTo(want);
         edgeScroll.start();
       },
       onEnd: (e5) => {
@@ -31592,7 +31722,7 @@ ${JSON.stringify(ctx2, null, 1)}`;
       body = b`<ol class="isteps">${step(1, b`Open your browser's menu (⋮ or ⋯).`)}${step(2, b`Choose <b>Install app</b> or <b>Add to Home screen</b>, then confirm.`)}</ol>`;
     const tip = (ios ? "An iPhone installs web apps only from the Share menu; Apple allows no install button. If Add to Home Screen is not in the list, scroll down or tap More. Keep Open as Web App on if it is shown. " : "") + `Then open ${APP_NAME} from your home screen: it starts full screen and works offline. A log kept in this browser does not move by itself: sign in inside the app, or export a backup here and import it there.`;
     const hasLog = state.sessions.some((x2) => !x2.demo) && !acct.user;
-    return b`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="instH"><div class="sheet-h"><h3 id="instH">${ios ? "Add to Home Screen" : `Install ${APP_NAME}`}</h3>${tipButton(tip, "About installing")}<button class="ib u-mlauto" aria-label="Close" data-act="mClose">✕</button></div>${installPic(how)}${body}${hasLog ? b`<p class="small u-m10-0-0">Your log here does not move by itself. Sign in in the app, or use a backup.</p>` : ""}<button type="button" class="btn primary fullw u-mt14" data-act="mClose">Done</button></div>`;
+    return b`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="instH"><div class="sheet-h"><h3 id="instH">${ios ? "Add to Home Screen" : `Install ${APP_NAME}`}</h3>${tipButton(tip, "About installing")}<button class="ib u-mlauto" aria-label="Close" data-act="mClose">✕</button></div>${installPic(how)}${body}${hasLog ? AUTH() && !window.claude ? b`<p class="small u-m10-0-0">Your log here does not move by itself: create an account first, then sign in in the app.</p><button type="button" class="btn fullw u-mt10" data-act="acctOpen" data-mode="signup">Create account</button>` : b`<p class="small u-m10-0-0">Your log here does not move by itself: export a backup here and import it in the app.</p>` : ""}<button type="button" class="btn primary fullw u-mt14" data-act="mClose">Done</button></div>`;
   }
   function pastDue(R2, date) {
     const ok = (i5) => {
@@ -32213,6 +32343,9 @@ ${JSON.stringify(ctx2, null, 1)}`;
   function exposeForTests() {
     window.__ironlog = {
       act,
+      frameSettle,
+      pageY,
+      pageTo,
       rowsBusy,
       rowsDiag,
       undoNext,
@@ -32500,6 +32633,9 @@ ${JSON.stringify(ctx2, null, 1)}`;
       howToUrl,
       editFp,
       toast,
+      toastHide,
+      toastPending,
+      noteOnce,
       regionWk,
       REGION_WKS,
       SAFETY_TXT,
@@ -32660,8 +32796,11 @@ ${JSON.stringify(ctx2, null, 1)}`;
     });
     storageStart();
     syncStart();
+    frameStart();
     viewStart();
-    updateStart();
+    updateStart(() => {
+      if (ui.tab === "today") rerenderKeepScroll();
+    });
     accountStart();
     pageListeners();
     window.ironlogInstallReady = () => {
