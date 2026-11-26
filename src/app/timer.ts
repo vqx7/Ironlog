@@ -91,19 +91,27 @@ function wakeTip(): void {
   if (prefGet(k)) return;
   // Storage that refuses the mark would say it on every rest, so it is not said at all.
   if (!prefSet(k, '1')) return;
-  // Covered by a sheet or a message before it could be read: said at a later rest instead.
+  // Marked said once read: not read (covered, or the rest over before a calm moment), or the app closed while it
+  // waits, it is said at a later rest.
+  prefDel(k);
   setTimeout(
     () =>
       noteOnce(
         'A locked screen holds the rest alert until you unlock. Settings can keep the screen on.',
         TIMER_MS.tipShow,
         seen => {
-          if (!seen) prefDel(k);
-        }
+          if (seen) prefSet(k, '1');
+        },
+        resting
       ),
     TIMER_MS.tipFirst
   );
 }
+/** Whether a rest is counting down in an open session: what the locked-screen note is about. */
+const resting = (): boolean => {
+  const el = bar();
+  return !!state.draft && !!el && !el.hidden && timer.end > Date.now();
+};
 /* The end time is kept on this device, so a phone that reloads a backgrounded
    tab mid-rest comes back to the same countdown. The rest's full length is
    kept beside it, so the bar along the top still empties from the right

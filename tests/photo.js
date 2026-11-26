@@ -144,7 +144,9 @@ const imgOf = (page, sel) => page.evaluate(sel => new Promise(res => {
     for (const edge of [512, 256]) {
       const D = await withPhoto(edge);
       const shown = await photoIn(D.page);
-      const first = await said(D.page, 4000);
+      // Long enough for it to be read (shown 1.5 s in, read 4 s later): a note is marked said only once read, so one
+      // closed before then is said again (REV33-4, messages.js 6).
+      const first = await said(D.page, 6500);
       ok(shown && first.includes(TIP), `3. a photo kept at ${edge} px, shown in the menu: the app says once to pick it again, with the button to use`, { shown, said: first });
       await withPhoto(0, D); await photoIn(D.page);
       const again = await said(D.page, 3500);

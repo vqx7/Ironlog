@@ -449,15 +449,18 @@ function photoTip(ph: string): void {
     if (!small || photoUrl() !== ph || prefGet(PHOTO_TIP)) return;
     // Storage that refuses the mark would say it on every visit, so it is not said at all.
     if (!prefSet(PHOTO_TIP, '1')) return;
-    // Covered by a sheet or a message before it could be read: said on a later visit instead.
+    // Marked said once read: not read (covered, or the photo changed before a calm moment), or the app closed while it
+    // waits, it is said on a later visit.
+    prefDel(PHOTO_TIP);
     setTimeout(
       () =>
         noteOnce(
           'Your profile photo was kept small by an earlier version, so it looks soft opened large. Open the menu, tap your photo and choose Change photo to keep it sharp.',
           PHOTO_TIP_MS.show,
           seen => {
-            if (!seen) prefDel(PHOTO_TIP);
-          }
+            if (seen) prefSet(PHOTO_TIP, '1');
+          },
+          () => photoUrl() === ph
         ),
       PHOTO_TIP_MS.first
     );

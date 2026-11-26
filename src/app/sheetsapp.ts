@@ -97,7 +97,13 @@ export function installSheet(m: { how?: string | undefined }): TemplateResult {
       : '') +
     `Then open ${APP_NAME} from your home screen: it starts full screen and works offline. A log kept in this browser does not move by itself: sign in inside the app, or export a backup here and import it there.`;
   const hasLog = state.sessions.some(x => !x.demo) && !acct.user;
-  return html`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="instH"><div class="sheet-h"><h3 id="instH">${ios ? 'Add to Home Screen' : `Install ${APP_NAME}`}</h3>${tipButton(tip, 'About installing')}<button class="ib u-mlauto" aria-label="Close" data-act="mClose">✕</button></div>${installPic(how)}${body}${hasLog ? html`<p class="small u-m10-0-0">Your log here does not move by itself. Sign in in the app, or use a backup.</p>` : ''}<button type="button" class="btn primary fullw u-mt14" data-act="mClose">Done</button></div>`;
+  return html`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="instH"><div class="sheet-h"><h3 id="instH">${ios ? 'Add to Home Screen' : `Install ${APP_NAME}`}</h3>${tipButton(tip, 'About installing')}<button class="ib u-mlauto" aria-label="Close" data-act="mClose">✕</button></div>${installPic(how)}${body}${
+    hasLog
+      ? AUTH() && !window.claude
+        ? html`<p class="small u-m10-0-0">Your log here does not move by itself: create an account first, then sign in in the app.</p><button type="button" class="btn fullw u-mt10" data-act="acctOpen" data-mode="signup">Create account</button>`
+        : html`<p class="small u-m10-0-0">Your log here does not move by itself: export a backup here and import it in the app.</p>`
+      : ''
+  }<button type="button" class="btn primary fullw u-mt14" data-act="mClose">Done</button></div>`;
 }
 
 /* ---------- a past workout, date first ----------

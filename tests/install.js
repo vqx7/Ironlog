@@ -77,6 +77,20 @@ const IPHONE_CHROME = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Ap
   await I.page.click('#installBar [data-act="installLater"]'); await I.page.waitForTimeout(150);
   const saidI = await I.ev(() => document.getElementById('toast').innerText.replace(/\s+/g, ' ').trim());
   ok(saidI.startsWith('Hidden. Add to Home Screen stays in the menu at the top right, under Your data and backups.'), 'iPhone: Not now names Add to Home Screen, as its button does (NEW-140)', saidI);
+  // A log of the lifter's own in the tab, signed out (REV33-2): installing does not carry it (the home-screen app keeps
+  // its own storage) and an account does, so Create account is the one line, Get the app once it is dismissed, and the
+  // install sheet offers the account where it says the log does not move.
+  const IL = await dev({ ua: IPHONE_SAFARI });
+  await IL.ev(() => { const L = window.__ironlog; for (const x of L.state.sessions) delete x.demo; L.invalidate(); L.saveNow(); L.render(); });
+  await IL.page.waitForTimeout(200);
+  ok(await IL.ev(() => !!document.getElementById('acctBar') && !document.getElementById('installBar') && document.querySelectorAll('.acctbar').length === 1), "a log of the lifter's own in the tab, signed out: Create account is the one line, not Get the app");
+  await IL.page.click('#acctBar [data-act="acctLater"]'); await IL.page.waitForTimeout(150);
+  ok(await IL.ev(() => !document.getElementById('acctBar') && !!document.getElementById('installBar') && document.querySelectorAll('.acctbar').length === 1), 'dismissed, Get the app takes its place, alone');
+  await IL.page.click('#installBar [data-act="install"]'); await IL.page.waitForTimeout(200);
+  const tl = await sheetText(IL);
+  ok(/does not move by itself: create an account first, then sign in in the app/.test(tl) && !!(await IL.ev(() => document.querySelector('#modal [data-act="acctOpen"][data-mode="signup"]'))), "the install sheet says the tab's log does not move and offers Create account", tl);
+  await IL.page.click('#modal [data-act="acctOpen"][data-mode="signup"]'); await IL.page.waitForTimeout(300);
+  ok(!!(await IL.ev(() => document.querySelector('#modal [data-abind="email"]'))) && !/Add to Home Screen/.test(await sheetText(IL)), 'Create account there opens the account sheet in its place');
   // iOS 26 Safari: Share is behind ⋯ beside the address (the default compact bar).
   const I26 = await dev({ ua: IPHONE_SAFARI_26 });
   await I26.page.click('#installBar [data-act="install"]'); await I26.page.waitForTimeout(200);
@@ -86,6 +100,8 @@ const IPHONE_CHROME = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Ap
   // A log kept in this browser: one short line says it does not follow the app.
   await I26.page.click('#modal [data-act="mClose"]');
   await I26.ev(() => { const L = window.__ironlog; L.state.sessions.forEach(x => { delete x.demo; }); L.render(); });
+  // The account line comes first with a log of his own (REV33-2); Get the app is behind it.
+  await I26.page.click('#acctBar [data-act="acctLater"]'); await I26.page.waitForTimeout(150);
   await I26.page.click('#installBar [data-act="install"]'); await I26.page.waitForTimeout(200);
   ok(/does not move by itself/.test(await sheetText(I26)), 'with a real log in this browser, the sheet says it does not move by itself');
   // iPhone Chrome.

@@ -844,7 +844,9 @@ From 2.78.1 the page scrolls inside its own frame and the screen as a whole neve
 3. While typing in step 2: the field stays above the keyboard.
 4. On a long page (History), tap the clock at the very top of the screen: the page goes back to its top. If it does not, tell Claude.
 5. Scroll any tab: the top bar with the week goes up with the page and comes back at the top. At the top of Today, pull down on the week bar: the calendar comes down.
-6. Your friend sends his iOS version (Settings > General > About), and whether Settings > Accessibility > Motion has "Reduce Motion" on.
+6. In the home-screen preview, open Stats and scroll down: the row of section buttons sticks right under the clock, with nothing of the page showing between the clock and it. Tap one of those buttons: its section's title lands just under the row.
+7. Once in Safari (not the home-screen app): scroll a long page and tell Claude whether Safari's address bar shrinks as you scroll. From 2.78.1 it may stay full size, since the screen as a whole no longer moves.
+8. Your friend sends his iOS version (Settings > General > About), and whether Settings > Accessibility > Motion has "Reduce Motion" on and "Prefer Cross-Fade Transitions" on.
 
 Anything that moves: a screenshot to Claude, and do not merge.
 

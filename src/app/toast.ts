@@ -15,17 +15,19 @@
        "Band Face Pull added to Day 1" under "created and added", and of a
        sync's notes only the last).
      - News about the log from storage and sync (kind 'notice', which
-       main.ts gives every message storage and sync raise), and a note the
-       app says once on its own, are never lost: one raised while a tap's
-       message, other news not yet read, or a sheet shows waits its turn, and
-       one covered by a tap's message or a sheet before NOTICE_READ_MS comes
-       back once that has gone. A sheet is the lifter busy with something
-       else, so news never shows over it. A tap's message is never held back:
-       it answers what the lifter just did, a tap in a sheet included.
+       main.ts gives every message storage and sync raise) is never lost:
+       news raised while a tap's message, other news not yet read, or a sheet
+       shows waits its turn, and news covered by a tap's message or a sheet
+       before NOTICE_READ_MS comes back once that has gone. A sheet is the
+       lifter busy with something else, so news never shows over it. A tap's
+       message is never held back: it answers what the lifter just did, a
+       tap in a sheet included.
      - A note the app says once on its own (noteOnce) waits for a calm
        moment: no message and no sheet showing. A sheet opening over it
-       sends it away, and a note gone before it could be read is said
-       another time rather than counted as said. */
+       sends it away, not to come back over the next screen; a note whose
+       occasion has passed before a calm moment came goes unsaid. Either way
+       it is counted as said only once read, so it is said another time,
+       on a later visit too. */
 
 import { nameLastStep } from './act';
 
@@ -51,7 +53,7 @@ interface Showing {
 }
 /** How often a note said once looks again for a calm moment, in milliseconds. */
 const CALM_MS = 500;
-/** A message waiting its turn: news about the log, held while a tap's message shows. */
+/** A message waiting its turn: news about the log, held while a tap's message, unread news or a sheet shows. */
 interface Waiting {
   msg: string;
   ms: number;
@@ -192,7 +194,9 @@ export function toast(msg: string, undo?: boolean | null, ms?: number | null, ki
   }
   // News while a tap's message, news not yet read, or a sheet shows: it waits for its turn.
   if (notice && (sheetOpen() || (showing && (!showing.notice || t - showing.at < NOTICE_READ_MS)))) {
-    if (!waiting.some(w => w.msg === msg)) waiting.push({ msg, ms: len });
+    // The same news showing or in line already is said once.
+    if (!waiting.some(w => w.msg === msg) && !(showing && showing.notice && showing.parts.includes(msg)))
+      waiting.push({ msg, ms: len });
     return;
   }
   // A tap's message over news not yet read: the news comes back after it.
@@ -203,17 +207,38 @@ export function toast(msg: string, undo?: boolean | null, ms?: number | null, ki
   draw(el);
 }
 
-/** Says a note the app tells once, at a calm moment (no message and no sheet showing), for `ms`; `read` hears, once it
-    could have been read, whether it was still showing then, so a note covered early is said another time. */
-export function noteOnce(msg: string, ms: number, read: (seen: boolean) => void): void {
+/** The notes said once that wait for a calm moment or are showing: one is never in line twice. */
+const onceLine = new Set<string>();
+/** Says a note the app tells once, at a calm moment (no message and no sheet showing), for `ms`. `read` hears whether it
+    was read: true once it was still showing NOTICE_READ_MS after it showed, false if a sheet or a message covered it
+    first, or if `still` says, before a calm moment came, that what it is about has passed (the rest it is about over).
+    The caller marks a note said only on true, so a note not read, or waiting when the app closes, is still due. */
+export function noteOnce(
+  msg: string,
+  ms: number,
+  read: (seen: boolean) => void,
+  still: () => boolean = () => true
+): void {
   const el = box();
-  if (!el) return;
-  if (!el.hidden || sheetOpen()) {
-    setTimeout(() => noteOnce(msg, ms, read), CALM_MS);
-    return;
-  }
-  toast(msg, false, ms, 'once');
-  setTimeout(() => read(!el.hidden && !!cur && cur.parts.includes(msg)), NOTICE_READ_MS);
+  if (!el || onceLine.has(msg)) return;
+  onceLine.add(msg);
+  const done = (seen: boolean): void => {
+    onceLine.delete(msg);
+    read(seen);
+  };
+  const look = (): void => {
+    if (!still()) {
+      done(false);
+      return;
+    }
+    if (!el.hidden || sheetOpen()) {
+      setTimeout(look, CALM_MS);
+      return;
+    }
+    toast(msg, false, ms, 'once');
+    setTimeout(() => done(!el.hidden && !!cur && cur.parts.includes(msg)), NOTICE_READ_MS);
+  };
+  look();
 }
 
 /** The message showing and the news waiting its turn, in the order they show: what the lifter sees now and is still

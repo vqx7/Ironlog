@@ -319,7 +319,10 @@ html{-webkit-text-size-adjust:100%;touch-action:manipulation;-webkit-tap-highlig
    picker closes: the tab bar halfway up History). With nothing scrolling under them there is nothing to misplace;
    frame.ts puts the document back if iOS moves it to show a field above the keyboard. */
 html,body{height:100%;overflow:hidden;overscroll-behavior:none}
-#page{height:100%;overflow-x:hidden;overflow-y:auto;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;scroll-padding-top:env(safe-area-inset-top,0px)}
+/* The frame begins under the status bar (the root's top padding), so nothing inside it adds the status bar's height:
+   no scroll padding, the bars that stick at its top stick at 0. An element's own scroll margin lands it where it
+   landed while the document scrolled under the status bar. */
+#page{height:100%;overflow-x:hidden;overflow-y:auto;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch}
 body.modal-open #page{overflow-y:hidden}
 /* An app, not a web page (r65.2, PENDING 369): a double tap is a tap, never a zoom (pinch stays, which iOS keeps
    for accessibility whatever a page says); a long press on the app's own words selects nothing and opens no Copy
@@ -986,7 +989,7 @@ table.t td.r,table.t th.r{text-align:right}
 table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .subsec table.t .stick-r{background:var(--surface)}
 .scroll-x{overflow-x:auto}
-.jump{position:sticky;top:env(safe-area-inset-top,0px);z-index:15;display:flex;gap:6px;overflow-x:auto;padding:8px 16px;margin:0 -16px;background:var(--glass);-webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.jump{position:sticky;top:0;z-index:15;display:flex;gap:6px;overflow-x:auto;padding:8px 16px;margin:0 -16px;background:var(--glass);-webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .jump::-webkit-scrollbar{display:none}
 .jump .chip{flex:none;min-height:32px;font-size:13px}
 .sec[id^="sec-"]{scroll-margin-top:calc(56px + env(safe-area-inset-top,0px))}
@@ -1297,7 +1300,7 @@ details.more>summary .small{display:block;font-weight:400}
    version is noticed without covering anything. Since 2.52 the top bar scrolls
    away, so it stays at the top of the screen, as it did on the first-run pages,
    which hide the bar (r55: 52 px down there, it sat over Set up's back link). */
-#updbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:19;display:flex;align-items:center;gap:8px;padding:6px 16px;background:var(--glass);-webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);border-bottom:1px solid var(--line-soft)}
+#updbar{position:sticky;top:0;z-index:19;display:flex;align-items:center;gap:8px;padding:6px 16px;background:var(--glass);-webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);border-bottom:1px solid var(--line-soft)}
 #updbar[hidden]{display:none}
 .acctbar+.acctbar{margin-top:-6px}
 /* On a phone each line keeps its bold half and its button (item 62). */

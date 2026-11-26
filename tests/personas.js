@@ -1116,7 +1116,7 @@ async function finish() {
     const missToast = await H.toast();
     for (let k = 0; k < 4; k++) { const m = await ev(() => { const m = window.__ironlog.ui.modal; return m ? m.kind : null; }); if (!m) break; await page.click('#modal [data-act="mOk"]'); await wait(120); }
     await wait(2900);
-    const g = await ev(() => { const a = document.getElementById('blk-1'); const want = a ? parseFloat(getComputedStyle(a).scrollMarginTop) + parseFloat(getComputedStyle(document.getElementById('page')||document.documentElement).scrollPaddingTop) : null; return { tr: window.__tr, top: a ? Math.round(a.getBoundingClientRect().top) : null, want, folded: !!document.querySelector('#blk-0.folded'), missed: window.__ironlog.state.draft.ex[0].sets[2] }; });
+    const g = await ev(() => { const a = document.getElementById('blk-1'); const pe = document.getElementById('page'), sc = pe || document.documentElement; const want = a ? parseFloat(getComputedStyle(a).scrollMarginTop) + (parseFloat(getComputedStyle(sc).scrollPaddingTop) || 0) + (pe ? pe.getBoundingClientRect().top : 0) : null; return { tr: window.__tr, top: a ? Math.round(a.getBoundingClientRect().top) : null, want, folded: !!document.querySelector('#blk-0.folded'), missed: window.__ironlog.state.draft.ex[0].sets[2] }; });
     ok(g.missed && g.missed.done && +g.missed.r === 0, '16. the third bench set is kept as missed, 0 reps ticked', g.missed);
     // What the toast says is what the app then does (NEW-66): a missed set never earns a step, while a step earned before still stands (below).
     ok(missToast.trim() === 'Logged as missed.', '16. the toast as the 0 is ticked says what the tap did, "Logged as missed." (V, 2026-11-14: the reason is the Guide\'s)', missToast);

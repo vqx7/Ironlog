@@ -84,8 +84,11 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     await ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); L.ACT.pickToday && L.ACT.pickToday(); });
     await wait(80);
     const hasRank = await ev(() => !!document.querySelector('#modal .hastip'));
-    if (hasRank) { await page.click('#modal .hastip'); await wait(60); }
-    ok(hasRank && await ev(() => { const t = document.getElementById('tip'); return !t.hidden && /Ranked by/.test(t.textContent); }), 'dotted text shows its explanation on a tap');
+    // Brought into view before the tap, as a lifter sees it: a tip hides when anything under it scrolls (2.78.1, the
+    // frame), and Playwright's own scroll into view at the click could land after the tip showed.
+    if (hasRank) { await page.locator('#modal .hastip').scrollIntoViewIfNeeded(); await wait(200); await page.click('#modal .hastip'); await wait(60); }
+    const tipNow = await ev(() => { const t = document.getElementById('tip'); return { hidden: t.hidden, text: t.textContent.slice(0, 80) }; });
+    ok(hasRank && !tipNow.hidden && /Ranked by/.test(tipNow.text), 'dotted text shows its explanation on a tap', { hasRank, tipNow });
     await ev(() => window.__ironlog.ACT.mClose());
 
     // ---- Sections: every one on every tab folds and has a handle; moving keeps the order after a reload.

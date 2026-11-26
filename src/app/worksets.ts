@@ -1390,10 +1390,13 @@ function foldGlide(a1: HTMLElement, top0: number): void {
   const cs = getComputedStyle(a1);
   const m0 = parseFloat(cs.marginTop) || 0,
     sm = parseFloat(cs.scrollMarginTop) || 0;
-  // Where scrolling it into view put it: under the page's scroll padding (the bar) and its own scroll margin.
-  const sp = parseFloat(getComputedStyle(pageEl()).scrollPaddingTop) || 0;
+  // Where scrolling it into view puts it: its own scroll margin under the frame's top (the status bar's bottom), the
+  // frame's own scroll padding too if it has one. a is on the screen, so the frame's top is taken off.
+  const pe = pageEl();
+  const sp = parseFloat(getComputedStyle(pe).scrollPaddingTop) || 0;
+  const ft = pe.id === 'page' ? pe.getBoundingClientRect().top : 0;
   const most = pageMost();
-  const y1 = Math.max(0, Math.min(most, y0 + a - sm - sp));
+  const y1 = Math.max(0, Math.min(most, y0 + a - ft - sm - sp));
   const vEnd = y0 + a - y1;
   const held = Math.max(0, top0 - a);
   let calm = false;

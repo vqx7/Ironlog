@@ -331,7 +331,10 @@ html{-webkit-text-size-adjust:100%;touch-action:manipulation;-webkit-tap-highlig
    picker closes: the tab bar halfway up History). With nothing scrolling under them there is nothing to misplace;
    frame.ts puts the document back if iOS moves it to show a field above the keyboard. */
 html,body{height:100%;overflow:hidden;overscroll-behavior:none}
-#page{height:100%;overflow-x:hidden;overflow-y:auto;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;scroll-padding-top:env(safe-area-inset-top,0px)}
+/* The frame begins under the status bar (the root's top padding), so nothing inside it adds the status bar's height:
+   no scroll padding, the bars that stick at its top stick at 0. An element's own scroll margin lands it where it
+   landed while the document scrolled under the status bar. */
+#page{height:100%;overflow-x:hidden;overflow-y:auto;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch}
 body.modal-open #page{overflow-y:hidden}
 /* An app, not a web page (r65.2, PENDING 369): a double tap is a tap, never a zoom (pinch stays, which iOS keeps
    for accessibility whatever a page says); a long press on the app's own words selects nothing and opens no Copy
@@ -998,7 +1001,7 @@ table.t td.r,table.t th.r{text-align:right}
 table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .subsec table.t .stick-r{background:var(--surface)}
 .scroll-x{overflow-x:auto}
-.jump{position:sticky;top:env(safe-area-inset-top,0px);z-index:15;display:flex;gap:6px;overflow-x:auto;padding:8px 16px;margin:0 -16px;background:var(--glass);-webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.jump{position:sticky;top:0;z-index:15;display:flex;gap:6px;overflow-x:auto;padding:8px 16px;margin:0 -16px;background:var(--glass);-webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .jump::-webkit-scrollbar{display:none}
 .jump .chip{flex:none;min-height:32px;font-size:13px}
 .sec[id^="sec-"]{scroll-margin-top:calc(56px + env(safe-area-inset-top,0px))}
@@ -1309,7 +1312,7 @@ details.more>summary .small{display:block;font-weight:400}
    version is noticed without covering anything. Since 2.52 the top bar scrolls
    away, so it stays at the top of the screen, as it did on the first-run pages,
    which hide the bar (r55: 52 px down there, it sat over Set up's back link). */
-#updbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:19;display:flex;align-items:center;gap:8px;padding:6px 16px;background:var(--glass);-webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);border-bottom:1px solid var(--line-soft)}
+#updbar{position:sticky;top:0;z-index:19;display:flex;align-items:center;gap:8px;padding:6px 16px;background:var(--glass);-webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);border-bottom:1px solid var(--line-soft)}
 #updbar[hidden]{display:none}
 .acctbar+.acctbar{margin-top:-6px}
 /* On a phone each line keeps its bold half and its button (item 62). */
@@ -15436,7 +15439,8 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       return;
     }
     if (notice && (sheetOpen() || showing && (!showing.notice || t4 - showing.at < NOTICE_READ_MS))) {
-      if (!waiting.some((w2) => w2.msg === msg)) waiting.push({ msg, ms: len });
+      if (!waiting.some((w2) => w2.msg === msg) && !(showing && showing.notice && showing.parts.includes(msg)))
+        waiting.push({ msg, ms: len });
       return;
     }
     if (!notice && showing && showing.notice && t4 - showing.at < NOTICE_READ_MS) backToWait(showing);
@@ -15445,15 +15449,28 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     openTask();
     draw(el);
   }
-  function noteOnce(msg, ms, read) {
+  var onceLine = /* @__PURE__ */ new Set();
+  function noteOnce(msg, ms, read, still = () => true) {
     const el = box();
-    if (!el) return;
-    if (!el.hidden || sheetOpen()) {
-      setTimeout(() => noteOnce(msg, ms, read), CALM_MS);
-      return;
-    }
-    toast(msg, false, ms, "once");
-    setTimeout(() => read(!el.hidden && !!cur && cur.parts.includes(msg)), NOTICE_READ_MS);
+    if (!el || onceLine.has(msg)) return;
+    onceLine.add(msg);
+    const done = (seen) => {
+      onceLine.delete(msg);
+      read(seen);
+    };
+    const look = () => {
+      if (!still()) {
+        done(false);
+        return;
+      }
+      if (!el.hidden || sheetOpen()) {
+        setTimeout(look, CALM_MS);
+        return;
+      }
+      toast(msg, false, ms, "once");
+      setTimeout(() => done(!el.hidden && !!cur && cur.parts.includes(msg)), NOTICE_READ_MS);
+    };
+    look();
   }
   function toastPending() {
     const el = box();
@@ -15541,17 +15558,23 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     const k2 = KEY + ".tipWake";
     if (prefGet(k2)) return;
     if (!prefSet(k2, "1")) return;
+    prefDel(k2);
     setTimeout(
       () => noteOnce(
         "A locked screen holds the rest alert until you unlock. Settings can keep the screen on.",
         TIMER_MS.tipShow,
         (seen) => {
-          if (!seen) prefDel(k2);
-        }
+          if (seen) prefSet(k2, "1");
+        },
+        resting
       ),
       TIMER_MS.tipFirst
     );
   }
+  var resting = () => {
+    const el = bar();
+    return !!state.draft && !!el && !el.hidden && timer.end > Date.now();
+  };
   var TIMER_KEY = KEY + ".timer";
   var bar = () => document.getElementById("timer");
   function timerSave() {
@@ -16239,13 +16262,15 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     void photoKeptSmall(ph).then((small) => {
       if (!small || photoUrl() !== ph || prefGet(PHOTO_TIP)) return;
       if (!prefSet(PHOTO_TIP, "1")) return;
+      prefDel(PHOTO_TIP);
       setTimeout(
         () => noteOnce(
           "Your profile photo was kept small by an earlier version, so it looks soft opened large. Open the menu, tap your photo and choose Change photo to keep it sharp.",
           PHOTO_TIP_MS.show,
           (seen) => {
-            if (!seen) prefDel(PHOTO_TIP);
-          }
+            if (seen) prefSet(PHOTO_TIP, "1");
+          },
+          () => photoUrl() === ph
         ),
         PHOTO_TIP_MS.first
       );
@@ -19263,9 +19288,11 @@ ${more}`;
     const y0 = pageY(), a2 = a1.getBoundingClientRect().top;
     const cs = getComputedStyle(a1);
     const m0 = parseFloat(cs.marginTop) || 0, sm = parseFloat(cs.scrollMarginTop) || 0;
-    const sp = parseFloat(getComputedStyle(pageEl()).scrollPaddingTop) || 0;
+    const pe = pageEl();
+    const sp = parseFloat(getComputedStyle(pe).scrollPaddingTop) || 0;
+    const ft = pe.id === "page" ? pe.getBoundingClientRect().top : 0;
     const most = pageMost();
-    const y1 = Math.max(0, Math.min(most, y0 + a2 - sm - sp));
+    const y1 = Math.max(0, Math.min(most, y0 + a2 - ft - sm - sp));
     const vEnd = y0 + a2 - y1;
     const held3 = Math.max(0, top0 - a2);
     let calm = false;
@@ -23585,7 +23612,8 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
   }
   function topLine() {
     if (updateShowing()) return A;
-    for (const line of [installBar, iconBar, acctBar, photoBar]) {
+    const own2 = state.sessions.some((x2) => !x2.demo);
+    for (const line of own2 ? [iconBar, acctBar, installBar, photoBar] : [installBar, iconBar, acctBar, photoBar]) {
       const shown2 = line();
       if (shown2 !== A) return shown2;
     }
@@ -31679,7 +31707,7 @@ ${JSON.stringify(ctx2, null, 1)}`;
       body = b`<ol class="isteps">${step(1, b`Open your browser's menu (⋮ or ⋯).`)}${step(2, b`Choose <b>Install app</b> or <b>Add to Home screen</b>, then confirm.`)}</ol>`;
     const tip = (ios ? "An iPhone installs web apps only from the Share menu; Apple allows no install button. If Add to Home Screen is not in the list, scroll down or tap More. Keep Open as Web App on if it is shown. " : "") + `Then open ${APP_NAME} from your home screen: it starts full screen and works offline. A log kept in this browser does not move by itself: sign in inside the app, or export a backup here and import it there.`;
     const hasLog = state.sessions.some((x2) => !x2.demo) && !acct.user;
-    return b`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="instH"><div class="sheet-h"><h3 id="instH">${ios ? "Add to Home Screen" : `Install ${APP_NAME}`}</h3>${tipButton(tip, "About installing")}<button class="ib u-mlauto" aria-label="Close" data-act="mClose">✕</button></div>${installPic(how)}${body}${hasLog ? b`<p class="small u-m10-0-0">Your log here does not move by itself. Sign in in the app, or use a backup.</p>` : ""}<button type="button" class="btn primary fullw u-mt14" data-act="mClose">Done</button></div>`;
+    return b`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="instH"><div class="sheet-h"><h3 id="instH">${ios ? "Add to Home Screen" : `Install ${APP_NAME}`}</h3>${tipButton(tip, "About installing")}<button class="ib u-mlauto" aria-label="Close" data-act="mClose">✕</button></div>${installPic(how)}${body}${hasLog ? AUTH() && !window.claude ? b`<p class="small u-m10-0-0">Your log here does not move by itself: create an account first, then sign in in the app.</p><button type="button" class="btn fullw u-mt10" data-act="acctOpen" data-mode="signup">Create account</button>` : b`<p class="small u-m10-0-0">Your log here does not move by itself: export a backup here and import it in the app.</p>` : ""}<button type="button" class="btn primary fullw u-mt14" data-act="mClose">Done</button></div>`;
   }
   function pastDue(R2, date) {
     const ok = (i5) => {

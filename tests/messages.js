@@ -18,7 +18,9 @@
 //      sheet opens goes and comes back after it; news raised while other news is unread waits its turn, so neither is
 //      lost; a tap's message in a sheet still shows (a guard). A note the app says once waits for a calm moment, goes
 //      when a sheet opens over it, and is said another time if it went before it could be read: the rest timer's note
-//      about a locked screen, which sat over Finish's sheet and the recap for 6 seconds on 2.78.
+//      about a locked screen, which sat over Finish's sheet and the recap for 6 seconds on 2.78. It goes unsaid once its
+//      rest is over, and is marked said only once read, so the app closed while it waits leaves it due (REV33-3 and
+//      REV33-4, failing on 2.78.1 as pushed, d06c8176).
 //   7  A new lifter's first visit, end to end on the built app in an iPhone's browser (2.78.1): first pages, a
 //      ready-made routine, a workout, Finish, the recap, Today again. Read every 40 ms, Today never shows two lines
 //      at once (2.78: "Only on this phone" and "Get the app" together after the first workout), and news or a note
@@ -186,6 +188,12 @@ const tapAway = P => P.page.mouse.click(195, 420);
     for (let i = 0; i < 40 && seen.length < 2; i++) { await wait(200); const t = (await shown(P)).text; if (t && t !== seen[seen.length - 1]) seen.push(t); }
     ok(first.text === 'First news' && seen[1] === 'Second news', '6. news raised while other news is unread waits its turn, and both are seen (2.78: the second replaced the first)', seen);
     await hide(); await tapAway(P); await wait(100);
+    // The same news again while it shows unread: said once, not twice in a row (REV33-12).
+    const twice = await P.page.evaluate(async () => { const L = window.__ironlog; L.toast('Same news', null, 8000, 'notice'); await new Promise(r => setTimeout(r, 300)); L.toast('Same news', null, 8000, 'notice'); return L.toastPending ? L.toastPending() : null; });
+    ok(twice && twice.length === 1 && twice[0] === 'Same news', '6. the same news raised again while it shows is said once, not again after it', twice);
+    // Everything in line gone, so the checks below start clear on any build.
+    await P.page.evaluate(() => { const L = window.__ironlog; for (let i = 0; i < 5 && L.toastPending && L.toastPending().length; i++) L.toastHide(); });
+    await tapAway(P); await wait(100);
     // A tap's message in a sheet still shows (a guard).
     await sheet(); await wait(200);
     await P.page.evaluate(() => window.__ironlog.toast('Copied'));
@@ -229,6 +237,44 @@ const tapAway = P => P.page.mouse.click(195, 420);
     ok(onFinish.sheet && !/locked screen/.test(onFinish.toast), '6. Finish\'s sheet opening sends the note away: it never sits over the sheet (2.78: 6 seconds over Finish and the recap)', onFinish);
     ok(mark === null, '6. gone before it could be read, the note is left to be said at a later rest', { mark });
     await Q.ctx.close(); await Q.browser.close();
+
+    // A new phone where the note is due (REV33-3, REV33-4): a phone that remembers every message it showed.
+    const fresh = async () => {
+      const R = await open(FILE, { w: 390, h: 844, clock: DAY + 'T10:00:00', realStarter: true });
+      await R.page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.settings.unit = 'lb'; localStorage.setItem(L.KEY + '.installLater', '1'); L.saveNow(); L.invalidate(); L.ui.tab = 'today'; L.render(); });
+      await wait(150);
+      await R.page.click('.hero [data-act="startSession"]'); await wait(300);
+      await R.page.fill('.sg input[data-f="w"]', '50');
+      await R.page.evaluate(() => { const a = document.activeElement; if (a && a.blur) a.blur(); });
+      return R;
+    };
+    const record = R => R.page.evaluate(() => { window.__said = []; const t = document.getElementById('toast'); new MutationObserver(() => { if (!t.hidden && /locked screen/.test(t.textContent)) window.__said.push({ tab: window.__ironlog.ui.tab, workout: !!window.__ironlog.state.draft }); }).observe(t, { attributes: true, childList: true, subtree: true }); });
+    const tipMark = R => R.page.evaluate(() => localStorage.getItem(window.__ironlog.KEY + '.tipWake'));
+    // The last set ticked and Finish tapped at once, before the note's first look: the rest is over by the time Finish's
+    // sheet and the recap have gone, so the note goes unsaid and stays due (2.78.1 said it on Today after the workout).
+    const F = await fresh();
+    await record(F);
+    await F.page.click('[data-act="sDone"]'); await wait(300);
+    await F.page.click('[data-act="finish"]'); await wait(800);
+    await F.page.evaluate(() => { const b = document.querySelector('#modal .btn.primary'); if (b) b.click(); }); await wait(3000);
+    await F.page.evaluate(() => window.__ironlog.ACT.mClose()); await wait(4500);
+    const late = { said: await F.page.evaluate(() => window.__said), saved: await F.page.evaluate(() => window.__ironlog.state.sessions.length), mark: await tipMark(F) };
+    ok(late.saved === 1 && late.said.length === 0 && late.mark === null, '6. Finish tapped as the rest began: the note is not said after the workout, with no rest to be about, and stays due', late);
+    await F.ctx.close(); await F.browser.close();
+    // A sheet opened as the rest began and the app closed while the note waits: the note is said at the next rest and
+    // marked once read (2.78.1 marked it before it was said, so it was never said on that phone).
+    const C = await fresh();
+    await C.page.click('[data-act="sDone"]'); await wait(200);
+    await C.page.evaluate(() => window.__ironlog.ACT.menuOpen()); await wait(3000);
+    const markClosed = await tipMark(C);
+    await C.page.reload(); await C.page.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart); await wait(500);
+    await record(C);
+    await C.page.click('[data-act="sDone"][data-b="0"][data-s="1"]'); await wait(1500);
+    const saidNext = await C.page.evaluate(() => window.__said.length);
+    await wait(4000);
+    const markRead = await tipMark(C);
+    ok(markClosed === null && saidNext > 0 && markRead === '1', '6. the app closed while the note waits behind a sheet: it is said at the next rest, and marked said once read', { markClosed, saidNext, markRead });
+    await C.ctx.close(); await C.browser.close();
   }
 
   if (run(7)) {

@@ -772,13 +772,17 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     }
     ok(hits.length === 0, 'localStorage and IndexedDB are named only in storage.ts and sync.ts, and JSON is parsed only by records.ts (every stored value comes through one reader)', hits);
   }
-  // The screen frame (2.78.1, NEW-218): the page scrolls inside #page and the document never does, so every scroll
-  // goes through frame.ts, and nothing else scrolls or reads the document's scroll. And every message goes through
-  // toast.ts's rules (NEW-217): no other module looks at the toast to time a message of its own. Read from the syntax
-  // tree, so a mention in a comment is not one.
+  // The screen frame (2.78.1, NEW-218): the page scrolls inside #page and the document never does, so nothing outside
+  // frame.ts scrolls or reads the document's scroll, by any of its names (the page itself is scrolled by frame.ts, or
+  // by an element's scrollIntoView, which scrolls the frame). And every message goes through toast.ts's rules
+  // (NEW-217): no other module looks at the toast to time a message of its own. Read from the syntax tree, so a
+  // mention in a comment is not one.
   {
     const hits = [];
-    const SCROLL = new Set(['scrollTo', 'scrollBy', 'scrollY', 'scrollX', 'pageYOffset', 'pageXOffset', 'scrollingElement']);
+    const SCROLL = new Set(['scroll', 'scrollTo', 'scrollBy', 'scrollY', 'scrollX', 'pageYOffset', 'pageXOffset', 'scrollingElement']);
+    // The document's own scroll by its elements: document.documentElement.scrollTop, document.body.scrollLeft.
+    const DOC_EL = new Set(['document.documentElement', 'document.body', 'document.scrollingElement']);
+    const TOAST_ID = new Set(["'toast'", '"toast"', "'#toast'", '"#toast"']);
     for (const id of MODS) {
       if (id === 'frame') continue;
       const f = id + '.ts', txt = fs.readFileSync(path.join(APP, f), 'utf8');
@@ -787,9 +791,13 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
       const walk = n => {
         // window.scrollTo and the like, or document.scrollingElement.
         if (ts.isPropertyAccessExpression(n) && SCROLL.has(n.name.text) && ts.isIdentifier(n.expression) && ['window', 'document', 'self', 'globalThis'].includes(n.expression.text)) hits.push(at(n) + ' ' + n.getText());
-        // A bare scrollY read off the global.
-        if (ts.isIdentifier(n) && ['scrollY', 'pageYOffset'].includes(n.text) && !(n.parent && ts.isPropertyAccessExpression(n.parent) && n.parent.name === n)) hits.push(at(n) + ' ' + n.text);
-        if (id !== 'toast' && ts.isCallExpression(n) && n.getText().replace(/\s+/g, '') === "document.getElementById('toast')") hits.push(at(n) + " document.getElementById('toast')");
+        if (ts.isPropertyAccessExpression(n) && ['scrollTop', 'scrollLeft'].includes(n.name.text) && DOC_EL.has(n.expression.getText().replace(/\s+/g, ''))) hits.push(at(n) + ' ' + n.getText());
+        // A bare scrollY read off the global, or a bare scrollTo() or scrollBy() called on it.
+        const bare = n.parent && ts.isPropertyAccessExpression(n.parent) && n.parent.name === n;
+        if (ts.isIdentifier(n) && ['scrollY', 'pageYOffset', 'scrollX', 'pageXOffset'].includes(n.text) && !bare) hits.push(at(n) + ' ' + n.text);
+        if (ts.isCallExpression(n) && ts.isIdentifier(n.expression) && ['scroll', 'scrollTo', 'scrollBy'].includes(n.expression.text)) hits.push(at(n) + ' ' + n.expression.text + '()');
+        // The toast found by its id or selector, however it is written.
+        if (id !== 'toast' && ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression) && ['getElementById', 'querySelector', 'querySelectorAll'].includes(n.expression.name.text) && n.arguments.length && TOAST_ID.has(n.arguments[0].getText())) hits.push(at(n) + ' ' + n.getText());
         ts.forEachChild(n, walk);
       };
       walk(sf);

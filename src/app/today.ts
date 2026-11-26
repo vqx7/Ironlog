@@ -513,16 +513,19 @@ function photoBar(): Part {
 /* Today carries one line above its start card, never two, and none while the
    update bar or the demo's note shows: two bars read as two things to do at
    once, and the second is not read. In order:
-   - Get the app, in a browser: Safari clears a log kept in a tab after a week
-     away, and that log does not move into the installed app by itself, so
-     installing comes first; the account line follows, in the app.
-   - The new icon, in an iPhone install from before the icon changed: said
-     once and gone with a tap, so the account line, which stays, waits for it.
+   - In a browser, Get the app until the tab holds a log of the lifter's own,
+     then Create account first: Safari clears a tab's log after a week away,
+     and installing does not carry it (an iPhone's home-screen app keeps its
+     own storage), while an account does, and the app then signs in to it.
+   - The new icon, in an iPhone install from before the icon changed (never in
+     a browser): said once and gone with a tap, so the account line, which
+     stays, waits for it.
    - Create account: signed out, the log lives on this phone only.
    - A profile photo. */
 function topLine(): Part {
   if (updateShowing()) return nothing;
-  for (const line of [installBar, iconBar, acctBar, photoBar]) {
+  const own = state.sessions.some(x => !x.demo);
+  for (const line of own ? [iconBar, acctBar, installBar, photoBar] : [installBar, iconBar, acctBar, photoBar]) {
     const shown = line();
     if (shown !== nothing) return shown;
   }

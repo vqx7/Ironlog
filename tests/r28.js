@@ -129,7 +129,7 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
     // 320 px: no sideways scroll on any tab with the new line and button.
     await page.setViewportSize({ width: 320, height: 640 });
     const over = [];
-    for (const t of TABS) { const w = await ev(t => { const L = window.__ironlog; L.ui.tab = t; L.render(); return (document.getElementById('page')||document.documentElement).scrollWidth - document.documentElement.clientWidth; }, t); if (w > 0) over.push(t + ':' + w); }
+    for (const t of TABS) { const w = await ev(t => { const L = window.__ironlog; L.ui.tab = t; L.render(); const pg = document.getElementById('page') || document.documentElement; return pg.scrollWidth - pg.clientWidth; }, t); if (w > 0) over.push(t + ':' + w); }
     ok(!over.length, 'no sideways scroll at 320 px on any tab', over);
     ok(!P.errors.length, 'no page errors (new install)', P.errors);
     await P.browser.close();

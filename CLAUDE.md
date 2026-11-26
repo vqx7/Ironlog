@@ -249,8 +249,9 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   carries one line above its start card, never two (V, 2026-11-25). Only `toast.ts` looks at the toast
   (`tests/hygiene.js`).
 - **Screen frame (2.78.1, NEW-218):** the page scrolls inside `#page`; the document never scrolls, so nothing an
-  iPhone does to the visible area can carry the bars along the bottom up the screen. Every scroll goes through
-  `frame.ts` (`tests/hygiene.js`, `tests/frame.js`). An iPhone's keyboard and pickers are checked on the preview on an
+  iPhone does to the visible area can carry the bars along the bottom up the screen. The page is scrolled by
+  `frame.ts` or by an element's `scrollIntoView` (which scrolls the frame), never through the document, and the frame
+  adds no second status bar: it begins under it (`tests/hygiene.js`, `tests/frame.js`). An iPhone's keyboard and pickers are checked on the preview on an
   iPhone before a merge (OWNER.md F2), since no engine here has them.
 - **Phone:** 44 px touch targets, no sideways scroll at 320 px, light and dark both checked. Rows of seven (the
   week bar, the calendar, Consistency) reach 44 px from 375 px phones up; at 320 px seven cannot. No code follows the
