@@ -144,14 +144,17 @@ async function phone(start, o = {}) {
     // Finish, answering each question as one who means to save what was done: finish now, keep the sets as typed, save the ticked ones.
     finish: async () => {
       await page.click('#view [data-act="finish"]'); const asked = [];
-      for (let k = 0; k < 6; k++) {
+      /* Each question answered as it comes, until the workout is saved (closed, or the recap open), up to 5 s: on a
+         loaded machine a later question (the ramp-up sets) can come after a pause, and the loop that stopped at the
+         first pause left it unanswered and the workout open (a full run of 2.78.2 at two suites at a time). */
+      for (let k = 0; k < 40; k++) {
         await wait(120);
-        const q = await ev(() => { const m = window.__ironlog.ui.modal; return m ? { kind: m.kind, title: m.title || '' } : null; });
-        if (!q || q.kind !== 'confirm') break;
+        const q = await ev(() => { const L = window.__ironlog, m = L.ui.modal; return { open: !!L.state.draft, kind: m ? m.kind : null, title: m ? m.title || '' : '' }; });
+        if (!q.open || (q.kind && q.kind !== 'confirm')) break;
+        if (q.kind !== 'confirm') continue;
         asked.push(q.title);
         await page.click(/sets not done/.test(q.title) ? '#modal [data-act="mOk"]' : '#modal [data-act="mAlt"]');
       }
-      await wait(150);
       const m = await ev(() => { const L = window.__ironlog; const m = L.ui.modal; const t = m && document.getElementById('modal') ? document.getElementById('modal').innerText : ''; if (m) L.ACT.mClose(); return { kind: m && m.kind, text: t }; });
       return { asked, recap: m };
     }

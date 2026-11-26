@@ -1095,7 +1095,7 @@ export function rowsDiag(): { line: string; findings: Finding[] } | null {
   const c = notes.chk;
   const n = (k: number, one: string, many: string): string => `${k} ${k === 1 ? one : many}`;
   return {
-    line: `Rows check: ${n(c.clean, 'clean day', 'clean days')}, ${n(c.diffs, 'difference', 'differences')}, ${c.removed} removed by a sync${Object.keys(notes.wait).length ? `, ${Object.keys(notes.wait).length} waiting` : ''}`,
+    line: `Rows check: ${n(c.clean, 'clean day', 'clean days')}, ${n(c.diffs, 'difference', 'differences')}, ${c.removed} removed by another phone${Object.keys(notes.wait).length ? `, ${Object.keys(notes.wait).length} waiting` : ''}`,
     findings: notes.find
   };
 }

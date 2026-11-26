@@ -78,7 +78,7 @@ const CASES = {
     // Phone B deleted a session for good: on phone A it left the log by a sync, which A counts; nothing left B's that way.
     for (const [P, removed] of [[r.phones[0], 1], [r.phones[1], 0]]) {
       const d = diag(P);
-      if (d.line !== `Rows check: 2 clean days, 0 differences, ${removed} removed by a sync`) out.push(`${P.name} says "${d.line}" after two days with nothing wrong`);
+      if (d.line !== `Rows check: 2 clean days, 0 differences, ${removed} removed by another phone`) out.push(`${P.name} says "${d.line}" after two days with nothing wrong`);
       if (d.findings.length) out.push(`${P.name} recorded ${d.findings.length} findings: ${d.findings[0].why}`);
     }
     const rows = await r.C.rows();
@@ -98,7 +98,7 @@ const CASES = {
     const C3 = phoneOf(dir, { name: 'C', clock: r.clock, seed: 9 }).start(); C3.signIn(r.C); await C3.sync(); await C3.sync();
     const late = pushesOf(r.C, 'C', from).filter(k => !k.startsWith('device/'));
     if (late.length) out.push('the third phone sent rows the account already held: ' + late.slice(0, 4).join(', '));
-    if (diag(C3).line !== 'Rows check: 1 clean day, 0 differences, 0 removed by a sync') out.push(`the third phone says "${diag(C3).line}"`);
+    if (diag(C3).line !== 'Rows check: 1 clean day, 0 differences, 0 removed by another phone') out.push(`the third phone says "${diag(C3).line}"`);
     out.push(...said(r));
     return out;
   },
@@ -151,7 +151,7 @@ const CASES = {
     return out;
   },
   /* A record leaves the log by a sync while the phone's own pass over the rows is under way: it is still counted
-     ("removed by a sync"), though the pass writes the notes after the count was written (REV32-4). */
+     ("removed by another phone"), though the pass writes the notes after the count was written (REV32-4). */
   async 'a record a sync removed while a pass was under way is still counted'(dir, R) {
     const r = await history({ dirs: [dir, dir], rows: R, name: acct(), script: [{ p: 0, op: 'check' }] });
     const [A, B] = r.phones;
@@ -162,7 +162,7 @@ const CASES = {
     A.hook = null; await A.settle();
     if (once || A.state().bodyweights.some(b => b.id === 'w1')) return ['the read of the documents did not run inside the pass'];
     r.clock.t += 61000; await A.tick(); await A.sync(); await A.sync();
-    return /, 1 removed by a sync/.test(diag(A).line) && A.rowNotes().chk.removed === 1 ? [] : [`phone A says "${diag(A).line}" and its notes hold ${A.rowNotes().chk.removed}`];
+    return /, 1 removed by another phone/.test(diag(A).line) && A.rowNotes().chk.removed === 1 ? [] : [`phone A says "${diag(A).line}" and its notes hold ${A.rowNotes().chk.removed}`];
   },
   /* The account holds a later version of a session than the documents kept (as if the documents had decided against
      the order of the times). The phone waits a minute and a whole read of the documents, then sends the log's copy
@@ -273,7 +273,7 @@ const CASES = {
     A.hook = null;
     if (once) return ['phone A wrote no row'];
     r.clock.t += 26 * 3600000; await A.sync(); await A.sync();
-    if (diag(A).line !== 'Rows check: 2 clean days, 0 differences, 0 removed by a sync') out.push(`the next day phone A says "${diag(A).line}"`);
+    if (diag(A).line !== 'Rows check: 2 clean days, 0 differences, 0 removed by another phone') out.push(`the next day phone A says "${diag(A).line}"`);
     if (!A.rowNotes().rows['device/dev-third']) out.push("phone A's notes do not hold the third phone's row");
     return out;
   },
@@ -284,7 +284,7 @@ const CASES = {
     const name = acct(), r = await history({ dirs: [dir, dir], rows: R, name, outside: true, script: [{ p: 0, op: 'check' }] });
     const out = [], A = r.phones[0];
     const A2 = phoneOf(dir, { name: 'A', clock: r.clock, storage: A.ls, seed: 8 }).start(); A2.signIn(r.C); await A2.sync();
-    if (diag(A2).line !== 'Rows check: 1 clean day, 0 differences, 0 removed by a sync') return [`the second tab starts with "${diag(A2).line}"`];
+    if (diag(A2).line !== 'Rows check: 1 clean day, 0 differences, 0 removed by another phone') return [`the second tab starts with "${diag(A2).line}"`];
     // The first tab meets a row the documents decided against, and records the difference (the case above).
     await R.call(name, 'records', 'push', [[{ kind: 'session', id: 's1', body: '{"id":"s1","notes":"not what the documents hold"}', t: r.clock.t + 5000, dev: 'dev-other', a: 0 }]]);
     await r.run({ p: 0, op: 'note', id: 's2', v: 'typed in the first tab' }); await A.flush();
@@ -415,7 +415,7 @@ const CASES = {
     const t0 = Date.now(); await A.sync(); const first = Date.now() - t0;
     const rows = await C.rows(), notes = (A.ls.get(A.E.KEY + '.rows') || '').length, log = (A.ls.get(A.E.KEY) || '').length;
     const pushes = C.calls.filter(c => c.name === 'push'), sent = rows.reduce((n, r) => n + (r.body ? r.body.length : 0), 0);
-    ok(/Rows check: 1 clean day, 0 differences, 0 removed by a sync$/.test(diag(A).line), `three years of training (624 sessions, 1,000 weigh-ins, 150 cardio entries): ${rows.length} rows written in ${pushes.length} writes, ${Math.round(sent / 1024)} KB of copies, ${first} ms here; the first check is clean`, diag(A));
+    ok(/Rows check: 1 clean day, 0 differences, 0 removed by another phone$/.test(diag(A).line), `three years of training (624 sessions, 1,000 weigh-ins, 150 cardio entries): ${rows.length} rows written in ${pushes.length} writes, ${Math.round(sent / 1024)} KB of copies, ${first} ms here; the first check is clean`, diag(A));
     ok(notes > 0 && notes <= 150000, `the notes the phone keeps of them are ${Math.round(notes / 1024)} KB (150 KB at most), beside a log of ${Math.round(log / 1024)} KB`, notes);
     ok(pushes.every(c => c.n <= 200), 'no write holds more than 200 rows');
     const from = C.calls.length; clock.t += 5000; const t1 = Date.now(); await A.sync(); const idle = Date.now() - t1;

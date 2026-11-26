@@ -171,7 +171,7 @@ export function unpark(): boolean {
 export function parkSettle(): boolean {
   if (!parkedHere()) return true;
   if (state.draft) {
-    fx.toast('Workout set aside. It comes back when you save or discard this one.');
+    fx.toast('Not done: save or discard this workout first. The one set aside then comes back.');
     return false;
   }
   return unpark();

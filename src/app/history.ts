@@ -400,7 +400,7 @@ export const HISTORY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const id = t.dataset.id;
     confirmBox(
       'Delete session?',
-      `This removes it from history and all analytics. It stays under **Recently deleted** for ${TRASH_DAYS} days (the ${TRASH_MAX} most recent items are kept).`,
+      `This removes it from **History** and all analytics.\n\nIt stays under **Recently deleted** for ${TRASH_DAYS} days (the ${TRASH_MAX} most recent items are kept).`,
       'Delete session',
       () => {
         act(

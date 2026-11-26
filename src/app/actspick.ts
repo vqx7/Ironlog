@@ -639,7 +639,7 @@ export const PICK_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const old = state.exercises.find(x => x.id === e.id);
     const wasA = !m.isNew && !!(old && old.assist);
     if (!m.isNew && e.bw && e.assist && !wasA && hasSets(e.id, w => w > 0)) {
-      toast('Logged with added weight. For machine help, pick **Assisted Pull-up** or **Assisted Dip**.');
+      toast('Not changed: logged with added weight. For machine help, pick **Assisted Pull-up** or **Assisted Dip**.');
       return;
     }
     const saved = savedExercise(e);

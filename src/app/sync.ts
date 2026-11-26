@@ -1140,10 +1140,10 @@ function draftNote(prev: unknown, kept?: Kept, where = 'on another device'): voi
     kept === 'joined' || kept === 'cardioJoined'
       ? `Your workout was saved ${where}. Sets done here since were added to it.`
       : kept === 'saved' || kept === 'cardio'
-        ? `Your workout was ${state.draft ? 'replaced by the one' : 'closed'} ${where}. Its ${kept === 'saved' ? 'ticked sets are' : 'cardio is'} in History.`
+        ? `Your workout was ${state.draft ? 'replaced by the one' : 'closed'} ${where}. Your ${kept === 'saved' ? 'sets are' : 'cardio is'} in **History**.`
         : state.draft
           ? saved
-            ? `Your workout was replaced by the one ${where}. Its ticked sets are in History.`
+            ? `Your workout was replaced by the one ${where}. Your sets are in **History**.`
             : `Your workout was replaced by the one ${where}.`
           : saved
             ? `Your workout was saved ${where}.`
@@ -1255,9 +1255,9 @@ function edited(date: string, keys: readonly string[]): void {
 }
 /** Says what became of the account's copy of a workout that lost a merge here (keepLost): the sets ticked or the cardio logged on the other phone, saved, or added to the session saved here. */
 function lostNote(kept: Kept): void {
-  if (kept === 'saved') fx.toast('Sets ticked on another device were saved in History.');
+  if (kept === 'saved') fx.toast('Sets ticked on another device were saved in **History**.');
   else if (kept === 'joined') fx.toast('Sets ticked on another device were added to the session saved here.');
-  else if (kept === 'cardio') fx.toast('Cardio logged on another device was saved in History.');
+  else if (kept === 'cardio') fx.toast('Cardio logged on another device was saved in **History**.');
   else if (kept === 'cardioJoined') fx.toast('Cardio logged on another device was added to the session saved here.');
 }
 /** The half-month document of a workout read from the account and taken in as a pull takes it (adopted, or merged with this device's changes to it), when this device has not pulled it since the workout was finished elsewhere (keepLost): the session is then here to join. False, nothing taken in, when the session is not in it (the workout dated to another half-month on the other phone before Finish, or discarded there: a pull finds which) or when taking it in alone would move a record between documents (above cloudFlush). */
@@ -2238,7 +2238,7 @@ async function pullAll(said: number): Promise<void> {
     if (merged)
       fx.toast(
         keptDraft
-          ? "Your account now holds this phone's log too. Your other phone's workout is in History."
+          ? "Your account now holds this phone's log too. Your other phone's workout is in **History**."
           : "Your account now holds this phone's log too"
       );
     conflictNote(stat);
@@ -2483,7 +2483,7 @@ async function takeAccount(id: string): Promise<boolean> {
   if (from && mine) {
     const a = await fx.ask(
       'A log from another account is on this phone',
-      "Add it to this account, or use this account's log? Using this account's log keeps the other one on this phone until that account signs in here again.",
+      "Add it to this account, or use this account's log?\n\nUsing this account's log keeps the other one on this phone until that account signs in here again.",
       'Add it to this account',
       "Use this account's log"
     );
@@ -2573,7 +2573,7 @@ async function takeAccount(id: string): Promise<boolean> {
   }
   // The log here taken into the account (added, or the account's first): a workout set aside for it goes too.
   if (!use) parkedRetag(from || '', id);
-  if (both) fx.toast("This phone's workout stays open. The account's is saved in History.");
+  if (both) fx.toast("This phone's workout stays open. The account's is saved in **History**.");
   // The copy kept for this account is the log in use now, saved here with its notes.
   if (aside) await dropAside(id);
   return true;

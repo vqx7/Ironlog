@@ -695,7 +695,7 @@ const LB = 0.45359237;
     await page.click('#modal [data-act="profSet"][data-k="goal"][data-v="strength"]'); await wait(150);
     await page.click('#modal [data-act="tplPick"][data-k="full3t"]'); await wait(300);
     const d12 = await ev(() => { const L = window.__ironlog; const R = L.activeRoutine(); const it = R.days.flatMap(d => d.items).find(i => i.exId === 'bench'); return { it: it && [it.repMin, it.repMax, it.rir, it.rest], toast: document.getElementById('toast').innerText }; });
-    ok(d12.it && d12.it[0] === 3 && d12.it[1] === 6 && d12.it[3] >= 180 && /^[^.]+ is ready\./.test(d12.toast), 'Your training set to Strength in the first-run picker, then a routine picked: its bench press is at 3 to 6 reps with 3 minutes\' rest, and the toast says it is ready (r54 kept 6 to 10, and Settings then offered to apply it; the toast\'s few words since 2.78.2)', d12);
+    ok(d12.it && d12.it[0] === 3 && d12.it[1] === 6 && d12.it[3] >= 180 && /^[^.]+ is ready\./.test(d12.toast), 'Your training set to Strength in the first-run picker, then a routine picked: its bench press is at 3 to 6 reps with 3 minutes\' rest, and the toast says only that the routine is ready (r54 kept 6 to 10, and Settings then offered to apply it; since 2.78.2 the toast no longer says Your training was applied)', d12);
     await back();
 
     // Finish's way of saving an exercise is in one place since r55 (savedEx), so a first sign-in can save another device's

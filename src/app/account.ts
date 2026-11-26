@@ -670,7 +670,7 @@ export const ACCOUNT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const del = A.deleteAccount;
     confirmBox(
       'Delete your account?',
-      'Your account and the copy of your log saved in it are deleted for good. The copy on this phone stays; export a backup first to keep one elsewhere.',
+      'Your account and the copy of your log saved in it are deleted for good.\n\nThe copy on this phone stays; export a backup first to keep one elsewhere.',
       'Delete account',
       async () => {
         toast('Deleting your account');

@@ -379,7 +379,10 @@ fs.cpSync(DIST, tmp, { recursive: true });
   await logOn(A, 'sA-denied', 140); await A.ev(() => window.__ironlog.flush()); await wait(800);
   await openData(A);
   const st = await A.ev(() => window.__ironlog.cloudState());
-  ok(st.on && /could not be reached just now/.test(st.err || '') && ((await text(A, '#syncInfo')).match(/could not be reached just now/g) || []).length === 1, 'refused by the database: says the table permissions need fixing and keeps retrying', st);
+  ok(st.on && /Your account refused the save/.test(st.err || '') && ((await text(A, '#syncInfo')).match(/Your account refused the save/g) || []).length === 1, 'refused by the database: says the table permissions need fixing and keeps retrying', st);
+  // Refused is not offline (REV34-9): the phone is online, so nothing says to wait for the connection.
+  const refusedSaid = { info: await text(A, '#syncInfo'), menu: await A.ev(() => document.getElementById('saveState').getAttribute('aria-label')) };
+  ok(/Not saving/.test(refusedSaid.info) && !/back online|Waiting to save/.test(refusedSaid.info) && /Your account needs attention/.test(refusedSaid.menu), 'refused: Settings says Not saving and the reason, never "once back online", and the menu says the account needs attention', refusedSaid);
   fake.setDeny(false);
   await A.ev(() => window.__ironlog.flush()); await wait(800);
   ok(sessIn(rowsOf('v@example.com')).includes('sA-denied') && (await A.ev(() => window.__ironlog.cloudState().status)) === 'synced', 'once fixed, sync catches up');

@@ -1054,7 +1054,7 @@ export const IMPORT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         `${msg}. Your routine: ${andList(
           R.days.filter(d => !d.rest).map(d => d.name),
           SAID.days
-        )}, ${inf.perWeek} day${inf.perWeek === 1 ? '' : 's'} a week. Change it in **Plan**.`,
+        )}, about ${inf.perWeek} day${inf.perWeek === 1 ? '' : 's'} a week. Change it in **Plan**.`,
         true,
         SAID.made
       );
@@ -1080,7 +1080,7 @@ export const IMPORT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       if (!acct.user && AUTH()) {
         confirmBox(
           'Sign in first',
-          `This test version keeps a separate log. Sign in with your ${APP_NAME} account to copy your log in. Your log in ${APP_NAME} stays as it is.`,
+          `This test version keeps a separate log. Sign in with your ${APP_NAME} account to copy your log in.\n\nYour log in ${APP_NAME} stays as it is.`,
           'Sign in',
           () => openModal({ kind: 'account', mode: 'signin', email: '', pw: '' })
         );
@@ -1113,7 +1113,7 @@ export const IMPORT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (realCount(state) || state.draft)
       confirmBox(
         'Replace the preview log?',
-        `Your ${APP_NAME} log has ${n} session${n === 1 ? '' : 's'}. Copying replaces everything in this test version; your log in ${APP_NAME} stays as it is. **Undo** can step this back.`,
+        `Your ${APP_NAME} log has ${n} session${n === 1 ? '' : 's'}. Copying replaces everything in this test version.\n\nYour log in ${APP_NAME} stays as it is. **Undo** can step this back.`,
         'Copy my log',
         go
       );

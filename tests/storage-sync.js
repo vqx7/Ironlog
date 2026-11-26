@@ -1933,7 +1933,7 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       ok(!(await B.draft()) && !cloud.doc('u1', 'draft').draft, 'B discards it: its draft document is empty', cloud.doc('u1', 'draft'));
       await A.tick(1, 80, 9); await A.flush(); await wait(1600); await A.flush();
       ok(!(await A.draft()) && (await A.sessions()).some(s => s.id === xid && s.sets.length === 2), 'discarded on B while A ticked another set: A\'s workout closes and its ticked sets are saved as a session', { draft: await A.draft(), sessions: await A.sessions() });
-      ok(!!(await A.shown(/Your workout was closed on another device\. Its ticked sets are in History/)), 'A is told the workout was closed on the other phone and its sets saved', await A.toast());
+      ok(!!(await A.shown(/Your workout was closed on another device\. Your sets are in History/)), 'A is told the workout was closed on the other phone and its sets saved', await A.toast());
       await B.sync();
       ok(!(await B.draft()) && (await B.sessions()).some(s => s.id === xid && s.sets.length === 2), 'B then has that session and stays closed', { draft: await B.draft(), sessions: await B.sessions() });
       /* The review of 2.68 to 2.70, REV20-2: discarded on A, the phone it was done on, after B only pulled it and wrote it

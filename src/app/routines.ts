@@ -216,7 +216,7 @@ export const TEMPLATES: readonly Template[] = (() => {
        two days: when all five sets reach 5, the load goes up a step; two
        sessions short of 5 bring it down to what the estimate says fits.
        Fewer sets per muscle than the weekly targets, on purpose. */
-    tpl({key:'str5',name:'Strength, 5 x 5',who:'Getting stronger on main lifts',days:[
+    tpl({key:'str5',name:'Strength, 5 x 5',who:'Getting stronger, every other day',days:[
       D('Strength A',[I('backSquat',5,5,5,2,180),I('bench',5,5,5,2,180),I('bbRow',5,5,5,2,150)]),R(),
       D('Strength B',[I('backSquat',5,5,5,2,180),I('ohp',5,5,5,2,180),I('deadlift',1,5,5,2,240)]),R()]}),
     tpl({key:'db3',name:'Dumbbells only, 3 days',who:'Home or hotel gym',days:[
@@ -228,7 +228,7 @@ export const TEMPLATES: readonly Template[] = (() => {
        most 11 sets for one muscle in a session (the app's per-session line),
        isolation lifts at 1 RIR with a few at 0, no neck work (tracked only).
        Installs before r30 keep their copy; Plan changes it. */
-    tpl({key:'onemuscle',name:'One muscle a day, high volume',who:'Experienced, long sessions',days:[
+    tpl({key:'onemuscle',name:'One muscle a day, high volume',who:'Experienced, 6 days a week',days:[
       D('Chest',[I('incBench',4,6,10,1,180),I('bench',3,6,10,1,180),I('lowHighFly',2,10,15,1,90),I('pecDeck',2,12,15,0,75),I('cableCrunch',3,10,15,1,60)]),
       D('Back',[I('pullup',4,6,10,1,150),I('landmineRow',3,8,12,1,120),I('cableRow',2,8,12,1,120),I('dbPullover',3,10,15,1,90),I('kelsoShrug',2,10,15,1,90),I('rackPull',2,5,8,2,180)]),
       D('Legs A: quads',[I('hackSquat',4,6,12,1,180),I('legPress',3,10,15,1,150),I('legExt',2,10,15,0,90),I('bss',2,8,12,1,120),I('adductor',3,10,15,1,75),I('standCalf',4,8,12,1,60),I('tibRaise',2,15,25,1,45)]),

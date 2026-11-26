@@ -151,7 +151,9 @@ export function machineSheet(m: { b: number; naming?: string | undefined }): Tem
     const setup = machineSetup(b.exId, k);
     const sub = [setup, last].filter(Boolean).join(' · ');
     return html`<div class="mcitem"><button class=${'mcrow' + (k === now ? ' on' : '')} data-act="machinePick" data-b=${m.b} data-k=${k} aria-pressed=${String(k === now)}><span class="mcdot"></span><span class="mcl">${
-      name ? html`<b>${name}</b>${sub ? html`<span class="mcsub">${sub}</span>` : nothing}` : (last ?? 'New machine')
+      name
+        ? html`<b>${name}</b>${sub ? html`<span class="mcsub">${sub}</span>` : nothing}`
+        : html`${last ?? 'New machine'}${setup ? html`<span class="mcsub">${setup}</span>` : nothing}`
     }</span></button><button type="button" class="ib mcpen" data-act="machineNaming" data-b=${m.b} data-k=${k} aria-label=${`Name ${name || last || 'the new machine'}`}>✎</button></div>`;
   };
   const lastOf = (x: (typeof ms)[number]): string => `${fmtDate(x.date)} · ${listLabel(ex, x.w, x.u, true)} × ${x.r}`;
@@ -180,24 +182,23 @@ function machineNameSheet(b: number, exId: string, key: string): TemplateResult 
 }
 
 /** A note on a lift in a session, saved with it and shown next time, with its pictures. */
-/* On a machine, cable or Smith lift the note's sheet asks for the machine first, where a lifter writing which machine
-   he was on into the note goes already (V's friend, 2026-11-25): its name and how it is set are kept with the machine
-   and filled in at the next session on it; the note below is the day's own. */
+/* On a machine, cable or Smith lift the note's sheet holds the machine's name and how it is set above the note (V's
+   friend, 2026-11-25: lifters write the machine into the note to tell a gym's machines apart). Those two are kept
+   with the machine and filled in at the next session on it; the note is the day's own, and takes the typing, since
+   the sheet opens from the note's button. */
 export function noteSheet(m: { bi: number; title: string; text?: string | undefined }): TemplateResult {
   const b = blockAt(m.bi);
   const k = b && onMachines(EX(b.exId)) ? draftMachine(b.exId) : null;
-  // Typed in first: the machine's name while it has none, else the day's note.
-  const unnamed = !!b && !!k && !machineName(b.exId, k);
   const mc =
     b && k
       ? html`<p class="mc-h">Machine <span class="muted">(kept for next time)</span></p>
-    <label class="field">Name<input type="text" id="mcName" maxlength=${LIMITS.name} autocomplete="off" placeholder="Hammer Strength" .value=${machineName(b.exId, k) || ''} enterkeyhint="next" ?data-first=${unnamed}></label>
-    <label class="field u-mt8">How you set it <span class="muted">(optional)</span><input type="text" id="mcSet" maxlength=${LIMITS.machineSet} autocomplete="off" placeholder="Seat 4, wide handle" .value=${machineSetup(b.exId, k) || ''} enterkeyhint="next"></label>
+    <label class="field">Name<input type="text" id="mcName" aria-label="Machine name" maxlength=${LIMITS.name} autocomplete="off" placeholder="Hammer Strength" .value=${machineName(b.exId, k) || ''} enterkeyhint="next"></label>
+    <label class="field u-mt8">How you set it <span class="muted">(optional)</span><input type="text" id="mcSet" aria-label="How you set the machine" maxlength=${LIMITS.machineSet} autocomplete="off" placeholder="Seat 4, wide handle" .value=${machineSetup(b.exId, k) || ''} enterkeyhint="next"></label>
     <p class="mc-h u-mt10">Today's note</p>`
       : nothing;
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${m.title}</h3>${closeX()}</div>${mc}
     <p class="small muted">Shown next time. Pictures stay on this phone.</p>
-    <textarea id="mNote" aria-label="Note" maxlength=${LIMITS.note} class="u-minh110" ?data-first=${!unnamed}>${m.text || ''}</textarea>${picStrip(m.bi)}
+    <textarea id="mNote" aria-label="Note" maxlength=${LIMITS.note} class="u-minh110" data-first>${m.text || ''}</textarea>${picStrip(m.bi)}
     <div class="row u-mt10"><button class="btn primary" data-act="noteSave">Save note</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
 }
 

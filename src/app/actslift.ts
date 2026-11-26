@@ -650,7 +650,17 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
           { undo: true }
         );
         rerenderKeepScroll();
-        toast(named ? `Machine: ${named}` : 'Machine name taken off', true);
+        // Says what changed: the name, or else the setup alone.
+        toast(
+          renamed
+            ? named
+              ? `Machine: ${named}`
+              : 'Machine name taken off'
+            : setup
+              ? 'Setup saved'
+              : 'Setup taken off',
+          true
+        );
         return;
       }
     }

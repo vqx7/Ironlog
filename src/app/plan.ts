@@ -147,7 +147,7 @@ export function planEvidenceNote(pv: Readonly<Record<string, number>>): Part {
   // Every one named: only major muscles can be on it, never so many that the line needs cutting.
   return html`<p class="small muted u-m8-0-0" id="planUsual">Under the usual range in this plan: ${andList(
     low.map(m => `${ML[m]} ${r1(pv[m] || 0)} of ${BANDS[m][0]}`)
-  )}. ${tipButton(`The usual weekly range is ${USUAL_RANGE[0]} to ${USUAL_RANGE[1]} hard sets for most major muscles (typical in studies, not a ceiling); smaller muscles have lower ones. Your targets were set to this plan when you picked it, so Stats measures you against the plan. Fewer sets still build muscle, more slowly; add a set at a time when it feels easy.`, 'About the usual range')}</p>`;
+  )}. ${tipButton(`The usual weekly range is ${USUAL_RANGE[0]} to ${USUAL_RANGE[1]} hard sets for most major muscles (typical in studies, not a ceiling); smaller muscles have lower ones. Your targets were set to this plan when you picked it, so **Stats** measures you against the plan. Fewer sets still build muscle, more slowly; add a set at a time when it feels easy.`, 'About the usual range')}</p>`;
 }
 
 /* soFar: this week while it is still going, so short of the minimum is
@@ -340,7 +340,7 @@ export function viewProgram(): TemplateResult {
       ? html`<span class="pill yellow">${pUnder} under target</span>`
       : html`<span class="pill green">all on target</span>`,
     help: 'pvol',
-    helpBody: `Hard sets per muscle this routine plans for a week${weekly ? '' : `: ${plannedPerWeek(R)} sessions a week from its ${trainDaysOf(R)} training days`}. Direct work counts 1 set, secondary involvement counts ${HELPER_CREDIT}. The shaded zone is your weekly target (editable in Settings).`,
+    helpBody: `Hard sets per muscle this routine plans for a week${weekly ? '' : `: ${plannedPerWeek(R)} sessions a week from its ${trainDaysOf(R)} training days`}. Direct work counts 1 set, secondary involvement counts ${HELPER_CREDIT}. The shaded zone is your weekly target (editable in **Settings**).`,
     body: html`${volumeRows(pv)}${planEvidenceNote(pv)}`
   });
   return html`${slotted('program', [

@@ -1574,7 +1574,7 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
           const others = [...document.querySelectorAll('button, a, input, select, textarea, label.btn, [data-act]')].filter(e => e !== b && !b.contains(e) && !e.contains(b) && !(e.closest('details:not([open])') && !e.closest('summary')))
             .filter(e => { const z = e.getBoundingClientRect(); return z.width && z.height && z.left < x2 && z.right > x1 && z.top < y2 && z.bottom > y1; })
             .map(e => ({ act: e.dataset.act || e.tagName, box: [z => z.left, z => z.top, z => z.right, z => z.bottom].map(f => Math.round(f(e.getBoundingClientRect()))) }));
-          const above = [...document.querySelectorAll('#blk-' + b.dataset.b + ' [data-act="noteReuse"], #blk-' + b.dataset.b + ' .mcline [data-act="machineOpen"], #blk-' + b.dataset.b + ' [data-act="bwOpen"], #blk-' + b.dataset.b + ' .pthumb')].map(e => { const z = e.getBoundingClientRect(); return { act: e.dataset.act, x: z.left + Math.min(z.width / 2, 20), y: z.bottom - 2 }; });
+          const above = [...document.querySelectorAll('#blk-' + b.dataset.b + ' .mcline [data-act="machineOpen"], #blk-' + b.dataset.b + ' [data-act="bwOpen"], #blk-' + b.dataset.b + ' .pthumb')].map(e => { const z = e.getBoundingClientRect(); return { act: e.dataset.act, x: z.left + Math.min(z.width / 2, 20), y: z.bottom - 2 }; });
           const headCtl = document.querySelectorAll(`#blk-${b.dataset.b} .sg.head button, #blk-${b.dataset.b} .sg.head [data-act]`).length;
           return { h: Math.round(y2 - y1 + 1), w: Math.round(x2 - x1 + 1), others, above, headCtl };
         }, `#view [data-act="unitOpen"][data-b="${b}"]`);
@@ -2436,9 +2436,11 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
      the one a pick moved. */
   if (run('L-47')) {
     // L-47 (2.78.2; V's friend, 2026-11-25: several machines for one lift, the machine written into each session's
-    // note): a machine, cable or Smith lift's note sheet asks for the machine first, its name and how it is set, kept
-    // with the machine; the card then names it and its setup under the lift's head, carried to the next session on it;
-    // a machine with no name is not said; a free weight's note has no machine; the day's note has no Use again.
+    // note): a machine, cable or Smith lift's note sheet holds the machine's name and how it is set above the note,
+    // kept with the machine, the note taking the typing (REV34-1: a note typed at once went into the name); the card
+    // then says them under the lift's head, carried to the next session on it, and a setup typed for a machine with no
+    // name is said too (REV34-2); a machine with nothing said of it has no line; a free weight's note has no machine;
+    // the day's note has no Use again.
     const ok47 = okAs('L-47');
     const P = await lifter({ items: [['latPulldown', 3, 8, 12, 120], ['dbLateral', 2, 10, 15, 60]], movable: true, seed: `(S, L) => { S.sessions[0].ex[1].note = 'Slow on the way down'; }` });
     await start(P);
@@ -2450,10 +2452,17 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     await P.tap(btn('bNote', 1), 250);
     ok47(!(await P.ev(() => !!document.getElementById('mcName'))), 'a free weight\'s note sheet has no machine to name');
     await P.ev(() => window.__ironlog.ACT.mClose()); await wait(150);
-    // The machine lift's note: the machine first, focused while it has no name; then the day's note.
+    // The machine lift's note: the machine's two fields, then the day's note, which takes the typing.
     await P.tap(btn('bNote', 0), 250);
     const sheet = await P.ev(() => ({ name: !!document.getElementById('mcName'), set: !!document.getElementById('mcSet'), focus: document.activeElement && document.activeElement.id, text: document.querySelector('#modal .sheet').innerText.replace(/\s+/g, ' ') }));
-    ok47(sheet.name && sheet.set && sheet.focus === 'mcName' && /Machine \(kept for next time\)/.test(sheet.text) && /Today's note/.test(sheet.text), 'a machine lift\'s note sheet asks for the machine first, its name and how it is set, the name focused while it has none', sheet);
+    ok47(sheet.name && sheet.set && sheet.focus === 'mNote' && /Machine \(kept for next time\)/.test(sheet.text) && /Today's note/.test(sheet.text), 'a machine lift\'s note sheet holds the machine, its name and how it is set, above the note, which takes the typing (2.78.2 as first built focused the name: a note typed at once became the machine\'s name)', sheet);
+    // A setup typed with no name: said on the card, and the message says what changed (REV34-2).
+    await P.page.fill('#mcSet', 'Pin 7'); await P.tap('#modal [data-act="noteSave"]', 300);
+    const setOnly = { line: await line(0), toast: await P.toast() };
+    ok47(setOnly.line === 'Setup: Pin 7' && setOnly.toast === 'Setup saved', 'a setup typed for a machine with no name: the card says it, and the message says the setup was saved (as first built: shown nowhere, "Machine name taken off")', setOnly);
+    await P.ev(() => window.__ironlog.ACT.undo()); await wait(250);
+    ok47((await line(0)) === '', 'Undo takes the setup back, and with nothing said of the machine the card has no line', await line(0));
+    await P.tap(btn('bNote', 0), 250);
     await P.page.fill('#mcName', 'Panatta circular'); await P.page.fill('#mcSet', 'Seat 4, wide handle'); await P.page.fill('#mNote', 'Felt strong');
     await P.tap('#modal [data-act="noteSave"]', 300);
     const saved = await P.ev(() => { const L = window.__ironlog, e = L.state.exercises.find(x => x.id === 'latPulldown'); return { names: e.machines || null, sets: e.machineSet || null, note: L.state.draft.ex[0].note }; });

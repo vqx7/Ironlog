@@ -107,7 +107,8 @@ export const ROUTINE_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       ui.tab = 'today';
       pageTo(0);
       render();
-      // What it set beside the routine (Your training's days, the weekly targets) is said where each is set, not here.
+      /* The few words V approved (2026-11-25). What the pick set beside the routine is not said here: the weekly targets
+         now its plan's show in Plan and Stats, and Your training's reps, reps in reserve and rest are on each lift. */
       toast(`${r.name} is ready.`);
       // No bodyweight note over this message: Today's bodyweight card asks just below it.
       return;

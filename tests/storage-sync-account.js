@@ -1264,11 +1264,11 @@ async function rows_first_phase() {
   const sess = () => rows.filter(r => r.kind === 'session').map(r => r.id + ':' + JSON.parse(r.body).notes + ':' + (live(r) ? 'log' : 'deleted')).sort();
   more = await A.more();
   ok(JSON.stringify(sess()) === JSON.stringify(['r1:edited before the tables:log', 'r2:two:log']) && rows.some(r => r.kind === 'meta' && r.id === 'layout') && rows.filter(r => r.kind === 'device').length === 1, 'with the tables: each session of the log is a row, with the layout and this phone\'s own row', { sess: sess(), kinds: [...new Set(rows.map(r => r.kind))] });
-  ok(more.line === 'Rows check: 1 clean day, 0 differences, 0 removed by a sync' && more.copy, 'Settings > "More" shows "Rows check: 1 clean day, 0 differences, 0 removed by a sync" and "Copy diagnostics" under it', more);
+  ok(more.line === 'Rows check: 1 clean day, 0 differences, 0 removed by another phone' && more.copy, 'Settings > "More" shows "Rows check: 1 clean day, 0 differences, 0 removed by another phone" and "Copy diagnostics" under it', more);
   await A.page.click('#view [data-mkey="more"] [data-act="diagCopy"]', { force: true }).catch(async () => { await A.ev(() => { document.querySelectorAll('#view details').forEach(d => { d.open = true; }); }); await A.page.click('#view [data-mkey="more"] [data-act="diagCopy"]'); });
   await wait(300);
   const sheet = await A.ev(() => { const t = document.querySelector('#modal textarea'); return t ? t.value : ''; });
-  ok(/"rows": \{\s+"line": "Rows check: 1 clean day, 0 differences, 0 removed by a sync"/.test(sheet), 'the "Diagnostics" sheet holds the same line', sheet.slice(0, 300));
+  ok(/"rows": \{\s+"line": "Rows check: 1 clean day, 0 differences, 0 removed by another phone"/.test(sheet), 'the "Diagnostics" sheet holds the same line', sheet.slice(0, 300));
   await A.ev(() => { const L = window.__ironlog; if (L.ui.modal) { const x = document.querySelector('#modal [data-act="mClose"], #modal .sheet-h [aria-label="Close"]'); if (x) x.click(); } L.ui.tab = 'today'; L.render(); });
 
   // ---- An edit and a delete made in the app reach the rows; the log and the documents are what they would be without rows.
@@ -1286,7 +1286,7 @@ async function rows_first_phase() {
   await B.signIn('rows@example.com');
   rows = await rowsOf();
   const bLog = await B.ev(() => window.__ironlog.state.sessions.map(s => s.id + ':' + s.notes).join());
-  ok(bLog === 'r1:edited with the tables' && JSON.stringify(rows.filter(r => r.kind !== 'device')) === before && rows.filter(r => r.kind === 'device').length === 2 && (await B.more()).line === 'Rows check: 1 clean day, 0 differences, 0 removed by a sync', 'a second phone signed in: the same log, no row of the log written again, its own device row added, its check clean', { bLog, devices: rows.filter(r => r.kind === 'device').length, line: (await B.more()).line, wait: await B.ev(() => JSON.parse(localStorage.getItem('ironlog.v1.rows') || '{}').wait), changed: rows.filter(r => r.kind !== 'device' && !before.includes(JSON.stringify(r))).map(r => r.kind + '/' + r.id) });
+  ok(bLog === 'r1:edited with the tables' && JSON.stringify(rows.filter(r => r.kind !== 'device')) === before && rows.filter(r => r.kind === 'device').length === 2 && (await B.more()).line === 'Rows check: 1 clean day, 0 differences, 0 removed by another phone', 'a second phone signed in: the same log, no row of the log written again, its own device row added, its check clean', { bLog, devices: rows.filter(r => r.kind === 'device').length, line: (await B.more()).line, wait: await B.ev(() => JSON.parse(localStorage.getItem('ironlog.v1.rows') || '{}').wait), changed: rows.filter(r => r.kind !== 'device' && !before.includes(JSON.stringify(r))).map(r => r.kind + '/' + r.id) });
 
   // ---- The account's layout asks for a newer build: this build stops syncing and says to update; the log stays.
   const layout = JSON.parse(rows.find(r => r.kind === 'meta' && r.id === 'layout').body);

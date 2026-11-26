@@ -175,7 +175,7 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   await ev(() => { const L = window.__ironlog; L.state.settings.profile = { days: 4 }; for (const m in L.BANDS) L.state.settings.bands[m] = L.BANDS[m].slice(); delete L.state.settings.bandsFit; L.state.settings.bands.chest = [6, 20]; L.saveNow(); L.ui.tab = 'settings'; L.render(); });
   await P.page.click('[data-mkey="profile"] [data-act="profSet"][data-k="focus"][data-v="chest"]');
   const kt = await ev(() => ({ c: window.__ironlog.state.settings.bands.chest, t: document.getElementById('toast').innerText }));
-  ok(same(kt.c, [6, 20]) && /Your own Chest target stays\. Default targets puts the app's back\./.test(kt.t) && /Undo/.test(kt.t), 'a focus on a typed target leaves it and says why, with Undo for the rest', kt);
+  ok(same(kt.c, [6, 20]) && /Your own Chest target stays\. Default targets in Weekly set targets puts the app's back\./.test(kt.t) && /Undo/.test(kt.t), 'a focus on a typed target leaves it and says why, with Undo for the rest', kt);
   // Undo of Default targets is exact with a target typed in between.
   const ud = await ev(() => { const L = window.__ironlog; L.state.settings.profile = { days: 4 }; for (const m in L.BANDS) L.state.settings.bands[m] = L.BANDS[m].slice(); delete L.state.settings.bandsFit;
     const R = L.routineFromTemplate('full3'); L.state.routines.push(R); const was = L.state.activeRoutineId; L.state.activeRoutineId = R.id; L.fitTargets(R);

@@ -120,6 +120,14 @@ export function bwEvery(): 0 | 7 | 14 | 30 {
   return v === undefined ? BW_EVERY_DEFAULT : v;
 }
 
+/** The account's state in the version line's words (Settings > More), a lifter's words, not the sync's states. */
+const ACCOUNT_WORD: Readonly<Record<typeof cloud.status, string>> = {
+  local: 'off',
+  connecting: 'connecting',
+  saving: 'saving',
+  synced: 'saved',
+  offline: 'not reached'
+};
 /** What the suggestions are and are not, in full: the tip on Your data's line, and the first page's. */
 export const SAFETY_TXT = `${APP_NAME} works out suggested loads and reps from your own log with published formulas and the rules of thumb in the **Guide**. They are estimates, not medical, physical therapy, or coaching advice, and they can be wrong. Use good technique, and safety bars or a spotter on heavy lifts. Stop on pain. Check with a doctor before starting or changing training, especially with an injury, a health condition, or a pregnancy. You train at your own risk.`;
 
@@ -593,19 +601,28 @@ function syncInfo(): TemplateResult {
           : ago < DAY_MIN
             ? `${Math.round(ago / HOUR_MIN)} h ago`
             : fmtDate(iso(new Date(cloud.last ?? 0)));
+  /* Offline with a reason is the account refusing, full, too small for a document or asking for a newer build: the
+     phone is online and waiting will not help, so it is not said as waiting (the reason follows in red). */
+  const refused = cloud.status === 'offline' && !!cloud.err;
   const st =
     cloud.status === 'synced'
       ? html`<span class="tag green">Saved</span>`
-      : cloud.status === 'offline'
-        ? html`<span class="tag yellow">Waiting to save</span>`
-        : html`<span class="tag blue">Saving</span>`;
+      : refused
+        ? html`<span class="tag yellow">Not saving</span>`
+        : cloud.status === 'offline'
+          ? html`<span class="tag yellow">Waiting to save</span>`
+          : html`<span class="tag blue">Saving</span>`;
   return html`<div class="sync-row">${st}<span class="small muted">Last saved ${when}</span><button class="btn sm" data-act="syncNow">Save now</button></div>
 <p class="small hastip u-m6-0-0" data-tip=${`A new phone or a cleared browser loses nothing: sign in and your log comes back. Deleted items wait in **History**, **Recently deleted**, for ${TRASH_DAYS} days, and **Undo** in **Settings** covers the last ${UNDO_DAYS} days.`}>${
-    cloud.status !== 'synced'
-      ? 'Saved on this device. It reaches your account once back online.'
-      : window.claude
-        ? 'Saved to your Claude account and this device.'
-        : 'Saved to your account and this device.'
+    refused
+      ? 'Saved on this device.'
+      : cloud.status === 'offline'
+        ? 'Saved on this device. It reaches your account once back online.'
+        : cloud.status !== 'synced'
+          ? 'Saved on this device. Saving to your account now.'
+          : window.claude
+            ? 'Saved to your Claude account and this device.'
+            : 'Saved to your account and this device.'
   }${cloud.err ? html` <b class="u-cred">${cloud.err}</b>` : nothing}</p>
 `;
 }
@@ -858,7 +875,7 @@ function priorityBody(s: Settings): TemplateResult {
 function bandsBody(s: Settings): TemplateResult {
   return html`${howText(
     'bands',
-    'Fractional hard sets per week: direct work 1, helper muscles 0.5. 10 to 20 for major muscles fits the dose-response data; the upper number is typical, not a ceiling, and more still helps a little at more cost. The muscles lifters train directly for size have a target to start; glutes, rear delts, calves, and abs start lower, a rule of thumb, as compound lifts work them too. Every other muscle is tracked only, counted with no target, until you give it one with **Set a target** or name it a focus (any but serratus, rotator cuff, neck, and tibialis). Raise one or two muscles for a specialisation block, or set focus muscles in Your training. Default targets puts every one back.'
+    'Fractional hard sets per week: direct work 1, helper muscles 0.5. 10 to 20 for major muscles fits the dose-response data; the upper number is typical, not a ceiling, and more still helps a little at more cost. The muscles lifters train directly for size have a target to start; glutes, rear delts, calves, and abs start lower, a rule of thumb, as compound lifts work them too. Every other muscle is tracked only, counted with no target, until you give it one with **Set a target** or name it a focus (any but serratus, rotator cuff, neck, and tibialis). Raise one or two muscles for a specialisation block, or set focus muscles in **Your training**. **Default targets** puts every one back.'
   )}
 <div class="card">
 <table class="t">
@@ -924,7 +941,7 @@ function moreBody(hasDemo: boolean): TemplateResult {
 <div>
 <p class="small u-m0-0-6"><b>Version</b> ${VERSION_LINE}${
     logBuf.length
-      ? html` <span class="muted">· cloud ${cloud.on ? cloud.status : 'off'} · ${logBuf.length} logged error${logBuf.length === 1 ? '' : 's'}</span>`
+      ? html` <span class="muted">· account ${cloud.on ? ACCOUNT_WORD[cloud.status] : 'off'} · ${logBuf.length} logged error${logBuf.length === 1 ? '' : 's'}</span>`
       : nothing
   }</p>
 ${
@@ -1251,7 +1268,12 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     // A focus whose own target was typed does nothing to it; say so rather than nothing.
     const fm = MK.find(m => m === raw);
     const kept = k === 'focus' && !!np && (np.focus || []).includes(raw) && !!fm && !moved[fm];
-    if (kept) toast(`Your own ${ML[raw]} target stays. **Default targets** puts the app's back.`, n > 0, KEPT_TOAST_MS);
+    if (kept)
+      toast(
+        `Your own ${ML[raw]} target stays. **Default targets** in **Weekly set targets** puts the app's back.`,
+        n > 0,
+        KEPT_TOAST_MS
+      );
     else if (n) toast(`Weekly targets moved for ${n} muscle${n === 1 ? '' : 's'}. Typed ones stay.`, true);
   },
   profApply() {
@@ -1390,7 +1412,7 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (!parkSettle()) return;
     confirmBox(
       'Erase everything?',
-      `All routines, sessions, custom exercises, and body data will be deleted${cloud.on ? ' on this phone and in your account' : ' on this device'}. Pictures on this phone go too, and Undo does not bring them back. Export a backup first to keep a copy.`,
+      `All routines, sessions, custom exercises, and body data will be deleted${cloud.on ? ' on this phone and in your account' : ' on this device'}.\n\nPictures on this phone go too, and **Undo** does not bring them back. Export a backup first to keep a copy.`,
       'Erase everything',
       () => {
         act(

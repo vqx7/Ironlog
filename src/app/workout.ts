@@ -88,18 +88,21 @@ function machineTag(d: NonNullable<typeof state.draft>, exId: string): Part {
   if (onMachines(EX(exId))) return '';
   return markedNew(d, exId) ? html` · <span class="tag" data-tip=${NEW_TIP}>New machine</span>` : '';
 }
-/* A machine, cable or Smith lift's own line (V's friend, 2026-11-25: gyms have several machines for one lift, and he
-   wrote the machine in each session's note to tell them apart): the machine it is on and how the lifter sets it,
-   carried from the last session of the lift, the machine's name a tap that opens its Machine sheet to switch. Said
-   once the machine has a name (the lift's note, or its Machine sheet, names it), so a lifter with one machine for a
-   lift sees nothing; New machine when the session marks it new. Under the card's head, across the card. */
-/** A machine lift's line naming the machine it is on (above); nothing for a free weight or a machine with no name. */
+/* A machine, cable or Smith lift's own line (V's friend, 2026-11-25: gyms have several machines for one lift, and a
+   lifter writes the machine into each session's note to tell them apart): the machine it is on and how the lifter
+   sets it, both kept with the machine, a tap that opens its Machine sheet to switch. Said once the lifter has named
+   the machine or typed how it is set (in the lift's note sheet or its Machine sheet), so a lifter with one machine
+   for a lift sees nothing; New machine when the session marks it new. Under the card's head, across the card. */
+/** A machine lift's line saying the machine it is on and how it is set (above); nothing for a free weight or a
+    machine the lifter has said nothing of. */
 function machineLine(exId: string, bi: number): Part {
   if (!onMachines(EX(exId))) return '';
   const k = draftMachine(exId);
   const name = k ? machineName(exId, k) || (k === NEW_MACHINE ? 'New machine' : null) : null;
-  if (!k || !name) return '';
-  const setup = machineSetup(exId, k);
+  const setup = k ? machineSetup(exId, k) : null;
+  if (!k || (!name && !setup)) return '';
+  if (!name)
+    return html`<p class="small mcline">Setup: <button type="button" class="tag mctag" data-act="machineOpen" data-b=${String(bi)} aria-label=${`Machine setup: ${setup}. Change`}>${setup}</button></p>`;
   return html`<p class="small mcline">Machine: <button type="button" class="tag mctag" data-act="machineOpen" data-b=${String(bi)} aria-label=${`Machine: ${name}. Change`}>${name}</button>${setup ? html` · ${setup}` : nothing}</p>`;
 }
 /** The gap above the cardio buttons when there are entries, in pixels. */
@@ -267,7 +270,7 @@ export function readyCard(d: Draft, low: number): Part {
     return html`<p class="callout u-m8-0-0" id="readyCard">Made lighter: the exercises not started are ${shareWords(LIGHTER_SET_SHARE)} the sets at about ${pctOf(LIGHT_SHARE)}% loads.</p>`;
   if (low < 2)
     return html`<p class="callout u-m8-0-0" id="readyCard">Keep the loads. Leave an extra rep in reserve if it feels heavy.</p>`;
-  return html`<div class="callout yellow u-m8-0-0" id="readyCard"><p class="u-m0">Low readiness today. ${tipButton(`A lighter or shorter session fits a low day better than pushing. Make it lighter changes only the exercises not started: ${shareWords(LIGHTER_SET_SHARE)} the sets, about ${pctOf(LIGHT_SHARE)}% loads, nothing to beat.`)}</p><div class="row u-mt8">${open ? html`<button class="btn sm" data-act="makeLight">Make it lighter</button>` : ''}${left > 0 ? html`<button class="btn sm" data-act="shortOpen">Short on time</button>` : ''}</div></div>`;
+  return html`<div class="callout yellow u-m8-0-0" id="readyCard"><p class="u-m0">Low readiness today. ${tipButton(`A lighter or shorter session fits a low day better than pushing. **Make it lighter** changes only the exercises not started: ${shareWords(LIGHTER_SET_SHARE)} the sets, about ${pctOf(LIGHT_SHARE)}% loads, nothing to beat.`)}</p><div class="row u-mt8">${open ? html`<button class="btn sm" data-act="makeLight">Make it lighter</button>` : ''}${left > 0 ? html`<button class="btn sm" data-act="shortOpen">Short on time</button>` : ''}</div></div>`;
 }
 
 /* Bodyweight, asked once in the first session with a bodyweight lift when
@@ -556,7 +559,7 @@ export function viewWorkout(d: Draft): TemplateResult {
     b => b.bid,
     (b, bi) => blockPart(d, b, bi, letters, hintSeen, calIdx, bwAt)
   )}<div class="row"><button class="btn u-f1" data-act="pickSession">+ Add exercise</button>${d.editingId ? '' : html`<button class="btn" data-act="pickEx">Pick for me</button>`}</div>${d.editingId ? '' : cardioDraftCard(d)}<label class="field u-mt12">Notes<textarea data-bind="draftNotes" maxlength=${LIMITS.note} .defaultValue=${d.notes || ''} .value=${fieldValue(d.notes || '')}></textarea></label>${picStrip(null)}
-  <div class="row fin-row u-mt12"><button class="btn danger" data-act="discard">${d.editingId ? 'Cancel edit' : 'Discard'}</button><button class="btn primary u-f1" data-act="finish" data-tip="Only sets marked done are saved; Finish asks about any with reps but no checkmark.">${d.editingId ? 'Save changes' : 'Finish and save'}</button></div>`;
+  <div class="row fin-row u-mt12"><button class="btn danger" data-act="discard">${d.editingId ? 'Cancel edit' : 'Discard'}</button><button class="btn primary u-f1" data-act="finish" data-tip="Only sets marked done are saved; **Finish** asks about any with reps but no checkmark.">${d.editingId ? 'Save changes' : 'Finish and save'}</button></div>`;
 }
 
 /* ---------- drawing it again ---------- */
