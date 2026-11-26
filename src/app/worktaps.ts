@@ -828,19 +828,6 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (b && b.plan.ss)
       toast(d.dayId ? 'Superset. Finish offers to keep it in your plan.' : 'Superset for this session');
   },
-  noteReuse(t) {
-    const b = tapBlock(t);
-    const ln = b && b.lastNote;
-    if (!b || !ln) return;
-    act(
-      () => {
-        b.note = ln.text;
-      },
-      { inProgress: true }
-    );
-    rerenderKeepScroll();
-    toast('Note carried into this session');
-  },
   cDraftAdd(t) {
     const d = state.draft;
     if (!d) return;

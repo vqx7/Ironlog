@@ -1147,7 +1147,7 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     pageTo(0);
     render();
     toast(
-      `Deload week on until Sunday: ${shareWords(LIGHTER_SET_SHARE)} sets, about ${pctOf(LIGHT_SHARE)}% loads. It clears fatigue; it does not add growth.`,
+      `Deload week until Sunday: ${shareWords(LIGHTER_SET_SHARE)} sets, about ${pctOf(LIGHT_SHARE)}% loads.`,
       false,
       DELOAD_TOAST_MS
     );
@@ -1337,13 +1337,13 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   acctLater() {
     prefSet(ACCT_LATER, '1');
     rerenderKeepScroll();
-    toast('Hidden. Sign in and Create account stay in the menu at the top right.');
+    toast('Hidden. **Sign in** and **Create account** stay in the menu at the top right.');
   },
   installLater() {
     prefSet(INSTALL_LATER, '1');
     rerenderKeepScroll();
     toast(
-      `Hidden. ${/^ios/.test(installKind()) ? 'Add to Home Screen' : 'Install'} stays in the menu at the top right, under Your data and backups.`
+      `Hidden. **${/^ios/.test(installKind()) ? 'Add to Home Screen' : 'Install'}** stays in the menu at the top right, under **Your data and backups**.`
     );
   },
   iconLater() {

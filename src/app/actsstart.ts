@@ -111,7 +111,7 @@ function resumeOpen(): boolean {
   ui.tab = 'today';
   pageTo(0);
   render();
-  toast('Your workout in progress is open. Finish or discard it first.');
+  toast('Your workout is open. **Finish** or **Discard** it first.');
   return true;
 }
 

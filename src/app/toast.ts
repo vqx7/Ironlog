@@ -30,6 +30,7 @@
        on a later visit too. */
 
 import { nameLastStep } from './act';
+import { markedNodes, unmarked } from './marks';
 
 /** How long a toast stays, in milliseconds: one that offers Undo, one that does not, and at the least for each word it
     says, so a long one is read to its end (a convention, docs/EVIDENCE.md). */
@@ -136,7 +137,7 @@ function draw(el: HTMLElement): void {
      shows here is replaced whole each time, and a toast emptied by anything
      else (a suite clears it between checks) must not stop the next one. */
   const say = document.createElement('span');
-  say.textContent = joined(c.parts);
+  say.replaceChildren(...markedNodes(joined(c.parts)));
   const parts: Node[] = [say];
   if (c.undo) {
     const b = document.createElement('button');
@@ -175,7 +176,7 @@ export function toast(msg: string, undo?: boolean | null, ms?: number | null, ki
   if (!el) return;
   watchTaps();
   // The message names the change's Undo step, so Undo can later say what it took back.
-  if (undo) nameLastStep(msg);
+  if (undo) nameLastStep(unmarked(msg));
   const notice = kind === 'notice';
   const t = now();
   const len = stayMs(msg, ms || (undo ? TOAST_MS.undo : TOAST_MS.plain));
@@ -246,7 +247,7 @@ export function noteOnce(
 export function toastPending(): string[] {
   const el = box();
   const now = el && !el.hidden && cur ? [joined(cur.parts)] : [];
-  return [...now, ...waiting.map(w => w.msg)];
+  return [...now, ...waiting.map(w => w.msg)].map(unmarked);
 }
 
 /* A note with nothing to undo goes when a session starts: the

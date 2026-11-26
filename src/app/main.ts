@@ -238,7 +238,7 @@ import {
   weekStats,
   weekStreak
 } from './live';
-import { keepExtra, normalize, plainTemplate, starterRoutine, starterSigs } from './normalize';
+import { joinExercises, keepExtra, normalize, plainTemplate, starterRoutine, starterSigs } from './normalize';
 import {
   APP_INSTALLED,
   asideList,
@@ -750,6 +750,7 @@ function exposeForTests(): void {
     editFp,
     toast,
     toastHide,
+    joinExercises,
     toastPending,
     noteOnce,
     regionWk,

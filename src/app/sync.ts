@@ -125,7 +125,7 @@ const SYNC_MS = {
 /** The waits between tries after a sync fails, in seconds, the last repeated. */
 const RETRY_S: readonly number[] = [5, 15, 60, 180];
 /** What a phone whose sign-in the server refuses says. */
-const SIGNIN_AGAIN = 'Your sign-in has expired. Sign in again to sync. Your log stays on this phone.';
+const SIGNIN_AGAIN = 'Sign-in expired. Sign in again to keep saving. Your log stays on this phone.';
 /** Says that the server refused this phone's sign-in: when a sync meets the refusal, and when the account library met it first and signed the phone out itself. */
 export function signInAgain(): void {
   fx.toast(SIGNIN_AGAIN, null, SYNC_MS.errToast);
@@ -642,7 +642,7 @@ function rowsStop(): boolean {
 }
 /** The account's document by id. Only called while the sync is on, when there is a db. */
 function ref(id: string): CloudRef {
-  if (!cloud.db) throw new Error('not syncing');
+  if (!cloud.db) throw new Error('no account open');
   return cloud.db.doc(`data/users/${cloud.uid}/${id}`);
 }
 function cloudFail(e: unknown): void {
@@ -684,7 +684,7 @@ function cloudFail(e: unknown): void {
     return;
   }
   if (c === 'quota_exceeded') {
-    setCloud('offline', 'The cloud copy is full. Export a backup and delete old demo data.');
+    setCloud('offline', 'Your account is full. Export a backup and delete old demo data.');
     return;
   }
   /* A send that kept losing its race to another device saving the same document, or kept finding records moving
@@ -1138,16 +1138,16 @@ function draftNote(prev: unknown, kept?: Kept, where = 'on another device'): voi
   const saved = state.sessions.some(s => s.id === P.id);
   fx.toast(
     kept === 'joined' || kept === 'cardioJoined'
-      ? `The workout in progress was saved ${where}. What was done here since was added to it.`
+      ? `Your workout was saved ${where}. Sets done here since were added to it.`
       : kept === 'saved' || kept === 'cardio'
-        ? `The workout in progress was ${state.draft ? 'replaced by the one' : 'closed'} ${where}. Its ${kept === 'saved' ? 'ticked sets are' : 'cardio is'} saved in History.`
+        ? `Your workout was ${state.draft ? 'replaced by the one' : 'closed'} ${where}. Its ${kept === 'saved' ? 'ticked sets are' : 'cardio is'} in History.`
         : state.draft
           ? saved
-            ? `The workout in progress was replaced by the one ${where}. Its ticked sets are in History.`
-            : `The workout in progress was replaced by the one ${where}.`
+            ? `Your workout was replaced by the one ${where}. Its ticked sets are in History.`
+            : `Your workout was replaced by the one ${where}.`
           : saved
-            ? `The workout in progress was saved ${where}.`
-            : `The workout in progress was closed ${where}.`
+            ? `Your workout was saved ${where}.`
+            : `Your workout was closed ${where}.`
   );
 }
 /* The copy of the workout in progress that loses a merge is never dropped:
@@ -1482,12 +1482,12 @@ function changedDocs(): { id: string; json: string; h: string }[] {
 /** What the sync line says when a document is over the size cap, by which one it is. */
 function tooBigSaid(tooBig: readonly string[]): string {
   return tooBig.includes('core')
-    ? 'Routines and settings are too large to sync. Export a backup.'
+    ? 'Routines and settings are too large to save to your account. Export a backup.'
     : tooBig.some(i => i.startsWith('b-'))
-      ? 'A year of body data is too large to sync. Export a backup.'
+      ? 'A year of body data is too large to save to your account. Export a backup.'
       : tooBig.includes('draft')
-        ? 'The workout in progress is too large to sync. Export a backup.'
-        : 'One month of sessions is too large to sync. Export a backup.';
+        ? 'Your workout is too large to save to your account. Export a backup.'
+        : 'One month of sessions is too large to save to your account. Export a backup.';
 }
 
 /* A send that finds the account's copy of a document changed since this device last agreed on it merges that one
@@ -2238,8 +2238,8 @@ async function pullAll(said: number): Promise<void> {
     if (merged)
       fx.toast(
         keptDraft
-          ? 'Merged this device with your cloud copy. The workout in progress on your other device is saved in History.'
-          : 'Merged this device with your cloud copy'
+          ? "Your account now holds this phone's log too. Your other phone's workout is in History."
+          : "Your account now holds this phone's log too"
       );
     conflictNote(stat);
     if (draftIn) draftNote(dr0, kept);
@@ -2506,8 +2506,7 @@ async function takeAccount(id: string): Promise<boolean> {
   if (use && from) {
     const k = await keepHere(from);
     if (k !== 'kept') {
-      if (k === 'room')
-        fx.toast('There is not enough room on this phone to keep the other log aside. Export a backup of it first.');
+      if (k === 'room') fx.toast('No room on this phone for the other log. Export a backup of it first.');
       await undoSignIn();
       return false;
     }
@@ -2574,8 +2573,7 @@ async function takeAccount(id: string): Promise<boolean> {
   }
   // The log here taken into the account (added, or the account's first): a workout set aside for it goes too.
   if (!use) parkedRetag(from || '', id);
-  if (both)
-    fx.toast('The workout in progress on this phone stays open. The one kept for this account is saved in History.');
+  if (both) fx.toast("This phone's workout stays open. The account's is saved in History.");
   // The copy kept for this account is the log in use now, saved here with its notes.
   if (aside) await dropAside(id);
   return true;

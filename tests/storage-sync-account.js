@@ -68,7 +68,7 @@ async function from_r55b() {
       D.synced = () => page.waitForFunction(() => { const c = window.__ironlog.cloudState(); return c.on && c.status === 'synced'; }, null, { timeout: 15000 }).then(() => true, () => false);
       D.toast = () => page.evaluate(() => { const t = document.getElementById('toast'); return t && !t.hidden ? { text: t.innerText.replace(/\s+/g, ' '), undo: !!t.querySelector('[data-act="undo"]') } : null; });
       /* The message that matches, once it shows: since 2.48 news from sync waits for the sign-in's own message ("Signed in.
-         Syncing your log.") to go, and is never lost (toast.ts, NEW-118), so it is read when it comes, up to 8 s. */
+         Saving your log to your account.") to go, and is never lost (toast.ts, NEW-118), so it is read when it comes, up to 8 s. */
       D.toastWait = async re => { let t = null; for (let k = 0; k < 40; k++) { t = await D.toast(); if (t && re.test(t.text)) return t; await wait(200); } return t; };
       D.signIn = async (email) => {
         const ob = await page.evaluate(() => { const p = document.getElementById('obPage'); return p ? p.dataset.step : null; });
@@ -116,9 +116,9 @@ async function from_r55b() {
       const mine = await A.ev(() => window.__ironlog.state.sessions.map(s => s.id));
       await A.signIn('one@example.com');
       const after = await A.ev(() => window.__ironlog.state.sessions.map(s => s.id).sort());
-      const acc = sessIn('one@example.com').sort(); const t = await A.toastWait(/Merged/);
+      const acc = sessIn('one@example.com').sort(); const t = await A.toastWait(/now holds this phone's log too/);
       ok(mine.length === 1 && after.includes('old1') && after.includes(mine[0]) && acc.includes(mine[0]) && acc.includes('old1'), 'a workout finished on a new phone\'s first run, then signed in to an account with a log, without reopening the app: both are kept, on the phone and in the account (r54 replaced the workout with the account\'s log)', { mine, after, acc });
-      ok(t && /Merged/.test(t.text) && !t.undo, 'the phone says it merged, and offers no Undo (r54 offered one that deleted the account\'s sessions)', t);
+      ok(t && /now holds this phone's log too/.test(t.text) && !t.undo, 'the phone says it merged ("Merged" before 2.78.2), and offers no Undo (r54 offered one that deleted the account\'s sessions)', t);
       await A.ctx.close();
     }
     // ---- A workout in progress and a weigh-in typed on Set up are kept the same way.
@@ -144,11 +144,11 @@ async function from_r55b() {
       await B.ev(s => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.sessions = s; L.state = L.normalize(L.state); L.invalidate(); L.saveNow(); }, [mk('ph1', '2026-10-05', 'Phone one')]);
       await B.reload();
       await B.signIn('three@example.com');
-      const t = await B.toastWait(/Merged/); const undo = await B.ev(() => window.__ironlog.undoStack.length);
+      const t = await B.toastWait(/now holds this phone's log too/); const undo = await B.ev(() => window.__ironlog.undoStack.length);
       await B.ev(() => window.__ironlog.flush()); await wait(800);
       await O.ev(() => window.__ironlog.sync()); await wait(1000);
       const other = await O.ev(() => window.__ironlog.state.sessions.map(s => s.id).sort().join());
-      ok(t && /Merged/.test(t.text) && !t.undo && undo === 0 && sessIn('three@example.com').sort().join() === 'acc1,acc2,ph1' && other === 'acc1,acc2,ph1', 'a phone with its own log signs in to an account with a log: merged, no Undo offered or kept in Settings, and the account and the other phone hold all three sessions (r54\'s Undo deleted acc1 and acc2 everywhere)', { t, undo, acc: sessIn('three@example.com'), other });
+      ok(t && /now holds this phone's log too/.test(t.text) && !t.undo && undo === 0 && sessIn('three@example.com').sort().join() === 'acc1,acc2,ph1' && other === 'acc1,acc2,ph1', 'a phone with its own log signs in to an account with a log: merged, no Undo offered or kept in Settings, and the account and the other phone hold all three sessions (r54\'s Undo deleted acc1 and acc2 everywhere)', { t, undo, acc: sessIn('three@example.com'), other });
       await B.ctx.close(); await O.ctx.close();
     }
     // ---- Demo data on the phone never reaches the account.
@@ -209,13 +209,13 @@ async function from_r55b() {
       await B.page.fill('#view .sg input[data-f="w"][data-b="0"][data-s="0"]', '95'); await B.page.click('#view [data-act="sDone"][data-b="0"][data-s="0"]'); await wait(200); await answer(B);
       const b0 = await draftOf(B);
       await B.signIn('eight@example.com');
-      const t = await B.toastWait(/other device is saved in History/);
+      const t = await B.toastWait(/Your other phone's workout is in History/);
       await B.ev(() => window.__ironlog.flush()); await wait(1000);
       const b1 = await draftOf(B);
       const kept = await B.ev(id => { const s = window.__ironlog.state.sessions.find(x => x.id === id); return s ? s.ex.reduce((a, b) => a + b.sets.length, 0) : 0; }, o0 && o0.id);
       await O.ev(() => window.__ironlog.sync()); await wait(1500);
       const oKept = await O.ev(id => { const s = window.__ironlog.state.sessions.find(x => x.id === id); return s ? s.ex.reduce((a, b) => a + b.sets.length, 0) : 0; }, o0 && o0.id);
-      ok(o0 && o0.done === 2 && b0 && b0.done === 1 && b1 && b1.id === b0.id && b1.done === 1 && kept === 2 && oKept === 2 && sessIn('eight@example.com').includes(o0.id) && t && /other device is saved in History/.test(t.text),
+      ok(o0 && o0.done === 2 && b0 && b0.done === 1 && b1 && b1.id === b0.id && b1.done === 1 && kept === 2 && oKept === 2 && sessIn('eight@example.com').includes(o0.id) && t && /Your other phone's workout is in History/.test(t.text),
         'a workout in progress on the account\'s phone (2 sets ticked) and on a new phone (1 set) at the new phone\'s first sign-in: the new phone\'s stays in progress, the other\'s 2 sets are saved in History on both phones and the account, and the toast says so (r54 lost one of the two)', { o0, b0, b1, kept, oKept, toast: t });
       await B.ctx.close(); await O.ctx.close();
     }
@@ -683,7 +683,7 @@ async function from_r65b() {
   const PW = 'correct horse 9';
   const REFRESH = '**/auth/v1/token?grant_type=refresh_token*';
   const REFUSE = r => r.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ code: 400, error_code: 'refresh_token_not_found', msg: 'Invalid Refresh Token: Refresh Token Not Found' }) });
-  const AGAIN = /Sign in again to sync/;
+  const AGAIN = /Sign-in expired\. Sign in again to keep saving\./;
     const fake = await start(tmp);
     const ip = path.join(tmp, 'index.html');
     fs.writeFileSync(ip, H.cspFix(fs.readFileSync(ip, 'utf8').replace(/"url":"https:\/\/[a-z0-9]+\.supabase\.co"/, `"url":"${fake.base}"`), fake.base));
@@ -1294,11 +1294,11 @@ async function rows_first_phase() {
   const docsBefore = JSON.stringify([...fake.rows.values()].filter(r => r.user_id === U.id).map(r => r.data.json));
   await A.ev(() => { const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 'r1').notes = 'typed after the switch'; }); });
   await wait(2500); await A.pull(); await A.pull();
-  const st = await A.ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.render(); document.querySelectorAll('#view details').forEach(d => { d.open = true; }); return { c: L.cloudState(), shown: document.getElementById('view').innerText.includes('Update the app to keep syncing. Your log stays on this phone.'), note: L.state.sessions.find(s => s.id === 'r1').notes, line: (document.getElementById('rowsLine') || {}).textContent }; });
+  const st = await A.ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.render(); document.querySelectorAll('#view details').forEach(d => { d.open = true; }); return { c: L.cloudState(), shown: document.getElementById('view').innerText.includes('Update the app to keep saving to your account. Your log stays on this phone.'), note: L.state.sessions.find(s => s.id === 'r1').notes, line: (document.getElementById('rowsLine') || {}).textContent }; });
   await A.ev(() => { const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 'r1').notes = 'typed later still'; }); });
   await wait(2500); await A.pull();
   const docsAfter = [...fake.rows.values()].filter(r => r.user_id === U.id).map(r => r.data.json).join();
-  ok(st.c.status === 'offline' && st.c.err === 'Update the app to keep syncing. Your log stays on this phone.' && st.shown && st.line === 'Rows check: this account needs a newer version of the app', 'an account whose layout asks for a newer build: the app stops syncing and Settings says "Update the app to keep syncing. Your log stays on this phone."', st);
+  ok(st.c.status === 'offline' && st.c.err === 'Update the app to keep saving to your account. Your log stays on this phone.' && st.shown && st.line === 'Rows check: this account needs a newer version of the app', 'an account whose layout asks for a newer build: the app stops syncing and Settings says "Update the app to keep saving to your account. Your log stays on this phone."', st);
   ok(!docsAfter.includes('typed later still') && (await A.ev(() => window.__ironlog.state.sessions.find(s => s.id === 'r1').notes)) === 'typed later still', 'nothing typed after that is written to the account, and it stays in the log on the phone', { docsBefore: docsBefore.length });
   ok(errors.length === 0, 'no error on any page', errors.slice(0, 3));
   await browser.close();

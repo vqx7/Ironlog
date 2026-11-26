@@ -153,8 +153,8 @@ const MENU = () => { const el = document.getElementById('saveState'); return el 
     await B.signIn('again@example.com');
     // The library's start, which the new sign-in's first sync waits behind, ends after its second try at the refresh, twice the limit on.
     const going = await B.synced(2 * NET_MS + 20000);
-    const said = (await B.toasts()).filter(x => x.at >= t && /^Signed in\. Syncing your log\./.test(x.text));
-    ok(said.length && said.every(x => x.on), '"Signed in. Syncing your log." is said, and only once the sync has started (r63: said with the sync off)', said);
+    const said = (await B.toasts()).filter(x => x.at >= t && /^Signed in\. Saving your log to your account\./.test(x.text));
+    ok(said.length && said.every(x => x.on), '"Signed in. Saving your log to your account." ("Syncing your log" before 2.78.2) is said, and only once the sync has started (r63: said with the sync off)', said);
     ok(going, 'and the log syncs', { s: (Date.now() - t) / 1000, cloud: await B.cloud(), menu: await B.menu() });
     await B.log('sB2');
     ok(await until(() => sessIn('again@example.com').includes('sB2'), 30000, 500), 'a session logged after it reaches the account', sessIn('again@example.com'));
@@ -199,7 +199,8 @@ const MENU = () => { const el = document.getElementById('saveState'); return el 
     await X.ctx.unroute('**/rest/v1/docs*', hold);
     const seen = [];
     const got = await until(async () => { seen.push(await X.menu()); return X.ev(() => window.__ironlog.state.sessions.some(s => s.id === 'sY1')); }, 40000);
-    const early = seen.slice(0, -1).includes('Synced');
+    // "Saved to your account" since 2.78.2 ("Synced" before): the menu's words once the account is read.
+    const early = seen.slice(0, -1).some(t => t === 'Synced' || t === 'Saved to your account');
     ok(got && !early, 'once the server answers, the retry reads the account: the other phone\'s session comes in, and Synced is not said before it (r63: Synced at the retry, the account never read)', { got, said: [...new Set(seen)] });
     ok(!X.st.errors.length && !Y.st.errors.length, 'no page errors', [...X.st.errors, ...Y.st.errors].slice(0, 3));
     await X.close(); await Y.close();
@@ -262,7 +263,7 @@ const MENU = () => { const el = document.getElementById('saveState'); return el 
     await D.openData();
     const panel = await D.text('#acctPanel'), info = await D.text('#syncInfo');
     const v = { user: await D.user(), menu, panel, info };
-    ok(v.user === 'away@example.com' && menu === 'Offline, saved on this device' && /^Signed in as away@example\.com/.test(panel || '') && /Waiting to sync/.test(info || '') && /It reaches your account once back online\./.test(info || ''), 'it says it is signed in and waiting, in the words a signed-in phone uses offline (r63: "Saved on this phone only. Create an account")', v);
+    ok(v.user === 'away@example.com' && menu === 'Offline, saved on this device' && /^Signed in as away@example\.com/.test(panel || '') && /Waiting to save/.test(info || '') && /It reaches your account once back online\./.test(info || ''), 'it says it is signed in and waiting, in the words a signed-in phone uses offline (r63: "Saved on this phone only. Create an account")', v);
     ok(await D.has('sE1'), 'the log stays on the phone');
     await D.log('sE2');
     await D.ctx.setOffline(false); D.st.offline = false;
@@ -312,7 +313,7 @@ const MENU = () => { const el = document.getElementById('saveState'); return el 
     const t = Date.now();
     await tick(D);
     const said = await D.answer(t, 15000, []);
-    ok(said && /Sign in again to sync/.test(said.text), 'the server refuses the sign-in mid-workout: a toast says to sign in again (r63: nothing)', { said, toasts: await D.toasts() });
+    ok(said && /Sign-in expired\. Sign in again to keep saving\./.test(said.text), 'the server refuses the sign-in mid-workout: a toast says to sign in again (r63: nothing)', { said, toasts: await D.toasts() });
     ok(await ticked(D), 'the ticked set stays on the phone');
     ok(!D.st.errors.length, 'no page errors', D.st.errors.slice(0, 3));
     await D.close();

@@ -88,7 +88,7 @@ function underBarIn(M: Model, b: DraftBlock, si: number): string | null {
   const say = (x: number): string => `${loadLabelIn(M, ex, x)} ${UIn(M)}`;
   return (ex.barKg ?? 0) > 0
     ? `${say(w)} is under this lift's ${say(bar)} bar.`
-    : `${say(w)} is under the ${say(bar)} bar set in Settings.`;
+    : `${say(w)} is under the ${say(bar)} bar set in **Settings**.`;
 }
 
 /* Why a set's load is far off its session or the lift's log (a working set

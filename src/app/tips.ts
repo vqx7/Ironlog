@@ -4,6 +4,8 @@
    fires the tap underneath. The small i buttons show their tip on a plain
    tap too. */
 
+import { markedNodes } from './marks';
+
 /** The tips' timings and distances: the hover before a tip shows, a touch held, how far a finger may move and still hold, the vibration on a hold, and the tip's gap from its element and the screen's edge, in milliseconds and pixels. */
 const TIP_AT = { hoverMs: 350, holdMs: 480, movePx: 10, buzzMs: 8, gapPx: 8, edgePx: 12 } as const;
 
@@ -28,7 +30,7 @@ function tipShow(el: Element): void {
   const txt = el.getAttribute('data-tip');
   if (!box || !txt) return;
   TIP.el = el;
-  box.textContent = txt;
+  box.replaceChildren(...markedNodes(txt));
   box.hidden = false;
   const r = el.getBoundingClientRect(),
     b = box.getBoundingClientRect(),

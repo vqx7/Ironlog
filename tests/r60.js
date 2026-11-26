@@ -441,7 +441,7 @@ const SCREENS = [
     // Typed as a thumb does: the field tapped, its text replaced, then left.
     const type = async (f, b, s, v) => { const q = sel(f, b, s); await P.page.click(q); await P.page.fill(q, ''); await P.page.keyboard.type(String(v)); await ev(() => { if (document.activeElement) document.activeElement.blur(); }); await wait(80); };
     // A set as stored, the question open (its words), and whether its load field has the focus.
-    const now = (b, s) => ev(([b, s, q]) => { const L = window.__ironlog; const x = L.state.draft.ex[b].sets[s]; const m = L.ui.modal; return { done: !!x.done, w: x.w, r: x.r, asked: m && m.kind === 'confirm' ? m.body : null, focused: document.activeElement === document.querySelector(q) }; }, [b, s, sel('w', b, s)]);
+    const now = (b, s) => ev(([b, s, q]) => { const L = window.__ironlog; const x = L.state.draft.ex[b].sets[s]; const m = L.ui.modal; return { done: !!x.done, w: x.w, r: x.r, asked: m && m.kind === 'confirm' ? m.body.replace(/\*\*/g, '') : null, focused: document.activeElement === document.querySelector(q) }; }, [b, s, sel('w', b, s)]);
     // The question answered; on a build that does not ask, there is nothing to answer, and the checks say so.
     const answer = async act => { const q = `#modal [data-act="${act}"]`; if (await P.page.$(q)) await P.page.click(q); await wait(120); };
     const lb = (x, v) => x.w != null && Math.abs(x.w / LB - v) < 1e-9;

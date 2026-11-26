@@ -121,7 +121,7 @@ export function bwEvery(): 0 | 7 | 14 | 30 {
 }
 
 /** What the suggestions are and are not, in full: the tip on Your data's line, and the first page's. */
-export const SAFETY_TXT = `${APP_NAME} works out suggested loads and reps from your own log with published formulas and the rules of thumb in the Guide. They are estimates, not medical, physical therapy, or coaching advice, and they can be wrong. Use good technique, and safety bars or a spotter on heavy lifts. Stop on pain. Check with a doctor before starting or changing training, especially with an injury, a health condition, or a pregnancy. You train at your own risk.`;
+export const SAFETY_TXT = `${APP_NAME} works out suggested loads and reps from your own log with published formulas and the rules of thumb in the **Guide**. They are estimates, not medical, physical therapy, or coaching advice, and they can be wrong. Use good technique, and safety bars or a spotter on heavy lifts. Stop on pain. Check with a doctor before starting or changing training, especially with an injury, a health condition, or a pregnancy. You train at your own risk.`;
 
 /* ---------- Your training ---------- */
 
@@ -240,7 +240,7 @@ function profSettings(): TemplateResult {
   return html`${profFields()} <label class="field">${labelTip(
     'lt-timeBudget',
     'Lifting time budget (minutes)',
-    'Planned days whose time estimate runs over it are flagged. Rest per exercise is set in Plan; 0 s means no timer.'
+    'Planned days whose time estimate runs over it are flagged. Rest per exercise is set in **Plan**; 0 s means no timer.'
   )}<input type="text" inputmode="numeric" data-bind="timeBudget" aria-labelledby="lt-timeBudget" .value=${fieldValue(s.timeBudget == null ? '' : String(s.timeBudget))} placeholder="e.g. 70"/></label>
 <div>
 <p class="small muted u-m0-0-6_fw600"><span class="hastip" data-tip=${PROF_FOCUS_TIP}>Focus muscles</span> <span class="muted u-fw400">${f.length} of ${FOCUS_MAX}</span></p>
@@ -511,10 +511,10 @@ function layoutSettings(): TemplateResult {
   const h = state.settings.hidden;
   const dflt = DEFAULT_HIDDEN.length === h.length && DEFAULT_HIDDEN.every(k => h.includes(k));
   return html`<p class="small muted u-m0">Tap to show or hide. ${tipButton(
-    `Hidden sections are still tracked, and come back where they were. Each time ${APP_NAME} opens, every section starts folded except Sessions on History. Drag a section by its ⠿ to move it; each tab keeps its order.`,
+    `Hidden sections are still tracked, and come back where they were. Each time ${APP_NAME} opens, every section starts folded except **Sessions** on **History**. Drag a section by its ⠿ to move it; each tab keeps its order.`,
     'About layout'
   )}</p>
-<div class="row"><button class=${dflt ? 'btn sm noted' : 'btn sm'} data-act="layoutDefault" aria-pressed=${String(dflt)} data-tip="The layout a new install starts with: At a glance, Coach, and Body hidden on Today, Weekly volume hidden on Plan, and the default order">Default layout</button><button class="btn sm" data-act="layoutAll" ?disabled=${!h.length}>Show everything</button><button class="btn sm" data-act="layoutReset" data-tip="Puts the sections on every tab back in their default order. Shown or hidden stays as it is.">Reset section order</button></div>
+<div class="row"><button class=${dflt ? 'btn sm noted' : 'btn sm'} data-act="layoutDefault" aria-pressed=${String(dflt)} data-tip="The layout a new install starts with: **At a glance**, **Coach**, and **Body** hidden on **Today**, **Weekly volume** hidden on **Plan**, and the default order">Default layout</button><button class="btn sm" data-act="layoutAll" ?disabled=${!h.length}>Show everything</button><button class="btn sm" data-act="layoutReset" data-tip="Puts the sections on every tab back in their default order. Shown or hidden stays as it is.">Reset section order</button></div>
 ${HIDE_TABS.map(
   ([t, l]) =>
     html`<div class="hide-grp">
@@ -541,7 +541,7 @@ function acctPanel(): TemplateResult | typeof nothing {
   const stuck =
     u && !cloud.on
       ? html`<div class="row spread u-mt6">
-<p class="small u-m0_cyellow">Not syncing right now.</p>
+<p class="small u-m0_cyellow">Not saving to your account right now.</p>
 <button class="btn sm" data-act="acctRetry">Try again</button></div>
 `
       : nothing;
@@ -574,13 +574,13 @@ function syncInfo(): TemplateResult {
   if (!cloud.on)
     return isStandalone()
       ? html`<p class="small hastip u-m0" data-tip="Without an account this app keeps your data on this phone only. Deleting the app from the home screen deletes it too. Sign in to keep a copy in your account, or save a backup file to Files or iCloud Drive; Import brings it back on any device."><b>Saved on this phone.</b> ${
-          AUTH() ? 'Sign in to sync, or export a backup weekly.' : 'Export a backup weekly.'
+          AUTH() ? 'Sign in to keep it in your account, or export a backup weekly.' : 'Export a backup weekly.'
         }</p>
 `
       : AUTH()
-        ? html`<p class="small hastip u-m0" data-tip="Everything is saved in this browser only. Clearing its data deletes it. Sign in below to keep a copy in your account, or export a backup."><b>Saved in this browser only.</b> Sign in to sync, or export a backup.</p>
+        ? html`<p class="small hastip u-m0" data-tip="Everything is saved in this browser only. Clearing its data deletes it. Sign in below to keep a copy in your account, or export a backup."><b>Saved in this browser only.</b> Sign in to keep it in your account, or export a backup.</p>
 `
-        : html`<p class="small hastip u-m0" data-tip="Sync turns on by itself when this page is opened inside Claude while signed in. Until then everything is saved in this browser only."><b>Cloud sync off in this view.</b> Saved in this browser only.</p>
+        : html`<p class="small hastip u-m0" data-tip="Your account is used by itself when this page is opened inside Claude while signed in. Until then everything is saved in this browser only."><b>Your account is off in this view.</b> Saved in this browser only.</p>
 `;
   const ago = cloud.last ? Math.round((Date.now() - cloud.last) / (MINUTE_S * SECOND_MS)) : null;
   const when =
@@ -595,12 +595,12 @@ function syncInfo(): TemplateResult {
             : fmtDate(iso(new Date(cloud.last ?? 0)));
   const st =
     cloud.status === 'synced'
-      ? html`<span class="tag green">Synced</span>`
+      ? html`<span class="tag green">Saved</span>`
       : cloud.status === 'offline'
-        ? html`<span class="tag yellow">Waiting to sync</span>`
-        : html`<span class="tag blue">Syncing</span>`;
-  return html`<div class="sync-row">${st}<span class="small muted">Last synced ${when}</span><button class="btn sm" data-act="syncNow">Sync now</button></div>
-<p class="small hastip u-m6-0-0" data-tip=${`A new phone or a cleared browser loses nothing: sign in and your log comes back. Deleted items wait in History, Recently deleted, for ${TRASH_DAYS} days, and Undo in Settings covers the last ${UNDO_DAYS} days.`}>${
+        ? html`<span class="tag yellow">Waiting to save</span>`
+        : html`<span class="tag blue">Saving</span>`;
+  return html`<div class="sync-row">${st}<span class="small muted">Last saved ${when}</span><button class="btn sm" data-act="syncNow">Save now</button></div>
+<p class="small hastip u-m6-0-0" data-tip=${`A new phone or a cleared browser loses nothing: sign in and your log comes back. Deleted items wait in **History**, **Recently deleted**, for ${TRASH_DAYS} days, and **Undo** in **Settings** covers the last ${UNDO_DAYS} days.`}>${
     cloud.status !== 'synced'
       ? 'Saved on this device. It reaches your account once back online.'
       : window.claude
@@ -639,8 +639,8 @@ function privacyLine(): TemplateResult {
     return noteLine(
       'privacy',
       'Privacy',
-      `your log syncs to your ${APP_NAME} account.`,
-      `No ads, no tracking. Your log syncs to your ${APP_NAME} account. Only you and the app's owner can see it. Reports you send go to the app owner.`,
+      `your log is saved to your ${APP_NAME} account.`,
+      `No ads, no tracking. Your log is saved to your ${APP_NAME} account. Only you and the app's owner can see it. Reports you send go to the app owner.`,
       'It is stored in a Supabase database. Database rules let each account read and write only its own data. The person who runs that database, the app owner, can see stored data and your email address, as with any app without end-to-end encryption. Your email is used only to sign in and reset your password, and nothing is shared or sold. A new password is checked against known breaches with only the first 5 characters of its hash; the password never leaves the phone. Backup files go only where you save them.',
       'About privacy'
     );
@@ -706,7 +706,7 @@ function dataBody(): TemplateResult {
       : nothing
   }${asideLine()}${privacyLine()}${safetyLine()}${
     backupDue()
-      ? html`<p class="callout yellow u-m10-0-0"><b>Backup due.</b> ${s.lastExport ? `Last backup file ${fmtDate(s.lastExport)}.` : 'No backup file yet.'}${cloud.on ? ' Your account has not synced this week. Export one below.' : ''}</p>
+      ? html`<p class="callout yellow u-m10-0-0"><b>Backup due.</b> ${s.lastExport ? `Last backup file ${fmtDate(s.lastExport)}.` : 'No backup file yet.'}${cloud.on ? ' Nothing has reached your account this week. Export one below.' : ''}</p>
 `
       : nothing
   }${
@@ -717,7 +717,7 @@ function dataBody(): TemplateResult {
   }${
     device.ok
       ? nothing
-      : html`<p class="small u-cred">This browser blocks storage: nothing is kept after a reload unless you sync.</p>
+      : html`<p class="small u-cred">This browser blocks storage: nothing is kept after a reload unless you sign in.</p>
 `
   }${
     unreadableRaw()
@@ -729,9 +729,9 @@ function dataBody(): TemplateResult {
       : nothing
   }
 <div class="card stack">
-<div class="row"><button class="btn primary" data-act="export" data-tip="The backup: restores everything, on any device">Export backup (.json)</button><button class="btn" data-act="showBackup" data-tip="The same backup as text, to copy somewhere safe">Show backup text</button><button class="btn" data-act="exportCsv" data-tip="One row per set for spreadsheets. Import workouts reads it back, but it is not a full backup: routines and settings are not in it.">Export sets (.csv)</button></div>
+<div class="row"><button class="btn primary" data-act="export" data-tip="The backup: restores everything, on any device">Export backup (.json)</button><button class="btn" data-act="showBackup" data-tip="The same backup as text, to copy somewhere safe">Show backup text</button><button class="btn" data-act="exportCsv" data-tip="One row per set for spreadsheets. **Import workouts** reads it back, but it is not a full backup: routines and settings are not in it.">Export sets (.csv)</button></div>
 <button class="btn" data-act="impOpen" data-tip="Adds sessions from notes, a spreadsheet, or an export from another app. You check everything before it is saved.">Import workouts</button> <label class="field">Restore a backup file (replaces everything)<input type="file" accept=".json,application/json" id="importFile"/></label> <button class="btn" data-act="pasteImport">Paste backup text instead</button>
-<div class="row"><button class="btn" data-act="undo" ?disabled=${!undoStack.length} data-tip=${`Takes back the changes that offered Undo when you made them, one at a time, newest first, from the last ${UNDO_DAYS} days, even after the app is closed. Deleted sessions, cardio, and routines also wait in History for ${TRASH_DAYS} days.`}>${undoLabel()}</button></div>
+<div class="row"><button class="btn" data-act="undo" ?disabled=${!undoStack.length} data-tip=${`Takes back the changes that offered Undo when you made them, one at a time, newest first, from the last ${UNDO_DAYS} days, even after the app is closed. Deleted sessions, cardio, and routines also wait in **History** for ${TRASH_DAYS} days.`}>${undoLabel()}</button></div>
 </div>
 `;
 }
@@ -749,11 +749,11 @@ function measurementsBody(s: Settings): TemplateResult {
 <label class="field">${labelTip(
     'lt-bwGoalPct',
     'Bodyweight goal (%/wk)',
-    'Compared with your 7-day-average bodyweight trend on Stats. Leave blank to track without a target.'
+    'Compared with your 7-day-average bodyweight trend on **Stats**. Leave blank to track without a target.'
   )}<input type="text" inputmode="decimal" data-bind="bwGoalPct" aria-labelledby="lt-bwGoalPct" .value=${fieldValue(s.bwGoalPct == null ? '' : String(s.bwGoalPct))} placeholder="e.g. 0.3 or -0.5"/></label> <label class="field">${labelTip(
     'lt-bwEvery',
     'Weigh-in reminder',
-    'A card on Today asks for your bodyweight when the last weigh-in is this old. Pull-ups, dips, and other bodyweight lifts use your latest weigh-in.'
+    'A card on **Today** asks for your bodyweight when the last weigh-in is this old. Pull-ups, dips, and other bodyweight lifts use your latest weigh-in.'
   )}<select data-bind="bwEvery" aria-labelledby="lt-bwEvery">${BW_EVERY.map(
     ([v, l]) => html`<option value=${String(v)} .selected=${live(bwEvery() === v)}>${l}</option>
 `
@@ -823,7 +823,7 @@ function timerBody(s: Settings): TemplateResult {
   )}</label> <label class="field">${labelTip(
     'lt-todayStart',
     'Today starts with',
-    "Blank: Today opens on an empty session, and you add exercises as you go; your plan's day is still one tap away. Each exercise still gets its suggested weight from your history."
+    "Blank: **Today** opens on an empty session, and you add exercises as you go; your plan's day is still one tap away. Each exercise still gets its suggested weight from your history."
   )}<select data-bind="todayStart" aria-labelledby="lt-todayStart">
 <option value="plan" .selected=${live(s.todayStart !== 'free')}>My plan's day</option>
 <option value="free" .selected=${live(s.todayStart === 'free')}>A blank session (freestyle)</option>
@@ -838,7 +838,7 @@ function timerBody(s: Settings): TemplateResult {
   )}</label> <label class="check-inline"><input type="checkbox" data-bind="askedShow" aria-labelledby="lt-askedShow" .checked=${live(!!s.askedShow)}/>${labelTip(
     'lt-askedShow',
     'In History, show what the app asked for each set',
-    'Each set you tick keeps the weight and reps the app asked for it then. With this on, History lists them under what you did.'
+    'Each set you tick keeps the weight and reps the app asked for it then. With this on, **History** lists them under what you did.'
   )}</label>
 </div>
 `;
@@ -846,7 +846,7 @@ function timerBody(s: Settings): TemplateResult {
 
 /** Priority muscles: a chip for each muscle. */
 function priorityBody(s: Settings): TemplateResult {
-  return html`${howText('prio', 'Flagged as Your priority under Muscles in Stats, and favoured by Pick for me.')}
+  return html`${howText('prio', 'Flagged as **Your priority** under **Muscles** in **Stats**, and favoured by **Pick for me**.')}
 <div class="card chips">${MUSCLES.map(
     ([k, l]) =>
       html`<button class=${s.priorities.includes(k) ? 'chip on' : 'chip'} data-act="prio" data-m=${k}>${l}</button>`
@@ -858,7 +858,7 @@ function priorityBody(s: Settings): TemplateResult {
 function bandsBody(s: Settings): TemplateResult {
   return html`${howText(
     'bands',
-    'Fractional hard sets per week: direct work 1, helper muscles 0.5. 10 to 20 for major muscles fits the dose-response data; the upper number is typical, not a ceiling, and more still helps a little at more cost. The muscles lifters train directly for size have a target to start; glutes, rear delts, calves, and abs start lower, a rule of thumb, as compound lifts work them too. Every other muscle is tracked only, counted with no target, until you give it one with Set a target or name it a focus (any but serratus, rotator cuff, neck, and tibialis). Raise one or two muscles for a specialisation block, or set focus muscles in Your training. Default targets puts every one back.'
+    'Fractional hard sets per week: direct work 1, helper muscles 0.5. 10 to 20 for major muscles fits the dose-response data; the upper number is typical, not a ceiling, and more still helps a little at more cost. The muscles lifters train directly for size have a target to start; glutes, rear delts, calves, and abs start lower, a rule of thumb, as compound lifts work them too. Every other muscle is tracked only, counted with no target, until you give it one with **Set a target** or name it a focus (any but serratus, rotator cuff, neck, and tibialis). Raise one or two muscles for a specialisation block, or set focus muscles in Your training. Default targets puts every one back.'
   )}
 <div class="card">
 <table class="t">
@@ -912,7 +912,7 @@ function moreBody(hasDemo: boolean): TemplateResult {
   return html`<div class="card stack">
 <div>
 <p class="small u-m0-0-6"><b>Demo data</b> ${tipButton(
-    `${DEMO_WEEKS} weeks of generated sessions to preview Today and Stats. Everything demo is tagged and removed in one tap; your real logs are untouched.`,
+    `${DEMO_WEEKS} weeks of generated sessions to preview **Today** and **Stats**. Everything demo is tagged and removed in one tap; your real logs are untouched.`,
     'About demo data'
   )}</p>
 <div class="row">${
@@ -978,7 +978,7 @@ export function viewSettings(): TemplateResult {
   const meta = cloud.on
     ? window.claude
       ? 'Saved to your Claude account and this device'
-      : 'Synced to your account and saved on this device'
+      : 'Saved to your account and on this device'
     : 'Saved on this device';
   const list = [
     G(
@@ -1251,12 +1251,7 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     // A focus whose own target was typed does nothing to it; say so rather than nothing.
     const fm = MK.find(m => m === raw);
     const kept = k === 'focus' && !!np && (np.focus || []).includes(raw) && !!fm && !moved[fm];
-    if (kept)
-      toast(
-        `Your ${ML[raw]} target is your own and stays. Default targets in Weekly set targets puts the app's back.`,
-        n > 0,
-        KEPT_TOAST_MS
-      );
+    if (kept) toast(`Your own ${ML[raw]} target stays. **Default targets** puts the app's back.`, n > 0, KEPT_TOAST_MS);
     else if (n) toast(`Weekly targets moved for ${n} muscle${n === 1 ? '' : 's'}. Typed ones stay.`, true);
   },
   profApply() {
@@ -1325,7 +1320,7 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       }
     );
     rerenderKeepScroll();
-    toast('Weekly set targets back to the defaults', true);
+    toast('**Weekly set targets** back to the defaults', true);
   },
   // A muscle with no target given one: its numbers as they stand, now counted.
   tgtSet(t) {
@@ -1377,7 +1372,7 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     cloud.retry = 0;
     setCloud('connecting');
     void cq(cloudPull).then(() => {
-      if (cloud.status === 'synced') toast('Synced');
+      if (cloud.status === 'synced') toast('Saved to your account');
     });
   },
   demoClear() {
@@ -1395,7 +1390,7 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (!parkSettle()) return;
     confirmBox(
       'Erase everything?',
-      `All routines, sessions, custom exercises, and body data will be deleted${cloud.on ? ' on this device and in your cloud copy' : ' on this device'}. Pictures on this phone go too, and Undo does not bring them back. Export a backup first to keep a copy.`,
+      `All routines, sessions, custom exercises, and body data will be deleted${cloud.on ? ' on this phone and in your account' : ' on this device'}. Pictures on this phone go too, and Undo does not bring them back. Export a backup first to keep a copy.`,
       'Erase everything',
       () => {
         act(

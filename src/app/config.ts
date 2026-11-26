@@ -47,7 +47,7 @@ export const DARK_BG = '#08090b';
 /** The version people see (V, 2026-10-16): 2.0 from build r49, the minor
     number up by one for each release merged, the major number for a large change,
     and a third number for a small release put in before the next minor one. */
-export const DISPLAY_VERSION = '2.78.1';
+export const DISPLAY_VERSION = '2.78.2';
 
 /** The build: shown beside the version in Diagnostics, problem reports and
     backups, so a report is matched to the exact code; also names the service
@@ -55,7 +55,7 @@ export const DISPLAY_VERSION = '2.78.1';
     Problem reports and Copy diagnostics carry it as `build` and the version
     people see as `version`; a backup keeps it under `version`, as every
     build before r49 wrote backups, so old and new backups read the same. */
-export const APP_VERSION = '2026.11.25-r126';
+export const APP_VERSION = '2026.11.25-r127';
 
 /** Version and build together, for Diagnostics and the recovery screen. */
 export const VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;

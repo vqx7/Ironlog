@@ -414,7 +414,7 @@ export const REPORT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     openModal({
       kind: 'text',
       title: 'Diagnostics',
-      help: 'Copy this and paste it into a bug report. It holds errors and sync status, not your workouts.',
+      help: 'Copy this and paste it into a bug report. It holds errors and whether your log reached your account, not your workouts.',
       text: t,
       readonly: true
     });

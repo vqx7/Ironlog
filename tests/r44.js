@@ -175,7 +175,7 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   await ev(() => { const L = window.__ironlog; L.state.settings.profile = { days: 4 }; for (const m in L.BANDS) L.state.settings.bands[m] = L.BANDS[m].slice(); delete L.state.settings.bandsFit; L.state.settings.bands.chest = [6, 20]; L.saveNow(); L.ui.tab = 'settings'; L.render(); });
   await P.page.click('[data-mkey="profile"] [data-act="profSet"][data-k="focus"][data-v="chest"]');
   const kt = await ev(() => ({ c: window.__ironlog.state.settings.bands.chest, t: document.getElementById('toast').innerText }));
-  ok(same(kt.c, [6, 20]) && /Your Chest target is your own and stays\. Default targets in Weekly set targets puts the app's back\./.test(kt.t) && /Undo/.test(kt.t), 'a focus on a typed target leaves it and says why, with Undo for the rest', kt);
+  ok(same(kt.c, [6, 20]) && /Your own Chest target stays\. Default targets puts the app's back\./.test(kt.t) && /Undo/.test(kt.t), 'a focus on a typed target leaves it and says why, with Undo for the rest', kt);
   // Undo of Default targets is exact with a target typed in between.
   const ud = await ev(() => { const L = window.__ironlog; L.state.settings.profile = { days: 4 }; for (const m in L.BANDS) L.state.settings.bands[m] = L.BANDS[m].slice(); delete L.state.settings.bandsFit;
     const R = L.routineFromTemplate('full3'); L.state.routines.push(R); const was = L.state.activeRoutineId; L.state.activeRoutineId = R.id; L.fitTargets(R);
@@ -268,7 +268,8 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
   // ---------- 8. Copy ----------
   const cp = await ev(() => { const L = window.__ironlog; L.ACT.guideOpen({ dataset: {} }); const g = document.querySelector('.sheet').textContent; L.ACT.mClose(); L.ui.tab = 'settings'; L.ui.folds['settings:profile'] = true; L.render();
-    const tips = [...document.querySelectorAll('[data-mkey="profile"] [data-tip]')].map(e => e.dataset.tip).join(' '); return { g, tips }; });
+    // A tip's words as it shows them: a name in it is marked bold (**Guide**), the marks gone on screen.
+    const tips = [...document.querySelectorAll('[data-mkey="profile"] [data-tip]')].map(e => e.dataset.tip.replace(/\*\*/g, '')).join(' '); return { g, tips }; });
   ok(/Your training/.test(cp.g) && /Schoenfeld 2017/.test(cp.g) && /Bickel 2011/.test(cp.g) && !/—/.test(cp.g + cp.tips), 'the Guide says what the profile does and where each number comes from; no em dashes', cp.g.length);
   // Since 2.34 (99, V 2026-11-08) the tips point to the Guide for sources (held above: the Guide names them) and say rule of thumb.
   ok(/sources in the Guide/.test(cp.tips) && /Schoenfeld 2016/.test(cp.g) && /Spiering 2021/.test(cp.g) && /rules? of thumb/.test(cp.tips), 'the tips in Your training say rule of thumb and point to the Guide, which names the sources', cp.tips.length);

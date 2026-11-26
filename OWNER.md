@@ -850,6 +850,16 @@ From 2.78.1 the page scrolls inside its own frame and the screen as a whole neve
 
 Anything that moves: a screenshot to Claude, and do not merge.
 
+### F3. Fewer words, bold names, the machine line (2.78.2; about 5 minutes, on the preview, before you merge 2.78.2)
+
+1. Plan > change routine (or a new phone's first pages): each routine reads its name, then who it is for and its time on one short line ("New to lifting · 45 to 50 min").
+2. Any message or tip that names a button or a screen shows the name in bold (**Settings**, **Plan**), with no stars.
+3. Nothing says "sync": the menu says "Saved to your account", Settings has **Save now** and "Last saved".
+4. Start a workout with a machine or cable lift. Tap the ✎ on its card: the note's sheet asks for the machine first (Name, "How you set it"), then "Today's note". Save a name and a setup: the card shows "Machine: <name> · <setup>" under the lift. Next time on that lift, the same line shows.
+5. A free weight's note has no machine fields, and last time's note reads "Your note from <day>: ..." with no **Use again**.
+
+Anything that reads wrong or robotic: a screenshot to Claude.
+
 ## Checks on your phone (items 7 and 63)
 Status: to do whenever you are at the gym; tell Claude what you see. Newest first; the rest stay listed until you say they are done.
 - 2.52 to 2.61, in the preview once each is open, in Safari and in the home-screen app:

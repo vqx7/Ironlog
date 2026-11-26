@@ -922,7 +922,7 @@ export function importData(text: string, after?: () => void): void {
   const body =
     `This backup has ${clean.sessions.length} session${clean.sessions.length === 1 ? '' : 's'} and ${clean.routines.length} routine${clean.routines.length === 1 ? '' : 's'}.` +
     (dropped ? ` ${dropped} damaged record${dropped === 1 ? ' was' : 's were'} skipped.` : '') +
-    ' It replaces everything in the app. Undo can step it back.';
+    ' It replaces everything in the app. **Undo** can step it back.';
   confirmBox(
     'Replace all data?',
     body,
@@ -1051,10 +1051,10 @@ export const IMPORT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       pageTo(0);
       render();
       toast(
-        `${msg}. Your routine is made from them: ${andList(
+        `${msg}. Your routine: ${andList(
           R.days.filter(d => !d.rest).map(d => d.name),
           SAID.days
-        )}, about ${inf.perWeek} day${inf.perWeek === 1 ? '' : 's'} a week. Change it in Plan.`,
+        )}, ${inf.perWeek} day${inf.perWeek === 1 ? '' : 's'} a week. Change it in **Plan**.`,
         true,
         SAID.made
       );
@@ -1113,7 +1113,7 @@ export const IMPORT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (realCount(state) || state.draft)
       confirmBox(
         'Replace the preview log?',
-        `Your ${APP_NAME} log has ${n} session${n === 1 ? '' : 's'}. Copying replaces everything in this test version; your log in ${APP_NAME} stays as it is. Undo can step this back.`,
+        `Your ${APP_NAME} log has ${n} session${n === 1 ? '' : 's'}. Copying replaces everything in this test version; your log in ${APP_NAME} stays as it is. **Undo** can step this back.`,
         'Copy my log',
         go
       );

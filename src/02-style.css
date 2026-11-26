@@ -751,6 +751,8 @@ body.blkdrag .block .bh h3{font-size:17px;white-space:nowrap;overflow:hidden;tex
 .mcpen{width:44px;height:44px}
 /* The machine on an exercise's card: a tag that opens its Machine sheet. */
 .mctag{position:relative;border:0;font-family:inherit;cursor:pointer;color:var(--ink)}
+/* A machine lift's line under its name: the machine it is on, and how it is set. */
+.mcline{margin:3px 0 0;color:var(--muted)}
 /* "Per side" is "Side" under 360 px, so the load column's heading is one line at every width. */
 @media (max-width:359px){.lhn{display:none}}
 .sg .n{font:700 15px var(--font);font-variant-numeric:tabular-nums;color:var(--muted);text-align:center}

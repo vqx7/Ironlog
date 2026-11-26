@@ -101,7 +101,7 @@ const BAR_SCALE_MIN = 24;
 /* ---------- small parts ---------- */
 
 /** What a muscle with no weekly target says where its target would be (any muscle may be given one). */
-const TRACKED_TIP = 'Tracked only: counted, with no target. Give it one in Settings, Weekly set targets.';
+const TRACKED_TIP = 'Tracked only: counted, with no target. Give it one in **Settings**, **Weekly set targets**.';
 
 /** An exercise's library tags (exTags): Most common and Less common, but not the one the list is filtered to. */
 export function exTagParts(e: Pick<Exercise, 'id'> & Partial<Pick<Exercise, 'custom' | 'rare'>>, skip?: string): Part {
@@ -122,7 +122,7 @@ export function sessionCapNote(day: Day): Part {
     .sort((a, b) => b[1] - a[1]);
   if (!over.length) return nothing;
   const who = andList(over.map(([m, v]) => `${ML[m]} ${r1(v)}`));
-  return html`<p class="small u-m4n12-0"><span class="flag hastip" data-tip=${`Over ${SESSION_CAP} sets for one muscle in one workout. One early study saw no extra growth past that (a rule of thumb; sources in the Guide). Move some to another day? Helper sets count half.`}>Heavy for one workout: ${who} sets</span></p>`;
+  return html`<p class="small u-m4n12-0"><span class="flag hastip" data-tip=${`Over ${SESSION_CAP} sets for one muscle in one workout. One early study saw no extra growth past that (a rule of thumb; sources in the **Guide**). Move some to another day? Helper sets count half.`}>Heavy for one workout: ${who} sets</span></p>`;
 }
 
 /* Plan against the usual ranges (V's choice). Picking a routine on a
@@ -456,7 +456,7 @@ export const PLAN_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (!c.length) return;
     confirmBox(
       `Remove ${c.length} routine${c.length > 1 ? 's' : ''}?`,
-      `${c.map(r => r.name).join(', ')}. ${c.every(plainTemplate) ? 'Ready-made ones can be added again from New from a template.' : `Any you changed stay under Recently deleted in History for ${TRASH_DAYS} days.`}`,
+      `${c.map(r => r.name).join(', ')}. ${c.every(plainTemplate) ? 'Ready-made ones can be added again from **New from a template**.' : `Any you changed stay under **Recently deleted** in **History** for ${TRASH_DAYS} days.`}`,
       'Remove',
       () => {
         let n = 0;
@@ -499,7 +499,7 @@ export const PLAN_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (state.routines.length < 2) return;
     confirmBox(
       'Delete routine?',
-      `"${R.name}" will be removed. Logged sessions are kept${plainTemplate(R) ? '; it can be added again from New from a template.' : `, and the routine stays under Recently deleted in History for ${TRASH_DAYS} days.`}`,
+      `"${R.name}" will be removed. Logged sessions are kept${plainTemplate(R) ? '; it can be added again from **New from a template**.' : `, and the routine stays under **Recently deleted** in **History** for ${TRASH_DAYS} days.`}`,
       'Delete routine',
       () => {
         const done = act(

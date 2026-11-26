@@ -380,7 +380,7 @@ const run = n => !ONLY || ONLY.includes(n);
         const keys = L.TEMPLATES.filter(t => !t.hidden).map(t => t.key);
         // The minutes each routine's line says on the templates sheet.
         L.state.settings.onboarded = true; L.openModal({ kind: 'templates', from: 'plan' });
-        const mins = Object.fromEntries([...document.querySelectorAll('#modal .tpl[data-k]')].map(b => [b.dataset.k, ((b.querySelector('.tpl-m') || {}).textContent || '').match(/(\d+)(?: to (\d+))? min/)]).map(([k, m]) => [k, m ? +(m[2] || m[1]) : null]));
+        const mins = Object.fromEntries([...document.querySelectorAll('#modal .tpl[data-k]')].map(b => [b.dataset.k, (((b.querySelector('.tpl-m') || b.querySelector('.tpl-w') || {}).textContent || '').split(' · ').pop()).match(/(\d+)(?: to (\d+))? min/)]).map(([k, m]) => [k, m ? +(m[2] || m[1]) : null]));
         return { keys, made: keys.map(k => L.routineFromTemplate(k)), iso: Object.fromEntries(L.libExercises().map(e => [e.id, !L.isCompound(e)])), mins };
       });
     };

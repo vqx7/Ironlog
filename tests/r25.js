@@ -128,7 +128,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   ok(await I1.page.evaluate(() => !!document.getElementById('iconBar')), 'an iPhone home-screen app with an older log is told about the new icon');
   await I1.page.click('#iconBar [data-act="iconHow"]'); await I1.page.waitForTimeout(100);
   const ic = await I1.page.evaluate(() => { const m = document.getElementById('modal'); return { t: m.innerText, backup: !!m.querySelector('[data-act="export"]'), steps: m.querySelectorAll('ol.steps li').length }; });
-  ok(/removes the log on this phone/.test(ic.t) && ic.backup && ic.steps === 3, 'signed out, the steps come after a warning to sign in or save a backup first', ic);
+  ok(/deletes the log on this phone/.test(ic.t) && ic.backup && ic.steps === 3, 'signed out, the steps come after a warning to sign in or save a backup first', ic);
   await I1.page.click('#modal [data-act="iconLater"]'); await I1.page.waitForTimeout(100);
   ok(await I1.page.evaluate(() => !document.getElementById('iconBar') && !!localStorage.getItem('ironlog.v1.icon25')), 'Done hides the note for good');
   await I1.ctx.close();

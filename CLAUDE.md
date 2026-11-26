@@ -3,7 +3,7 @@
 A hypertrophy and strength tracker for one lifter, V, used on a phone at the gym. It ships as a standalone
 installable web app: built from `src/` into one page, served by GitHub Pages at https://ironapp.org, working
 offline, with the log on the phone and an optional account that syncs it. Every pull request also publishes a
-preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r126, version 2.78.1, state schema v5.
+preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r127, version 2.78.2, state schema v5.
 
 The Claude artifact version was retired by V on 2026-09-27 (`OWNER.md` Done): never work on it or republish it.
 `cloudProvider()` still takes Claude's db when `window.claude` exists, because the sync suites use it as their
@@ -195,7 +195,7 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   marked New machine or gym restarts them too, its PRs, bests and dumbbell steps with them, and keeps every session
   shown (`liftReadIn`, r61). A machine, cable or Smith lift is read per machine (V, 2026-11-14, 390 C): its ⋯ Machine
   sheet lists the machines it was done on, by the names the lifter gives them (one with none by its last session's
-  date and weight; V, 2026-11-15, NEW-168), the name of the one in use on its card; its target, PRs, bests and readings come from the machine
+  date and weight; V, 2026-11-15, NEW-168), the one in use said on its card once named, with how it is set (`machineSet`, kept with the machine and asked first in a machine lift's note sheet; 2.78.2, NEW-222); its target, PRs, bests and readings come from the machine
   it is on, the one last done on unless another is picked; its sets and volume count as one exercise; its kg or lb is
   the machine's own: the unit picked while the lift is on a machine is kept for that machine (`machineU`) and comes
   back when it is picked again (the full review's L4-5). A machine lift's session names the machine it was done on
@@ -248,6 +248,11 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   never show over one, and a one-time note goes through `noteOnce`, never its own wait for the toast (2.78.1). Today
   carries one line above its start card, never two (V, 2026-11-25). Only `toast.ts` looks at the toast
   (`tests/hygiene.js`).
+- **Words (V, 2026-11-25, 2.78.2):** few words, plain ones. No paragraph a screen or sheet shows on its own past 22
+  words (more goes behind an i, a fold or into the Guide), no message past 15, a routine's line who it is for in 5
+  (`tests/wording.js`). Nothing a lifter reads says "sync" or "cloud": the account is "your account" and a log is
+  saved to it. A button's or a screen's name in the app's words is bold: `**Name**` in a string (drawn by `marks.ts`),
+  `<b>` in markup and the Guide; never in a heading.
 - **Screen frame (2.78.1, NEW-218):** the page scrolls inside `#page`; the document never scrolls, so nothing an
   iPhone does to the visible area can carry the bars along the bottom up the screen. The page is scrolled by
   `frame.ts` or by an element's `scrollIntoView` (which scrolls the frame), never through the document, and the frame

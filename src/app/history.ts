@@ -319,7 +319,7 @@ export const HISTORY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const id = c.id;
     confirmBox(
       'Delete cardio entry?',
-      `${CARDIOL[c.kind] || 'Cardio'}, ${fmtDate(c.date)}, ${c.min} min. It stays under Recently deleted for ${TRASH_DAYS} days.`,
+      `${CARDIOL[c.kind] || 'Cardio'}, ${fmtDate(c.date)}, ${c.min} min. It stays under **Recently deleted** for ${TRASH_DAYS} days.`,
       'Delete',
       () => {
         const done = act(
@@ -332,7 +332,7 @@ export const HISTORY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         );
         if (!done) return;
         rerenderKeepScroll();
-        toast('Cardio entry moved to Recently deleted');
+        toast('Cardio entry moved to **Recently deleted**');
       },
       true
     );
@@ -356,7 +356,7 @@ export const HISTORY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (!n) return;
     confirmBox(
       `Empty Recently deleted (${n} item${n > 1 ? 's' : ''})?`,
-      `Undo in Settings can still bring ${n > 1 ? 'them' : 'it'} back for ${UNDO_DAYS} days.`,
+      `**Undo** in **Settings** can still bring ${n > 1 ? 'them' : 'it'} back for ${UNDO_DAYS} days.`,
       'Delete all',
       () => {
         act(
@@ -400,7 +400,7 @@ export const HISTORY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const id = t.dataset.id;
     confirmBox(
       'Delete session?',
-      `This removes it from history and all analytics. It stays under Recently deleted for ${TRASH_DAYS} days (the ${TRASH_MAX} most recent items are kept).`,
+      `This removes it from history and all analytics. It stays under **Recently deleted** for ${TRASH_DAYS} days (the ${TRASH_MAX} most recent items are kept).`,
       'Delete session',
       () => {
         act(

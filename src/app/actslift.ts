@@ -30,7 +30,7 @@ import { NEW_MACHINE } from './analytics';
 import { fmtDate } from './format';
 import { state, ui } from './store';
 import { act } from './act';
-import { goalWords, machineName, newMachineKey, pendingMachine } from './display';
+import { goalWords, machineName, machineSetup, newMachineKey, pendingMachine } from './display';
 import { closeModal, openModal, render, renderModal, rerenderKeepScroll } from './page';
 import { toast } from './toast';
 import { carried } from './workstate';
@@ -67,7 +67,7 @@ const kg = (ex: Pick<Exercise, 'unit'> | null | undefined, n: number): number =>
    machine done on before by its key, a new one by the session's own; its mark, which later sessions may follow, and
    the lift's unit stay as they are, and the readings follow once it is saved. One Undo step. */
 /** Puts block `bi`'s lift on machine `k` (NEW_MACHINE: a new one, named `name` when given), as above. */
-function pickMachine(bi: number, k: string | undefined, name: string): void {
+function pickMachine(bi: number, k: string | undefined, name: string, setup = ''): void {
   const d = state.draft;
   const b0 = d && d.ex[bi];
   const e = b0 && state.exercises.find(x => x.id === b0.exId);
@@ -95,8 +95,11 @@ function pickMachine(bi: number, k: string | undefined, name: string): void {
             delete b.nw;
           }
         }
-      // A machine added is named as its field was left: cleared, it has no name.
-      if (k === NEW_MACHINE && key) nameMachine(e, key, name);
+      // A machine added is named and set as its fields were left: cleared, it has neither.
+      if (k === NEW_MACHINE && key) {
+        nameMachine(e, key, name);
+        setMachine(e, key, setup);
+      }
       if (!ed) for (const b of d.ex) if (b.exId === b0.exId) refreshBlock(b);
     },
     { undo: true }
@@ -126,6 +129,19 @@ function nameMachine(e: Exercise, key: string, name: string): void {
   else delete next[key];
   if (Object.keys(next).length) e.machines = next;
   else delete e.machines;
+}
+/** How machine `key` of lift `e` is set (an empty text takes it away), kept as names are (nameMachine). */
+function setMachine(e: Exercise, key: string, setup: string): void {
+  const next: Record<string, string> = { ...(e.machineSet || {}) };
+  if (setup) next[key] = setup;
+  else delete next[key];
+  if (Object.keys(next).length) e.machineSet = next;
+  else delete e.machineSet;
+}
+/** A field's text in one line within `max` characters ('' when the field is not there). */
+function lineOf(id: string, max: number): string {
+  const f = document.getElementById(id);
+  return f instanceof HTMLInputElement ? f.value.replace(/\s+/g, ' ').trim().slice(0, max) : '';
 }
 
 /** A lift's sheets and the log's smaller entries, by data-act. */
@@ -189,23 +205,34 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const b0 = d && d.ex[b];
     const e = b0 && state.exercises.find(x => x.id === b0.exId);
     const k = t.dataset.k;
-    const f = document.getElementById('mcName');
     if (!d || !b0 || !e || !k) return;
-    const name = f instanceof HTMLInputElement ? f.value.replace(/\s+/g, ' ').trim().slice(0, LIMITS.name) : '';
+    const name = lineOf('mcName', LIMITS.name);
+    const setup = lineOf('mcSet', LIMITS.machineSet);
     if (k === NEW_MACHINE && !pendingMachine(b0.exId)) {
       closeModal();
-      pickMachine(b, k, name);
+      pickMachine(b, k, name, setup);
       return;
     }
     const key = k === NEW_MACHINE ? newMachineKey() : k;
-    if (!key || (machineName(e.id, key) || '') === name) {
+    const renamed = (machineName(e.id, key || '') || '') !== name,
+      reset = (machineSetup(e.id, key || '') || '') !== setup;
+    if (!key || (!renamed && !reset)) {
       openModal({ kind: 'machine', b });
       return;
     }
-    act(() => nameMachine(e, key, name), { undo: true });
+    act(
+      () => {
+        if (renamed) nameMachine(e, key, name);
+        if (reset) setMachine(e, key, setup);
+      },
+      { undo: true }
+    );
     openModal({ kind: 'machine', b });
     rerenderKeepScroll();
-    toast(name ? `Named ${name}` : 'Machine name taken off', true);
+    toast(
+      renamed ? (name ? `Named ${name}` : 'Machine name taken off') : setup ? 'Setup saved' : 'Setup taken off',
+      true
+    );
   },
   /* The unit beside a lift's loads, picked: the lift's equipment is marked in it and kept on the lift, so every screen
      and the next session read it; the lift's blocks in the workout read their targets again in it, and a load already
@@ -597,6 +624,9 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const d = state.draft;
     if (!m || m.kind !== 'note' || !(ta instanceof HTMLTextAreaElement) || !d) return;
     const b = d.ex[m.bi];
+    // Read before the sheet closes: the machine's fields, on a machine lift's note.
+    const named = document.getElementById('mcName') ? lineOf('mcName', LIMITS.name) : null;
+    const setup = lineOf('mcSet', LIMITS.machineSet);
     act(
       () => {
         if (b) b.note = within(ta.value, b.note || '', LIMITS.note).trim();
@@ -604,6 +634,26 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       { inProgress: true }
     );
     closeModal();
+    // The machine named or set here is kept with the machine, an Undo step of its own, as the Machine sheet keeps it.
+    const e = b && state.exercises.find(x => x.id === b.exId);
+    const k = b && named != null ? draftMachine(b.exId) : null;
+    const key = k === NEW_MACHINE ? newMachineKey() : k;
+    if (e && key && named != null) {
+      const renamed = ((e.machines && e.machines[key]) || '') !== named,
+        reset = ((e.machineSet && e.machineSet[key]) || '') !== setup;
+      if (renamed || reset) {
+        act(
+          () => {
+            if (renamed) nameMachine(e, key, named);
+            if (reset) setMachine(e, key, setup);
+          },
+          { undo: true }
+        );
+        rerenderKeepScroll();
+        toast(named ? `Machine: ${named}` : 'Machine name taken off', true);
+        return;
+      }
+    }
     rerenderKeepScroll();
   }
 };

@@ -878,7 +878,9 @@ function cleanExercise(e0: unknown, e: Rec, name: string): Exercise {
     // The unit each machine's weights are in, as picked while the lift was on it: absent until one is, last.
     machineU: machineUnits(e.machineU),
     // The lifter's pick of the equipment a refiled lift had (LIB_EQUIP_BEFORE), last, where an older build keeps it.
-    equipOwn: e.equipOwn === true ? true : undefined
+    equipOwn: e.equipOwn === true ? true : undefined,
+    // How each machine is set, as typed: absent until one is, last, where an older build keeps it.
+    machineSet: machineTexts(e.machineSet, LIMITS.machineSet)
   });
 }
 
@@ -888,7 +890,7 @@ function cleanExercise(e0: unknown, e: Rec, name: string): Exercise {
    the other side's own kg or lb, step, heaviest load, goal and bar. Set means other than what the field holds on a lift
    nobody has changed: the library's record for a built-in; for a lift of the lifter's own, the empty record, except
    the name, main muscle and equipment it is made with (CUSTOM_MADE_WITH), where `base`'s stands. Set on both sides,
-   `base`'s stands, as the whole record did. Machine names and units join machine by machine, `base`'s first.
+   `base`'s stands, as the whole record did. Machine names, units and setups join machine by machine, `base`'s first.
    Since the library became its own module (library.ts) it has changed only names, notes and one lift's equipment,
    each rewritten where a log holds the old one (cleanExercises: LIB_NAMES_BEFORE, LIB_NOTES_BEFORE, LIB_EQUIP_BEFORE),
    so both logs hold the library's values as this build has them. A library change to any other field needs the same
@@ -900,6 +902,8 @@ const CUSTOM_MADE_WITH: ReadonlySet<string> = new Set(['name', 'primary', 'equip
 /** Each number set on a lift, by field, with the field of the unit it was entered in. */
 const UNIT_OF: Readonly<Record<string, string>> = { inc: 'incU', maxLoad: 'maxLoadU', barKg: 'barU', goal: 'goalU' };
 const UNIT_FIELDS: ReadonlySet<string> = new Set(Object.values(UNIT_OF));
+/** The fields a lift keeps machine by machine, joined machine by machine. */
+const MACHINE_FIELDS: ReadonlySet<string> = new Set(['machines', 'machineU', 'machineSet']);
 /** Two logs' exercises joined field by field (above): every one of both, by id. */
 export function joinExercises(base: readonly Exercise[], other: readonly Exercise[]): Exercise[] {
   const lib = new Map(libExercises().map(e => [e.id, e]));
@@ -915,16 +919,15 @@ export function joinExercises(base: readonly Exercise[], other: readonly Exercis
       oR: Rec = { ...o };
     const joined: Rec = { ...bR };
     for (const k of Object.keys(oR)) {
-      if (k === 'id' || k === 'machines' || k === 'machineU' || UNIT_FIELDS.has(k) || (!L && CUSTOM_MADE_WITH.has(k)))
-        continue;
+      if (k === 'id' || MACHINE_FIELDS.has(k) || UNIT_FIELDS.has(k) || (!L && CUSTOM_MADE_WITH.has(k))) continue;
       if (canon(bR[k]) === canon(untouched[k]) && canon(oR[k]) !== canon(untouched[k])) {
         joined[k] = oR[k];
         const u = UNIT_OF[k];
         if (u) joined[u] = oR[u];
       }
     }
-    // A machine's name and its unit join machine by machine, `base`'s first.
-    for (const f of ['machines', 'machineU'] as const) {
+    // A machine's name, its unit and how it is set join machine by machine, `base`'s first.
+    for (const f of ['machines', 'machineU', 'machineSet'] as const) {
       const theirs = o[f];
       if (!theirs) continue;
       const mine: Rec = { ...(b[f] || {}) };
@@ -942,15 +945,20 @@ const MACHINE_KEY = /^[A-Za-z0-9_-]{1,40}$/;
 /** A lift's machine names as stored: each a name in one line within LIMITS.name, under a key a machine can have, in the
     order they came, at most LIMITS.machineNames of them; undefined when none is left. */
 function machineNames(v: unknown): Record<string, string> | undefined {
+  return machineTexts(v, LIMITS.name);
+}
+/** A line of text per machine as stored (a name, or how the machine is set): one line within `max` characters, under a
+    key a machine can have, in the order they came, at most LIMITS.machineNames of them; undefined when none is left. */
+function machineTexts(v: unknown, max: number): Record<string, string> | undefined {
   const r = rec(v);
   if (!r || Array.isArray(v)) return undefined;
   const out: Record<string, string> = {};
   let n = 0;
   for (const [k, x] of Object.entries(r)) {
     if (n >= LIMITS.machineNames) break;
-    const name = typeof x === 'string' ? x.replace(/\s+/g, ' ').trim().slice(0, LIMITS.name) : '';
-    if (!MACHINE_KEY.test(k) || !name) continue;
-    out[k] = name;
+    const text = typeof x === 'string' ? x.replace(/\s+/g, ' ').trim().slice(0, max) : '';
+    if (!MACHINE_KEY.test(k) || !text) continue;
+    out[k] = text;
     n++;
   }
   return n ? out : undefined;

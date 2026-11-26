@@ -908,10 +908,10 @@ export function saveStateNow(): { cls: string; txt: string } {
     txt = 'Not saving: export a backup';
   } else if (cloud.on && cloud.status === 'synced') {
     cls = 'ok';
-    txt = 'Synced';
+    txt = 'Saved to your account';
   } else if (cloud.on && (cloud.status === 'saving' || cloud.status === 'connecting')) {
     cls = 'busy';
-    txt = 'Syncing';
+    txt = 'Saving to your account';
   } else if (cloud.on && cloud.status === 'offline') {
     cls = 'warn';
     txt = 'Offline, saved on this device';

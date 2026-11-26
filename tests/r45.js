@@ -56,7 +56,7 @@ const PW = 'correct horse 45';
   await code(A, real.slice(0, 3) + ' ' + real.slice(3));
   await wait(400);
   ok(await signedIn(A) && !(await sheet(A)) && fake.users.get('a@x.test').confirmed, 'the right code, even typed with a space, confirms the account, signs in and closes the sheet', await sheet(A));
-  ok(/Email confirmed\. Signed in and syncing\./.test(await toastTxt(A)), 'it says so once', await toastTxt(A));
+  ok(/Email confirmed\. You are signed in\./.test(await toastTxt(A)), 'it says so once', await toastTxt(A));
   ok(await A.page.waitForFunction(() => { const c = window.__ironlog.cloudState(); return c.on && c.status === 'synced'; }, null, { timeout: 15000 }).then(() => true, () => false), 'and the log syncs to the account');
   const stored = await A.ev(() => JSON.stringify(Object.fromEntries(Object.keys(localStorage).map(k => [k, localStorage.getItem(k)]))));
   ok(!stored.includes(real) && !stored.includes(PW), 'neither the code nor the password is stored on the phone');

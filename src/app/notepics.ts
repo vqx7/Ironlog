@@ -144,7 +144,7 @@ export const PIC_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (!id) return;
     confirmBox(
       'Remove this picture?',
-      'It comes off this note. Undo brings it back.',
+      'It comes off this note. **Undo** brings it back.',
       'Remove',
       () => {
         act(
