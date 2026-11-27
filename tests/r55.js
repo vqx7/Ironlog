@@ -677,7 +677,7 @@ const LB = 0.45359237;
     await page.setViewportSize({ width: 390, height: 844 });
 
     // The first-run pages: the update bar, Build my own and Your training in the picker (D8, D11, D12).
-    const firstRun = () => ev(() => { const L = window.__ironlog; L.state.sessions = []; L.state.draft = null; L.state.routines = [L.starterRoutine()]; L.state.activeRoutineId = L.state.routines[0].id; L.state.settings.onboarded = false; delete L.state.settings.profile; L.saveNow(); L.ui.tab = 'today'; L.render(); window.scrollTo(0, 0); });
+    const firstRun = () => ev(() => { const L = window.__ironlog; L.state.sessions = []; L.state.draft = null; L.state.routines = [L.starterRoutine()]; L.state.activeRoutineId = L.state.routines[0].id; L.state.settings.onboarded = false; delete L.state.settings.profile; L.saveNow(); L.ui.tab = 'today'; L.render(); (document.getElementById('page')||document.documentElement).scrollTo(0, 0); });
     await firstRun();
     await ev(() => window.ironlogUpdateReady()); await wait(100);
     const d8 = await ev(() => { const b = document.getElementById('updbar').getBoundingClientRect(); const pg = document.getElementById('obPage'); return { bar: [Math.round(b.top), Math.round(b.bottom)], page: pg ? Math.round(pg.getBoundingClientRect().top) : null }; });

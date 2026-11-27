@@ -52,7 +52,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   /* Colours and art only: every box on Today, the start card's included, and on a workout's screen sits where it does in
      Standard (the art itself, and a page title, which the gradient fits to its text, aside). */
   const boxes = () => ev(() => [...document.querySelectorAll('#view *')].filter(e => !e.closest('.sunart') && !e.matches('.ph h2')).map(e => { const r = e.getBoundingClientRect(); return [e.tagName, Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)].join(); }));
-  const both = async () => { const out = []; for (const st of ['sunset', null]) { await ev(st => { const L = window.__ironlog; if (st) L.state.settings.style = st; else delete L.state.settings.style; L.render(); window.scrollTo(0, 0); }, st); await A.page.waitForTimeout(120); out.push(await boxes()); } return out; };
+  const both = async () => { const out = []; for (const st of ['sunset', null]) { await ev(st => { const L = window.__ironlog; if (st) L.state.settings.style = st; else delete L.state.settings.style; L.render(); (document.getElementById('page')||document.documentElement).scrollTo(0, 0); }, st); await A.page.waitForTimeout(120); out.push(await boxes()); } return out; };
   await ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); });
   let [bs, bn] = await both();
   ok(bs.length > 50 && bs.join('|') === bn.join('|'), 'Today lays out exactly as in Standard', { n: bs.length, diff: bs.filter((b, i) => b !== bn[i]).slice(0, 4) });
@@ -80,7 +80,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   await ev(() => { const L = window.__ironlog; delete L.state.settings.userName; L.saveNow(); });
 
   // ---- − Set: a row with reps typed goes with Undo; an empty row goes quietly.
-  await ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); window.scrollTo(0, 0); });
+  await ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); (document.getElementById('page')||document.documentElement).scrollTo(0, 0); });
   await A.page.click('.hero [data-act="startSession"]:not([data-light])'); await A.page.waitForTimeout(200);
   const n = await ev(() => window.__ironlog.state.draft.ex[0].sets.length);
   const lastIdx = n - 1;
@@ -223,7 +223,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   // r28: said in plain words instead of the 11-set figure.
   ok(await ev(() => /many sets for one muscle/.test(window.__ironlog.TEMPLATES.find(t => t.key === 'onemuscle').who)), 'the high-volume template warns of long sessions with many sets for one muscle');
   // A new routine has no history: with "Fill in suggested loads" on, the load typed on set 1 fills the empty rows below.
-  await ev(() => { const L = window.__ironlog; L.state.settings.loadFill = 'fill'; L.ui.tab = 'today'; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); window.scrollTo(0, 0); });
+  await ev(() => { const L = window.__ironlog; L.state.settings.loadFill = 'fill'; L.ui.tab = 'today'; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); (document.getElementById('page')||document.documentElement).scrollTo(0, 0); });
   await F.page.click('.hero [data-act="startSession"]:not([data-light])'); await F.page.waitForTimeout(200);
   const W = (s) => `.sg input[data-f="w"][data-b="0"][data-s="${s}"]`;
   const loads = () => ev(() => [...document.querySelectorAll('.sg input[data-f="w"][data-b="0"]')].map(i => i.value));

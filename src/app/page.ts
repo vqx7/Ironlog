@@ -13,7 +13,7 @@ import { ACCENT0 } from './layout';
 import { DIRTY_SAID } from './format';
 import { numIn } from './util';
 import { MENU_ICON } from './icons';
-import { PHOTO_TIP, log, prefGet, prefSet, saveStateNow } from './storage';
+import { PHOTO_TIP, log, prefDel, prefGet, prefSet, saveStateNow } from './storage';
 import { photoKeptSmall, photoUrl } from './photo';
 import { acct, state, ui } from './store';
 import type { Modal, ModalKind, ModalOf } from './modals';
@@ -21,8 +21,9 @@ import { coarse } from './env';
 import { sheetClear, sheetDraw } from './sheets';
 import { drawScreen, drawnBeforeToday, markup } from './view';
 import { stopTimer, wakeOff } from './timer';
-import { toast } from './toast';
+import { noteOnce, toast } from './toast';
 import { tipLabels } from './tips';
+import { pageTo, pageY } from './frame';
 
 /* ---------- the tabs ---------- */
 
@@ -87,7 +88,7 @@ function focusKey(el: Element | null): string | null {
 }
 /** Draws the page again keeping the scroll, the focused field, its caret, and the text typed in it. */
 export function rerenderKeepScroll(): void {
-  const y = window.scrollY,
+  const y = pageY(),
     el = document.activeElement,
     key = focusKey(el);
   // The text as typed: "152." is 152 stored, and redrawn from the log it would lose its point.
@@ -96,7 +97,7 @@ export function rerenderKeepScroll(): void {
   const ss = sel && typeof sel.selectionStart === 'number' ? sel.selectionStart : null;
   const se = sel && typeof sel.selectionEnd === 'number' ? sel.selectionEnd : null;
   render();
-  window.scrollTo(0, y);
+  pageTo(y);
   if (!key) return;
   let next: Element | null = null;
   try {
@@ -114,7 +115,7 @@ export function rerenderKeepScroll(): void {
   } catch (e) {
     // Putting the caret back is best effort.
   }
-  window.scrollTo(0, y);
+  pageTo(y);
 }
 
 /** The page's colours: the theme, the style, the accent, and the installed app's status bar, which follows the theme. */
@@ -202,7 +203,7 @@ export function pageBack(): void {
     ui.tab = t;
     ui.away = null;
     if (t === 'program') ui.planView = 'routine';
-    window.scrollTo(0, 0);
+    pageTo(0);
     render();
   }
 }
@@ -432,11 +433,11 @@ let saveShown = '';
    is news, said once in the state's own words, and said again only if it stops again after resuming. */
 let notSavingSaid = false;
 /* A profile photo an older build kept at 256 or 512 px (photo.ts OLD_EDGES) looks soft opened large; picked again,
-   it is kept at 1024. Said once on this phone (PHOTO_TIP), the first time the menu shows such a photo, once no other
-   message shows, as the rest timer's tip is (timer.ts wakeTip). Each photo is measured once while the page is open:
-   the menu button is drawn again on every save. */
-/** When the photo tip waits and stays: first after the photo shows, then again while another message shows; and how long it stays. */
-const PHOTO_TIP_MS = { first: 1500, retry: 500, show: 7000 } as const;
+   it is kept at 1024. Said once on this phone (PHOTO_TIP), the first time the menu shows such a photo, at a calm
+   moment (toast.ts noteOnce). Each photo is measured once while the page is open: the menu button is drawn again on
+   every save. */
+/** When the photo tip is first looked at after the photo shows, and how long it stays. */
+const PHOTO_TIP_MS = { first: 1500, show: 7000 } as const;
 // The photo last measured while the page is open, so a photo is measured once however often the menu is drawn.
 let photoMeasured: string | null = null;
 /** Says once, when the menu shows a photo an older build kept small (above), to pick it again. */
@@ -448,19 +449,21 @@ function photoTip(ph: string): void {
     if (!small || photoUrl() !== ph || prefGet(PHOTO_TIP)) return;
     // Storage that refuses the mark would say it on every visit, so it is not said at all.
     if (!prefSet(PHOTO_TIP, '1')) return;
-    const say = (): void => {
-      const t = document.getElementById('toast');
-      if (t && !t.hidden) {
-        setTimeout(say, PHOTO_TIP_MS.retry);
-        return;
-      }
-      toast(
-        'Your profile photo was kept small by an earlier version, so it looks soft opened large. Open the menu, tap your photo and choose Change photo to keep it sharp.',
-        false,
-        PHOTO_TIP_MS.show
-      );
-    };
-    setTimeout(say, PHOTO_TIP_MS.first);
+    // Marked said once read: not read (covered, or the photo changed before a calm moment), or the app closed while it
+    // waits, it is said on a later visit.
+    prefDel(PHOTO_TIP);
+    setTimeout(
+      () =>
+        noteOnce(
+          'Your profile photo was kept small by an earlier version, so it looks soft opened large. Open the menu, tap your photo and choose Change photo to keep it sharp.',
+          PHOTO_TIP_MS.show,
+          seen => {
+            if (seen) prefSet(PHOTO_TIP, '1');
+          },
+          () => photoUrl() === ph
+        ),
+      PHOTO_TIP_MS.first
+    );
   });
 }
 

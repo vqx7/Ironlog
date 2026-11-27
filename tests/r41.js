@@ -217,7 +217,7 @@ const brz = (load, rtf) => load * 36 / (37 - rtf);
     const guide = await ev(() => { const L = window.__ironlog; L.openModal({ kind: 'guide' }); const t = document.getElementById('modal').textContent; L.ACT.mClose(); return t; });
     ok(/A lift on Stats says its change in what was lifted/.test(guide) && /there are no predictions/.test(guide) && !/about how many weeks/.test(guide), 'the Guide says changes are in loads and that nothing is predicted' + T);
     await P.page.setViewportSize({ width: 320, height: 640 });
-    const narrow = await ev(() => { const L = window.__ironlog; L.ui.tab = 'dash'; L.ui.dashEx = 'bench'; L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true); return document.documentElement.scrollWidth <= innerWidth; });
+    const narrow = await ev(() => { const L = window.__ironlog; L.ui.tab = 'dash'; L.ui.dashEx = 'bench'; L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true); return (document.getElementById('page')||document.documentElement).scrollWidth <= innerWidth; });
     ok(narrow, 'Stats fits 320 px' + T);
     const errs = P.errors.filter(e => !/favicon/.test(e));
     ok(!errs.length, 'no page errors' + T, errs);

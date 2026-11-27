@@ -203,12 +203,13 @@ export function tipsStart(): void {
     }
   });
   document.addEventListener('focusout', () => tipHide());
-  window.addEventListener(
+  // The page scrolls inside its frame, not the document: heard in the capture phase, as scroll does not bubble.
+  document.addEventListener(
     'scroll',
     () => {
       if (TIP.el) tipHide();
     },
-    { passive: true }
+    { passive: true, capture: true }
   );
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && TIP.el) tipHide();

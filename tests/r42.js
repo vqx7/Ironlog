@@ -16,7 +16,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
         const L = window.__ironlog;
         return { eye: document.querySelector('.hero .eyebrow').textContent, meta: document.querySelector('.hero .muted').textContent,
           map: document.querySelector('[data-sk="today:map"] .sec-s').textContent.trim(), track: Object.keys(L.state.settings.bands).filter(m => !L.hasTarget(m)).length,
-          view: document.getElementById('view').innerText, over: document.documentElement.scrollWidth > window.innerWidth };
+          view: document.getElementById('view').innerText, over: (document.getElementById('page')||document.documentElement).scrollWidth > window.innerWidth };
       });
       ok(/^Mon Oct 12 · /.test(c.eye), 'Today\'s date has no comma: Mon Oct 12' + T, c.eye);
       ok(/· ~\d+ min$/.test(c.meta) && !/about/.test(c.meta), 'the day\'s minutes read ~N min' + T, c.meta);

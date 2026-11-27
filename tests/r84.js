@@ -95,7 +95,7 @@ const tick = async (D, bi, si) => { await D.page.click(`#view [data-act="sDone"]
     const D = await app();
     await D.page.click('[data-act="startSession"]'); await wait(500);
     const at = sel => D.page.evaluate(q => { const e = document.querySelector(q); return e ? Math.round(e.getBoundingClientRect().top) : null; }, sel);
-    await D.page.evaluate(() => { const e = document.getElementById('blk-2'); window.scrollBy(0, e.getBoundingClientRect().top - 300); });
+    await D.page.evaluate(() => { const e = document.getElementById('blk-2'); (document.getElementById('page')||document.documentElement).scrollBy(0, e.getBoundingClientRect().top - 300); });
     await wait(200);
     const tickSel = '#view [data-act="sDone"][data-b="2"][data-s="0"]';
     const y0 = await at(tickSel);
@@ -104,7 +104,7 @@ const tick = async (D, bi, si) => { await D.page.click(`#view [data-act="sDone"]
     ok(y0 != null && Math.abs(y1 - y0) <= 1, '2. a tick on a lift below the one the pills were on moves that row by nothing on screen', { y0, y1 });
     await wait(2500);
     // A load typed on a lift above the one the pills are on: the field stays under the finger.
-    await D.page.evaluate(() => { const e = document.getElementById('blk-1'); window.scrollBy(0, e.getBoundingClientRect().top - 300); });
+    await D.page.evaluate(() => { const e = document.getElementById('blk-1'); (document.getElementById('page')||document.documentElement).scrollBy(0, e.getBoundingClientRect().top - 300); });
     await wait(200);
     const fSel = '#view input[data-f="w"][data-b="1"][data-s="0"]';
     const f0 = await at(fSel);

@@ -70,7 +70,7 @@ function xlsx(rows) {
   // ---- Header: the wordmark is gone from the bar, the days fill it.
   for (const w of [375, 390, 430]) {
     const A = await page({ w, h: 800 });
-    const hd = await A.page.evaluate(() => { const L = window.__ironlog; L.makeDemo(); L.render(); const d = [...document.querySelectorAll('#wkbar .w')].map(e => e.getBoundingClientRect()); const h1 = document.querySelector('header.top h1'); return { minW: Math.min(...d.map(r => r.width)), minH: Math.min(...d.map(r => r.height)), h1: h1 && h1.textContent, h1w: h1 && h1.getBoundingClientRect().width, sw: document.documentElement.scrollWidth }; });
+    const hd = await A.page.evaluate(() => { const L = window.__ironlog; L.makeDemo(); L.render(); const d = [...document.querySelectorAll('#wkbar .w')].map(e => e.getBoundingClientRect()); const h1 = document.querySelector('header.top h1'); return { minW: Math.min(...d.map(r => r.width)), minH: Math.min(...d.map(r => r.height)), h1: h1 && h1.textContent, h1w: h1 && h1.getBoundingClientRect().width, sw: (document.getElementById('page')||document.documentElement).scrollWidth }; });
     ok(hd.minW >= 44 && hd.minH >= 44 && hd.h1 === 'Ironlog' && hd.h1w <= 1 && hd.sw <= w, `${w} px: no wordmark in the bar (still named for screen readers), every day 44 px or more`, hd);
     await A.ctx.close();
   }

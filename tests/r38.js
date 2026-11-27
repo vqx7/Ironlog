@@ -35,7 +35,7 @@ const brz = (load, rtf) => load * 36 / (37 - rtf);
     ok(v.set && v.setText === 'Set a goal' && v.line === null, 'Stats > Lifts offers Set a goal on a lift with none' + T, v);
     await ev(() => document.querySelector('#view [data-act="goalOpen"]').click()); await wait(80);
     // A label's words are its own text, read past lit-html's markers (since r62 the sheet is drawn by lit-html, whose first child in a label is a marker).
-    const sh = await ev(() => { const m = document.getElementById('modal'); return { h: m.querySelector('h3').textContent, labels: [...m.querySelectorAll('label.field')].map(l => [...l.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim()), remove: !!m.querySelector('[data-act="goalClear"]'), wide: document.documentElement.scrollWidth <= innerWidth, minH: Math.min(...[...m.querySelectorAll('button.btn')].map(b => b.getBoundingClientRect().height)) }; });
+    const sh = await ev(() => { const m = document.getElementById('modal'); return { h: m.querySelector('h3').textContent, labels: [...m.querySelectorAll('label.field')].map(l => [...l.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim()), remove: !!m.querySelector('[data-act="goalClear"]'), wide: (document.getElementById('page')||document.documentElement).scrollWidth <= innerWidth, minH: Math.min(...[...m.querySelectorAll('button.btn')].map(b => b.getBoundingClientRect().height)) }; });
     ok(sh.h === 'Goal: Barbell Bench Press' && sh.labels[0] === 'Load (lb)' && sh.labels[1] === 'Reps' && !sh.remove, 'the goal sheet asks a load and reps, with no Remove before a goal exists' + T, sh);
     ok(sh.wide && sh.minH >= 44, 'the goal sheet fits 375 px with 44 px buttons' + T, sh);
     // Reps out of range and a missing load are refused, nothing saved.
@@ -155,7 +155,7 @@ const brz = (load, rtf) => load * 36 / (37 - rtf);
 
     // ---------- 9. 320 px ----------
     await P.page.setViewportSize({ width: 320, height: 640 });
-    const narrow = await ev(async () => { const L = window.__ironlog; L.ui.dashEx = 'bench'; L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true); const g = document.getElementById('goalLine'); const w1 = document.documentElement.scrollWidth <= innerWidth; const b = g.querySelector('[data-act="goalOpen"]').getBoundingClientRect(); b && g.querySelector('[data-act="goalOpen"]').click(); await new Promise(r => setTimeout(r, 80)); const w2 = document.documentElement.scrollWidth <= innerWidth; L.ACT.mClose(); return { w1, w2, bh: b.height }; });
+    const narrow = await ev(async () => { const L = window.__ironlog; L.ui.dashEx = 'bench'; L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true); const g = document.getElementById('goalLine'); const w1 = (document.getElementById('page')||document.documentElement).scrollWidth <= innerWidth; const b = g.querySelector('[data-act="goalOpen"]').getBoundingClientRect(); b && g.querySelector('[data-act="goalOpen"]').click(); await new Promise(r => setTimeout(r, 80)); const w2 = (document.getElementById('page')||document.documentElement).scrollWidth <= innerWidth; L.ACT.mClose(); return { w1, w2, bh: b.height }; });
     ok(narrow.w1 && narrow.w2 && narrow.bh >= 44, 'at 320 px the goal line and its sheet fit, and Change is 44 px tall' + T, narrow);
 
     // ---------- 10. The Guide says it ----------

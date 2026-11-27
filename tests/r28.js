@@ -24,7 +24,7 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
     ok(fresh.ob && fresh.auto === true && JSON.stringify(fresh.hidden) === JSON.stringify(['today:tiles', 'today:coach', 'today:body', 'program:pvol']) /* Plan's Schedule shown since r70 (381) */, 'a new install: auto-mark on; At a glance, Coach, Body, Schedule and Weekly volume hidden', fresh);
     // Pick a ready-made routine the way the first-run page does.
     await ev(() => { const L = window.__ironlog; const t = L.TEMPLATES.find(x => /upper/i.test(x.name)); const r = L.routineFromTemplate(t.key); L.state.routines = [r]; L.state.activeRoutineId = r.id; L.state.settings.onboarded = true; localStorage.setItem('ironlog.v1.installLater', '1'); L.render(); });
-    const tabState = t => ev(t => { const L = window.__ironlog; L.ui.tab = t; window.scrollTo(0, 0); L.render(); const kids = [...document.querySelectorAll('#view > [data-mkey]')]; return { keys: kids.map(e => e.dataset.mkey), open: kids.filter(e => e.open).map(e => e.dataset.mkey), hb: document.querySelectorAll('#view summary .hb').length, line: !!document.getElementById('moreLine') }; }, t);
+    const tabState = t => ev(t => { const L = window.__ironlog; L.ui.tab = t; (document.getElementById('page')||document.documentElement).scrollTo(0, 0); L.render(); const kids = [...document.querySelectorAll('#view > [data-mkey]')]; return { keys: kids.map(e => e.dataset.mkey), open: kids.filter(e => e.open).map(e => e.dataset.mkey), hb: document.querySelectorAll('#view summary .hb').length, line: !!document.getElementById('moreLine') }; }, t);
     const st = {}; for (const t of TABS) st[t] = await tabState(t);
     ok(st.today.keys.join() === 'session,map,week', 'Today shows Workout preview, Muscle map, This week, in that order', st.today);
     ok(st.program.keys.join() === 'routine,library,schedule,days', 'Plan shows Routine, Add exercises, Schedule (shown since r70, 381), Days', st.program);
@@ -82,7 +82,7 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
     await page.click('#modal [data-act="mClose"]'); await wait(60);
 
     // Stats: How this works is inside the section; a tap on the title row only folds.
-    await ev(() => { const L = window.__ironlog; L.ui.tab = 'dash'; window.scrollTo(0, 0); L.render(); });
+    await ev(() => { const L = window.__ironlog; L.ui.tab = 'dash'; (document.getElementById('page')||document.documentElement).scrollTo(0, 0); L.render(); });
     const sum = await ev(() => { const s = document.querySelector('#view > [data-mkey="exercise"] > summary'); return [...s.children].map(c => c.className); });
     ok(sum.join() === 'sgrip,sec-t,sec-s,chev', 'a Stats header holds only the handle, title, number and arrow', sum);
     await page.locator('#view > [data-mkey="exercise"] > summary .chev').click(); await wait(60);
@@ -129,7 +129,7 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
     // 320 px: no sideways scroll on any tab with the new line and button.
     await page.setViewportSize({ width: 320, height: 640 });
     const over = [];
-    for (const t of TABS) { const w = await ev(t => { const L = window.__ironlog; L.ui.tab = t; L.render(); return document.documentElement.scrollWidth - document.documentElement.clientWidth; }, t); if (w > 0) over.push(t + ':' + w); }
+    for (const t of TABS) { const w = await ev(t => { const L = window.__ironlog; L.ui.tab = t; L.render(); const pg = document.getElementById('page') || document.documentElement; return pg.scrollWidth - pg.clientWidth; }, t); if (w > 0) over.push(t + ':' + w); }
     ok(!over.length, 'no sideways scroll at 320 px on any tab', over);
     ok(!P.errors.length, 'no page errors (new install)', P.errors);
     await P.browser.close();
@@ -185,7 +185,7 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
     await ev(() => { const L = window.__ironlog; const t = L.TEMPLATES.find(x => /upper/i.test(x.name)); const r = L.routineFromTemplate(t.key); L.state.routines = [r]; L.state.activeRoutineId = r.id; L.state.settings.onboarded = true; localStorage.setItem('ironlog.v1.installLater', '1'); L.render(); });
     const tp = await require('./h').touchDriver(page);
     const order = () => ev(() => [...document.querySelectorAll('#view > [data-mkey]')].map(e => e.dataset.mkey));
-    const tab = t => ev(t => { const L = window.__ironlog; L.ui.tab = t; window.scrollTo(0, 0); L.render(); }, t);
+    const tab = t => ev(t => { const L = window.__ironlog; L.ui.tab = t; (document.getElementById('page')||document.documentElement).scrollTo(0, 0); L.render(); }, t);
     // Settings with Layout open, whatever this visit last did with it.
     const openLayout = async () => { await tab('settings'); if (!(await ev(() => document.querySelector('#view > [data-mkey="layout"]').open))) await page.locator('#view > [data-mkey="layout"] > summary .sec-t').click(); await wait(80); };
     async function drag(from, to) {
@@ -218,7 +218,7 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
     await openLayout();
     await page.locator('[data-act="hideToggle"][data-k="settings:timer"]').click(); await wait(60); await page.locator('[data-act="hideToggle"][data-k="settings:timer"]').click(); await wait(60);
     // Fold everything (this visit's choice, so a re-render keeps it) and start from the top, so both ends of the drag are on screen.
-    await ev(() => { const L = window.__ironlog; document.querySelectorAll('#view > details').forEach(x => { L.ui.folds[x.dataset.sk] = false; }); L.render(); window.scrollTo(0, 0); }); await wait(100);
+    await ev(() => { const L = window.__ironlog; document.querySelectorAll('#view > details').forEach(x => { L.ui.folds[x.dataset.sk] = false; }); L.render(); (document.getElementById('page')||document.documentElement).scrollTo(0, 0); }); await wait(100);
     const g0 = await order(); await drag('timer', g0[0]);
     ok((await order())[0] === 'timer', 'Settings: Rest timer hidden and shown, then dragged to the top', await order());
     ok(!P.errors.length, 'no page errors (drag)', P.errors);

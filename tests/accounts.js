@@ -73,7 +73,7 @@ fs.cpSync(DIST, tmp, { recursive: true });
   // button like the others. No tagline under the wordmark (r29.4 still holds).
   const obCopy = await W.ev(() => { const t = document.querySelector('#obPage .ob-top'), c = document.querySelector('#obPage .ob-card'), f = [...document.querySelectorAll('#obPage .ob-slide')], n = document.querySelector('#obPage [data-act="obAcctLater"]');
     return { top: t ? [...t.children].map(e => e.tagName).join(',') : null, feats: f.map(li => li.querySelector('h2').innerText.trim()), shown: f.every(li => !!li.querySelector('.obv')), ps: c ? [...c.querySelectorAll('p')].map(p => p.innerText) : [], h: c && c.querySelector('h2') ? c.querySelector('h2').textContent : null,
-      notNow: n ? { btn: n.classList.contains('btn'), link: n.classList.contains('linkbtn'), h: Math.round(n.getBoundingClientRect().height), text: n.innerText.trim() } : null, fits: document.documentElement.scrollHeight <= window.innerHeight + 2 }; });
+      notNow: n ? { btn: n.classList.contains('btn'), link: n.classList.contains('linkbtn'), h: Math.round(n.getBoundingClientRect().height), text: n.innerText.trim() } : null, fits: (document.getElementById('page')||document.documentElement).scrollHeight <= window.innerHeight + 2 }; });
   ok(obCopy.top === 'H1' && obCopy.feats.length === 5 && obCopy.shown, 'the first page shows the wordmark, then the tour of what the app does, each slide with its picture', obCopy);
   ok(obCopy.h === 'Save your log' && obCopy.ps.length === 1 && obCopy.ps[0] === 'Backed up, on every device', 'Save your log says in one short line what the account is for', obCopy.ps);
   ok(obCopy.notNow && !obCopy.notNow.btn && obCopy.notNow.link && obCopy.notNow.h >= 44 && obCopy.notNow.text === 'Continue without an account', 'Continue without an account is a plain link, worded for what it does, not a third button', obCopy.notNow);
@@ -506,7 +506,7 @@ fs.cpSync(DIST, tmp, { recursive: true });
   await G.page.click('#acctPanel [data-act="acctSignOut"]'); await wait(100); await G.page.click('#modal [data-act="mClose"]').catch(() => {});
   await G.page.keyboard.press('Escape').catch(() => {});
   await G.ev(() => window.__ironlog.ui.modal && document.querySelector('#modal [data-act="mClose"]') && document.querySelector('#modal [data-act="mClose"]').click());
-  const fit = await G.ev(() => document.documentElement.scrollWidth <= window.innerWidth);
+  const fit = await G.ev(() => (document.getElementById('page')||document.documentElement).scrollWidth <= window.innerWidth);
   ok(fit, 'no sideways scrolling at 320 px');
 
   for (const d of devices) ok(!d.errors.length, 'no console errors on a device', d.errors);

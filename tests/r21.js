@@ -63,7 +63,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   ok(await ev(() => window.__ironlog.state.draft.ex[0].sets.every(s => s.done)), 'every typed set is done');
 
   // Finish: saved under Monday, next up unchanged, recap says the date.
-  await ev(() => window.scrollTo(0, document.body.scrollHeight));
+  await ev(() => (document.getElementById('page')||document.documentElement).scrollTo(0, (document.getElementById('page')||document.documentElement).scrollHeight));
   await page.click('[data-act="finish"]'); await page.waitForTimeout(150);
   // A load left as prefilled is fine; if the blank-load check asks, accept.
   if (await ev(() => window.__ironlog.ui.modal && window.__ironlog.ui.modal.kind === 'confirm')) { await page.click('[data-act="mOk"]'); await page.waitForTimeout(120); }
@@ -106,13 +106,13 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   // ---- 60: a blank session discards at once, from the bottom too.
   const bot = await ev(() => { const v = [...document.querySelectorAll('[data-act="discard"]')]; return { n: v.length, bottom: !!document.querySelector('.fin-row [data-act="discard"]') }; });
   ok(bot.n === 2 && bot.bottom, 'Discard at the top and beside Finish', bot);
-  await ev(() => window.scrollTo(0, document.body.scrollHeight));
+  await ev(() => (document.getElementById('page')||document.documentElement).scrollTo(0, (document.getElementById('page')||document.documentElement).scrollHeight));
   await page.click('.fin-row [data-act="discard"]'); await page.waitForTimeout(100);
   ok(await ev(() => window.__ironlog.state.draft === null && !window.__ironlog.ui.modal), 'a blank session is discarded without asking');
   ok(/Session discarded/.test(await ev(() => document.getElementById('toast').innerText)), 'and says so');
 
   // A lighter day (with the note the app wrote) is still blank; cardio minutes are not.
-  await ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); window.scrollTo(0, 0); });
+  await ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); (document.getElementById('page')||document.documentElement).scrollTo(0, 0); });
   await page.click('.hero [data-act="startAltOpen"]'); await page.waitForTimeout(80);
   await page.click('#modal [data-go="startSession"][data-light="1"]'); await page.waitForTimeout(120);
   await page.click('.ph [data-act="discard"]'); await page.waitForTimeout(80);
@@ -141,7 +141,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   await ev(() => { const L = window.__ironlog; L.state.draft = null; localStorage.removeItem(L.KEY + '.parked'); L.saveNow(); L.render(); });
 
   // ---- 59: after a swap to a lift with no history, the grey number still works.
-  await ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); window.scrollTo(0, 0); });
+  await ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); (document.getElementById('page')||document.documentElement).scrollTo(0, 0); });
   await page.click('.hero [data-act="startSession"]:not([data-light])'); await page.waitForTimeout(120);
   await ev(() => document.querySelector('[data-act="bMenu"][data-b="0"]').click()); await page.waitForTimeout(50);
   await page.click('[data-op="bSwap"]'); await page.waitForTimeout(80);

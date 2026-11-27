@@ -49,7 +49,7 @@ async function phone(start, w = 390) {
     go: async t => { await ev(t => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); L.ui.tab = t; L.render(); }, t); await wait(120); },
     // Sideways scroll on the page, and any field or cell whose text is cut off.
     overflow: () => ev(() => {
-      const se = document.scrollingElement;
+      const se = document.getElementById('page') || document.scrollingElement;
       const cut = [...document.querySelectorAll('#view input, #view .num, #view .ls')].filter(e => e.offsetParent && e.scrollWidth > e.clientWidth + 1).map(e => (e.value || e.innerText || '').slice(0, 20) + ' [' + e.scrollWidth + '>' + e.clientWidth + ']');
       return { page: se.scrollWidth - se.clientWidth, cut: cut.slice(0, 8) };
     }),

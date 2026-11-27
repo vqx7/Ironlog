@@ -236,7 +236,7 @@ const ODD = /shared (phone|device|computer)|someone else|another person|other pe
     // 2j. Settings at 320 px: the weigh-in reminder has the full width; the rest timer choices are short.
     const st = await ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true); const s = document.querySelector('[data-bind="bwEvery"]'); const t = document.querySelector('[data-bind="timerMode"]'); return { w: s.getBoundingClientRect().width, opts: [...t.options].map(o => o.text) }; });
     ok(st.w >= 250 && st.opts.every(t => t.length <= 22), 'Settings at 320 px: Weigh-in reminder full width, rest timer choices of 22 characters or fewer' + T, st);
-    const wide = await ev(() => document.documentElement.scrollWidth <= innerWidth);
+    const wide = await ev(() => (document.getElementById('page')||document.documentElement).scrollWidth <= innerWidth);
     ok(wide, 'no sideways scroll on Settings at 320 px' + T);
     ok(!P.errors.length, 'session screen: no page errors' + T, P.errors);
     await P.ctx.close().catch(() => {});
@@ -530,7 +530,7 @@ const ODD = /shared (phone|device|computer)|someone else|another person|other pe
         await quietHibp(ctx); const page = await ctx.newPage(); const errors = []; page.on('pageerror', e => errors.push(e.message));
         await page.goto(fake.base + '/ironlog/'); await page.waitForFunction(() => window.__ironlog && document.getElementById('obTrack'), null, { timeout: 15000 });
         await page.evaluate(() => document.fonts.ready); await wait(300);
-        const m = await page.evaluate(() => { const b = s => { const e = document.querySelector(s); return e ? e.getBoundingClientRect() : null; }; const c = b('[data-act="acctOpen"][data-mode="signup"]'), i = b('[data-act="acctOpen"][data-mode="signin"]'), l = b('.ob-later'); return { sh: document.documentElement.scrollHeight, ih: innerHeight, sw: document.documentElement.scrollWidth <= innerWidth, c: c && c.height, i: i && i.height, later: l && l.bottom, laterH: l && l.height }; });
+        const m = await page.evaluate(() => { const b = s => { const e = document.querySelector(s); return e ? e.getBoundingClientRect() : null; }; const c = b('[data-act="acctOpen"][data-mode="signup"]'), i = b('[data-act="acctOpen"][data-mode="signin"]'), l = b('.ob-later'); return { sh: (document.getElementById('page')||document.documentElement).scrollHeight, ih: innerHeight, sw: (document.getElementById('page')||document.documentElement).scrollWidth <= innerWidth, c: c && c.height, i: i && i.height, later: l && l.bottom, laterH: l && l.height }; });
         ok(m.sh <= m.ih + 2 && m.later <= m.ih && m.c >= 44 && m.i >= 44 && m.laterH >= 44 && m.sw, `the first page at ${w} x ${h} (${scheme}): Create account, I have an account, and Continue without an account all on screen, no scroll, 44 px targets`, m);
         ok(!errors.length, `first page at ${w} x ${h} (${scheme}): no page errors`, errors);
         await ctx.close();

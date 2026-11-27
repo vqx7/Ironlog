@@ -2,8 +2,9 @@
 // 2026-10-17: the bar rises and the page shrinks on History, Settings and
 // sometimes Plan). iOS 26 gives an installed app's page that is shorter than
 // the screen a viewport shorter by the status bar's height, so the fixed bar
-// stops above the bottom edge; src/02-style.css holds the page to at least
-// the screen's height there. No browser here can be an installed iOS app
+// stops above the bottom edge; src/02-style.css holds the page to the
+// screen's height there (its height since 2.78.1, when the document stopped
+// scrolling and the page moved into its own frame: tests/frame.js). No browser here can be an installed iOS app
 // (Chromium does not emulate display-mode, and Playwright's WebKit has no
 // home-screen mode), so the bug itself is V's friends' to confirm gone
 // (OWNER.md, Checks on your phone). What this suite holds: the rule is on the
@@ -18,11 +19,11 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   const ev = (f, a) => page.evaluate(f, a);
   const r = await ev(() => {
     const rules = [];
-    for (const sh of document.styleSheets) { let list; try { list = sh.cssRules; } catch (e) { continue; } for (const x of list) if (x instanceof CSSMediaRule && /display-mode:\s*standalone/.test(x.conditionText || x.media.mediaText)) for (const y of x.cssRules) rules.push({ sel: y.selectorText, min: y.style.minHeight }); }
+    for (const sh of document.styleSheets) { let list; try { list = sh.cssRules; } catch (e) { continue; } for (const x of list) if (x instanceof CSSMediaRule && /display-mode:\s*standalone/.test(x.conditionText || x.media.mediaText)) for (const y of x.cssRules) rules.push({ sel: y.selectorText, min: y.style.height }); }
     const html = rules.filter(x => x.sel === 'html');
     const value = html.length ? html[0].min : '';
     // The value as the browser reads it on an element of its own.
-    const probe = document.createElement('div'); probe.style.minHeight = value; const accepted = probe.style.minHeight !== '';
+    const probe = document.createElement('div'); probe.style.height = value; const accepted = probe.style.height !== '';
     return { html, value, accepted, standalone: matchMedia('(display-mode: standalone)').matches, rootMin: getComputedStyle(document.documentElement).minHeight };
   });
   ok(r.html.length === 1, 'the installed app has one rule on the html element', r.html);

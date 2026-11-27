@@ -9,7 +9,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
 (async () => {
   const { browser, page, errors } = await open('index.html', { touch: true, w: 390, h: 844, clock: '2026-09-20T10:00:00' });
   const ev = (f, a) => page.evaluate(f, a);
-  const fresh = async () => { await ev(() => { const L = window.__ironlog; L.state.draft = null; L.state.settings.onboarded = true; if (!L.state.sessions.length) L.makeDemo(); /* r30: history here, not sample data */ for (const k of ['sessions', 'bodyweights', 'measurements']) for (const x of (L.state[k] || [])) delete x.demo; L.invalidate && L.invalidate(); L.state.settings.autoDone = false; L.ui.tab = 'today'; L.ui.todayDay = 0; L.ui.modal = null; document.getElementById('modal').hidden = true; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); window.scrollTo(0, 0); }); };
+  const fresh = async () => { await ev(() => { const L = window.__ironlog; L.state.draft = null; L.state.settings.onboarded = true; if (!L.state.sessions.length) L.makeDemo(); /* r30: history here, not sample data */ for (const k of ['sessions', 'bodyweights', 'measurements']) for (const x of (L.state[k] || [])) delete x.demo; L.invalidate && L.invalidate(); L.state.settings.autoDone = false; L.ui.tab = 'today'; L.ui.todayDay = 0; L.ui.modal = null; document.getElementById('modal').hidden = true; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); (document.getElementById('page')||document.documentElement).scrollTo(0, 0); }); };
   const start = async () => { await fresh(); await page.click('.hero [data-act="startSession"]:not([data-light])'); await page.waitForTimeout(120); };
   const W = (b, s) => `.sg input[data-f="w"][data-b="${b}"][data-s="${s}"]`, R = (b, s) => `.sg input[data-f="r"][data-b="${b}"][data-s="${s}"]`;
   const field = (sel) => ev(s => { const e = document.querySelector(s); return e ? { v: e.value, ph: e.placeholder } : null; }, sel);
@@ -176,7 +176,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   await C.page.waitForTimeout(120);
   ok(await cev((d) => { const L = window.__ironlog; const s = L.state.sessions.find(x => x.id === L.ui.histOpen); return L.ui.tab === 'history' && s && s.date === d; }, sq.d), 'a lifted square in Consistency opens that session', sq);
   // r26: no pull-down and no handle; the week bar is as it was, and This week on Today has Week and Month.
-  await cev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.state.settings.homeFolded = []; L.render(); window.scrollTo(0, 0); });
+  await cev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.state.settings.homeFolded = []; L.render(); (document.getElementById('page')||document.documentElement).scrollTo(0, 0); });
   ok(await cev(() => !document.querySelector('.wkpull') && getComputedStyle(document.querySelector('header.top')).touchAction !== 'none'), 'the week bar has no handle, and dragging on it scrolls as before');
   // A drag down on the week bar does nothing special: the day under the finger opens as a tap would, and no calendar appears from it.
   const drag = await cev(async () => { const btn = document.querySelectorAll('#wkbar .w')[1]; const r = btn.getBoundingClientRect(); const x = r.x + r.width / 2, y = r.y + r.height / 2;
@@ -207,12 +207,12 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   for (const w of [320, 375, 390]) {
     await C.page.setViewportSize({ width: w, height: 700 });
     await cev(() => { const L = window.__ironlog; L.ui.wkView = 'month'; L.render(); });
-    const hd = await cev(() => { const ds = [...document.querySelectorAll('#wkbar .w')].map(e => e.getBoundingClientRect()); const top = document.querySelector('header.top').getBoundingClientRect(); const cds = [...document.querySelectorAll('.cal-inline button.cd')].map(b => b.getBoundingClientRect().height); return { minW: Math.min(...ds.map(r => r.width)), head: Math.round(top.height), cd: Math.min(...cds), sw: document.documentElement.scrollWidth }; });
+    const hd = await cev(() => { const ds = [...document.querySelectorAll('#wkbar .w')].map(e => e.getBoundingClientRect()); const top = document.querySelector('header.top').getBoundingClientRect(); const cds = [...document.querySelectorAll('.cal-inline button.cd')].map(b => b.getBoundingClientRect().height); return { minW: Math.min(...ds.map(r => r.width)), head: Math.round(top.height), cd: Math.min(...cds), sw: (document.getElementById('page')||document.documentElement).scrollWidth }; });
     ok((w < 375 || hd.minW >= 44) && hd.head <= 53 && hd.cd >= 44 && hd.sw <= w, `${w} px: header back to its old height, days 44 px wide, month days 44 px tall, no sideways scroll`, hd);
   }
   await cev(() => { const L = window.__ironlog; L.ui.wkView = 'week'; L.render(); });
   await cev(() => { window.__ironlog.ACT.calOpen(); }); await C.page.waitForTimeout(80);
-  ok(await cev(() => document.documentElement.scrollWidth <= 390 && [...document.querySelectorAll('#modal button.cd')].every(b => b.getBoundingClientRect().height >= 44)), 'calendar days are 44 px tall and fit at 320 px');
+  ok(await cev(() => (document.getElementById('page')||document.documentElement).scrollWidth <= 390 && [...document.querySelectorAll('#modal button.cd')].every(b => b.getBoundingClientRect().height >= 44)), 'calendar days are 44 px tall and fit at 320 px');
   ok(!C.errors.length, 'no page errors in the calendar (' + C.errors.join(' | ') + ')');
   await C.ctx.close();
 

@@ -62,7 +62,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   ok(await ev(() => !!document.querySelector('#bm3d canvas')), '3D is remembered after a relaunch');
   // Small phone.
   await page.setViewportSize({ width: 320, height: 640 }); await ev(() => window.__ironlog.render()); await page.waitForTimeout(300);
-  ok(await ev(() => document.documentElement.scrollWidth <= window.innerWidth), 'no sideways scrolling at 320 px');
+  ok(await ev(() => (document.getElementById('page')||document.documentElement).scrollWidth <= window.innerWidth), 'no sideways scrolling at 320 px');
   ok(await ev(() => [...document.querySelectorAll('#bm3d .chip,[data-act="mapView"]')].every(b => b.getBoundingClientRect().height >= 40)), 'turn and view buttons are thumb-sized');
   ok(errors.length === 0, 'no console errors', errors);
   await browser.close();

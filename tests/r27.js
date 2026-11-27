@@ -84,15 +84,18 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     await ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); L.ACT.pickToday && L.ACT.pickToday(); });
     await wait(80);
     const hasRank = await ev(() => !!document.querySelector('#modal .hastip'));
-    if (hasRank) { await page.click('#modal .hastip'); await wait(60); }
-    ok(hasRank && await ev(() => { const t = document.getElementById('tip'); return !t.hidden && /Ranked by/.test(t.textContent); }), 'dotted text shows its explanation on a tap');
+    // Brought into view before the tap, as a lifter sees it: a tip hides when anything under it scrolls (2.78.1, the
+    // frame), and Playwright's own scroll into view at the click could land after the tip showed.
+    if (hasRank) { await page.locator('#modal .hastip').scrollIntoViewIfNeeded(); await wait(200); await page.click('#modal .hastip'); await wait(60); }
+    const tipNow = await ev(() => { const t = document.getElementById('tip'); return { hidden: t.hidden, text: t.textContent.slice(0, 80) }; });
+    ok(hasRank && !tipNow.hidden && /Ranked by/.test(tipNow.text), 'dotted text shows its explanation on a tap', { hasRank, tipNow });
     await ev(() => window.__ironlog.ACT.mClose());
 
     // ---- Sections: every one on every tab folds and has a handle; moving keeps the order after a reload.
     // A cardio entry and a deleted session, so History shows all three of its sections.
     await ev(() => { const L = window.__ironlog; const st = L.state; st.cardio.push({ id: 'c1', date: '2026-09-29', min: 20, kind: 'walk' }); const s0 = st.sessions[0]; st.trash.push({ id: s0.id, kind: 'session', date: '2026-09-29', data: JSON.parse(JSON.stringify(s0)) }); st.sessions = st.sessions.filter(x => x.id !== s0.id); L.state = L.normalize(st); L.invalidate(); L.saveNow(); });
     for (const t of ['today', 'program', 'dash', 'history', 'settings']) {
-      await ev(t => { const L = window.__ironlog; L.ui.tab = t; L.render(); window.scrollTo(0, 0); }, t); await wait(60);
+      await ev(t => { const L = window.__ironlog; L.ui.tab = t; L.render(); (document.getElementById('page')||document.documentElement).scrollTo(0, 0); }, t); await wait(60);
       const keys = await ev(() => [...document.querySelectorAll('#view > [data-mkey]')].map(e => e.dataset.mkey));
       const bad = [];
       for (const k of keys) {
@@ -142,7 +145,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     // ---- 320 px: the menu fits.
     await page.setViewportSize({ width: 320, height: 640 });
     await ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); }); await page.click('#saveState'); await wait(80);
-    ok(await ev(() => document.documentElement.scrollWidth <= 320 && [...document.querySelectorAll('#modal .mnu')].every(b => b.getBoundingClientRect().right <= 320)), 'at 320 px the menu fits with no sideways scroll');
+    ok(await ev(() => (document.getElementById('page')||document.documentElement).scrollWidth <= 320 && [...document.querySelectorAll('#modal .mnu')].every(b => b.getBoundingClientRect().right <= 320)), 'at 320 px the menu fits with no sideways scroll');
     ok(!P.errors.length, 'no page errors (' + P.errors.join(' | ') + ')');
     await P.browser.close();
   }

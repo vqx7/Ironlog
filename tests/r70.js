@@ -178,7 +178,7 @@ const routine = n => ({ id: 'Rb', name: 'Chest', schedule: 'weekly', days: [{ id
       const want = rows.map(x => { const t = latest(x.id); return t ? { w: t.w, r: +t.r } : null; });
       const sub = sec.querySelector('.sec-s').textContent;
       const hidden = L.state.settings.hidden.includes('today:moving');
-      return { sec: true, rows, mv, want, sub, first: document.querySelector('#view details.sec').dataset.sk, hidden, wide: document.documentElement.scrollWidth };
+      return { sec: true, rows, mv, want, sub, first: document.querySelector('#view details.sec').dataset.sk, hidden, wide: (document.getElementById('page')||document.documentElement).scrollWidth };
     });
     ok(r.sec && r.rows.length === Math.min(3, r.mv.length) && r.rows.every((x, i) => x.id === r.mv[i]), '4. 364 b-2: Today shows Lifts moving, the lifts Stats\'s summary and the coach call rising, in their order, three at most (r69: no section)', r);
     if (r.sec) {
@@ -198,7 +198,7 @@ const routine = n => ({ id: 'Rb', name: 'Chest', schedule: 'weekly', days: [{ id
       ok(kept === 'today:moving', '4. on a phone with its own saved order, Lifts moving comes first', kept);
       // At 320 px, light: no sideways scroll.
       await pg.setViewportSize({ width: 320, height: 700 });
-      const w320 = await pg.evaluate(() => { const L = window.__ironlog; L.state.settings.theme = 'light'; L.render(); return document.documentElement.scrollWidth; });
+      const w320 = await pg.evaluate(() => { const L = window.__ironlog; L.state.settings.theme = 'light'; L.render(); return (document.getElementById('page')||document.documentElement).scrollWidth; });
       ok(w320 <= 320, '4. no sideways scroll at 320 px', w320);
     }
     // R70-3, the review of r70: a lift on a heavy day (3-5) and a light day (8-12), both rising. Its line is the trend's own
@@ -411,13 +411,13 @@ const routine = n => ({ id: 'Rb', name: 'Chest', schedule: 'weekly', days: [{ id
     // Holds a finger on the first exercise's handle, the page at its top, moves it to y and keeps it there 1.6 s: how
     // far the page scrolled. Driven as tests/r29.js drives its edge check, which a touch drag runs on in both browsers.
     const hold = async (pg, tp, y) => {
-      await pg.evaluate(() => window.scrollTo(0, 0)); await wait(100);
+      await pg.evaluate(() => (document.getElementById('page')||document.documentElement).scrollTo(0, 0)); await wait(100);
       const gb = await pg.locator('.bgrip[data-b="0"]').boundingBox(); const x0 = gb.x + gb.width / 2, y0 = gb.y + gb.height / 2;
-      const sy0 = await pg.evaluate(() => window.scrollY);
+      const sy0 = await pg.evaluate(() => (document.getElementById('page')||document.documentElement).scrollTop);
       await tp('touchStart', x0, y0); await wait(60);
       for (let k = 1; k <= 10; k++) { await tp('touchMove', x0, y0 + (y - y0) * k / 10); await wait(30); }
       for (let k = 0; k < 40; k++) { await tp('touchMove', x0, y + (k % 2)); await wait(40); }
-      const sy1 = await pg.evaluate(() => window.scrollY);
+      const sy1 = await pg.evaluate(() => (document.getElementById('page')||document.documentElement).scrollTop);
       await tp('touchEnd', x0, y); await wait(400);
       return sy1 - sy0;
     };
@@ -439,9 +439,9 @@ const routine = n => ({ id: 'Rb', name: 'Chest', schedule: 'weekly', days: [{ id
       const T = await session({ notch: true });
       const pg = T.page;
       await pg.evaluate(() => { const e = document.querySelector('[data-act="sDone"][data-b="1"][data-s="0"]'); e.scrollIntoView({ block: 'center' }); }); await wait(200);
-      const sy0 = await pg.evaluate(() => window.scrollY);
+      const sy0 = await pg.evaluate(() => (document.getElementById('page')||document.documentElement).scrollTop);
       await pg.tap('[data-act="sDone"][data-b="1"][data-s="0"]'); await wait(900);
-      const r = await pg.evaluate(() => { const st = document.querySelector('.rirstrip'), h = document.querySelector('header.top'), t = document.getElementById('timer'); if (!st) return null; const a = st.getBoundingClientRect(); return { top: Math.round(a.top), bottom: Math.round(a.bottom), head: Math.round(h.getBoundingClientRect().bottom), ring: !t.hidden ? Math.round(t.getBoundingClientRect().top) : null, tabs: Math.round(document.getElementById('tabs').getBoundingClientRect().top), sy: Math.round(window.scrollY) }; });
+      const r = await pg.evaluate(() => { const st = document.querySelector('.rirstrip'), h = document.querySelector('header.top'), t = document.getElementById('timer'); if (!st) return null; const a = st.getBoundingClientRect(); return { top: Math.round(a.top), bottom: Math.round(a.bottom), head: Math.round(h.getBoundingClientRect().bottom), ring: !t.hidden ? Math.round(t.getBoundingClientRect().top) : null, tabs: Math.round(document.getElementById('tabs').getBoundingClientRect().top), sy: Math.round((document.getElementById('page')||document.documentElement).scrollTop) }; });
       ok(r && r.ring !== null && r.top >= r.head && r.bottom <= r.tabs && r.bottom <= r.ring, '11. NEW-58: on a phone with a notch, a tick\'s effort strip stays below the top bar and above the tabs and the rest timer', { r, sy0 });
       ok(!T.errors.length, '11. no page errors (notch)', T.errors);
       await T.browser.close();

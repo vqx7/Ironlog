@@ -10,6 +10,7 @@ import { moveBlock } from './worksets';
 import { rerenderKeepScroll } from './page';
 import { toast } from './toast';
 import { bottomBarsTop } from './timer';
+import { pageBy, pageMost, pageTo, pageY } from './frame';
 
 /** Dragging an exercise: the band at the top and bottom of the screen that scrolls it, how fast at the edge, the fastest step, in pixels a frame, and the slide of the others. */
 const DRAG = { edgePx: 56, speedPx: 14, maxPx: 20, animMs: 150 } as const;
@@ -47,7 +48,7 @@ const edgeScroll = ((): { start(): void; stop(): void } => {
       let v = 0;
       if (y < top + edge) v = -Math.ceil(((top + edge - y) / edge) * DRAG.speedPx);
       else if (y > bot - edge) v = Math.ceil(((y - (bot - edge)) / edge) * DRAG.speedPx);
-      if (v) window.scrollBy(0, Math.max(-DRAG.maxPx, Math.min(DRAG.maxPx, v)));
+      if (v) pageBy(Math.max(-DRAG.maxPx, Math.min(DRAG.maxPx, v)));
     }
     raf = requestAnimationFrame(step);
   };
@@ -89,7 +90,7 @@ function dragOpenUp(it: Element): void {
   if (v) v.style.paddingBottom = '';
   if (t0 != null) {
     const t1 = it.getBoundingClientRect().top;
-    if (t1 !== t0) window.scrollBy(0, t1 - t0);
+    if (t1 !== t0) pageBy(t1 - t0);
   }
 }
 
@@ -130,11 +131,10 @@ export function mountBlockDrag(): { destroy(): void } | null {
       const it = e.item,
         t0 = it.getBoundingClientRect().top;
       document.body.classList.add('blkdrag');
-      const se = document.scrollingElement;
-      const want = window.scrollY + it.getBoundingClientRect().top - t0,
-        room = want - ((se ? se.scrollHeight : 0) - window.innerHeight);
+      const want = pageY() + it.getBoundingClientRect().top - t0,
+        room = want - pageMost();
       if (room > 0) v.style.paddingBottom = Math.ceil(room) + 'px';
-      window.scrollTo(0, want);
+      pageTo(want);
       edgeScroll.start();
     },
     onEnd: (e: SortableEnd) => {

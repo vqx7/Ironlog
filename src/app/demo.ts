@@ -30,6 +30,7 @@ import { toast } from './toast';
 import { parkSettle } from './park';
 import { fitTargets } from './targets';
 import type { Tap } from './workstate';
+import { pageTo } from './frame';
 
 /* Working loads in lb near the end of the 8 weeks, for an intermediate
    lifter of 185 lb. Dumbbells are per dumbbell; bodyweight lifts are added load. */
@@ -333,7 +334,7 @@ export const DEMO_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
           makeDemo();
         });
         ui.tab = 'dash';
-        window.scrollTo(0, 0);
+        pageTo(0);
         render();
         toast('Demo data loaded');
       }

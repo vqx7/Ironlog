@@ -111,7 +111,7 @@ const PW = 'correct horse 45';
   // ---- 5. At 320 px: on screen, 44 px targets, no sideways scroll.
   const F = await device(320);
   await signUp(F, 'f@x.test');
-  const lay = await F.ev(() => { const r = s => document.querySelector(s).getBoundingClientRect(); return { over: document.documentElement.scrollWidth > innerWidth, code: Math.round(r('#modal [data-abind="code"]').height), btn: Math.round(r('#modal [data-act="acctCode"]').height), link: Math.round(r('#modal [data-act="acctResend"]').height), inp: document.querySelector('#modal [data-abind="code"]').getAttribute('autocomplete') + '/' + document.querySelector('#modal [data-abind="code"]').getAttribute('inputmode') }; });
+  const lay = await F.ev(() => { const r = s => document.querySelector(s).getBoundingClientRect(); return { over: (document.getElementById('page')||document.documentElement).scrollWidth > innerWidth, code: Math.round(r('#modal [data-abind="code"]').height), btn: Math.round(r('#modal [data-act="acctCode"]').height), link: Math.round(r('#modal [data-act="acctResend"]').height), inp: document.querySelector('#modal [data-abind="code"]').getAttribute('autocomplete') + '/' + document.querySelector('#modal [data-abind="code"]').getAttribute('inputmode') }; });
   ok(!lay.over && lay.code >= 44 && lay.btn >= 44 && lay.link >= 44 && lay.inp === 'one-time-code/numeric', '320 px: the field, the button and the link are 44 px, the phone offers the code from the email, nothing scrolls sideways', lay);
   await F.ctx.close();
 
@@ -194,30 +194,37 @@ const PW = 'correct horse 45';
     const A = await open('index.html', { browser, clock: '2026-10-13T10:00:00', setup: cloudSetup });
     const B = await open('index.html', { browser, clock: '2026-10-13T10:00:00', setup: cloudSetup });
     await wait(800);
-    const toastOf = P => P.page.evaluate(() => { const t = document.getElementById('toast'); return t ? t.innerText : ''; });
+    // What A said since a step began, every message in turn: news about the log is never lost, so a message raised
+    // while earlier news is still unread is said after it (2.78.1), and is read here wherever it falls.
+    await A.page.evaluate(() => { const t = document.getElementById('toast'); window.__said = []; new MutationObserver(() => { const x = t.hidden ? '' : t.innerText; if (x && window.__said[window.__said.length - 1] !== x) window.__said.push(x); }).observe(t, { childList: true, subtree: true, attributes: true, characterData: true }); });
+    const mark = P => P.page.evaluate(() => window.__said.length);
+    const saidSince = async (P, n) => { await wait(3500); return (await P.page.evaluate(() => window.__said)).slice(n).join(' | '); };
     const startOnA = async () => { await A.page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.ui.tab = 'today'; L.render(); document.querySelector('[data-act="startSession"]').click(); }); await wait(100);
       await A.page.evaluate(() => window.__ironlog.flush()); await wait(300); await B.page.evaluate(() => window.__ironlog.sync()); await wait(500); };
+    let m0 = await mark(A);
     await startOnA();
     const onB = await B.page.evaluate(() => !!window.__ironlog.state.draft);
     await B.page.evaluate(() => { window.__ironlog.ACT.discard(); }); await wait(100);
     await B.page.evaluate(() => window.__ironlog.flush()); await wait(300);
     await A.page.evaluate(() => window.__ironlog.sync()); await wait(500);
-    const t1 = await toastOf(A); const gone = await A.page.evaluate(() => window.__ironlog.state.draft === null);
+    const t1 = await saidSince(A, m0); const gone = await A.page.evaluate(() => window.__ironlog.state.draft === null);
     // r46: "discarded" was a guess (a finished workout whose session document had not arrived read the same), so this says closed, which is true either way.
     ok(onB && gone && /closed on another device/.test(t1) && !/discarded/.test(t1), 'a session in progress closed on the other phone: this one says so, without guessing whether it was saved', { onB, gone, t1 });
+    m0 = await mark(A);
     await startOnA();
     await B.page.evaluate(() => { const L = window.__ironlog; const d = L.state.draft; d.ex[0].sets[0].r = 8; d.ex[0].sets[0].w = 50; d.ex[0].sets[0].done = true; d._rampAsked = true; d._leftAsked = true; L.ACT.finishNow(); }); await wait(300);
     await B.page.evaluate(() => window.__ironlog.flush()); await wait(300);
     await A.page.evaluate(() => window.__ironlog.sync()); await wait(500);
-    const t2 = await toastOf(A);
+    const t2 = await saidSince(A, m0);
     ok(/saved on another device/.test(t2), 'finished on the other phone: this one says it was saved there', t2);
+    m0 = await mark(A);
     // An edit from History closed on the other phone is not called saved (r45 review: the session always exists).
     await A.page.evaluate(() => { const L = window.__ironlog; L.ui.tab = 'history'; L.render(); L.ACT.histEdit({ dataset: { id: L.state.sessions[L.state.sessions.length - 1].id } }); }); await wait(100);
     await A.page.evaluate(() => window.__ironlog.flush()); await wait(300); await B.page.evaluate(() => window.__ironlog.sync()); await wait(500);
     const hadEdit = await B.page.evaluate(() => { const L = window.__ironlog; const e = !!(L.state.draft && L.state.draft.editingId); L.state.draft = null; L.saveNow(); return e; }); await wait(100); // what Discard's confirm does
     await B.page.evaluate(() => window.__ironlog.flush()); await wait(300);
     await A.page.evaluate(() => window.__ironlog.sync()); await wait(500);
-    const t3 = await toastOf(A);
+    const t3 = await saidSince(A, m0);
     ok(hadEdit && /edit in progress was closed on another device/.test(t3) && !/saved on another/.test(t3), 'an edit closed on the other phone says so, not saved', t3);
     ok(!A.errors.length && !B.errors.length, 'no page errors (two phones)', [...A.errors, ...B.errors]);
     await A.ctx.close(); await B.ctx.close();

@@ -312,7 +312,18 @@
    which the rule above cannot reach, so padded inputs stuck out of their card. */
 details>*{box-sizing:border-box}
 input[type=file]{max-width:100%;width:100%;font-size:14px}
-html{scroll-padding-top:env(safe-area-inset-top,0px);-webkit-text-size-adjust:100%;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+/* The screen frame. The document never scrolls: the page scrolls inside #page, and the bars along the bottom (the tab
+   bar, the rest timer) and the toast sit over a document that stays where it is. iPhones misplace bars pinned to the
+   screen when the document under them scrolls, in more than one way across iOS versions (one after a keyboard or a
+   picker closes: the tab bar halfway up History). With nothing scrolling under them there is nothing to misplace;
+   frame.ts puts the document back if iOS moves it to show a field above the keyboard. */
+html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+/* The frame begins under the status bar (the root's top padding), so nothing inside it adds the status bar's height:
+   no scroll padding, the bars that stick at its top stick at 0. An element's own scroll margin lands it where it
+   landed while the document scrolled under the status bar. */
+#page{height:100%;overflow-x:hidden;overflow-y:auto;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch}
+body.modal-open #page{overflow-y:hidden}
 /* An app, not a web page (r65.2, PENDING 369): a double tap is a tap, never a zoom (pinch stays, which iOS keeps
    for accessibility whatever a page says); a long press on the app's own words selects nothing and opens no Copy
    and Look Up menu; a tap leaves no grey flash, a button's :active shrink being its feedback. What the lifter
@@ -328,10 +339,10 @@ input,textarea,select,[contenteditable]{-webkit-user-select:text;user-select:tex
    780 px) is shorter than every current iPhone and Today (about 860 to 920)
    than the larger ones, while Stats, History and Settings are taller; Plan
    comes before those three in the bar, so the short viewport may begin on
-   Plan and carry over. That is a reading, not a proof (PENDING 303). In the installed
-   app no page is shorter than the screen now, and none is taller for it:
-   100lvh caps it where iOS has no such bug. Browsers without lvh drop it. */
-@media (display-mode:standalone){html{min-height:min(100lvh,calc(100% + env(safe-area-inset-top,0px)))}}
+   Plan and carry over. In the installed app the document is never shorter
+   than the screen: 100lvh caps it where iOS has no such bug. Browsers without
+   lvh keep 100%. */
+@media (display-mode:standalone){html{height:min(100lvh,calc(100% + env(safe-area-inset-top,0px)))}}
 body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.45 var(--font);-webkit-font-smoothing:antialiased;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 button,input,select,textarea{font:inherit;color:inherit}
 h1,h2,h3{font-family:var(--display);font-weight:700;line-height:1.02;margin:0;text-wrap:balance;letter-spacing:.01em}
@@ -978,7 +989,7 @@ table.t td.r,table.t th.r{text-align:right}
 table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .subsec table.t .stick-r{background:var(--surface)}
 .scroll-x{overflow-x:auto}
-.jump{position:sticky;top:env(safe-area-inset-top,0px);z-index:15;display:flex;gap:6px;overflow-x:auto;padding:8px 16px;margin:0 -16px;background:var(--glass);-webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.jump{position:sticky;top:0;z-index:15;display:flex;gap:6px;overflow-x:auto;padding:8px 16px;margin:0 -16px;background:var(--glass);-webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .jump::-webkit-scrollbar{display:none}
 .jump .chip{flex:none;min-height:32px;font-size:13px}
 .sec[id^="sec-"]{scroll-margin-top:calc(56px + env(safe-area-inset-top,0px))}
@@ -1234,7 +1245,6 @@ table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .eqsw{list-style:none;margin:8px 0 0;padding:0}
 .eqsw li{padding:6px 0;border-bottom:1px solid var(--line-soft);font-size:14.5px}
 .eqsw li:last-child{border-bottom:0}
-body.modal-open{overflow:hidden}
 /* Tips: the longer word on a control, shown on hover, keyboard focus, or a
    press-and-hold on touch, so the screen itself stays short. */
 #tip{position:fixed;z-index:80;max-width:min(300px,calc(100vw - 24px));background:var(--ink);color:var(--on-ink);font:500 13.5px/1.4 var(--font);padding:9px 11px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.25);pointer-events:none;white-space:normal;text-align:left;text-transform:none;letter-spacing:0}
@@ -1290,7 +1300,7 @@ details.more>summary .small{display:block;font-weight:400}
    version is noticed without covering anything. Since 2.52 the top bar scrolls
    away, so it stays at the top of the screen, as it did on the first-run pages,
    which hide the bar (r55: 52 px down there, it sat over Set up's back link). */
-#updbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:19;display:flex;align-items:center;gap:8px;padding:6px 16px;background:var(--glass);-webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);border-bottom:1px solid var(--line-soft)}
+#updbar{position:sticky;top:0;z-index:19;display:flex;align-items:center;gap:8px;padding:6px 16px;background:var(--glass);-webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);border-bottom:1px solid var(--line-soft)}
 #updbar[hidden]{display:none}
 .acctbar+.acctbar{margin-top:-6px}
 /* On a phone each line keeps its bold half and its button (item 62). */

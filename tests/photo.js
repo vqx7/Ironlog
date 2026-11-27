@@ -123,7 +123,7 @@ const imgOf = (page, sel) => page.evaluate(sel => new Promise(res => {
     await N.page.click('#saveState'); await wait(200);
     await N.page.setInputFiles('#modal #menuPhoto input[data-photo]', await pngFile(N.page, 600, 600)); await photoIn(N.page); await wait(150);
     await N.page.click('#modal #menuPhoto'); await wait(250);
-    const t = await N.page.evaluate(() => ({ wide: document.documentElement.scrollWidth > window.innerWidth, sheetWide: (s => s.scrollWidth > s.clientWidth + 1)(document.querySelector('#modal .sheet')), sizes: [...document.querySelectorAll('#modal .sheet .row .btn, #modal .sheet .sheet-h [aria-label="Close"]')].map(b => { const r = b.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; }) }));
+    const t = await N.page.evaluate(() => ({ wide: (document.getElementById('page')||document.documentElement).scrollWidth > window.innerWidth, sheetWide: (s => s.scrollWidth > s.clientWidth + 1)(document.querySelector('#modal .sheet')), sizes: [...document.querySelectorAll('#modal .sheet .row .btn, #modal .sheet .sheet-h [aria-label="Close"]')].map(b => { const r = b.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; }) }));
     ok(!t.wide && !t.sheetWide && t.sizes.length === 4 && t.sizes.every(([w, h]) => w >= 44 && h >= 44), '2. at 320 px its buttons are 44 px targets and nothing scrolls sideways', t);
     ok(!N.errors.length, '2. no page errors at 320 px', N.errors);
     await N.browser.close();
@@ -144,7 +144,9 @@ const imgOf = (page, sel) => page.evaluate(sel => new Promise(res => {
     for (const edge of [512, 256]) {
       const D = await withPhoto(edge);
       const shown = await photoIn(D.page);
-      const first = await said(D.page, 4000);
+      // Long enough for it to be read (shown 1.5 s in, read 4 s later): a note is marked said only once read, so one
+      // closed before then is said again (REV33-4, messages.js 6).
+      const first = await said(D.page, 6500);
       ok(shown && first.includes(TIP), `3. a photo kept at ${edge} px, shown in the menu: the app says once to pick it again, with the button to use`, { shown, said: first });
       await withPhoto(0, D); await photoIn(D.page);
       const again = await said(D.page, 3500);

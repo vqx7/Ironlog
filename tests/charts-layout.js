@@ -107,15 +107,15 @@ for(const w of [320,375,390,430,768]){
   await ev(()=>{const L=window.__ironlog;L.state.settings.onboarded=true;L.state.settings.hidden=[];L.makeDemo();L.render();});
   for(const t of ['today','program','dash','history','settings']){
     await ev(t=>{const L=window.__ironlog;L.ui.tab=t;L.render();document.querySelectorAll('details').forEach(d=>d.open=true);},t);await page.waitForTimeout(60);
-    const o=await ev(()=>({sw:document.documentElement.scrollWidth,iw:window.innerWidth,hb:document.querySelector('.top').getBoundingClientRect().height,cells:[...document.querySelectorAll('#wkbar .w')].map(c=>c.getBoundingClientRect()).every(r=>r.width>=18),ss:document.querySelector('#saveState').getBoundingClientRect().right<=window.innerWidth}));
+    const o=await ev(()=>({sw:(document.getElementById('page')||document.documentElement).scrollWidth,iw:window.innerWidth,hb:document.querySelector('.top').getBoundingClientRect().height,cells:[...document.querySelectorAll('#wkbar .w')].map(c=>c.getBoundingClientRect()).every(r=>r.width>=18),ss:document.querySelector('#saveState').getBoundingClientRect().right<=window.innerWidth}));
     const crash=await ev(()=>document.body.innerText.includes('Something broke'));ok(!crash,`${w}px ${t}: renders`);
     ok(o.sw<=o.iw&&o.cells&&o.ss,`${w}px ${t}: no overflow (${o.sw}/${o.iw}), header ${o.hb}px`);
   }
   // logger
   await ev(()=>{const L=window.__ironlog;L.ui.tab='today';L.render();document.querySelector('.hero [data-act="startSession"]').click();});
   await page.waitForTimeout(80);
-  const o=await ev(()=>({sw:document.documentElement.scrollWidth,iw:window.innerWidth}));ok(o.sw<=o.iw,`${w}px logger no overflow`);
-  if(w===320||w===375||w===768){await ev(()=>window.scrollTo(0,0));await page.screenshot({path:`screenshots/n_log_${w}.png`});}
+  const o=await ev(()=>({sw:(document.getElementById('page')||document.documentElement).scrollWidth,iw:window.innerWidth}));ok(o.sw<=o.iw,`${w}px logger no overflow`);
+  if(w===320||w===375||w===768){await ev(()=>(document.getElementById('page')||document.documentElement).scrollTo(0, 0));await page.screenshot({path:`screenshots/n_log_${w}.png`});}
   ok(!errors.length,`${w}: no console errors `+errors.join('|'));
   await ctx.close();
 }

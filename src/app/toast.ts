@@ -16,10 +16,18 @@
        sync's notes only the last).
      - News about the log from storage and sync (kind 'notice', which
        main.ts gives every message storage and sync raise) is never lost:
-       one raised while a tap's message shows waits for it, and one covered
-       by a tap's message before NOTICE_READ_MS comes back once that message
-       has gone. A tap's message is never held back: it answers what the
-       lifter just did. */
+       news raised while a tap's message, other news not yet read, or a sheet
+       shows waits its turn, and news covered by a tap's message or a sheet
+       before NOTICE_READ_MS comes back once that has gone. A sheet is the
+       lifter busy with something else, so news never shows over it. A tap's
+       message is never held back: it answers what the lifter just did, a
+       tap in a sheet included.
+     - A note the app says once on its own (noteOnce) waits for a calm
+       moment: no message and no sheet showing. A sheet opening over it
+       sends it away, not to come back over the next screen; a note whose
+       occasion has passed before a calm moment came goes unsaid. Either way
+       it is counted as said only once read, so it is said another time,
+       on a later visit too. */
 
 import { nameLastStep } from './act';
 
@@ -33,16 +41,19 @@ function stayMs(msg: string, ms: number): number {
 /** How long news about the log must have shown before a tap's message may cover it for good (milliseconds). */
 const NOTICE_READ_MS = 4000;
 
-/** The message showing: its parts, whether one offers Undo, whether one marks a record or is news, when it showed, and how long it stays. */
+/** The message showing: its parts, whether one offers Undo, whether one marks a record, is news or a note said once, when it showed, and how long it stays. */
 interface Showing {
   parts: string[];
   undo: boolean;
   pr: boolean;
   notice: boolean;
+  once: boolean;
   at: number;
   ms: number;
 }
-/** A message waiting its turn: news about the log, held while a tap's message shows. */
+/** How often a note said once looks again for a calm moment, in milliseconds. */
+const CALM_MS = 500;
+/** A message waiting its turn: news about the log, held while a tap's message, unread news or a sheet shows. */
 interface Waiting {
   msg: string;
   ms: number;
@@ -66,6 +77,11 @@ function openTask(): void {
   }, 0);
 }
 const box = (): HTMLElement | null => document.getElementById('toast');
+// A sheet open over the page.
+const sheetOpen = (): boolean => {
+  const m = document.getElementById('modal');
+  return !!m && !m.hidden;
+};
 const now = (): number => performance.now();
 
 /* A touch, click or key is the lifter moving on: the next message starts its own, rather than joining the last.
@@ -78,6 +94,32 @@ function watchTaps(): void {
   };
   for (const t of ['pointerdown', 'keydown', 'touchstart'])
     document.addEventListener(t, moved, { capture: true, passive: true });
+  // A sheet opening sends news showing back to wait; one closing lets the news waiting show.
+  const m = document.getElementById('modal');
+  if (m) new MutationObserver(sheetMoved).observe(m, { attributes: true, attributeFilter: ['hidden'] });
+}
+
+/* News showing when a sheet opens goes, and comes back after it unless it was read; when the sheet closes, the news
+   waiting shows. */
+function sheetMoved(): void {
+  const el = box();
+  if (!el) return;
+  if (!sheetOpen()) {
+    if (el.hidden) next(el);
+    return;
+  }
+  if (el.hidden || !cur || cur.undo || !(cur.notice || cur.once)) return;
+  if (cur.notice && now() - cur.at < NOTICE_READ_MS) backToWait(cur);
+  clearTimeout(toastT);
+  el.hidden = true;
+  cur = null;
+}
+
+// News covered before it was read waits again, first in line, for the time it had left.
+function backToWait(c: Showing): void {
+  const left = joined(c.parts);
+  if (!waiting.some(w => w.msg === left))
+    waiting.unshift({ msg: left, ms: Math.max(TOAST_MS.plain, c.ms - (now() - c.at)) });
 }
 
 /* A part ends with a full stop when another follows it, so a message joined from two or more parts reads as
@@ -103,6 +145,8 @@ function draw(el: HTMLElement): void {
     parts.push(b);
   }
   el.replaceChildren(...parts);
+  // Whose message it is, read by the suites: the lifter's tap, news about the log, or a note the app says once.
+  el.dataset.by = c.notice ? 'news' : c.once ? 'note' : 'tap';
   el.hidden = false;
   clearTimeout(toastT);
   toastT = setTimeout(() => gone(el), Math.max(0, c.at + c.ms - now()));
@@ -115,11 +159,12 @@ function gone(el: HTMLElement): void {
   next(el);
 }
 
-/** Shows the next news waiting, if any. */
+/** Shows the next news waiting, if any and no sheet is open. */
 function next(el: HTMLElement): void {
+  if (sheetOpen()) return;
   const w = waiting.shift();
   if (!w) return;
-  cur = { parts: [w.msg], undo: false, pr: false, notice: true, at: now(), ms: w.ms };
+  cur = { parts: [w.msg], undo: false, pr: false, notice: true, once: false, at: now(), ms: w.ms };
   tapSince = false;
   draw(el);
 }
@@ -147,21 +192,61 @@ export function toast(msg: string, undo?: boolean | null, ms?: number | null, ki
     draw(el);
     return;
   }
-  // News while a tap's message shows: it waits for its turn.
-  if (notice && showing && !showing.notice) {
-    if (!waiting.some(w => w.msg === msg)) waiting.push({ msg, ms: len });
+  // News while a tap's message, news not yet read, or a sheet shows: it waits for its turn.
+  if (notice && (sheetOpen() || (showing && (!showing.notice || t - showing.at < NOTICE_READ_MS)))) {
+    // The same news showing or in line already is said once.
+    if (!waiting.some(w => w.msg === msg) && !(showing && showing.notice && showing.parts.includes(msg)))
+      waiting.push({ msg, ms: len });
     return;
   }
   // A tap's message over news not yet read: the news comes back after it.
-  if (!notice && showing && showing.notice && t - showing.at < NOTICE_READ_MS) {
-    const left = joined(showing.parts);
-    if (!waiting.some(w => w.msg === left))
-      waiting.unshift({ msg: left, ms: Math.max(TOAST_MS.plain, showing.ms - (t - showing.at)) });
-  }
-  cur = { parts: [msg], undo: !!undo, pr: kind === 'pr', notice, at: t, ms: len };
+  if (!notice && showing && showing.notice && t - showing.at < NOTICE_READ_MS) backToWait(showing);
+  cur = { parts: [msg], undo: !!undo, pr: kind === 'pr', notice, once: kind === 'once', at: t, ms: len };
   tapSince = false;
   openTask();
   draw(el);
+}
+
+/** The notes said once that wait for a calm moment or are showing: one is never in line twice. */
+const onceLine = new Set<string>();
+/** Says a note the app tells once, at a calm moment (no message and no sheet showing), for `ms`. `read` hears whether it
+    was read: true once it was still showing NOTICE_READ_MS after it showed, false if a sheet or a message covered it
+    first, or if `still` says, before a calm moment came, that what it is about has passed (the rest it is about over).
+    The caller marks a note said only on true, so a note not read, or waiting when the app closes, is still due. */
+export function noteOnce(
+  msg: string,
+  ms: number,
+  read: (seen: boolean) => void,
+  still: () => boolean = () => true
+): void {
+  const el = box();
+  if (!el || onceLine.has(msg)) return;
+  onceLine.add(msg);
+  const done = (seen: boolean): void => {
+    onceLine.delete(msg);
+    read(seen);
+  };
+  const look = (): void => {
+    if (!still()) {
+      done(false);
+      return;
+    }
+    if (!el.hidden || sheetOpen()) {
+      setTimeout(look, CALM_MS);
+      return;
+    }
+    toast(msg, false, ms, 'once');
+    setTimeout(() => done(!el.hidden && !!cur && cur.parts.includes(msg)), NOTICE_READ_MS);
+  };
+  look();
+}
+
+/** The message showing and the news waiting its turn, in the order they show: what the lifter sees now and is still
+    to be told, read by the suites (news is never lost, so a check reads it wherever it falls in line). */
+export function toastPending(): string[] {
+  const el = box();
+  const now = el && !el.hidden && cur ? [joined(cur.parts)] : [];
+  return [...now, ...waiting.map(w => w.msg)];
 }
 
 /* A note with nothing to undo goes when a session starts: the

@@ -47,7 +47,7 @@ await page.fill('[data-f="w"][data-b="1"][data-s="0"]','500');await page.locator
 const toast=await ev(()=>document.getElementById('toast').hidden?'':document.getElementById('toast').innerText);
 ok(/well above last time/.test(toast)&&/logged as/.test(toast),'far-off load prompts a units check',toast);
 // long press on a tip button: tip shows, action does not fire
-await ev(()=>window.scrollTo(0,0));
+await ev(()=>(document.getElementById('page')||document.documentElement).scrollTo(0, 0));
 const lp=await ev(async()=>{const btn=document.querySelector('[data-act="sAdd"][data-b="0"]');const n0=window.__ironlog.state.draft.ex[0].sets.length;const r=btn.getBoundingClientRect();const o={bubbles:true,cancelable:true,pointerType:'touch',clientX:r.x+5,clientY:r.y+5,pointerId:7,isPrimary:true};
   btn.dispatchEvent(new PointerEvent('pointerdown',o));await new Promise(r=>setTimeout(r,650));const shown=!document.getElementById('tip').hidden&&document.getElementById('tip').innerText;
   btn.dispatchEvent(new PointerEvent('pointerup',o));btn.click();await new Promise(r=>setTimeout(r,50));

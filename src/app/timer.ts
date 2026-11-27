@@ -6,10 +6,10 @@ import { html, render } from 'lit-html';
 import { pad, r1, PERCENT } from './util';
 import { KEY, log, prefDel, prefGet, prefSet } from './storage';
 import { state } from './store';
-import { toast } from './toast';
+import { noteOnce, toast } from './toast';
 
 /** The timer's times, in milliseconds: the bar redrawn, a second, a tip waiting for the toast before it to go, and the first wait before it. */
-const TIMER_MS = { tick: 250, second: 1000, tipRetry: 500, tipFirst: 600, tipShow: 6000 } as const;
+const TIMER_MS = { tick: 250, second: 1000, tipFirst: 600, tipShow: 6000 } as const;
 /** What +15 adds, in seconds. */
 const ADD_S = 15;
 /** The beep: two tones (G5 then C6), when each starts after the first, its gain at the peak, its rise, its fall and its length, in seconds, and the quiet a gain ramps from and to. */
@@ -84,27 +84,34 @@ export function primeAudio(): void {
 }
 /* A locked phone suspends the page, so the timer cannot sound or vibrate
    until you unlock it. Said once per device, the first time a rest starts
-   with the keep-awake setting off, once no other message shows (a PR's, say). */
+   with the keep-awake setting off, at a calm moment (toast.ts noteOnce). */
 function wakeTip(): void {
   if (state.settings.wakeLock) return;
   const k = KEY + '.tipWake';
   if (prefGet(k)) return;
   // Storage that refuses the mark would say it on every rest, so it is not said at all.
   if (!prefSet(k, '1')) return;
-  const say = (): void => {
-    const el = document.getElementById('toast');
-    if (el && !el.hidden) {
-      setTimeout(say, TIMER_MS.tipRetry);
-      return;
-    }
-    toast(
-      'A locked screen holds the rest alert until you unlock. Settings can keep the screen on.',
-      false,
-      TIMER_MS.tipShow
-    );
-  };
-  setTimeout(say, TIMER_MS.tipFirst);
+  // Marked said once read: not read (covered, or the rest over before a calm moment), or the app closed while it
+  // waits, it is said at a later rest.
+  prefDel(k);
+  setTimeout(
+    () =>
+      noteOnce(
+        'A locked screen holds the rest alert until you unlock. Settings can keep the screen on.',
+        TIMER_MS.tipShow,
+        seen => {
+          if (seen) prefSet(k, '1');
+        },
+        resting
+      ),
+    TIMER_MS.tipFirst
+  );
 }
+/** Whether a rest is counting down in an open session: what the locked-screen note is about. */
+const resting = (): boolean => {
+  const el = bar();
+  return !!state.draft && !!el && !el.hidden && timer.end > Date.now();
+};
 /* The end time is kept on this device, so a phone that reloads a backgrounded
    tab mid-rest comes back to the same countdown. The rest's full length is
    kept beside it, so the bar along the top still empties from the right

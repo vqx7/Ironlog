@@ -59,7 +59,7 @@ const shown = page => page.evaluate(() => {
     days: [...sec.querySelectorAll('.wkdays .wkday')].map(e => ({ text: e.innerText.replace(/\s+/g, ' ').trim(), act: e.getAttribute('data-act'), date: e.getAttribute('data-date'), tag: e.tagName, h: e.getBoundingClientRect().height })),
     text: sec.innerText,
     band: !!q('.band'),
-    wide: document.documentElement.scrollWidth > window.innerWidth
+    wide: (document.getElementById('page')||document.documentElement).scrollWidth > window.innerWidth
   };
 });
 const tap = (page, sel) => page.evaluate(sel => { const e = document.querySelector(sel); if (e) e.click(); return !!e; }, sel);
@@ -263,7 +263,7 @@ const tap = (page, sel) => page.evaluate(sel => { const e = document.querySelect
     await page.touchscreen.tap(tabAt.x, tabAt.y); await wait(300);
     const slid = await page.evaluate(() => ({ tab: window.__ironlog.ui.tab, modal: window.__ironlog.ui.modal && window.__ironlog.ui.modal.kind }));
     ok(slid.tab === 'history' && !slid.modal, '4. a tap on the page as the calendar slides away reaches the page', slid);
-    await page.evaluate(() => { window.__ironlog.ui.tab = 'today'; window.__ironlog.render(); window.scrollTo(0, 0); }); await wait(150);
+    await page.evaluate(() => { window.__ironlog.ui.tab = 'today'; window.__ironlog.render(); (document.getElementById('page')||document.documentElement).scrollTo(0, 0); }); await wait(150);
     await drag([[box.x, box.y], [box.x, box.y + 20], [box.x, box.y + 40]], false);
     await touch('touchEnd', 0, 0); await wait(60);
     await touch('touchStart', box.x, box.y); for (let k = 1; k <= 8; k++) { await touch('touchMove', box.x, box.y + k * 15); await wait(16); }
@@ -291,7 +291,7 @@ const tap = (page, sel) => page.evaluate(sel => { const e = document.querySelect
     // Chromium, whose touches here are the browser's own input: in WebKit the suite's touches are made by the page's
     // script (tests/h.js), and a touch made so never becomes a tap in any build.
     if (ENGINE === 'chromium') {
-      await page.evaluate(() => { window.__ironlog.ui.tab = 'history'; window.__ironlog.render(); window.scrollTo(0, 0); }); await wait(100);
+      await page.evaluate(() => { window.__ironlog.ui.tab = 'history'; window.__ironlog.render(); (document.getElementById('page')||document.documentElement).scrollTo(0, 0); }); await wait(100);
       await touch('touchStart', t.x, t.y); await touch('touchMove', t.x, t.y + 2); await wait(16); await touch('touchEnd', 0, 0); await wait(300);
       const f2 = await page.evaluate(() => ({ tab: window.__ironlog.ui.tab, modal: window.__ironlog.ui.modal && window.__ironlog.ui.modal.kind }));
       ok(f2.tab === 'today' && f2.modal !== 'calendar', '4. a tap on a day whose finger drifts 2 px down still opens it', f2);
@@ -406,18 +406,18 @@ const tap = (page, sel) => page.evaluate(sel => { const e = document.querySelect
     const where = [];
     for (const t of ['today', 'stats', 'history', 'settings']) {
       where.push(await page.evaluate(async t => {
-        const L = window.__ironlog; L.ui.tab = t; L.render(); window.scrollTo(0, 0);
+        const L = window.__ironlog; L.ui.tab = t; L.render(); (document.getElementById('page')||document.documentElement).scrollTo(0, 0);
         await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
         const bar = () => document.querySelector('header.top').getBoundingClientRect();
         const top = Math.round(bar().top);
-        window.scrollTo(0, 400);
+        (document.getElementById('page')||document.documentElement).scrollTo(0, 400);
         await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-        return { t, top, y: Math.round(window.scrollY), after: Math.round(bar().bottom) };
+        return { t, top, y: Math.round((document.getElementById('page')||document.documentElement).scrollTop), after: Math.round(bar().bottom) };
       }, t));
     }
     ok(where.every(w => w.top === 0), '9. the top bar is at the top of every tab', where);
     ok(where.every(w => w.y > 52 && w.after === 52 - w.y), '9. scrolled down, it goes up with the page, as far as the page went, and takes none of the screen', where);
-    await page.evaluate(() => { window.__ironlog.ui.tab = 'today'; window.__ironlog.render(); window.scrollTo(0, 0); });
+    await page.evaluate(() => { window.__ironlog.ui.tab = 'today'; window.__ironlog.render(); (document.getElementById('page')||document.documentElement).scrollTo(0, 0); });
     await wait(100);
     const touch = await touchDriver(page);
     const box = await page.evaluate(() => { const r = document.getElementById('wkbar').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
@@ -434,7 +434,7 @@ const tap = (page, sel) => page.evaluate(sel => { const e = document.querySelect
     const shut = await page.evaluate(() => { const m = window.__ironlog.ui.modal; return !m || m.kind !== 'calendar'; });
     ok(shut, '9. and a push up closes it', shut);
     // Scrolled 20 px, the bar partly on screen: a drag down on it is the page's scroll, not the pull.
-    await page.evaluate(() => window.scrollTo(0, 20)); await wait(100);
+    await page.evaluate(() => (document.getElementById('page')||document.documentElement).scrollTo(0, 20)); await wait(100);
     const part = await page.evaluate(() => { const r = document.getElementById('wkbar').getBoundingClientRect(); return { x: r.left + r.width / 2, y: Math.round(Math.max(r.top, 0) + (r.bottom - Math.max(r.top, 0)) / 2), shown: Math.round(r.bottom) }; });
     await touch('touchStart', part.x, part.y);
     for (let k = 1; k <= 8; k++) { await touch('touchMove', part.x, part.y + k * 15); await wait(16); }

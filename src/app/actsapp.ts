@@ -26,6 +26,7 @@ import { toast, toastHide } from './toast';
 import { obActive } from './today';
 import type { Tap } from './workstate';
 import { csvGuard } from './importing';
+import { pageTo } from './frame';
 
 /** Clears what earlier builds put in Recently deleted: a ready-made routine removed unchanged is not kept. Once, at start. */
 export function trashTidy(): void {
@@ -429,7 +430,7 @@ export const APP_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (ui.modal) closeModal();
     ui.tab = 'settings';
     ui.folds['settings:layout'] = true;
-    window.scrollTo(0, 0);
+    pageTo(0);
     render();
     const el = document.querySelector('#view > [data-mkey="layout"]');
     if (el) el.scrollIntoView({ block: 'start' });
@@ -438,7 +439,7 @@ export const APP_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (ui.modal) closeModal();
     ui.tab = 'settings';
     ui.folds['settings:data'] = true;
-    window.scrollTo(0, 0);
+    pageTo(0);
     render();
     const el = document.getElementById('dataSec');
     if (el) el.scrollIntoView({ block: 'start' });
@@ -467,7 +468,7 @@ export const APP_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       if (raw !== sec) ui.folds['dash:sub:' + raw] = true;
     }
     ui.tab = 'dash';
-    window.scrollTo(0, 0);
+    pageTo(0);
     render();
     if (sec) {
       try {
@@ -494,7 +495,7 @@ export const APP_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       log('render', e);
     }
     ui.modal = null;
-    window.scrollTo(0, 0);
+    pageTo(0);
     render();
   },
   undo() {

@@ -337,7 +337,7 @@ function strongCsv(weeks, name) {
   {
     const P = await open('index.html', { clock: '2026-10-05T07:00:00', realStarter: true, w: 320, h: 700 });
     const ev = (f, a) => P.page.evaluate(f, a);
-    const a = await ev(() => { const L = window.__ironlog; try { localStorage.setItem('ironlog.v1.obAcct', 'later'); } catch (e) { /* none */ } L.render(); const o = document.getElementById('obSafety'); return { ob: o ? o.innerText : '', over: document.documentElement.scrollWidth > window.innerWidth }; });
+    const a = await ev(() => { const L = window.__ironlog; try { localStorage.setItem('ironlog.v1.obAcct', 'later'); } catch (e) { /* none */ } L.render(); const o = document.getElementById('obSafety'); return { ob: o ? o.innerText : '', over: (document.getElementById('page')||document.documentElement).scrollWidth > window.innerWidth }; });
     const b = await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.sessions = []; L.ui.tab = 'settings'; L.ui.folds['settings:data'] = true; L.render(); const s = document.getElementById('safety');
       L.ACT.guideOpen && L.ACT.guideOpen({ dataset: {} }); const g = document.getElementById('modal') ? document.getElementById('modal').innerText : '';
       return { set: s ? s.innerText + ' ' + (s.querySelector('.tipi') || { getAttribute: () => '' }).getAttribute('data-tip') : '', tip: L.SAFETY_TXT, guide: /estimates from your log, not medical or coaching advice/i.test(g) || /estimates from your log, not medical or coaching advice/.test(document.body.innerHTML) }; });

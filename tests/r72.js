@@ -86,12 +86,12 @@ async function page() {
       for (let si = 0; si < n; si++) {
         const sel = `[data-act="sDone"][data-b="0"][data-s="${si}"]`;
         // As a lifter does: the set scrolled by hand to the middle of the screen, then tapped where it is.
-        const p = await pg.evaluate(sel => { const e = document.querySelector(sel); let r = e.getBoundingClientRect(); if (r.bottom > innerHeight - 200 || r.top < 80) window.scrollBy(0, r.top - innerHeight * 0.45); r = e.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }, sel);
+        const p = await pg.evaluate(sel => { const e = document.querySelector(sel); let r = e.getBoundingClientRect(); if (r.bottom > innerHeight - 200 || r.top < 80) (document.getElementById('page')||document.documentElement).scrollBy(0, r.top - innerHeight * 0.45); r = e.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }, sel);
         await wait(300);
-        if (si === n - 1) await pg.evaluate(() => { window.__tr = []; const t0 = performance.now(); const f = () => { const a = document.getElementById('blk-1'); window.__tr.push({ t: Math.round(performance.now() - t0), y: Math.round(scrollY), a: a ? Math.round(a.getBoundingClientRect().top) : null }); if (performance.now() - t0 < 2600) requestAnimationFrame(f); }; requestAnimationFrame(f); });
+        if (si === n - 1) await pg.evaluate(() => { window.__tr = []; const t0 = performance.now(); const f = () => { const a = document.getElementById('blk-1'); window.__tr.push({ t: Math.round(performance.now() - t0), y: Math.round((document.getElementById('page')||document.documentElement).scrollTop), a: a ? Math.round(a.getBoundingClientRect().top) : null }); if (performance.now() - t0 < 2600) requestAnimationFrame(f); }; requestAnimationFrame(f); });
         await pg.touchscreen.tap(p.x, p.y); await wait(si === n - 1 ? 2800 : 400);
       }
-      const r = await pg.evaluate(() => { const tr = window.__tr; const a = document.getElementById('blk-1'); const m = a ? parseFloat(getComputedStyle(a).scrollMarginTop) + parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) : null; return { tr, folded: !!document.querySelector('#blk-0.folded'), endTop: a ? Math.round(a.getBoundingClientRect().top) : null, margin: m, style: a ? a.getAttribute('style') : null }; });
+      const r = await pg.evaluate(() => { const tr = window.__tr; const a = document.getElementById('blk-1'); const pe = document.getElementById('page'), sc = pe || document.documentElement; const m = a ? parseFloat(getComputedStyle(a).scrollMarginTop) + (parseFloat(getComputedStyle(sc).scrollPaddingTop) || 0) + (pe ? pe.getBoundingClientRect().top : 0) : null; return { tr, folded: !!document.querySelector('#blk-0.folded'), endTop: a ? Math.round(a.getBoundingClientRect().top) : null, margin: m, style: a ? a.getAttribute('style') : null }; });
       const y0 = r.tr[0].y, y1 = r.tr[r.tr.length - 1].y;
       const lowest = Math.min(...r.tr.map(x => x.y));
       // The next lift only ever moves up the screen (or stays), from where it was to its place.
@@ -115,12 +115,12 @@ async function page() {
       const n = await pg.evaluate(() => window.__ironlog.state.draft.ex[0].sets.length);
       for (let si = 0; si < n; si++) {
         const sel = `[data-act="sDone"][data-b="0"][data-s="${si}"]`;
-        const p = await pg.evaluate(sel => { const e = document.querySelector(sel); let r = e.getBoundingClientRect(); if (r.bottom > innerHeight - 200 || r.top < 80) window.scrollBy(0, r.top - innerHeight * 0.45); r = e.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }, sel);
+        const p = await pg.evaluate(sel => { const e = document.querySelector(sel); let r = e.getBoundingClientRect(); if (r.bottom > innerHeight - 200 || r.top < 80) (document.getElementById('page')||document.documentElement).scrollBy(0, r.top - innerHeight * 0.45); r = e.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }, sel);
         await wait(300);
-        if (si === n - 1) await pg.evaluate(kind => { window.__tr = []; let fired = false; const t0 = performance.now(); const f = () => { const a = document.getElementById('blk-1'); if (!fired && a && a.getAttribute('style')) { fired = true; window.dispatchEvent(kind === 'wheel' ? new WheelEvent('wheel', { deltaY: 1 }) : new Event('touchstart')); } window.__tr.push(Math.round(scrollY)); if (performance.now() - t0 < 2600) requestAnimationFrame(f); }; requestAnimationFrame(f); }, kind);
+        if (si === n - 1) await pg.evaluate(kind => { window.__tr = []; let fired = false; const t0 = performance.now(); const f = () => { const a = document.getElementById('blk-1'); if (!fired && a && a.getAttribute('style')) { fired = true; window.dispatchEvent(kind === 'wheel' ? new WheelEvent('wheel', { deltaY: 1 }) : new Event('touchstart')); } window.__tr.push(Math.round((document.getElementById('page')||document.documentElement).scrollTop)); if (performance.now() - t0 < 2600) requestAnimationFrame(f); }; requestAnimationFrame(f); }, kind);
         await pg.touchscreen.tap(p.x, p.y); await wait(si === n - 1 ? 2800 : 400);
       }
-      const r = await pg.evaluate(() => ({ tr: window.__tr, y: Math.round(scrollY), style: (document.getElementById('blk-1') || {}).getAttribute ? document.getElementById('blk-1').getAttribute('style') : 'gone' }));
+      const r = await pg.evaluate(() => ({ tr: window.__tr, y: Math.round((document.getElementById('page')||document.documentElement).scrollTop), style: (document.getElementById('blk-1') || {}).getAttribute ? document.getElementById('blk-1').getAttribute('style') : 'gone' }));
       const y0 = r.tr[0];
       // 269 is where this demo session's glide ends (section 1).
       ok(r.y >= Math.min(y0, 269) - 2 && !r.style, `13. R72-5: a ${kind} as the glide begins leaves the page at or below where it was, never at the session's title, and no style on the block (d230f03: left at 0)`, { y0, end: r.y, style: r.style });

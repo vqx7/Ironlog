@@ -101,6 +101,7 @@ import { toast, toastTakeBack } from './toast';
 import { confirmBox, rerenderKeepScroll } from './page';
 import { bottomBarsTop, startTimer } from './timer';
 import { copyName, unname } from './machines';
+import { pageBy, pageEl, pageMost, pageTo, pageY } from './frame';
 
 /* ---------- rows and blocks ---------- */
 
@@ -1182,7 +1183,7 @@ export function onLiftDraw(bi: number, draw: () => void): void {
   if (top == null || !was || !now || (was.size === now.size && [...was].every(x => now.has(x)))) return;
   const j = blkIdx(ref);
   const el2 = j >= 0 ? document.getElementById('blk-' + j) : null;
-  if (el2) window.scrollBy(0, el2.getBoundingClientRect().top - top);
+  if (el2) pageBy(el2.getBoundingClientRect().top - top);
 }
 
 /* What the rest card names as next, by the rules the screen
@@ -1245,8 +1246,7 @@ function nextSetClear(bi: number): void {
     if (!el) return;
     const lim = bottomBarsTop();
     const r = el.getBoundingClientRect();
-    if (r.bottom > lim - BAR_ROOM_PX.edge)
-      window.scrollBy({ top: r.bottom - lim + BAR_ROOM_PX.gap, behavior: 'smooth' });
+    if (r.bottom > lim - BAR_ROOM_PX.edge) pageBy(r.bottom - lim + BAR_ROOM_PX.gap, true);
   });
 }
 
@@ -1281,8 +1281,7 @@ export function rirShowStrip(bi: number, si: number): void {
     if (!st) return;
     const lim = bottomBarsTop();
     const r = st.getBoundingClientRect();
-    if (r.bottom > lim - BAR_ROOM_PX.edge)
-      window.scrollBy({ top: r.bottom - lim + BAR_ROOM_PX.gap, behavior: 'smooth' });
+    if (r.bottom > lim - BAR_ROOM_PX.edge) pageBy(r.bottom - lim + BAR_ROOM_PX.gap, true);
   });
 }
 
@@ -1370,7 +1369,7 @@ export function autoFold(ref: BlkRef | null): void {
   if (!a1 || top0 == null) return;
   const ae = document.activeElement;
   // The thumb in it already (a field focused): it stays where it is.
-  if (ae && a1.contains(ae)) window.scrollBy(0, a1.getBoundingClientRect().top - top0);
+  if (ae && a1.contains(ae)) pageBy(a1.getBoundingClientRect().top - top0);
   else foldGlide(a1, top0);
 }
 
@@ -1386,16 +1385,18 @@ export function autoFold(ref: BlkRef | null): void {
 const GLIDE_EASE = 3;
 
 function foldGlide(a1: HTMLElement, top0: number): void {
-  const y0 = window.scrollY,
+  const y0 = pageY(),
     a = a1.getBoundingClientRect().top;
   const cs = getComputedStyle(a1);
   const m0 = parseFloat(cs.marginTop) || 0,
     sm = parseFloat(cs.scrollMarginTop) || 0;
-  const se = document.scrollingElement;
-  // Where scrolling it into view put it: under the page's scroll padding (the bar) and its own scroll margin.
-  const sp = se ? parseFloat(getComputedStyle(se).scrollPaddingTop) || 0 : 0;
-  const most = se ? se.scrollHeight - window.innerHeight : y0;
-  const y1 = Math.max(0, Math.min(most, y0 + a - sm - sp));
+  // Where scrolling it into view puts it: its own scroll margin under the frame's top (the status bar's bottom), the
+  // frame's own scroll padding too if it has one. a is on the screen, so the frame's top is taken off.
+  const pe = pageEl();
+  const sp = parseFloat(getComputedStyle(pe).scrollPaddingTop) || 0;
+  const ft = pe.id === 'page' ? pe.getBoundingClientRect().top : 0;
+  const most = pageMost();
+  const y1 = Math.max(0, Math.min(most, y0 + a - ft - sm - sp));
   const vEnd = y0 + a - y1;
   const held = Math.max(0, top0 - a);
   let calm = false;
@@ -1409,7 +1410,7 @@ function foldGlide(a1: HTMLElement, top0: number): void {
     if (!a1.getAttribute('style')) a1.removeAttribute('style');
   };
   if (calm) {
-    window.scrollTo(0, y1);
+    pageTo(y1);
     return;
   }
   const t0 = performance.now();
@@ -1421,8 +1422,8 @@ function foldGlide(a1: HTMLElement, top0: number): void {
     stopped = true;
     const r = a1.getBoundingClientRect().top;
     clear();
-    const keep = window.scrollY + a1.getBoundingClientRect().top - r;
-    window.scrollTo(0, keep < 0 ? y1 : keep);
+    const keep = pageY() + a1.getBoundingClientRect().top - r;
+    pageTo(keep < 0 ? y1 : keep);
     off();
   };
   const off = (): void => {
@@ -1443,7 +1444,7 @@ function foldGlide(a1: HTMLElement, top0: number): void {
     const e = 1 - (1 - k) ** GLIDE_EASE;
     a1.style.marginTop = `${m0 + held * (1 - e)}px`;
     const v = top0 + (vEnd - top0) * e;
-    window.scrollTo(0, Math.max(0, window.scrollY + a1.getBoundingClientRect().top - v));
+    pageTo(Math.max(0, pageY() + a1.getBoundingClientRect().top - v));
     if (k < 1) {
       requestAnimationFrame(frame);
       return;
@@ -1451,7 +1452,7 @@ function foldGlide(a1: HTMLElement, top0: number): void {
     stopped = true;
     clear();
     // Where it is now, so a draw during the glide (the timer, a tick) leaves no step at the end.
-    window.scrollTo(0, Math.max(0, window.scrollY + a1.getBoundingClientRect().top - vEnd));
+    pageTo(Math.max(0, pageY() + a1.getBoundingClientRect().top - vEnd));
     off();
   };
   frame(t0);
@@ -1556,7 +1557,7 @@ export function orderRun(): void {
   if (!moved || !sessionShown()) return;
   rerenderKeepScroll();
   const el1 = document.getElementById('blk-' + d.ex.indexOf(anchor));
-  if (el1 && top0 != null) window.scrollBy(0, el1.getBoundingClientRect().top - top0);
+  if (el1 && top0 != null) pageBy(el1.getBoundingClientRect().top - top0);
 }
 
 /* ---------- the grey reps taken ---------- */

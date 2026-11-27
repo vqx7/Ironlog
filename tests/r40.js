@@ -112,7 +112,7 @@ const FILE = 'index.html';
     const guide = await ev(() => { const L = window.__ironlog; L.openModal({ kind: 'guide' }); const t = document.getElementById('modal').textContent; L.ACT.mClose(); return t; });
     ok(/Count RIR 4 to 5 as half a set on, a working set past RIR 3 counts half/.test(guide), 'the Guide says what it does' + T);
     await P.page.setViewportSize({ width: 320, height: 640 });
-    ok(await ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true); return document.documentElement.scrollWidth <= innerWidth; }), 'Settings fits 320 px' + T);
+    ok(await ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true); return (document.getElementById('page')||document.documentElement).scrollWidth <= innerWidth; }), 'Settings fits 320 px' + T);
 
     const errs = P.errors.filter(e => !/favicon/.test(e));
     ok(!errs.length, 'no page errors' + T, errs);

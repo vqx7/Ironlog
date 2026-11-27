@@ -249,7 +249,7 @@ const button = page => page.evaluate(() => new Promise(res => {
       const pg = D.page, th = dark ? 'dark' : 'light';
       await pg.waitForFunction(() => !!window.__ironlog.acctUser(), null, { timeout: 5000 }).catch(() => {});
       await pg.evaluate(() => window.__ironlog.render()); await wait(200);
-      const fit = () => pg.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
+      const fit = () => pg.evaluate(() => (document.getElementById('page')||document.documentElement).scrollWidth <= window.innerWidth);
       const tgt = sel => pg.evaluate(s => [...document.querySelectorAll(s)].map(e => { const r = e.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; }), sel);
       const bar = await tgt('#photoBar .btn, #photoBar .ib');
       ok(bar.length === 2 && (await fit()), `5. (${th}) at 320 px Today's photo line fits, with no sideways scroll`, bar);

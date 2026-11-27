@@ -26,6 +26,7 @@ import { closeModal, openModal, render, rerenderKeepScroll } from './page';
 import { toast } from './toast';
 import { fitTargets } from './targets';
 import type { Tap } from './workstate';
+import { pageTo } from './frame';
 
 /** How long a first run's routine note stays when it says more (Your training applied, the targets fitted), in milliseconds. */
 const READY_SAID = 6000;
@@ -107,7 +108,7 @@ export const ROUTINE_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       });
       ui.todayDay = null;
       ui.tab = 'today';
-      window.scrollTo(0, 0);
+      pageTo(0);
       render();
       toast(
         `${r.name} is ready${pa.length ? ', set to Your training' : ''}${fit ? '. Weekly set targets now match it; change them in Settings.' : ''}`,

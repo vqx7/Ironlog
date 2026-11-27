@@ -129,7 +129,7 @@ async function app(o = {}) {
       const top = () => D.page.evaluate(() => {
         const r = document.querySelector('#view [data-act="sDone"][data-b="0"][data-s="1"]');
         const tp = document.getElementById('tp-0');
-        return { y: r ? Math.round(r.getBoundingClientRect().top + window.scrollY) : null, sy: Math.round(window.scrollY), text: tp ? tp.textContent.trim() : null };
+        return { y: r ? Math.round(r.getBoundingClientRect().top + (document.getElementById('page')||document.documentElement).scrollTop) : null, sy: Math.round((document.getElementById('page')||document.documentElement).scrollTop), text: tp ? tp.textContent.trim() : null };
       });
       const a = await top();
       await D.page.click('#view [data-act="sDone"][data-b="0"][data-s="0"]'); await wait(400);
@@ -148,7 +148,7 @@ async function app(o = {}) {
         const L = window.__ironlog, b = L.state.draft.ex[0], st = document.querySelector('#blk-0 .stepr');
         const f = k => document.querySelector(`#view input[data-f="${k}"][data-b="0"][data-s="0"]`);
         const btns = st ? [...st.querySelectorAll('button')].map(x => { const r = x.getBoundingClientRect(); return { l: x.getAttribute('aria-label'), w: Math.round(r.width), h: Math.round(r.height), off: x.disabled }; }) : [];
-        return { name: st ? st.querySelector('.stepr-l').textContent : null, btns, w: f('w').value || f('w').placeholder, r: f('r').value || f('r').placeholder, sw: b.sets[0].w, sr: b.sets[0].r, done: b.sets[0].done, ex: b.exId, unit: L.U(), wide: document.documentElement.scrollWidth, y: Math.round(document.querySelector('#view [data-act="sDone"][data-b="0"][data-s="1"]').getBoundingClientRect().top + scrollY) };
+        return { name: st ? st.querySelector('.stepr-l').textContent : null, btns, w: f('w').value || f('w').placeholder, r: f('r').value || f('r').placeholder, sw: b.sets[0].w, sr: b.sets[0].r, done: b.sets[0].done, ex: b.exId, unit: L.U(), wide: (document.getElementById('page')||document.documentElement).scrollWidth, y: Math.round(document.querySelector('#view [data-act="sDone"][data-b="0"][data-s="1"]').getBoundingClientRect().top + (document.getElementById('page')||document.documentElement).scrollTop) };
       });
       const a = await look();
       ok(a.name === 'Set 1' && a.btns.length === 4 && a.btns.every(x => x.w >= 44 && x.h >= 44 && !x.off), `5. (${w} px) under the first lift's sets: minus and plus for the load and the reps of Set 1, each 44 px`, a);

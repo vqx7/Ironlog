@@ -213,12 +213,12 @@ const tickAll = H => H.ev(() => { const L = window.__ironlog; L.act(() => { for 
       let y0 = 0;
       for (let s = 0; s < doN; s++) {
         await typeSet(H, k, s, s === 0 ? 100 : null, 10);
-        y0 = await H.ev(() => window.scrollY);
+        y0 = await H.ev(() => (document.getElementById('page')||document.documentElement).scrollTop);
         await closeSheet(H);
       }
       await wait(2600);
-      const y1 = await H.ev(() => window.scrollY);
-      const at = await H.ev(() => ({ first: Math.round(document.getElementById('blk-0').getBoundingClientRect().top), end: Math.round(document.documentElement.scrollHeight - innerHeight) }));
+      const y1 = await H.ev(() => (document.getElementById('page')||document.documentElement).scrollTop);
+      const at = await H.ev(() => ({ first: Math.round(document.getElementById('blk-0').getBoundingClientRect().top), end: Math.round((document.getElementById('page')||document.documentElement).scrollHeight - innerHeight) }));
       if (k > 0) moved.push({ lift: k, before: Math.round(y0), after: Math.round(y1), ...at });
     }
     const d = await H.draft();
