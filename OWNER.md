@@ -850,13 +850,15 @@ From 2.78.1 the page scrolls inside its own frame and the screen as a whole neve
 
 Anything that moves: a screenshot to Claude, and do not merge.
 
-### F3. Fewer words, bold names, the machine line (2.78.2; about 5 minutes, on the preview, before you merge 2.78.2)
+### F3. Fewer words, bold names, the machine line, the keyboard (2.78.2; about 8 minutes, on the preview, before you merge 2.78.2)
 
 1. Plan > Routine > **New from a template** (or a new phone's first pages): each routine reads its name, then who it is for and its time on one short line ("New to lifting · 45 to 50 min").
 2. Any message or tip that names a button or a screen shows the name in bold (**Settings**, **Plan**), with no stars.
 3. Nothing says "sync" or "cloud": the menu says "Saved to your account", Settings has **Save now** and "Last saved". (The list of logged errors under Settings > More is the app's own diagnostics for Claude, in its own words.)
 4. Start a workout with a machine or cable lift. Tap the ✎ on its card: the note's sheet holds the machine's Name and "How you set it" above "Today's note", and what you type goes in the note. Save a name and a setup: the card shows "Machine: <name> · <setup>" under the lift. Next time on that lift, the same line shows.
 5. A free weight's note has no machine fields, and last time's note reads "Your note from <day>: ..." with no **Use again**.
+6. The keyboard, in the home-screen preview. In a workout, tap a load or reps field low on the screen, then one high on it. Each time: the tab bar and the rest timer are gone while the keyboard is up (nothing floats above it, nothing sits under its toolbar), the field shows just above the keyboard, and the top of the page stays under the status bar. The very first time, the screen may settle once as the app learns the keyboard's height; after that nothing should move as the keyboard comes.
+7. With the keyboard up, the keyboard's ˄ ˅ arrows go to the next field: the bars stay away and each field shows above the keyboard. Tap ✓: the keyboard goes, the bars come back on the bottom edge.
 
 Anything that reads wrong or robotic: a screenshot to Claude.
 

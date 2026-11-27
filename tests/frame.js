@@ -5,7 +5,9 @@
 // stays at its top fail, while its tab-bar checks pass (in Chromium a bar pinned to the screen never moves; only an
 // iPhone moves it), and section 2 fails, having no watch; 3 passes (a guard), and 4 fails only on the document having
 // scrolled, the sheet holding the page there too; 5 passes on 2.78 and fails on 2.78.1 as first pushed (d06c8176),
-// which counted the status bar twice inside the frame (REV33-1).
+// which counted the status bar twice inside the frame (REV33-1); 6 fails on 2.78.1 and on 2.78.2 before the keyboard
+// fit (`node tests/frame.js baselines/r126.html`), but for its guards: with the keyboard up the bars stayed and the
+// screen stayed moved, as V's iPhone showed (NEW-224).
 //   1  The document never scrolls: on every tab, a long page scrolled by the wheel and (in Chromium) by touch moves the page inside
 //      the frame; the document stays at its top, and the tab bar's bottom and the rest timer stay on the screen's
 //      bottom edge, as they were before the scroll.
@@ -18,6 +20,12 @@
 //   5  With a notched iPhone's status bar (47 px), the frame adds no second status bar: the update bar and Stats' jump
 //      bar stick right under the status bar, and whatever the app scrolls into view (a Stats jump, the menu's
 //      backups, the next exercise after a lift's last set) lands its own scroll margin under it, where 2.78 put it.
+//   6  The keyboard: with none up a field typed in changes nothing; with one up for a field low on the screen, which
+//      iOS moved the screen up to show, the tab bar and the rest timer step aside, the screen is put back, the page
+//      ends where the keyboard begins and the field shows where iOS had shown it, above the keyboard; the keyboard's
+//      height is kept (the number pad's apart); going on to the next field keeps the bars aside; once the keyboard goes all comes back. With
+//      the height known, a field is fitted for as it takes focus, before the keyboard shows, and nothing then moves;
+//      when no keyboard shows (one attached to the phone) all is given back; a field outside the page is left alone.
 // FRAME_ONLY=1,2 runs some sections.
 const { open, ENGINE } = require('./h');
 const fails = [];
@@ -237,6 +245,110 @@ const at = P => P.page.evaluate(PAGE => {
     const glide = await G.page.evaluate(() => { const a = document.getElementById('blk-1'); return { folded: !!document.querySelector('#blk-0.folded'), top: Math.round(a.getBoundingClientRect().top), margin: parseFloat(getComputedStyle(a).scrollMarginTop) }; });
     ok(glide.folded && at1(glide.top, NOTCH + glide.margin), "5. after a lift's last set the next exercise glides to its own scroll margin under the status bar", glide);
     await G.browser.close();
+  }
+
+  if (run(6)) {
+    const P = await phone(true);
+    const KB = 336;
+    await P.page.evaluate(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); });
+    await wait(100);
+    await P.page.click('.hero [data-act="startSession"]');
+    await wait(300);
+    // A set ticked, so the rest timer shows.
+    await P.page.click('[data-act="sDone"][data-b="0"][data-s="0"]');
+    await wait(300);
+    // The keyboard as an iPhone shows it: the visible area falls short of the screen by its height, the window does
+    // not; and iOS moving the screen up by moveBy to show the field, the document given room for it as in section 2.
+    const keys = (h, moveBy) => P.page.evaluate(([h, moveBy]) => {
+      const vv = window.visualViewport;
+      if (h) Object.defineProperty(vv, 'height', { configurable: true, get: () => innerHeight - h }); else delete vv.height;
+      if (moveBy) { document.documentElement.style.height = '200%'; document.body.style.height = '200%'; window.scrollTo(0, moveBy); }
+      vv.dispatchEvent(new Event('resize'));
+    }, [h, moveBy]);
+    const unroom = () => P.page.evaluate(() => { document.documentElement.style.removeProperty('height'); document.body.style.removeProperty('height'); });
+    // A field placed at y on the screen by the page's scroll; where it then is.
+    const place = (sel, y) => P.page.evaluate(([sel, y]) => { const e = document.querySelector(sel); document.getElementById('page').scrollTop += e.getBoundingClientRect().top - y; return Math.round(e.getBoundingClientRect().top); }, [sel, y]);
+    const look = sel => P.page.evaluate(sel => {
+      const f = document.querySelector(sel).getBoundingClientRect(), pg = document.getElementById('page').getBoundingClientRect();
+      const vis = id => { const e = document.getElementById(id); return !!e && !e.hidden && getComputedStyle(e).visibility === 'visible'; };
+      return { keys: document.body.classList.contains('keys'), tabs: vis('tabs'), timer: vis('timer'), doc: Math.round(window.scrollY), pageBottom: Math.round(pg.bottom), top: Math.round(f.top), bottom: Math.round(f.bottom), screen: innerHeight, focused: document.activeElement === document.querySelector(sel) };
+    }, sel);
+    const low = '.sg input[data-f="r"][data-b="1"][data-s="1"]', high = '.sg input[data-f="r"][data-b="1"][data-s="0"]', next = '.sg input[data-f="w"][data-b="1"][data-s="2"]';
+    const shown = await P.page.evaluate(() => !document.getElementById('timer').hidden);
+    ok(shown, '6. (a guard) the rest timer shows, a set ticked', { shown });
+
+    // No keyboard, as in every other suite: a field typed in changes nothing.
+    await place(low, 700);
+    await P.page.focus(low);
+    await wait(150);
+    const none = await look(low);
+    ok(!none.keys && none.tabs && none.timer && none.pageBottom === none.screen, '6. with no keyboard up, a field typed in leaves the page and the bars as they are', none);
+
+    // The keyboard comes for a field low on the screen, and iOS moves the screen up to show the field above it.
+    const y0 = none.top, lift = none.bottom - (none.screen - KB) + 20;
+    await keys(KB, lift);
+    await wait(150);
+    const up = await look(low);
+    ok(up.keys && !up.tabs && !up.timer, '6. with the keyboard up, the tab bar and the rest timer step aside', up);
+    ok(up.doc === 0 && Math.abs(up.pageBottom - (up.screen - KB)) <= 1, '6. the screen is put back, nothing under the status bar, and the page ends where the keyboard begins', up);
+    ok(up.focused && up.bottom <= up.screen - KB - 15 && up.top >= 15 && Math.abs(up.top - (y0 - lift)) <= 1, '6. the field shows above the keyboard, where iOS had shown it', { ...up, was: y0 - lift });
+    // Kept for the number pad (a set's fields), apart from the letters' keyboard.
+    const learned = await P.page.evaluate(() => [Number(localStorage.getItem(window.__ironlog.KEY + '.keysHNum')), localStorage.getItem(window.__ironlog.KEY + '.keysH')]);
+    ok(learned[0] === KB && learned[1] === null, "6. the number pad's height is kept on this phone, apart from the letters' keyboard", { learned });
+
+    // On to the next field with the keyboard's arrows: the bars stay aside throughout.
+    await P.page.evaluate(n => document.querySelector(n).focus(), next);
+    const mid = await look(next);
+    await wait(350);
+    const on = await look(next);
+    ok(mid.keys && on.keys && !on.tabs && on.doc === 0 && on.bottom <= on.screen - KB - 15 && on.top >= 15, '6. going on to the next field keeps the bars aside and shows that field above the keyboard', { mid, on });
+
+    // Done: the keyboard goes.
+    await P.page.evaluate(() => document.activeElement.blur());
+    await keys(0, 0);
+    await unroom();
+    await wait(400);
+    const gone = await look(low);
+    ok(!gone.keys && gone.tabs && gone.timer && gone.doc === 0 && gone.pageBottom === gone.screen, '6. once the keyboard goes, the page has its full height and the bars are back', gone);
+
+    // The next time, the keyboard's height known: a field low on the screen is shown above where the keyboard will
+    // be as it takes focus, before the keyboard comes, so iOS has nothing to move.
+    await place(low, 700);
+    await P.page.focus(low);
+    await wait(50);
+    const before = await look(low);
+    ok(before.keys && !before.tabs && before.doc === 0 && before.bottom <= before.screen - KB - 15 && Math.abs(before.pageBottom - (before.screen - KB)) <= 1, '6. with its height known, the page is fitted as the field takes focus, before the keyboard shows', before);
+    await keys(KB, 0);
+    await wait(150);
+    const came = await look(low);
+    ok(came.keys && came.doc === 0 && Math.abs(came.top - before.top) <= 1, '6. the keyboard then shows and nothing moves', { before, came });
+    await P.page.evaluate(() => document.activeElement.blur());
+    await keys(0, 0);
+    await wait(400);
+
+    // A keyboard attached to the phone shows none on the screen: the page and the bars are given back.
+    const hy = await place(high, 200);
+    await P.page.focus(high);
+    await wait(50);
+    const guessed = await look(high);
+    await wait(1400);
+    const back = await look(high);
+    ok(guessed.keys && Math.abs(guessed.top - hy) <= 1 && !back.keys && back.tabs && back.pageBottom === back.screen && back.focused, '6. a field high on the screen stays put, and when no keyboard shows the page and the bars are given back', { hy, guessed, back });
+    await P.page.evaluate(() => document.activeElement.blur());
+    await wait(300);
+
+    // A field outside the page, as in a sheet, is left to its sheet.
+    const sheet = await P.page.evaluate(() => {
+      const i = document.createElement('input'); i.type = 'text'; i.style.cssText = 'position:fixed;left:10px;top:100px'; document.body.appendChild(i); i.focus();
+      const vv = window.visualViewport; Object.defineProperty(vv, 'height', { configurable: true, get: () => innerHeight - 336 }); vv.dispatchEvent(new Event('resize'));
+      const r = { keys: document.body.classList.contains('keys'), height: document.getElementById('page').style.height };
+      i.remove(); delete vv.height; vv.dispatchEvent(new Event('resize'));
+      return r;
+    });
+    ok(!sheet.keys && !sheet.height, '6. a field outside the page, as in a sheet, is left to its sheet', sheet);
+    const errs = P.errors.filter(e => !/Failed to load resource/.test(e));
+    ok(!errs.length, '6. no page errors', errs);
+    await P.browser.close();
   }
 
   console.log(fails.length ? `\n${fails.length} FAILED` : '\nALL PASS');

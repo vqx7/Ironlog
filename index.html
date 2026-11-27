@@ -335,6 +335,9 @@ html,body{height:100%;overflow:hidden;overscroll-behavior:none}
    no scroll padding, the bars that stick at its top stick at 0. An element's own scroll margin lands it where it
    landed while the document scrolled under the status bar. */
 #page{height:100%;overflow-x:hidden;overflow-y:auto;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch}
+/* While a keyboard is up for a field in the page, frame.ts ends the page where the keyboard begins (its height set
+   on #page) and the bars along the bottom step aside: nothing floats above the keyboard or hides under its toolbar. */
+body.keys .tabs,body.keys #timer{visibility:hidden}
 body.modal-open #page{overflow-y:hidden}
 /* An app, not a web page (r65.2, PENDING 369): a double tap is a tap, never a zoom (pinch stays, which iOS keeps
    for accessibility whatever a page says); a long press on the app's own words selects nothing and opens no Copy
@@ -15963,6 +15966,10 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   // src/app/frame.ts
   var SETTLE_MS = 250;
   var ZOOM_SLACK = 0.01;
+  var KEYS_MIN = 120;
+  var KEYS_GAP = 16;
+  var KEYS_WAIT_MS = 900;
+  var keysKey = (num4, side) => `${KEY}.keysH${num4 ? "Num" : ""}${side ? "Side" : ""}`;
   function pageEl() {
     const el = document.getElementById("page");
     if (el) return el;
@@ -15999,13 +16006,89 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     const moved = window.scrollY !== 0 || window.scrollX !== 0 || !!vv && vv.offsetTop !== 0;
     if (moved) window.scrollTo(0, 0);
   }
+  function pageField() {
+    const a2 = document.activeElement;
+    const pg = document.getElementById("page");
+    if (!pg || !(a2 instanceof HTMLElement) || a2 === pg || !pg.contains(a2)) return null;
+    return typing() || a2 instanceof HTMLSelectElement ? a2 : null;
+  }
+  function screenH() {
+    return document.documentElement.clientHeight || window.innerHeight;
+  }
+  function keysNow() {
+    const vv = window.visualViewport;
+    if (!vv || Math.abs(vv.scale - 1) > ZOOM_SLACK) return 0;
+    const h3 = Math.round(screenH() - vv.height);
+    return h3 >= KEYS_MIN ? h3 : 0;
+  }
+  function keysAt(f3) {
+    const num4 = f3 instanceof HTMLInputElement && (["numeric", "decimal"].includes(f3.inputMode) || ["number", "tel"].includes(f3.type));
+    return keysKey(num4, window.innerWidth > screenH());
+  }
+  function keysLearned(f3) {
+    const h3 = Number(prefGet(keysAt(f3)));
+    return h3 >= KEYS_MIN ? h3 : 0;
+  }
+  var keysOn = false;
+  var keysFor = null;
+  var keysBy = 0;
+  function keysOff() {
+    if (!keysOn) return;
+    keysOn = false;
+    document.body.classList.remove("keys");
+    const pg = document.getElementById("page");
+    if (pg) pg.style.removeProperty("height");
+  }
+  function frameFit() {
+    const f3 = pageField();
+    let kh = f3 ? keysNow() : 0;
+    if (f3 && kh) {
+      if (keysLearned(f3) !== kh) prefSet(keysAt(f3), String(kh));
+      keysFor = null;
+    } else if (f3 && f3 === keysFor && performance.now() < keysBy) kh = keysLearned(f3);
+    const pg = document.getElementById("page");
+    if (!f3 || !kh || !pg) {
+      keysOff();
+      frameSettle();
+      return;
+    }
+    const vv = window.visualViewport;
+    const moved = window.scrollY + (vv ? vv.offsetTop : 0);
+    const top = parseFloat(getComputedStyle(document.documentElement).paddingTop) || 0;
+    const tall = Math.max(0, screenH() - kh - top);
+    keysOn = true;
+    document.body.classList.add("keys");
+    pg.style.height = `${tall}px`;
+    const ub = document.getElementById("updbar");
+    const head = KEYS_GAP + (ub && !ub.hidden ? ub.getBoundingClientRect().height : 0);
+    const fr = f3.getBoundingClientRect();
+    const at2 = fr.top - pg.getBoundingClientRect().top;
+    const want = Math.max(head, Math.min(at2 - moved, tall - KEYS_GAP - fr.height));
+    if (at2 !== want) pageBy(at2 - want);
+    if (window.scrollY !== 0 || window.scrollX !== 0 || !!vv && vv.offsetTop !== 0) window.scrollTo(0, 0);
+  }
+  function keysFocus() {
+    const f3 = pageField();
+    if (f3 && typing() && !keysNow() && keysLearned(f3)) {
+      keysFor = f3;
+      keysBy = performance.now() + KEYS_WAIT_MS;
+      setTimeout(frameFit, KEYS_WAIT_MS + SETTLE_MS);
+    }
+    frameFit();
+  }
   function frameStart() {
-    document.addEventListener("focusout", () => setTimeout(frameSettle, SETTLE_MS));
-    window.addEventListener("scroll", frameSettle, { passive: true });
+    document.addEventListener("focusin", keysFocus);
+    document.addEventListener("focusout", () => {
+      setTimeout(() => {
+        if (!pageField()) keysOff();
+      }, 0);
+      setTimeout(frameFit, SETTLE_MS);
+    });
+    window.addEventListener("scroll", frameFit, { passive: true });
     const vv = window.visualViewport;
     if (vv) {
-      vv.addEventListener("resize", frameSettle);
-      vv.addEventListener("scroll", frameSettle);
+      vv.addEventListener("resize", frameFit);
+      vv.addEventListener("scroll", frameFit);
     }
   }
 

@@ -258,12 +258,17 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
 - **Screen frame (2.78.1, NEW-218):** the page scrolls inside `#page`; the document never scrolls, so nothing an
   iPhone does to the visible area can carry the bars along the bottom up the screen. The page is scrolled by
   `frame.ts` or by an element's `scrollIntoView` (which scrolls the frame), never through the document, and the frame
-  adds no second status bar: it begins under it (`tests/hygiene.js`, `tests/frame.js`). An iPhone's keyboard and pickers are checked on the preview on an
-  iPhone before a merge (OWNER.md F2), since no engine here has them.
+  adds no second status bar: it begins under it (`tests/hygiene.js`, `tests/frame.js`). The keyboard is the frame's
+  too (2.78.2, NEW-224): while one is up for a field in the page, `frame.ts` ends the page where the keyboard begins,
+  the bars along the bottom step aside, and the page's own scroll shows the field above the keyboard, so iOS has
+  nothing to move; the height is learned the first time and fitted for as a field takes focus after that. An
+  iPhone's keyboard and pickers are checked on the preview on an iPhone before a merge (OWNER.md F2, F3), since no
+  engine here has them.
 - **Phone:** 44 px touch targets, no sideways scroll at 320 px, light and dark both checked. Rows of seven (the
-  week bar, the calendar, Consistency) reach 44 px from 375 px phones up; at 320 px seven cannot. No code follows the
-  on-screen keyboard (Safari does not shrink the page for it, and code that did fought iOS): a sheet you type in
-  opens tall, its fields at the top, so they are never under it (PENDING 322). No browser here has an on-screen
+  week bar, the calendar, Consistency) reach 44 px from 375 px phones up; at 320 px seven cannot. No code moves a sheet
+  with the on-screen keyboard (Safari does not shrink the page for it, and code that did fought iOS): a sheet you
+  type in opens tall, its fields at the top, so they are never under it (PENDING 322). The page's fields are fitted
+  by `frame.ts` (the screen frame, above), which moves nothing iOS moves. No browser here has an on-screen
   keyboard, so a change to how sheets meet it is tried on V's phone before a release carries it.
 - **One source (V, r49):** a value that names, identifies or configures the app is defined once, in
   `src/app/config.ts`. Every storage key, cache name and backup mark is built from `STORAGE_ID` ("ironlog"), which
