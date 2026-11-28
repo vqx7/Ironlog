@@ -57,6 +57,18 @@ function brokenCopy(name, from, to) {
   for (const f of files) fs.writeFileSync(path.join(app, f), text.get(f));
   return dir;
 }
+/** A copy of the source at `dir` with each pattern of `pairs` replaced in the rows' modules (a build of another level). */
+function copyWith(dir, pairs) {
+  const to = fs.mkdtempSync(path.join(os.tmpdir(), 'ironlog-copy-'));
+  fs.cpSync(path.join(dir, 'src', 'app'), path.join(to, 'src', 'app'), { recursive: true });
+  const app = path.join(to, 'src', 'app');
+  for (const f of fs.readdirSync(app).filter(x => /^rows\w*\.ts$/.test(x))) {
+    let text = fs.readFileSync(path.join(app, f), 'utf8');
+    for (const [a, b] of pairs) text = text.replace(a, b);
+    fs.writeFileSync(path.join(app, f), text);
+  }
+  return to;
+}
 let accounts = 0;
 const acct = () => 'a' + ++accounts;
 const said = r => [...r.fails.map(f => f.rule + ': ' + f.said), ...r.errors];
@@ -357,6 +369,40 @@ const CASES = {
     return out;
   },
   /* A request that gets no answer, before the account applied it or after: the rows end right all the same, and the rows are not switched off. */
+  /* The account switches to its rows while this phone still mirrors, with the same workout open there and on the
+     phone the rows decide on, which ticks set 2 after the switch. This phone ticks set 3: its write of the workout's
+     row is refused (it was made over a copy the account no longer holds), and the read that follows says the rows
+     decide. The mirror stops there: it never writes the row over the copy it just read. */
+  async 'a phone still mirroring never writes the workout over the account\'s once the rows decide'(dir, R) {
+    const out = [], name = acct();
+    const r = await history({ dirs: [dir, dir], rows: R, name, outside: true, script: [{ p: 0, op: 'start', id: 'k1', v: '2026-11-22' }, { p: 0, op: 'tick', i: 0 }, { p: 0, op: 'check' }] });
+    const B = r.phones[1];
+    const draft = async () => (await r.C.rows()).find(x => x.kind === 'draft');
+    const ticks = body => { const d = JSON.parse(body); return d ? d.ex[0].sets.map(x => (x.done ? 1 : 0)).join('') : 'closed'; };
+    let row = await draft();
+    const layout = JSON.parse((await r.C.rows()).find(x => x.kind === 'meta').body);
+    await R.call(name, 'records', 'push', [[{ kind: 'meta', id: 'layout', body: JSON.stringify({ ...layout, decides: 'rows', level: 2, gen: 2 }), t: r.clock.t + 1000, dev: 'dev-S', a: 0 }]]);
+    const w = JSON.parse(row.body); w.ex[0].sets[1].done = true;
+    await R.call(name, 'records', 'push', [[{ kind: 'draft', id: 'draft', body: B.E.canon(w), t: r.clock.t + 2000, dev: 'dev-S', a: 0, over_t: row.t, over_dev: row.dev }]]);
+    const calls = r.C.calls.length;
+    await r.run({ p: 1, op: 'tick', i: 2 });
+    await B.settle();
+    row = await draft();
+    const pushes = r.C.calls.slice(calls).filter(c => c.who === 'B' && c.name === 'push' && c.keys.includes('draft/draft')).length;
+    if (ticks(row.body)[1] !== '1') out.push(`set 2, ticked after the switch on the phone the rows decide on, is no longer in the account's workout (${ticks(row.body)}, written by ${row.dev})`);
+    if (pushes > 1) out.push(`the mirroring phone wrote the workout's row ${pushes} times, the second after the read that said the rows decide`);
+    return out;
+  },
+  /* A build that can decide by the rows still writes an account's first rows as the first phase: its first layout
+     says level 1, so every phone still on the first phase's build syncs that account as before. */
+  async 'the first layout says level 1, whatever the level of the build that writes it'(dir, R) {
+    const lv2 = copyWith(dir, [[/(export )?const LEVEL = \d+;/, 'export const LEVEL = 2;']]);
+    try {
+      const name = acct(), r = await history({ dirs: [lv2, lv2], rows: R, name, script: [{ p: 0, op: 'check' }] });
+      const L = JSON.parse(((await r.C.rows()).find(x => x.kind === 'meta' && x.id === 'layout') || { body: 'null' }).body);
+      return L && L.level === 1 && L.decides === 'docs' && L.gen === 1 ? [] : [`the first layout a build of level 2 writes is ${JSON.stringify(L)}`];
+    } finally { fs.rmSync(lv2, { recursive: true, force: true }); }
+  },
   async 'a write or a read of the rows that gets no answer is made again at the next sync'(dir, R) {
     const out = [];
     for (const [kind, when] of [['rows-push', 'before'], ['rows-push', 'after'], ['rows-pull', 'before'], ['rows-pull', 'after']]) {
@@ -541,6 +587,9 @@ const CASES = {
       ['the app\'s own write sent with its count unmoved', `  if (h && t === h.t) return { t: h.t, dev: h.dev, a: h.a + 1 };`, `  if (h && t === h.t) return { t: h.t, dev: h.dev, a: h.a };`, ['a mark of another copy, the app\'s own write, an account begun again, and the photo']],
       ['an account begun again is not noticed', `  if (!none() && (ansNum(p['top']) < N.n || (N.made !== null && (!L || L.made !== N.made)))) {`, `  if (!none() && ansNum(p['top']) < -1) {`, ['a mark of another copy, the app\'s own write, an account begun again, and the photo']],
       ['the photo has no row', `  if (photo && (photoHeld() !== null || N.rows['photo/photo'])) mine.set('photo/photo', photo);`, ``, ['a mark of another copy, the app\'s own write, an account begun again, and the photo']],
+      ['the mirror writes the workout again after a read that says the rows decide', `      if (rowsDecide()) return;
+    }`, `    }`, ['a phone still mirroring never writes the workout over the account\'s once the rows decide']],
+      ['the first layout written at the build\'s level', `level: FIRST_LEVEL, gen: 1`, `level: LEVEL, gen: 1`, ['the first layout says level 1, whatever the level of the build that writes it']],
       ['the rows\' notes are kept at "Sign out"', `  // Notes storage would not forget name the log they were for, and are not read for another.
   prefDel(ROWS_KEY);`, ``, ['"Sign out" then signed in again changes nothing in the account']]
     ];

@@ -96,6 +96,8 @@ let notes: Notes | null = null;
 let off: string | null = null;
 /** Whether the account's layout asks for a build newer than this one. */
 let blocked = false;
+/** Whether the account's layout, as an answer last said, gives the rows the say over the log: the first phase's pass then does nothing more. */
+let decide = false;
 /** The account `blocked` was last worked out for, and the layout as kept on the phone (LAYOUT_KEY) when this page last read or wrote it. */
 let layoutFor: string | null = null;
 let layoutText: string | null = null;
@@ -109,6 +111,7 @@ let written: string | null = null;
 function heed(L: { decides: string; level: number } | null): void {
   const was = blocked;
   blocked = needsNewer(L);
+  decide = !!L && L.decides !== 'docs';
   layoutFor = cloud.uid;
   /* Kept on the phone for the account: the next time the app is opened it knows before its first request that it
      must not sync, and does not read the documents into the log or send what it holds while the layout is asked for. */
@@ -331,6 +334,7 @@ export function rowsForget(): void {
   // What was learnt of the account before is not known of the one the notes will next describe (its layout, kept on the phone by account, is read again).
   off = null;
   blocked = false;
+  decide = false;
   layoutFor = null;
   asked = null;
   for (const f of forgets) f();
@@ -514,6 +518,8 @@ export function turnOff(why: string): void {
 }
 /** Whether the account's layout, as an answer last said, asks for a build newer than this one. */
 export const blockedNow = (): boolean => blocked;
+/** Whether the account's layout, as an answer last said, gives the rows the say over the log. */
+export const rowsDecide = (): boolean => decide;
 /** Whether a read of the layout is under way (rowsGate). */
 export const gateBusy = (): boolean => asking > 0;
 

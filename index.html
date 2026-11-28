@@ -11569,6 +11569,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var notes = null;
   var off = null;
   var blocked = false;
+  var decide = false;
   var layoutFor = null;
   var layoutText = null;
   var asked = null;
@@ -11577,6 +11578,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function heed(L2) {
     const was = blocked;
     blocked = needsNewer(L2);
+    decide = !!L2 && L2.decides !== "docs";
     layoutFor = cloud.uid;
     if (cloud.uid) {
       const text = JSON.stringify({ acct: cloud.uid, decides: L2 ? L2.decides : "docs", level: L2 ? L2.level : 1 });
@@ -11753,6 +11755,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     written = null;
     off = null;
     blocked = false;
+    decide = false;
     layoutFor = null;
     asked = null;
     for (const f3 of forgets) f3();
@@ -11901,6 +11904,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     off = why;
   }
   var blockedNow = () => blocked;
+  var rowsDecide = () => decide;
   var gateBusy = () => asking > 0;
   function rowsGate() {
     const p3 = gate();
@@ -12084,6 +12088,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
 
   // src/app/rowsmirror.ts
   var WAIT_MS = 6e4;
+  var FIRST_LEVEL = 1;
   var UNIT_TOP = 65535;
   var tried = /* @__PURE__ */ new Map();
   function inStep(m3, h3) {
@@ -12149,12 +12154,12 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const R2 = cloud.db && cloud.db.rows;
     const C2 = ctxNow();
     const acct2 = cloud.uid;
-    if (!R2 || !C2 || !acct2 || !cloud.on || offWhy() || blockedNow() || !device.ok) return;
+    if (!R2 || !C2 || !acct2 || !cloud.on || offWhy() || blockedNow() || rowsDecide() || !device.ok) return;
     await pause();
     await warm();
     if (!cloud.on || cloud.uid !== acct2) return;
     const ep = C2.ep();
-    const still = () => cloud.on && cloud.uid === acct2 && C2.ep() === ep && !offWhy() && !blockedNow();
+    const still = () => cloud.on && cloud.uid === acct2 && C2.ep() === ep && !offWhy() && !blockedNow() && !rowsDecide();
     const quiet = () => cloud.status === "synced" && !C2.unsent();
     if (!quiet()) return;
     const { N: N2, read } = notesFor(acct2, ep);
@@ -12178,7 +12183,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       }
       if (!still()) return;
       if (!N2.made) {
-        const layout = JSON.stringify({ made: uid(), decides: "docs", level: LEVEL, gen: 1, at: 0 });
+        const layout = JSON.stringify({ made: uid(), decides: "docs", level: FIRST_LEVEL, gen: 1, at: 0 });
         const row = { kind: "meta", id: "layout", body: layout, t: Date.now(), dev: cloud.devId || "", a: 0 };
         if (!await send(R2, N2, [row])) {
           turnOff(NO_TABLE);
@@ -12276,6 +12281,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       } catch (e5) {
         if (n3 || !/rows_draft_(stale|time)/.test(said2(e5))) throw e5;
         if (!await takeIn(R2, N2)) return;
+        if (rowsDecide()) return;
       }
     }
   }
@@ -14148,7 +14154,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       decided = r4;
     });
     starting = mine;
-    const decide = () => {
+    const decide2 = () => {
       if (starting === mine) starting = null;
       decided();
     };
@@ -14170,7 +14176,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       pulled = false;
       firstPull = true;
       setCloud("connecting");
-      decide();
+      decide2();
       if (ui.tab === "settings") fx.render();
       await cq(cloudPull);
     } catch (e5) {
@@ -14178,7 +14184,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       cloud.on = false;
       setCloud("local");
     } finally {
-      decide();
+      decide2();
       if (run2 === starts) firstPull = false;
       cloudChecked = true;
       if (ui.tab === "today" && !ui.modal && (fx.obGate() || !state.settings.onboarded && !state.draft && !state.sessions.some((s3) => !s3.demo)))

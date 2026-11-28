@@ -25,6 +25,7 @@ import {
   notesOut,
   offWhy,
   placeOf,
+  rowsDecide,
   said,
   send,
   soon,
@@ -38,6 +39,9 @@ import type { Mine } from './rowslog';
 
 /** How long a record the account holds differently is left alone before the log's copy is sent over it (below), in milliseconds. */
 const WAIT_MS = 60000;
+/** The level an account's first layout says: the first phase's, whatever this build's own, so a phone still on a
+    first-phase build syncs the account as before. */
+const FIRST_LEVEL = 1;
 /** The last character a single UTF-16 unit holds. */
 const UNIT_TOP = 0xffff;
 /** What was last sent as it stood for a record the account then did not take, by key: the same is not sent as it stands again (it waits, then goes over the account's). */
@@ -124,13 +128,14 @@ export async function mirrorPass(): Promise<void> {
   const R = cloud.db && cloud.db.rows;
   const C = ctxNow();
   const acct = cloud.uid;
-  if (!R || !C || !acct || !cloud.on || offWhy() || blockedNow() || !device.ok) return;
+  if (!R || !C || !acct || !cloud.on || offWhy() || blockedNow() || rowsDecide() || !device.ok) return;
   // Not in the stretch of work that ended the sync (this is called from there): the screen is drawn first.
   await pause();
   await warm();
   if (!cloud.on || cloud.uid !== acct) return;
   const ep = C.ep();
-  const still = (): boolean => cloud.on && cloud.uid === acct && C.ep() === ep && !offWhy() && !blockedNow();
+  const still = (): boolean =>
+    cloud.on && cloud.uid === acct && C.ep() === ep && !offWhy() && !blockedNow() && !rowsDecide();
   // The documents are in step with the account: only then is the log what the rows should say.
   const quiet = (): boolean => cloud.status === 'synced' && !C.unsent();
   if (!quiet()) return;
@@ -157,7 +162,7 @@ export async function mirrorPass(): Promise<void> {
     if (!still()) return;
     if (!N.made) {
       // The account's first rows: its layout, with an id of its own, so a copy restored later is known as one.
-      const layout = JSON.stringify({ made: uid(), decides: 'docs', level: LEVEL, gen: 1, at: 0 });
+      const layout = JSON.stringify({ made: uid(), decides: 'docs', level: FIRST_LEVEL, gen: 1, at: 0 });
       const row: RowIn = { kind: 'meta', id: 'layout', body: layout, t: Date.now(), dev: cloud.devId || '', a: 0 };
       if (!(await send(R, N, [row]))) {
         turnOff(NO_TABLE);
@@ -271,6 +276,9 @@ async function draftRow(R: CloudRows, N: Notes): Promise<void> {
       // Another phone wrote the workout's row since this phone read it: its row is read, and this copy written over that.
       if (n || !/rows_draft_(stale|time)/.test(said(e))) throw e;
       if (!(await takeIn(R, N))) return;
+      /* The read says the rows now decide (the account switched since this phone's last read): the copy just read is
+         another phone's, made after the switch, and this phone takes it as the rows' when it crosses, never writes over it. */
+      if (rowsDecide()) return;
     }
   }
 }
