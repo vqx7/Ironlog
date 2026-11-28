@@ -53,6 +53,8 @@ export const KIND: Readonly<Record<string, string>> = {
 };
 /** The kinds this build writes rows of from the log's records: a row of any other kind is left as it is. */
 export const MIRRORED = new Set([...Object.values(KIND), 'setting', 'core', 'photo']);
+/** The row of the lists' order, which only the rows deciding write: no record of the log the first phase compares. */
+export const ORDER_ROW = 'core/order';
 
 /** The account's row as this phone last knew it: the copy's version, the first characters of the account's checksum of the copy ('' when it holds none), and its deletion mark, when it has one: the copy the mark names, whether it is for good, the day Recently deleted shows and whether it is a copy put aside. */
 export interface Held {
@@ -127,6 +129,8 @@ let off: string | null = null;
 let blocked = false;
 /** Whether the account's layout, as an answer last said, gives the rows the say over the log: the first phase's pass then does nothing more. */
 let decide = false;
+/** Whether the account's layout, as last read (this visit, or kept on the phone), asks that no phone switch it again: Switch back's `hold`. */
+let held = false;
 /** The account's layout as an answer last carried it, its text whole: a layout written anew keeps every field of it. */
 let layoutBody: string | null = null;
 /** The account `blocked` was last worked out for, and the layout as kept on the phone (LAYOUT_KEY) when this page last read or wrote it. */
@@ -139,16 +143,23 @@ let asking = 0;
 /** The notes' text as last written, so a pass that changed nothing writes nothing. */
 let written: string | null = null;
 /** Notes what an answer's layout says of this build, and tells the document sync when it must stop. */
-function heed(L: { decides: string; level: number } | null): void {
+function heed(L: { decides: string; level: number; hold: boolean } | null): void {
   const was = blocked;
   blocked = needsNewer(L);
   // The rows decide here only where this build can sync by them: a layout that asks for more stops it whatever it says.
   decide = !!L && L.decides === 'rows' && !blocked;
+  held = !!L && L.hold;
   layoutFor = cloud.uid;
   /* Kept on the phone for the account: the next time the app is opened it knows before its first request that it
-     must not sync, and does not read the documents into the log or send what it holds while the layout is asked for. */
+     must not sync, and does not read the documents into the log or send what it holds while the layout is asked for;
+     and that the account was switched back, so it is never switched again before an answer says otherwise. */
   if (cloud.uid) {
-    const text = JSON.stringify({ acct: cloud.uid, decides: L ? L.decides : 'docs', level: L ? L.level : 1 });
+    const text = JSON.stringify({
+      acct: cloud.uid,
+      decides: L ? L.decides : 'docs',
+      level: L ? L.level : 1,
+      ...(held ? { hold: true } : {})
+    });
     if (text !== layoutText && (blocked || decide || layoutText !== null)) prefSet(LAYOUT_KEY, text);
     layoutText = text;
   }
@@ -469,7 +480,7 @@ export function found(N: Notes, key: string, why: string, mine: string, theirs: 
 /* ---------- the account's answers ---------- */
 
 /** The layout an answer carries: the id made when the account's rows began, which layer decides, and the level of build it asks for. */
-function layoutOf(v: unknown): { made: string | null; decides: string; level: number } | null {
+function layoutOf(v: unknown): { made: string | null; decides: string; level: number; hold: boolean } | null {
   if (typeof v !== 'string') return null;
   layoutBody = v;
   let L: Rec | null = null;
@@ -485,7 +496,8 @@ function layoutOf(v: unknown): { made: string | null; decides: string; level: nu
   return {
     made: typeof L['made'] === 'string' ? L['made'] : null,
     decides: L['decides'] === undefined ? 'docs' : typeof L['decides'] === 'string' ? L['decides'] : '?',
-    level: lv === undefined ? 1 : typeof lv === 'number' && Number.isFinite(lv) && lv >= 1 ? lv : Infinity
+    level: lv === undefined ? 1 : typeof lv === 'number' && Number.isFinite(lv) && lv >= 1 ? lv : Infinity,
+    hold: L['hold'] === true
   };
 }
 /** Whether a layout is one this build cannot sync by: the rows decide, or it asks for a newer build. */
@@ -506,7 +518,7 @@ export async function takeIn(R: CloudRows, N: Notes): Promise<boolean> {
       /* Noted here, wherever a read brings a changed row in, and not by the pass that asked: a pass that ends before
          it compares (the lifter changed something meanwhile), the workout row's second try and the daily check's
          remake all read rows too, and the next pass must still leave those rows alone. */
-      if (MIRRORED.has(X['kind'])) N.wait[k] ??= Date.now();
+      if (MIRRORED.has(X['kind']) && k !== ORDER_ROW) N.wait[k] ??= Date.now();
     }
     N.rows[k] = h;
     if (X['kind'] === 'device' && 'body' in X) deviceSeen(N, X['id'], X['body']);
@@ -759,6 +771,12 @@ function keptRead(): void {
   const kept = mine ? layoutOf(layoutText) : null;
   blocked = needsNewer(kept);
   decide = !!kept && kept.decides === 'rows' && !blocked;
+  held = !!kept && kept.hold;
+}
+/** Whether the account's layout asks that no phone switch it again (Switch back's `hold`), as last read: this visit, or by an earlier one (kept on the phone). */
+export function rowsHeld(): boolean {
+  keptRead();
+  return held;
 }
 /** The read of the layout under way, if one is: a send of the documents that follows a read of them waits for it, so a build the account asks more of sends nothing while the answer is on its way. Null when none is under way, and the send then goes on in the same stretch of work as before the rows. */
 export const rowsAsked = (): Promise<unknown> | null => asked;

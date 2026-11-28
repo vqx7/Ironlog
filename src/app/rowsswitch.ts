@@ -10,6 +10,7 @@ import { canon } from './merge';
 import type { RowIn } from './store';
 import {
   LEVEL,
+  ORDER_ROW,
   ansNum,
   ctxNow,
   heldOf,
@@ -19,7 +20,9 @@ import {
   notesDigest,
   notesFor,
   notesOut,
+  placeOf,
   rowsDecide,
+  rowsHeld,
   soon,
   takeIn
 } from './rowsnotes';
@@ -64,6 +67,8 @@ async function trySwitch(): Promise<boolean> {
     notesOut(N);
     return false;
   }
+  // Switched back since (`hold`, read in the answer just taken): never switched again by this build.
+  if (rowsHeld()) return false;
   const d = rec(await soon(R.digest()));
   const mine = notesDigest(N);
   if (!d || ansNum(d['top']) !== N.n || ansNum(d['n']) !== mine.n || d['sum'] !== mine.sum) return false;
@@ -72,7 +77,7 @@ async function trySwitch(): Promise<boolean> {
   const at = Date.now();
   const layout = JSON.stringify({
     ...L,
-    made: N.made,
+    made: typeof L['made'] === 'string' ? L['made'] : N.made,
     decides: 'rows',
     level: LEVEL,
     gen: ansNum(L['gen']) + 1,
@@ -142,22 +147,39 @@ async function tryBack(): Promise<'done' | 'unsent' | 'failed'> {
     const top = N.n;
     if (!(await writeDocsBack())) continue;
     const L = layoutNow() || {};
+    // The account's own id for its rows, kept: a phone that read none of its own (it signed in after the switch) never writes a layout without it.
+    const made = typeof L['made'] === 'string' ? L['made'] : N.made;
+    if (!made) return 'failed';
     const layout = JSON.stringify({
       ...L,
-      made: N.made,
+      made,
       decides: 'docs',
       level: BACK_LEVEL,
       gen: ansNum(L['gen']) + 1,
       at: top,
       hold: true
     });
+    const now = Date.now();
+    const rows: RowIn[] = [{ kind: 'meta', id: 'layout', body: layout, t: now, dev: cloud.devId || '', a: 0 }];
+    // The row of the lists' order goes with it, deleted for good: only the rows deciding write it, and a phone on the documents reads it as a record of its log.
+    const o = N.rows[ORDER_ROW];
+    if (o && placeOf(o) !== 'good')
+      rows.push({
+        kind: 'core',
+        id: 'order',
+        body: null,
+        t: o.t,
+        dev: o.dev,
+        a: o.a,
+        gone_saw: o.t,
+        gone_saw_dev: o.dev,
+        gone_good: true,
+        gone_t: now,
+        gone_dev: cloud.devId || ''
+      });
     let A: Rec | null;
     try {
-      A = rec(
-        await soon(
-          R.push([{ kind: 'meta', id: 'layout', body: layout, t: Date.now(), dev: cloud.devId || '', a: 0 }], top)
-        )
-      );
+      A = rec(await soon(R.push(rows, top)));
     } catch (e) {
       // Another phone wrote a row since this one read the account: read again, written again.
       if (/rows_moved/.test(String(rec(e)?.['message'] || e))) continue;

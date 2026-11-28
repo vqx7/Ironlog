@@ -132,15 +132,17 @@ function send(row: ErrRow): void {
       log(OWN, e);
     });
 }
-/** Sends what was held until the account was known, once it is: called once the sync has the account in step. Held
-    errors are dropped where the phone is signed out. */
+/** Sends what was held until the account was known, once it is: called once the sync has the account in step. */
 export function errlogFlush(): void {
-  if (acct.checked && !cloud.on) held.length = 0;
   if (!target()) return;
   while (held.length) {
     const row = held.shift();
     if (row) send(row);
   }
+}
+/** The account check's answer, as the app starts: signed out, what was held is dropped, never sent after a later sign-in. */
+export function errlogChecked(signedIn: boolean): void {
+  if (!signedIn) held.length = 0;
 }
 /** Starts the error log: every error the app records from now is looked at (above). Called once, at start. */
 export function errlogStart(): void {

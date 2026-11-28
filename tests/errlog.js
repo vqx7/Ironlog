@@ -135,6 +135,19 @@ const LONE = /[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\ud
   ok(early.some(r => r.area === 'load'), 'an error met as the app starts is held and sent once the account is known', early);
   ok(!early.some(r => /secret|squat|🏋/.test(JSON.stringify(r)) || LONE.test(r.message) || LONE.test(r.stack)), 'nothing typed in a damaged save is sent, and no half of a character', early);
 
+  // ---- An error met as the app starts on a phone that turns out to be signed out: dropped, and not sent once the
+  // lifter signs in later in that visit.
+  fake.addUser('err2@example.com', PW);
+  await B.ev(() => { localStorage.setItem('ironlog.v1', '{"sessions":[{"id":"s1","notes":"held at start"'); });
+  await B.page.reload();
+  await B.page.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart, null, { timeout: 15000 });
+  await B.ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.saveNow(); L.render(); });
+  await wait(1000);
+  n0 = fake.errors.length;
+  await B.signIn('err2@example.com');
+  await wait(1500);
+  ok(B.page && !since(n0).some(r => r.area === 'load'), 'an error met as the app starts signed out is not sent after a later sign-in', since(n0));
+
   ok(pageErrors.length === 0, 'no error on any page', pageErrors.slice(0, 3));
   await browser.close();
   await fake.close();

@@ -9,7 +9,7 @@ import { chunksOf, CORE_FIELDS } from './chunks';
 import { canon, recordKey, storedJson } from './merge';
 import { cloud, state } from './store';
 import { photoHeld, photoNote, photoPending } from './photo';
-import { B36, KIND, MIRRORED, ansText, keyOf, sumOf } from './rowsnotes';
+import { B36, KIND, MIRRORED, ORDER_ROW, ansText, keyOf, sumOf } from './rowsnotes';
 import type { Notes } from './rowsnotes';
 
 /** The kinds Recently deleted holds. */
@@ -181,7 +181,7 @@ export function logNow(N: Notes): { ch: Record<string, Rec>; mine: Map<string, M
 export function keysOf(N: Notes, L: { mine: Map<string, Mine>; photo: boolean }): Set<string> {
   const keys = new Set<string>(L.mine.keys());
   for (const k in N.rows)
-    if (MIRRORED.has(k.slice(0, k.indexOf('/'))) && (L.photo || k !== 'photo/photo') && k !== 'core/order') keys.add(k);
+    if (MIRRORED.has(k.slice(0, k.indexOf('/'))) && (L.photo || k !== 'photo/photo') && k !== ORDER_ROW) keys.add(k);
   return keys;
 }
 

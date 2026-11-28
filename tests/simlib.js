@@ -223,8 +223,9 @@ async function history(o) {
       for (const t of S.trash) if (!want.has(t.kind + '/' + t.id)) want.set(t.kind + '/' + t.id, { place: 'trash', body: E.canon(t.data), day: t.date, clash: !!t.clash });
       for (const k of Object.keys(S.settings)) want.set('setting/' + k, { place: 'log', body: E.canon(S.settings[k]) });
       for (const k of ['activeRoutineId', 'deloadWeek']) want.set('core/' + k, { place: 'log', body: E.canon(S[k] ?? null) });
-      // Where the rows decide, the order of the lists the lifter orders is a row of its own.
-      if (rows.some(r => r.kind === 'core' && r.id === 'order')) want.set('core/order', { place: 'log', body: E.canon({ routines: S.routines.map(x => x.id), exercises: S.exercises.map(x => x.id), injuries: S.injuries.map(x => x.id) }) });
+      // Where the rows decide (the account's layout says so), the order of the lists the lifter orders is a row of its own; where the documents decide, it is none.
+      const lay = rows.find(r => r.kind === 'meta' && r.id === 'layout');
+      if (lay && /"decides":"rows"/.test(lay.body || '')) want.set('core/order', { place: 'log', body: E.canon({ routines: S.routines.map(x => x.id), exercises: S.exercises.map(x => x.id), injuries: S.injuries.map(x => x.id) }) });
       const mirrored = new Set([...Object.values(KIND), 'setting', 'core']);
       // The times the documents hold for each record, on any phone, and the records a phone sent over the account's copy (a finding says so).
       const LIST = Object.fromEntries(Object.entries(KIND).map(([l, k]) => [l, k]));

@@ -19,6 +19,8 @@
 //   8. Switch back: the documents written back, the layout with `made` kept and `hold`, every other phone crossing back.
 //   ROWS_PART=mirror|cost|seeds|old|broken|decide|gate|back node tests/rows.js     one part alone
 //   ROWS_PART=mirror ROWS_CASE=workout node tests/rows.js         the mirror's cases whose name holds the text
+//   ROWS_PART=decide ROWS_SRC=<dir> node tests/rows.js        the edges of the rows deciding on another source (src/app
+//      under <dir>): the build before, to show a new case fails there
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -464,6 +466,340 @@ const CASES = {
   }
 };
 
+/* ---------- the edges of the rows deciding (REV36): each answers with what went wrong, nothing when right ---------- */
+
+const DAY = 24 * 3600000;
+/** Every phone of `r` (or those of `who`) opened and synced `n` times, a minute apart. */
+const rounds = async (r, n = 3, who = r.phones) => { for (let i = 0; i < n; i++) { r.clock.t += 61000; for (const P of who) { await P.tick(); await P.sync(); } } };
+/** Where phone P holds record `id`: the log, Recently deleted, the open workout or nowhere. */
+const whereIs = (P, id) => { const S = P.state(); return S.sessions.some(x => x.id === id) ? 'log' : S.trash.some(t => t.id === id) ? 'trash' : S.draft && S.draft.id === id ? 'open' : 'nowhere'; };
+const noteOf = (P, id) => { const x = P.state().sessions.find(q => q.id === id); return x ? x.notes : null; };
+const layoutIn = async r => { const L = (await r.C.rows()).find(x => x.kind === 'meta' && x.id === 'layout'); return L ? JSON.parse(L.body) : null; };
+const repsOf = (P, id) => { const x = P.state().sessions.find(q => q.id === id); return x ? x.ex[0].sets.map(q => q.r) : null; };
+/** Each phone of `r` that holds `id` otherwise than `want` (a place and, in the log, a note), as failures. */
+const holds = (r, id, want, note) => r.phones.flatMap(P => (whereIs(P, id) !== want || (note !== undefined && noteOf(P, id) !== note) ? [`${id} on ${P.name} is ${whereIs(P, id)}${noteOf(P, id) !== null ? ' (' + JSON.stringify(noteOf(P, id)) + ')' : ''}, not ${want}${note !== undefined ? ' (' + JSON.stringify(note) + ')' : ''}`] : []));
+const toldOf = (r, re) => r.phones.flatMap(P => P.toasts.filter(t => re.test(t)).map(t => `${P.name} was told "${t}"`));
+const EDGE = {
+  /* A phone still on the documents moves a session across the 15th, or deletes it, just before the switch, its rows
+     not yet written: the look reads each record from every document at once and sends it once, in either order the
+     account lists its documents. */
+  async 'what a phone still on the documents moved or deleted just before the switch crosses once'(dir, R) {
+    const out = [];
+    for (const what of ['move', 'del'])
+      for (const reversed of [false, true]) {
+        const r = await history({ dirs: [dir, dir], rows: R, name: acct(), strict: true, switchable: true, script: [S6(0, 'check')] });
+        const [A, B] = r.phones;
+        if (reversed) for (const P of r.phones) { const col = P.E.cloud.db.collection; P.E.cloud.db.collection = q => ({ async get() { const x = await col(q).get(); return { docs: [...x.docs].reverse() }; } }); }
+        B.drop = { kind: 'rows-push', when: 'before', n: 5 };
+        await r.run(what === 'move' ? S6(1, 'move', { id: 's3', v: '2026-11-16' }) : S6(1, 'del', { id: 's3' }));
+        B.drop = null; B.off = true;
+        const sw = await A.E.switchNow();
+        B.off = false;
+        const tag = `${what}${reversed ? ', listed the other way' : ''}: `;
+        if (!sw) { out.push(tag + 'the account did not switch'); continue; }
+        await r.run(S6(0, 'note', { id: 's1', v: 'typed on A after the switch' }));
+        await r.check();
+        out.push(...[...said(r), ...holds(r, 's1', 'log', 'typed on A after the switch'), ...holds(r, 's3', what === 'move' ? 'log' : 'trash'), ...r.phones.filter(P => P.E.cloud.status !== 'synced').map(P => `${P.name} is ${P.E.cloud.status}: ${P.errors().slice(-1)}`)].map(x => tag + x));
+      }
+    return out;
+  },
+  // One workout open on two phones, a set ticked on B just before A switches, B's document written and its row not: the look crosses the workout's document too.
+  async 'a set ticked on the other phone just before the switch, its row not written, is kept'(dir, R) {
+    const r = await history({ dirs: [dir, dir], rows: R, name: acct(), strict: true, switchable: true, script: [S6(0, 'check')] });
+    const [A, B] = r.phones;
+    await r.run(S6(0, 'start', { id: 'k1', v: '2026-11-20' })); await r.run(S6(0, 'tick', { i: 0 })); await r.run(S6(0, 'check'));
+    B.drop = { kind: 'rows-push', when: 'before', n: 5 };
+    await r.run(S6(1, 'tick', { i: 1 }));
+    B.drop = null; B.off = true;
+    const sw = await A.E.switchNow();
+    B.off = false;
+    if (!sw) return ['the account did not switch'];
+    await rounds(r);
+    await r.run(S6(0, 'finish'));
+    await r.check();
+    return [...said(r), ...r.phones.flatMap(P => (JSON.stringify(repsOf(P, 'k1')) === '[11,12]' ? [] : [`k1 on ${P.name} holds reps ${JSON.stringify(repsOf(P, 'k1'))}, not [11,12]`]))];
+  },
+  /* After Switch back, a session saved to the documents whose row was not written (that phone's rows' write got no
+     answer): the next phone to learn of Switch back reads the documents into its log, and never writes over them. */
+  async 'a session saved to the documents after Switch back stays, its row not yet written'(dir, R) {
+    const r = await history({ dirs: [dir, dir], rows: R, name: acct(), strict: false, switched: true, script: [S6(0, 'check')] });
+    const [A, B] = r.phones;
+    B.off = true;
+    const back = await A.E.switchBack();
+    if (back !== 'done') return ['Switch back answered ' + back];
+    await A.E.cq(A.E.cloudPull); await A.settle();
+    r.clock.t += 3600000;
+    A.drop = { kind: 'rows-push', when: 'before', n: 9 };
+    await r.run(S6(0, 'add', { id: 'x9', v: '2026-11-20' }));
+    B.off = false; r.clock.t += 5000; await B.tick(); await B.sync();
+    A.drop = null;
+    await rounds(r, 4);
+    const docs = Object.values(r.C.all('u')).flatMap(d => (d && d.sessions) || []).some(x => x.id === 'x9');
+    return [...holds(r, 'x9', 'log'), ...(docs ? [] : ['the account\'s documents no longer hold x9'])];
+  },
+  // A phone with a routine and a lift built on it, nothing logged yet, signs in to an account whose rows decide: both are kept beside the account's log.
+  async 'a first sign-in keeps a routine and a lift built on the phone'(dir, R) {
+    const r = await history({ dirs: [dir], rows: R, name: acct(), strict: true, switched: true, script: [S6(0, 'check')] });
+    const [A] = r.phones;
+    const C = phoneOf(dir, { name: 'C', clock: r.clock, seed: 777 }).start(St => {
+      St.exercises.push({ id: 'myLift', name: 'My own lift', primary: 'chest', secondary: [], equip: 'machine', bw: false, rare: false, perSide: false, note: '', custom: true, archived: false, inc: null, plates: null });
+      St.routines.push({ id: 'myRoutine', name: 'My own routine', schedule: 'cycle', days: [{ id: 'd1', name: 'Day A', rest: false, items: [{ uid: 'i1', exId: 'myLift', sets: 3, repMin: 8, repMax: 12, rir: 1, rest: 120, inc: 2.5, ss: null }] }] });
+    });
+    C.signIn(r.C); await C.sync();
+    await rounds(r, 3, [A, C]);
+    return [A, C].flatMap(P => [...(P.state().routines.some(x => x.id === 'myRoutine') ? [] : [`${P.name} holds no routine built on C`]), ...(P.state().exercises.some(x => x.id === 'myLift') ? [] : [`${P.name} holds no lift built on C`]), ...(P.state().sessions.length >= 4 ? [] : [`${P.name} lost the account's sessions`])]);
+  },
+  /* Demo data on a phone that signs in to an account whose rows decide never goes into the account: with nothing of
+     the lifter's beside it, the account's log is taken as it is; with a weigh-in of the lifter's, that is joined alone. */
+  async 'a first sign-in puts no demo data into the account'(dir, R) {
+    const out = [];
+    for (const own of [false, true]) {
+      const r = await history({ dirs: [dir], rows: R, name: acct(), strict: true, switched: true, script: [S6(0, 'check')] });
+      const [A] = r.phones;
+      const C = phoneOf(dir, { name: 'C', clock: r.clock, seed: 778 }).start(St => {
+        St.sessions.push({ id: 'demo1', date: '2026-11-10', dayIdx: 0, dayName: 'Demo day', notes: 'demo', demo: true, ex: [{ exId: 'bench', sets: [{ w: 100, r: 5, rir: 1 }] }] });
+        St.bodyweights.push({ id: 'demoW', date: '2026-11-10', kg: 99, demo: true });
+        if (own) St.bodyweights.push({ id: 'ownW', date: '2026-11-12', kg: 81, demo: false });
+      });
+      C.signIn(r.C); await C.sync();
+      await rounds(r, 3, [A, C]);
+      const tag = own ? 'with a weigh-in of the lifter\'s: ' : 'demo data alone: ';
+      const rows = (await r.C.rows()).filter(x => /^demo/.test(x.id) && x.body);
+      out.push(...rows.map(x => `${tag}the account holds ${x.kind}/${x.id}`));
+      if (own) out.push(...[A, C].flatMap(P => (P.state().bodyweights.some(x => x.id === 'ownW') ? [] : [`${tag}${P.name} holds no weigh-in of the lifter's`])));
+      else out.push(...[A, C].flatMap(P => (P.state().routines.length === 1 ? [] : [`${tag}${P.name} holds ${P.state().routines.length} routines`])));
+    }
+    return out;
+  },
+  /* Two different workouts; B keeps its own, finishes it and starts another before its next sync: the new one is held
+     too, and A's workout and its ticked sets stay. */
+  async 'a workout kept on its own phone, then the next one, never takes the other phone\'s'(dir, R) {
+    const r = await history({ dirs: [dir, dir], rows: R, name: acct(), strict: true, switched: true, script: [S6(0, 'check')] });
+    const [A, B] = r.phones;
+    B.off = true;
+    await r.run(S6(0, 'start', { id: 'k1', v: '2026-11-20' })); await r.run(S6(0, 'tick', { i: 0 })); await r.run(S6(0, 'tick', { i: 1 }));
+    await A.sync();
+    await r.run(S6(1, 'start', { id: 'k2', v: '2026-11-20' })); await r.run(S6(1, 'tick', { i: 0 }));
+    B.off = false; r.clock.t += 5000; await B.tick(); await B.sync();
+    B.off = true;
+    await r.run(S6(1, 'finish'));
+    r.clock.t += 3600000;
+    await r.run(S6(1, 'start', { id: 'k3', v: '2026-11-20' })); await r.run(S6(1, 'tick', { i: 3 }));
+    B.off = false; r.clock.t += 5000; await B.tick(); await B.sync();
+    await rounds(r);
+    const out = [...said(r)];
+    if (!A.state().draft || A.state().draft.id !== 'k1') out.push(`A's open workout is ${A.state().draft ? A.state().draft.id : 'none'}, not k1`);
+    if (!B.state().draft || B.state().draft.id !== 'k3') out.push(`B's open workout is ${B.state().draft ? B.state().draft.id : 'none'}, not k3`);
+    out.push(...holds(r, 'k2', 'log'));
+    return out;
+  },
+  // Switch back from a phone that first signed in after the switch: the layout keeps `made` and `hold`, and the account never switches forward again by itself.
+  async 'Switch back from a phone that signed in after the switch holds'(dir, R) {
+    const r = await history({ dirs: [dir], rows: R, name: acct(), strict: true, switched: true, script: [S6(0, 'check')] });
+    const [A] = r.phones;
+    const made = (await layoutIn(r)).made;
+    const C = phoneOf(dir, { name: 'C', clock: r.clock, seed: 555 }).start(); C.signIn(r.C); await C.sync();
+    await rounds(r, 2, [A, C]);
+    const back = await C.E.switchBack();
+    if (back !== 'done') return ['Switch back answered ' + back];
+    await C.E.cq(C.E.cloudPull); await C.settle();
+    for (let d = 1; d <= 5; d++) { r.clock.t += DAY; await rounds(r, 4, [C]); const g = C.E.gateNow(); if (g && g.holder) await C.E.forgetDevice(g.holder.dev); }
+    const L = await layoutIn(r);
+    return L.made === made && L.hold === true && L.decides === 'docs' ? [] : [`the layout after Switch back and five days: ${JSON.stringify(L)}`];
+  },
+  // Switch back holds on a later visit whose first read of the layout gets no answer.
+  async 'Switch back holds when a later visit\'s first read of the layout has no answer'(dir, R) {
+    const r = await history({ dirs: [dir], rows: R, name: acct(), strict: true, switched: true, script: [S6(0, 'check')] });
+    let [A] = r.phones;
+    if ((await A.E.switchBack()) !== 'done') return ['Switch back did not finish'];
+    await A.E.cq(A.E.cloudPull); await A.settle();
+    for (let d = 0; d < 4; d++) { r.clock.t += DAY; await rounds(r, 4, [A]); }
+    r.clock.t += 3600000;
+    const A2 = phoneOf(dir, { name: 'A', clock: r.clock, storage: A.ls, seed: 9 }).start();
+    A2.signIn(r.C);
+    A2.drop = { kind: 'rows-pull', when: 'before', n: 1 };
+    await A2.pull();
+    for (let i = 0; i < 2; i++) { r.clock.t += 61000; await A2.tick(); await A2.sync(); }
+    const L = await layoutIn(r);
+    return L.decides === 'docs' && L.hold === true ? [] : [`the layout after that visit: ${JSON.stringify(L)}`];
+  },
+  // A phone that edited a session while it had not yet learnt of the switch keeps its edit's time: the later edit wins on every phone.
+  async 'a later edit made before a phone crossed beats an earlier one'(dir, R) {
+    const r = await history({ dirs: [dir, dir], rows: R, name: acct(), strict: true, switchable: true, script: [S6(0, 'note', { id: 's1', v: 'first' }), S6(0, 'check')] });
+    const [A, B] = r.phones;
+    B.off = true;
+    if (!(await A.E.switchNow())) return ['the account did not switch'];
+    await A.sync();
+    A.off = true;
+    await r.run(S6(0, 'note', { id: 's1', v: 'A, the earlier edit' }));
+    await r.run(S6(1, 'note', { id: 's1', v: 'B, the later edit' }));
+    B.off = false; r.clock.t += 5000; await B.tick(); await B.sync();
+    A.off = false; r.clock.t += 5000; await A.tick(); await A.sync();
+    await rounds(r);
+    return holds(r, 's1', 'log', 'B, the later edit');
+  },
+  // An edit made before a phone crossed, of a session another phone then deleted for good, is kept and reaches the account once.
+  async 'an edit kept against Delete for good reaches the account once'(dir, R) {
+    const r = await history({ dirs: [dir, dir], rows: R, name: acct(), strict: true, switchable: true, script: [S6(0, 'note', { id: 's1', v: 'first' }), S6(0, 'check')] });
+    const [A, B] = r.phones;
+    B.off = true;
+    await r.run(S6(1, 'note', { id: 's1', v: 'typed on B with no signal' }));
+    if (!(await A.E.switchNow())) return ['the account did not switch'];
+    await A.sync();
+    await r.run(S6(0, 'del', { id: 's1' })); await r.run(S6(0, 'forgood', { id: 's1' }));
+    await rounds(r, 2, [A]);
+    B.off = false; r.clock.t += 5000; await B.tick(); await B.sync();
+    await rounds(r, 2);
+    const p0 = r.C.calls.length;
+    await rounds(r, 2);
+    const again = r.C.calls.slice(p0).filter(c => c.name === 'push' && c.keys.includes('session/s1')).length;
+    return [...holds(r, 's1', 'log', 'typed on B with no signal'), ...(again ? [`s1 still sent ${again} times after it was saved`] : []), ...r.phones.filter(P => P.E.hasUnsent()).map(P => `${P.name} still has something unsent`)];
+  },
+  // A delete made before a phone crossed, of a session another phone edited since: the edit is kept, the recoverable mistake.
+  async 'an edit made elsewhere beats a delete made before a phone crossed'(dir, R) {
+    const r = await history({ dirs: [dir, dir], rows: R, name: acct(), strict: true, switchable: true, script: [S6(0, 'check')] });
+    const [A, B] = r.phones;
+    B.off = true;
+    if (!(await A.E.switchNow())) return ['the account did not switch'];
+    await A.sync();
+    await r.run(S6(0, 'note', { id: 's1', v: 'edited on A' }));
+    await rounds(r, 2, [A]);
+    await r.run(S6(1, 'del', { id: 's1' }));
+    B.off = false; r.clock.t += 5000; await B.tick(); await B.sync();
+    await rounds(r);
+    return holds(r, 's1', 'log', 'edited on A');
+  },
+  // A delete written over an edit it had not seen (the edit reaching the account between the phone's read and its write): the edit is kept.
+  async 'a delete written over an edit it had not seen keeps the edit'(dir, R) {
+    const out = [];
+    for (const forgood of [false, true]) {
+      const r = await history({ dirs: [dir, dir], rows: R, name: acct(), strict: true, switched: true, script: [S6(0, 'off'), S6(1, 'off'), S6(0, 'del', { id: 's1' }), ...(forgood ? [S6(0, 'forgood', { id: 's1' })] : []), S6(1, 'note', { id: 's1', v: 'edited on B' }), S6(0, 'on'), S6(1, 'on'), S6(0, 'squeeze', { q: 1, then: { op: 'sync' } }), S6(0, 'check')] });
+      out.push(...holds(r, 's1', 'log', 'edited on B').map(x => (forgood ? 'deleted for good: ' : 'deleted: ') + x));
+    }
+    return out;
+  },
+  // One workout open on two phones and discarded on one: something only typed on the other, or nothing done there, never brings it back.
+  async 'a discarded workout never comes back as a session'(dir, R) {
+    const out = [];
+    for (const first of [0, 1]) {
+      const r = await history({ dirs: [dir, dir], rows: R, name: acct(), strict: true, switched: true, script: [S6(0, 'check')] });
+      const [A, B] = r.phones;
+      await r.run(S6(0, 'start', { id: 'k1', v: '2026-11-20' }));
+      for (const i of [0, 1, 2]) await r.run(S6(0, 'tick', { i }));
+      await r.run(S6(0, 'check'));
+      A.off = true; B.off = true;
+      await r.run(S6(0, 'discard'));
+      await r.run(S6(1, 'wnote', { v: 'a note typed on B' }));
+      const P1 = first ? B : A, P2 = first ? A : B;
+      P1.off = false; r.clock.t += 5000; await P1.tick(); await P1.sync();
+      P2.off = false; r.clock.t += 5000; await P2.tick(); await P2.sync();
+      await rounds(r);
+      out.push(...holds(r, 'k1', 'nowhere').map(x => `${P1.name} synced first: ${x}`));
+    }
+    {
+      const r = await history({ dirs: [dir, dir], rows: R, name: acct(), strict: true, switchable: true, script: [S6(0, 'check')] });
+      const [A, B] = r.phones;
+      await r.run(S6(0, 'start', { id: 'k1', v: '2026-11-20' })); await r.run(S6(0, 'tick', { i: 0 })); await r.run(S6(0, 'tick', { i: 1 })); await r.run(S6(0, 'check'));
+      B.off = true;
+      if (!(await A.E.switchNow())) return [...out, 'the account did not switch'];
+      await r.run(S6(1, 'discard'));
+      B.off = false; r.clock.t += 5000; await B.tick(); await B.sync();
+      await rounds(r);
+      out.push(...holds(r, 'k1', 'nowhere').map(x => `discarded before B crossed: ${x}`));
+    }
+    return out;
+  },
+  // A note typed on A and saved, then B's own later note kept over it, the clash said: Undo on B goes back to A's note, not past it.
+  async 'Undo after a clash goes back to the other phone\'s copy'(dir, R) {
+    const r = await history({ dirs: [dir, dir], rows: R, name: acct(), strict: false, switched: true, script: [S6(0, 'check')] });
+    const [A, B] = r.phones;
+    B.off = true;
+    await r.run(S6(0, 'note', { id: 's1', v: 'typed on A' }));
+    await A.sync();
+    r.clock.t += 60000;
+    // B changes the same session later, by an action that keeps an Undo step, as the app's own edits of a saved record do.
+    B.E.act(() => { B.state().sessions.find(x => x.id === 's1').notes = 'typed on B, later'; }, { undo: true });
+    r.clock.t += 1500; await B.tick();
+    B.off = false; r.clock.t += 5000; await B.tick(); await B.sync();
+    B.E.undoStep();
+    r.clock.t += 1500; await B.tick();
+    await rounds(r);
+    return holds(r, 's1', 'log', 'typed on A');
+  },
+  // A delete whose write never reached the account, taken back by Undo: nothing is left to send, Switch back can go ahead, and another phone's later delete stands.
+  async 'a write with no answer, then taken back, leaves nothing unsent'(dir, R) {
+    const r = await history({ dirs: [dir, dir], rows: R, name: acct(), strict: true, switched: true, script: [S6(0, 'check')] });
+    const [A, B] = r.phones;
+    A.drop = { kind: 'rows-push', when: 'before', n: 1 };
+    await r.run(S6(0, 'del', { id: 's2' }));
+    await r.run(S6(0, 'undo'));
+    await rounds(r, 2);
+    const out = A.E.hasUnsent() ? ['A still has something unsent'] : [];
+    await r.run(S6(1, 'del', { id: 's2' }));
+    await rounds(r, 3);
+    return [...out, ...holds(r, 's2', 'trash')];
+  },
+  // A machine name the app kept on a session (the session that began its machine deleted), and an edit of it on another phone that had not seen the name: the name stays and no clash is said.
+  async 'a machine name the app kept is no one\'s edit'(dir, R) {
+    const r = await history({ dirs: [dir, dir], rows: R, name: acct(), strict: false, switched: true, script: [S6(0, 'check')] });
+    const [A, B] = r.phones;
+    const sess = (id, date, nw) => ({ id, date, dayIdx: 0, dayName: 'Day 1', notes: 'start', ex: [{ exId: 'pecDeck', ...(nw ? { nw: true } : {}), sets: [{ w: 50, r: 10, rir: 2 }, { w: 50, r: 9, rir: 2 }] }] });
+    A.E.act(() => { const St = A.state(); A.E.setState(A.E.normalize({ ...St, sessions: [...St.sessions, sess('m1', '2026-10-01'), sess('m2', '2026-10-08', true), sess('m3', '2026-10-15')] })); });
+    r.clock.t += 1500; await A.tick();
+    await r.run(S6(0, 'check'));
+    B.off = true;
+    await r.run(S6(0, 'del', { id: 'm2' }));
+    const kept = (A.state().sessions.find(x => x.id === 'm3').ex[0] || {}).mc;
+    await r.run(S6(1, 'note', { id: 'm3', v: 'typed on B' }));
+    B.off = false; r.clock.t += 5000; await B.tick(); await B.sync();
+    await rounds(r);
+    const out = kept ? [] : ['the app kept no name on m3 (the case set itself up wrong)'];
+    for (const P of r.phones) { const b = P.state().sessions.find(x => x.id === 'm3').ex[0]; if (b.mc !== kept) out.push(`m3 on ${P.name} names ${JSON.stringify(b.mc)}, not the kept ${JSON.stringify(kept)}`); }
+    return [...out, ...holds(r, 'm3', 'log', 'typed on B'), ...toldOf(r, /edited on two devices/)];
+  },
+  // A session finished on A, both in step; its note then typed on both, A's later: A's note is kept on both and the clash said.
+  async 'the later edit of a session lately a workout is kept, and said'(dir, R) {
+    const r = await history({ dirs: [dir, dir], rows: R, name: acct(), strict: false, switched: true, script: [S6(0, 'check')] });
+    const [A, B] = r.phones;
+    await r.run(S6(0, 'start', { id: 'k1', v: '2026-11-20' })); await r.run(S6(0, 'tick', { i: 0 })); await r.run(S6(0, 'check'));
+    await r.run(S6(0, 'tick', { i: 1 })); await r.run(S6(0, 'finish')); await r.run(S6(0, 'check'));
+    B.off = true;
+    await r.run(S6(1, 'note', { id: 'k1', v: 'typed on B, earlier' }));
+    await r.run(S6(0, 'note', { id: 'k1', v: 'typed on A, the later edit' }));
+    await A.sync();
+    B.off = false; await B.tick(); await B.sync();
+    await rounds(r);
+    return [...holds(r, 'k1', 'log', 'typed on A, the later edit'), ...(toldOf(r, /edited on two devices/).length ? [] : ['no phone said the clash'])];
+  },
+  // A profile photo changed while the rows decide is the one every phone holds after Switch back.
+  async 'the profile photo stays after Switch back'(dir, R) {
+    const r = await history({ dirs: [dir, dir], rows: R, name: acct(), strict: true, switchable: true, script: [S6(0, 'check')] });
+    const [A, B] = r.phones;
+    const pic = n => 'data:image/jpeg;base64,' + Buffer.from(('photo ' + n + ' ').repeat(20)).toString('base64');
+    const set = async (P, n) => { P.ls.set(P.E.KEY + '.photo', pic(n)); const was = JSON.parse(P.ls.get(P.E.KEY + '.photoSync') || 'null'); P.ls.set(P.E.KEY + '.photoSync', JSON.stringify({ uid: 'u', et: Math.max(r.clock.t, was ? was.et + 1 : 0), up: true })); await P.E.cq(P.E.photoFlush); await P.settle(); r.clock.t += 5000; await P.sync(); await P.sync(); };
+    await set(A, 1); await rounds(r, 2);
+    if (!(await A.E.switchNow())) return ['the account did not switch'];
+    await rounds(r, 2);
+    await set(A, 2); await rounds(r, 2);
+    if ((await A.E.switchBack()) !== 'done') return ['Switch back did not finish'];
+    await A.E.cq(A.E.cloudPull); await A.settle();
+    await rounds(r);
+    return r.phones.filter(P => P.ls.get(P.E.KEY + '.photo') !== pic(2)).map(P => `${P.name} holds another photo than the one set last`);
+  },
+  // A phone that reads the account's list afresh after Switch back does not wait for good on the row of the lists' order: its daily check runs.
+  async 'a phone that reads the account afresh after Switch back runs its daily check'(dir, R) {
+    const r = await history({ dirs: [dir], rows: R, name: acct(), strict: true, switched: true, script: [S6(0, 'check')] });
+    const [A] = r.phones;
+    if ((await A.E.switchBack()) !== 'done') return ['Switch back did not finish'];
+    await A.E.cq(A.E.cloudPull); await A.settle();
+    const C = phoneOf(dir, { name: 'C', clock: r.clock, seed: 556 }).start(); C.signIn(r.C); await C.sync();
+    r.clock.t += DAY; await rounds(r, 4, [A, C]);
+    const N = C.rowNotes() || {};
+    return [...Object.keys(N.wait || {}).map(k => `C waits on ${k}`), ...(N.chk && N.chk.day ? [] : ['C\'s daily check never ran'])];
+  }
+};
+const HERE = process.env.ROWS_SRC || ROOT;
+
 (async () => {
   const R = await rowsDb();
   if (part('mirror')) {
@@ -641,7 +977,39 @@ const CASES = {
   let lockCase;
   if (part('decide')) {
     /* ---------- 6. the rows decide ---------- */
-    for (const name of Object.keys(DECIDE)) { const out = await decideCases(ROOT, R, [name]); ok(out.length === 0, `the rows decide: ${name}`, out.slice(0, 3)); }
+    if (!process.env.ROWS_SRC) for (const name of Object.keys(DECIDE)) { const out = await decideCases(ROOT, R, [name]); ok(out.length === 0, `the rows decide: ${name}`, out.slice(0, 3)); }
+    for (const [name, f] of Object.entries(EDGE)) { if (process.env.ROWS_CASE && !name.includes(process.env.ROWS_CASE)) continue; const out = await f(HERE, R).catch(e => ['crashed: ' + String((e && e.stack) || e).slice(0, 300)]); ok(out.length === 0, `the rows decide: ${name}`, out.slice(0, 4)); }
+    if (process.env.ROWS_SRC) { console.log(fails.length ? `${fails.length} failed on ${HERE}` : 'ALL PASS'); process.exit(fails.length ? 1 : 0); }
+    /* A copy of the rows' modules with one rule of the edges broken fails its case. */
+    const BROKEN_EDGE = [
+      ['a record\'s copy read from the last document the look read, not from all of them', `    const sides = docSides(d.id, D);\n`, `    const sides = docSides(d.id, D);\n    copy.clear();\n`, ['what a phone still on the documents moved or deleted just before the switch crosses once']],
+      ['the workout\'s document left out of the look', `      if (!kept) draftRow = draftCrossed(D, frozen.get('draft') ?? null, rows.get(DRAFT_KEY), at, writer);\n`, ``, ['a set ticked on the other phone just before the switch, its row not written, is kept']],
+      ['the documents taken as agreed at a crossing back, the log kept as it was', `  let next = withTaken(assemble(parts), ch.takes, ch.order);`, `  let next = withTaken(state, ch.takes, ch.order);`, ['a session saved to the documents after Switch back stays, its row not yet written']],
+      ['the photo left out of Switch back\'s write', `  if (pd || url !== null) {`, `  if (false) {`, ['the profile photo stays after Switch back']],
+      ['a first sign-in that counts only sessions as the lifter\'s', `  if (!madeHere(state)) {\n    setState(normalize({ ...theirs, draft: draftCopy(T) }));`, `  if (!state.sessions.length) {\n    setState(normalize({ ...theirs, draft: draftCopy(T) }));`, ['a first sign-in keeps a routine and a lift built on the phone']],
+      ['demo data joined at a first sign-in', `  const mine = normalize({ ...state, draft: null });\n  stripDemo(mine); // demo data never goes into an account\n`, `  const mine = normalize({ ...state, draft: null });\n`, ['a first sign-in puts no demo data into the account']],
+      ['the next workout sent over the account\'s once a held one closes', `  if (M) {\n    goWay(T, T, W, sd);\n    return;\n  }`, `  if (M) return;`, ['a workout kept on its own phone, then the next one, never takes the other phone\'s']],
+      ['Switch back\'s layout made with this phone\'s own id for the rows', `    const made = typeof L['made'] === 'string' ? L['made'] : N.made;`, `    const made = N.made;`, ['Switch back from a phone that signed in after the switch holds']],
+      ['hold read only from this visit\'s answers, and not at the switch', [[`  // Switched back since (\`hold\`, read in the answer just taken): never switched again by this build.\n  if (rowsHeld()) return false;\n`, ``], [`      ...(held ? { hold: true } : {})\n`, ``]], null, ['Switch back holds when a later visit\'s first read of the layout has no answer']],
+      ['a crossing that gives every record the row\'s time', `      .filter(g => MIRRORED.has(g.kind) && inStep(mine.get(g.k), N.rows[g.k]))`, `      .filter(g => MIRRORED.has(g.kind))`, ['a later edit made before a phone crossed beats an earlier one', 'an edit kept against Delete for good reaches the account once']],
+      ['a copy in Recently deleted read as live at a crossing', [[`    const cLive = !!c && c.place === 'log',\n      rLive = r.place === 'log';`, `    const cLive = !!c && c.place !== 'good',\n      rLive = r.place !== 'good';`]], null, ['an edit made elsewhere beats a delete made before a phone crossed']],
+      ['a write\'s answer that holds another copy only noted', `    if (g.X['took'] !== true || g.body !== undefined) {`, `    if (g.X['took'] !== true) {`, ['a delete written over an edit it had not seen keeps the edit']],
+      ['a losing workout copy kept whatever it changed', [[`    const k = changedSince(d.join.copy, d.join.agreed) ? joinClosed(d.join.copy, d.join.agreed) : null;`, `    const k = joinClosed(d.join.copy, d.join.agreed);`], [`  if (d.lost && changedSince(d.lost.copy, d.lost.agreed))`, `  if (d.lost)`]], null, ['a discarded workout never comes back as a session']],
+      ['Undo not told of a copy the rule replaced', `    if (d.v === 'keep' && d.clash && h) lostOf(lost, g.k, h.s, g.body);\n`, ``, ['Undo after a clash goes back to the other phone\'s copy']],
+      ['a write with no answer waited for for good', `    for (const k in W.out) if ((W.out[k]?.n ?? 0) <= from) delete W.out[k];\n`, ``, ['a write with no answer, then taken back, leaves nothing unsent']],
+      ['a copy taken whole, the names the app kept dropped', `      if (i >= 0) L[i] = keptOn(data, L[i]);`, `      if (i >= 0) L[i] = data;`, ['a machine name the app kept is no one\'s edit']],
+      ['the app\'s own write read as an edit', `  if (h && placeOf(h) === theirs && X.t === h.t && X.dev === h.dev) return { v: 'keep', clash: false };\n`, ``, ['a machine name the app kept is no one\'s edit']],
+      ['two copies of a session joined after one was agreed', `  if (!h && mineLive && theirsLive && m.kind === 'session' && baseFor(W, m.id) && g.body)`, `  if (mineLive && theirsLive && m.kind === 'session' && baseFor(W, m.id) && g.body)`, ['the later edit of a session lately a workout is kept, and said']],
+      ['the row of the lists\' order waited on by the first phase', [[`      if (MIRRORED.has(X['kind']) && k !== ORDER_ROW) N.wait[k] ??= Date.now();`, `      if (MIRRORED.has(X['kind'])) N.wait[k] ??= Date.now();`], [`    if (o && placeOf(o) !== 'good')\n      rows.push({`, `    if (false)\n      rows.push({`]], null, ['a phone that reads the account afresh after Switch back runs its daily check']]
+    ];
+    if (!process.env.ROWS_CASE)
+      for (const [name, from, to, which] of BROKEN_EDGE) {
+        let out = [];
+        const dir = brokenCopy(name, from, to);
+        try { for (const c of which) out.push(...(await EDGE[c](dir, R))); } catch (e) { out = ['crashed: ' + String((e && e.message) || e).slice(0, 120)]; }
+        ok(out.length > 0, `the edges fail on the rows' modules with one rule broken: ${name}`, 'nothing failed');
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
     {
       // Each phone of an account switched to its rows says nothing of a clash where two phones made the same change.
       const r = await history({ dirs: [ROOT, ROOT], rows: R, name: acct(), strict: true, switched: true, script: [S6(0, 'off'), S6(1, 'off'), S6(0, 'note', { id: 's1', v: 'same' }), S6(1, 'note', { id: 's1', v: 'same' }), S6(0, 'on'), S6(1, 'on'), S6(0, 'check')] });
@@ -753,11 +1121,11 @@ const CASES = {
       ok(out.length === 0, 'a document written just before the switch, its look stopped half way, still reaches the rows', out.slice(0, 3));
       const dir = brokenCopy('the frozen rows written before their records', `  for (let i = 0; i < out.length; i += WRITE_ROWS)
     if (!rec(await soon(R.push(out.slice(i, i + WRITE_ROWS))))) return false;
-  for (let i = 0; i < moved.length; i += WRITE_ROWS)
-    if (!rec(await soon(R.push(moved.slice(i, i + WRITE_ROWS))))) return false;`, `  for (let i = 0; i < moved.length; i += WRITE_ROWS)
+  // The workout alone:`, `  for (let i = 0; i < moved.length; i += WRITE_ROWS)
     if (!rec(await soon(R.push(moved.slice(i, i + WRITE_ROWS))))) return false;
   for (let i = 0; i < out.length; i += WRITE_ROWS)
-    if (!rec(await soon(R.push(out.slice(i, i + WRITE_ROWS))))) return false;`);
+    if (!rec(await soon(R.push(out.slice(i, i + WRITE_ROWS))))) return false;
+  // The workout alone:`);
       const bad = await lookCase(dir).catch(e => ['crashed ' + e.message]);
       ok(bad.length > 0, 'the case fails with the frozen rows written before their records', 'nothing failed');
       fs.rmSync(dir, { recursive: true, force: true });
@@ -790,12 +1158,12 @@ const CASES = {
     /* A copy of the rows' sync with one rule broken fails a case. */
     const BROKEN_DECIDE = [
       ['a write whose answer was lost read as another phone\'s', `if (o && o.t === X.t && o.dev === X.dev && o.a === X.a && o.place === placeOf(X) && o.s === X.s) {`, `if (false && o) {`, ['a write whose answer was lost is this phone\'s own']],
-      ['two copies of one workout\'s session decided by the later edit', `if (mineLive && theirsLive && m.kind === 'session' && baseFor(W, m.id) && g.body)`, `if (false && mineLive)`, ['one workout finished on two phones keeps every set', 'the saved session edited while the other phone ticks']],
+      ['two copies of one workout\'s session decided by the later edit', `if (!h && mineLive && theirsLive && m.kind === 'session' && baseFor(W, m.id) && g.body)`, `if (false && mineLive)`, ['one workout finished on two phones keeps every set', 'the saved session edited while the other phone ticks']],
       ['a different workout swapped into the account', `return way(M, false, { held: { id: M.id, copy: A && A.id === M.id ? A : null } });`, `return way(T, false, { held: null });`, ['two different workouts each stay on their own phone']],
       ['the join of a workout closed elsewhere kept to its ticked sets', `const kept = have ? draftSession(lost, true) : draftSession(lost),`, `const kept = draftSession(lost),`, ['a date or a note changed on the phone behind joins the session']],
       ['a copy only put back taken as an edit', `if (putBack(m, h) && theirsLive && !theirsBack) return { v: 'take', clash: false };`, ``, ['a put-back that meets an edit it had not seen keeps the edit', 'a copy only put back never beats an edit made elsewhere']],
       ['a put-back kept where the answer says it replaced an edit', `if (putBack(mine.get(g.k), was)) {`, `if (false) {`, ['a put-back written over an edit it had not seen gives the edit back']],
-      ['a held workout let go while still open', `  if (M && M.id === W.held.id) return;`, `  if (false) return;`, ['two different workouts each stay on their own phone']],
+      ['a held workout let go while still open', [[`  if (M && M.id === W.held.id) return;`, `  if (false) return;`], [`  if (M) {\n    goWay(T, T, W, sd);\n    return;\n  }`, `  if (M) return;`]], null, ['two different workouts each stay on their own phone']],
       ['a workout this phone finished elsewhere not joined when the account opened another', `  if (M && !M.editingId && state.sessions.some(s => s.id === M.id) && (!T || T.id !== M.id)) {`, `  if (false && M) {`, ['a workout finished elsewhere joins its session whatever opens next']]
     ];
     for (const [name, from, to, which] of BROKEN_DECIDE) {
@@ -1076,10 +1444,10 @@ const CASES = {
     const backRun = async (dir, only) => { const out = []; for (const [n, f] of Object.entries(backCases)) { if (only && !only.includes(n)) continue; for (const x of await f(dir)) out.push(n + ': ' + x); } return out; };
     for (const n of Object.keys(backCases)) { const out = await backRun(ROOT, [n]); ok(out.length === 0, `Switch back: ${n}`, out.slice(0, 3)); }
     const BROKEN_BACK = [
-      ['Switch back without made', `      made: N.made,\n      decides: 'docs',`, `      made: null,\n      decides: 'docs',`, ['after Switch back a phone on 2.78.2 syncs again and keeps the layout']],
+      ['Switch back without made', `      made,\n      decides: 'docs',`, `      made: null,\n      decides: 'docs',`, ['after Switch back a phone on 2.78.2 syncs again and keeps the layout']],
       ['Switch back without hold', `      at: top,\n      hold: true\n`, `      at: top\n`, ['switched back from one phone, the other crosses back with what it typed']],
       ['Switch back at level 2', `      level: BACK_LEVEL,`, `      level: 2,`, ['after Switch back a phone on 2.78.2 syncs again and keeps the layout']],
-      ['the other phone not crossing back', `      await S.crossBack();\n`, ``, ['switched back from one phone, the other crosses back with what it typed']]
+      ['the other phone not crossing back', `  if (!(await S.crossBack(backChanges(N, W)))) return;\n`, ``, ['switched back from one phone, the other crosses back with what it typed']]
     ];
     for (const [name, from, to, which] of BROKEN_BACK) {
       let out = [];
@@ -1091,7 +1459,7 @@ const CASES = {
   }
   if (part('broken')) {
     const BROKEN = [
-      ['a row a read brought in waits only for the pass that read it', `      if (MIRRORED.has(X['kind'])) N.wait[k] ??= Date.now();`, ``, ['a row read by a pass that stopped early is still left alone by the next pass']],
+      ['a row a read brought in waits only for the pass that read it', `      if (MIRRORED.has(X['kind']) && k !== ORDER_ROW) N.wait[k] ??= Date.now();`, ``, ['a row read by a pass that stopped early is still left alone by the next pass']],
       ['a count written during a pass is written over by the pass', `    if (own) written = text;
     return;
   }

@@ -4,6 +4,7 @@
    phone shows one log from the same rows. The result goes through normalize, as every log the app reads does. */
 
 import { STATE_VERSION, arr, rec, trashKind } from './records';
+import { keptOn } from './machines';
 import type { Rec, Trashed } from './records';
 import { CORE_FIELDS } from './chunks';
 import { normalize } from './normalize';
@@ -98,7 +99,8 @@ export function withTaken(S0: Rec, takes: readonly Taken[], order: Record<string
     const data = rec(x.data);
     trash = trash.filter(t => !(t.kind === x.kind && t.id === x.id));
     if (x.place === 'log' && data) {
-      if (i >= 0) L[i] = data;
+      // The machine names the app kept on the log's copy stay where the copy taken names none: they are no one's edit.
+      if (i >= 0) L[i] = keptOn(data, L[i]);
       else L.push(data);
       continue;
     }

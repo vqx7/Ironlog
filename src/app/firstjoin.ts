@@ -4,12 +4,13 @@
 
 import { arr, sessCmp } from './records';
 import type { Trashed } from './records';
-import { realCount, unionById } from './chunks';
+import { realCount, stripDemo, unionById } from './chunks';
 import { sameRecord } from './merge';
 import { keptOnSession, unname } from './machines';
 import { draftCardio, draftSession } from './session';
 import type { Session } from './types';
-import { joinExercises, machineReadings, nameSessions, normalize, putAside } from './normalize';
+import { joinExercises, machineReadings, nameSessions, normalize, plainTemplate, putAside } from './normalize';
+import { routineEmpty } from './routines';
 import { FIRST_MACHINE } from './model';
 import { state } from './store';
 import type { State } from './store';
@@ -80,6 +81,22 @@ function nameJoined(st: State, unnamed: ReadonlyMap<string, ReadonlySet<string>>
 
 /** A first sign-in on a phone that holds a log of its own: the two combined (below), the account's copy made the agreed base; true when the other phone's workout in progress was saved as a session. */
 
+/** Whether log `S` holds anything the lifter made, as a first sign-in reads it, whichever layer decides the account:
+    never demo data; a session, a weigh-in, a measurement, cardio, a workout, a routine the lifter built or a custom
+    exercise. With none, the account's log is taken as it is. */
+export function madeHere(S: State): boolean {
+  const mine = { ...S };
+  stripDemo(mine);
+  return !!(
+    realCount(mine) ||
+    mine.bodyweights.length ||
+    mine.measurements.length ||
+    S.draft ||
+    mine.cardio.length ||
+    mine.routines.some(r => !plainTemplate(r) && !routineEmpty(r)) ||
+    mine.exercises.some(e => e.custom)
+  );
+}
 /** A first sign-in's join of the phone's log `mine` with the account's `rState`, as `mergeFirstLink` in sync.ts makes it and a log kept aside is joined (joinLogs): the joined log, its machines named, and whether the other phone's workout in progress was saved as a session. */
 export function firstJoin(mine: State, rState: State): { joined: State; keptDraft: boolean } {
   // a routine or exercise made here is the phone's own too, never replaced by the account's

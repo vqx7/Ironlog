@@ -6030,10 +6030,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       let post;
       keepLost = keepLost.filter((x2) => {
         const was = heldIn(pre, x2.key);
-        if (!was || Hx(was.v) !== x2.base) return true;
+        const agreed = (v3) => x2.is ? x2.is(v3) : Hx(v3) === x2.base;
+        if (!was || !agreed(was.v)) return true;
         if (post === void 0) post = e5.post == null ? null : rec(parseJson(e5.post));
         const after2 = post ? heldIn(post, x2.key) : null;
-        if (post && after2 && Hx(after2.v) === x2.base) return true;
+        if (post && after2 && agreed(after2.v)) return true;
         was.put(x2.copy);
         changed = true;
         return false;
@@ -11587,11 +11588,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     injuries: "injury"
   };
   var MIRRORED = /* @__PURE__ */ new Set([...Object.values(KIND), "setting", "core", "photo"]);
+  var ORDER_ROW = "core/order";
   var ctx = null;
   var notes = null;
   var off = null;
   var blocked = false;
   var decide = false;
+  var held2 = false;
   var layoutBody = null;
   var layoutFor = null;
   var layoutText = null;
@@ -11602,9 +11605,15 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const was = blocked;
     blocked = needsNewer(L2);
     decide = !!L2 && L2.decides === "rows" && !blocked;
+    held2 = !!L2 && L2.hold;
     layoutFor = cloud.uid;
     if (cloud.uid) {
-      const text = JSON.stringify({ acct: cloud.uid, decides: L2 ? L2.decides : "docs", level: L2 ? L2.level : 1 });
+      const text = JSON.stringify({
+        acct: cloud.uid,
+        decides: L2 ? L2.decides : "docs",
+        level: L2 ? L2.level : 1,
+        ...held2 ? { hold: true } : {}
+      });
       if (text !== layoutText && (blocked || decide || layoutText !== null)) prefSet(LAYOUT_KEY, text);
       layoutText = text;
     }
@@ -11878,7 +11887,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return {
       made: typeof L2["made"] === "string" ? L2["made"] : null,
       decides: L2["decides"] === void 0 ? "docs" : typeof L2["decides"] === "string" ? L2["decides"] : "?",
-      level: lv === void 0 ? 1 : typeof lv === "number" && Number.isFinite(lv) && lv >= 1 ? lv : Infinity
+      level: lv === void 0 ? 1 : typeof lv === "number" && Number.isFinite(lv) && lv >= 1 ? lv : Infinity,
+      hold: L2["hold"] === true
     };
   }
   var needsNewer = (L2) => !!L2 && (L2.decides !== "docs" && L2.decides !== "rows" || L2.level > LEVEL);
@@ -11888,7 +11898,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (!X || typeof X["kind"] !== "string" || typeof X["id"] !== "string") return 0;
       const k2 = keyOf(X["kind"], X["id"]), h3 = heldAfter(X, N2.rows[k2]);
       if (!sameHeld(N2.rows[k2], h3)) {
-        if (MIRRORED.has(X["kind"])) N2.wait[k2] ??= Date.now();
+        if (MIRRORED.has(X["kind"]) && k2 !== ORDER_ROW) N2.wait[k2] ??= Date.now();
       }
       N2.rows[k2] = h3;
       if (X["kind"] === "device" && "body" in X) deviceSeen(N2, X["id"], X["body"]);
@@ -12103,6 +12113,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const kept = mine ? layoutOf(layoutText) : null;
     blocked = needsNewer(kept);
     decide = !!kept && kept.decides === "rows" && !blocked;
+    held2 = !!kept && kept.hold;
+  }
+  function rowsHeld() {
+    keptRead();
+    return held2;
   }
   var rowsAsked = () => asked;
 
@@ -12222,9 +12237,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function photoMine(N2) {
     if (photoPending()) return null;
     const n3 = photoNote();
-    const held4 = photoHeld();
-    const at2 = n3 ? n3.et : 0, len = held4 === null ? -1 : held4.length;
-    if (!N2.ph || N2.ph.at !== at2 || N2.ph.len !== len) N2.ph = { at: at2, len, s: sumOf(JSON.stringify(held4)) };
+    const held5 = photoHeld();
+    const at2 = n3 ? n3.et : 0, len = held5 === null ? -1 : held5.length;
+    if (!N2.ph || N2.ph.at !== at2 || N2.ph.len !== len) N2.ph = { at: at2, len, s: sumOf(JSON.stringify(held5)) };
     return { kind: "photo", id: "photo", doc: "photo", rk: "", s: N2.ph.s, place: "log", photo: true, at: at2 };
   }
   function logNow(N2) {
@@ -12237,7 +12252,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function keysOf(N2, L2) {
     const keys = new Set(L2.mine.keys());
     for (const k2 in N2.rows)
-      if (MIRRORED.has(k2.slice(0, k2.indexOf("/"))) && (L2.photo || k2 !== "photo/photo") && k2 !== "core/order") keys.add(k2);
+      if (MIRRORED.has(k2.slice(0, k2.indexOf("/"))) && (L2.photo || k2 !== "photo/photo") && k2 !== ORDER_ROW) keys.add(k2);
     return keys;
   }
   var mineText = (m3) => m3 ? `${m3.place} ${m3.s} ${timeOf(m3).toString(B36)}${m3.place === "trash" ? " " + (m3.day || "") : ""}` : "not in the log";
@@ -13019,6 +13034,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       }
     nameSessions(st, named2);
   }
+  function madeHere(S4) {
+    const mine = { ...S4 };
+    stripDemo(mine);
+    return !!(realCount(mine) || mine.bodyweights.length || mine.measurements.length || S4.draft || mine.cardio.length || mine.routines.some((r4) => !plainTemplate(r4) && !routineEmpty(r4)) || mine.exercises.some((e5) => e5.custom));
+  }
   function firstJoin(mine, rState) {
     const base = realCount(mine) > realCount(rState) ? mine : rState, other = base === mine ? rState : mine;
     const aside = state.draft && rState.draft && rState.draft.id !== state.draft.id ? rState.draft : null;
@@ -13142,7 +13162,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const data = rec(x2.data);
       trash = trash.filter((t4) => !(t4.kind === x2.kind && t4.id === x2.id));
       if (x2.place === "log" && data) {
-        if (i5 >= 0) L2[i5] = data;
+        if (i5 >= 0) L2[i5] = keptOn(data, L2[i5]);
         else L2.push(data);
         continue;
       }
@@ -13219,7 +13239,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const o3 = rec(O[k2]);
       const place = o3?.["place"];
       if (o3 && (place === "log" || place === "trash" || place === "good"))
-        out[k2] = { ...verOfRec(o3), place, s: ansText(o3["s"]), ..."copy" in o3 ? { copy: draftCopy(o3["copy"]) } : {} };
+        out[k2] = {
+          ...verOfRec(o3),
+          place,
+          s: ansText(o3["s"]),
+          n: ansNum(o3["n"]),
+          ..."copy" in o3 ? { copy: draftCopy(o3["copy"]) } : {}
+        };
     }
     const D2 = rec(m3["draft"]);
     const H2 = rec(m3["held"]);
@@ -13465,10 +13491,12 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (inStep2(m3, h3)) return { v: "take", clash: false };
     const L2 = lifterOf(m3, h3);
     if (!L2.lifter) return { v: "take", clash: false };
+    if (h3 && placeOf2(h3) === theirs && X.t === h3.t && X.dev === h3.dev) return { v: "keep", clash: false };
     if (h3 && placeOf2(h3) === theirs && h3.s === X.s && (theirs === "log" || X.day === h3.day && X.clash === h3.clash))
       return { v: "keep", clash: false };
     const mineLive = !!m3 && m3.place === "log", theirsLive = theirs === "log";
-    if (mineLive && theirsLive && m3.kind === "session" && baseFor2(W2, m3.id) && g2.body) return { v: "join", clash: false };
+    if (!h3 && mineLive && theirsLive && m3.kind === "session" && baseFor2(W2, m3.id) && g2.body)
+      return { v: "join", clash: false };
     const theirsBack = theirsLive && !!h3 && placeOf2(h3) !== "log" && (X.s === h3.s || X.s === h3.gs);
     if (putBack(m3, h3) && theirsLive && !theirsBack) return { v: "take", clash: false };
     if (theirsBack && mineLive && !putBack(m3, h3)) return { v: "keep", clash: false };
@@ -13596,7 +13624,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const sd = { clashes: 0, kept: null, mine: null, held: false };
     if (!W2.crossed && !await cross(R2, N2, W2, sd)) return;
     for (let round = 0; round < DRAFT_TRIES; round++) {
-      releaseHeld(W2);
+      releaseHeld(W2, sd);
       const got = await pullSince(R2, N2.n);
       if (!got) {
         turnOff(NO_TABLE);
@@ -13604,19 +13632,24 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       }
       if (blockedNow()) return;
       if (editsPending()) trackEdits();
+      const from = N2.n;
       takeRows(N2, W2, got.rows, sd);
+      for (const k2 in W2.out) if ((W2.out[k2]?.n ?? 0) <= from) delete W2.out[k2];
       N2.n = Math.max(N2.n, got.top);
       W2.n = N2.n;
       if (!rowsDecide()) {
-        W2.crossed = false;
         writeAll(N2, W2);
-        await S4.crossBack();
+        await crossBackNow();
         return;
       }
       writeAll(N2, W2);
       const again2 = await sendOut(R2, N2, W2, sd);
       writeAll(N2, W2);
       if (!again2) break;
+    }
+    if (!rowsDecide()) {
+      await crossBackNow();
+      return;
     }
     await dailyCheck(R2, N2);
     writeAll(N2, W2);
@@ -13630,13 +13663,17 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     cloud.last = Date.now();
     S4.status("synced");
   }
-  function releaseHeld(W2) {
+  function releaseHeld(W2, sd) {
     if (!W2.held) return;
     const M3 = state.draft;
     if (M3 && M3.id === W2.held.id) return;
     W2.held = null;
     const T2 = W2.draft ? W2.draft.copy : null;
-    if (M3 || !T2) return;
+    if (!T2) return;
+    if (M3) {
+      goWay(T2, T2, W2, sd);
+      return;
+    }
     setState(normalize({ ...state, draft: draftCopy(T2) }));
     if (writeTakenIn()) seenAsIs();
     fx.rerenderKeepScroll();
@@ -13646,11 +13683,30 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     notesOut(N2);
     nowOut(W2);
   }
+  var listOfKind = new Map([
+    ...Object.entries(KIND).map(([l4, k2]) => [k2, l4]),
+    ["setting", "settings"],
+    ["core", ""]
+  ]);
+  function lostOf(lost, k2, agreed, body) {
+    const cut2 = k2.indexOf("/");
+    const list = listOfKind.get(k2.slice(0, cut2));
+    if (list === void 0 || !agreed || body == null) return;
+    let copy;
+    try {
+      copy = parseJson(body);
+    } catch (e5) {
+      log("rows-copy", e5);
+      return;
+    }
+    lost.push({ key: list + "/" + k2.slice(cut2 + 1), base: void 0, copy, is: (v3) => sumOf(bodyOf(v3)) === agreed });
+  }
   function takeRows(N2, W2, rows2, sd) {
     if (!rows2.size) return;
     otherTab();
     const mine = mineNow2();
     const takes2 = [];
+    const lost = [];
     const times = [];
     let order = null;
     let draftRow2 = null;
@@ -13691,6 +13747,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       }
       if (d3.clash) sd.clashes++;
       if (d3.v === "keep") overs.set(g2.k, { t: X.t, dev: X.dev, a: X.a });
+      if (d3.v === "keep" && d3.clash && h3) lostOf(lost, g2.k, h3.s, g2.body);
       if (d3.v === "same") times.push({ k: g2.k, m: m3, t: X.t });
       if (d3.v !== "take") continue;
       if (g2.k === ORDER_KEY) {
@@ -13707,6 +13764,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       setState(withTaken(state, takes2, order));
       noteTimes(times);
     }
+    undoKeeps(lost);
     if (photo) takePhoto(N2, photo);
     if (draftRow2) takeDraft(N2, W2, draftRow2, sd);
     if (!writeTakenIn()) return;
@@ -13774,10 +13832,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     W2.held = d3.held;
     if (!sameDraft(d3.draft, M3)) setState(normalize({ ...state, draft: draftCopy(d3.draft) }));
     if (d3.join) {
-      const k2 = joinClosed(d3.join.copy, d3.join.agreed);
+      const k2 = changedSince(d3.join.copy, d3.join.agreed) ? joinClosed(d3.join.copy, d3.join.agreed) : null;
       sd.mine = { prev: d3.join.copy, sets: k2 };
     } else if (M3 && !d3.held && (!d3.draft || d3.draft.id !== M3.id) && !d3.lost) sd.mine = { prev: M3, sets: null };
-    if (d3.lost) sd.kept = keepLost2(d3.lost.copy, d3.lost.now, d3.lost.agreed, false) || sd.kept;
+    if (d3.lost && changedSince(d3.lost.copy, d3.lost.agreed))
+      sd.kept = keepLost2(d3.lost.copy, d3.lost.now, d3.lost.agreed, false) || sd.kept;
   }
   function rowsToSend(N2, W2) {
     const mine = mineNow2();
@@ -13831,7 +13890,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         bytes += size;
         at2++;
       }
-      for (const r4 of part) W2.out[keyOf(r4.kind, r4.id)] = outOf(r4);
+      for (const r4 of part) W2.out[keyOf(r4.kind, r4.id)] = outOf(r4, N2.n);
       nowOut(W2);
       let ans;
       try {
@@ -13857,9 +13916,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     return again2;
   }
-  function outOf(r4) {
+  function outOf(r4, n3) {
     const place = r4.gone_saw != null && r4.gone_saw === r4.t && r4.gone_saw_dev === r4.dev ? r4.gone_good ? "good" : "trash" : "log";
-    const o3 = { t: r4.t, dev: r4.dev, a: r4.a, place, s: r4.body == null ? "" : sumOf(r4.body) };
+    const o3 = { t: r4.t, dev: r4.dev, a: r4.a, place, s: r4.body == null ? "" : sumOf(r4.body), n: n3 };
     if (r4.kind === "draft") o3.copy = draftCopy(r4.body ? parseJson(r4.body) : null);
     return o3;
   }
@@ -13867,6 +13926,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     let again2 = false;
     const kept = /* @__PURE__ */ new Map();
     const back2 = [];
+    const lost = [];
     const mine = mineNow2();
     for (const x2 of arr(ans["rows"]) || []) {
       const g2 = gotOf(x2);
@@ -13874,7 +13934,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const r4 = sent2.find((q) => q.kind === g2.kind && q.id === g2.id);
       const was = N2.rows[g2.k];
       delete W2.out[g2.k];
-      if (g2.X["took"] !== true) {
+      if (g2.X["took"] !== true || g2.body !== void 0) {
         if (g2.body !== void 0) kept.set(g2.k, g2);
         else N2.rows[g2.k] = heldAfter(g2.X, was);
         again2 = true;
@@ -13897,8 +13957,12 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           overs.set(g2.k, { t: X.t, dev: X.dev, a: X.a });
           again2 = true;
         }
-      } else sd.clashes++;
+      } else {
+        sd.clashes++;
+        if (was) lostOf(lost, g2.k, was.s, wb);
+      }
     }
+    undoKeeps(lost);
     if (back2.length) {
       setState(withTaken(state, back2, null));
       if (writeTakenIn()) seenAsIs();
@@ -14006,8 +14070,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (dv) agree(W2, { t: dv.t, dev: dv.dev, a: dv.a }, T2);
     if (!Object.keys(cloud.meta).length) firstRead(takes2, order, T2, W2, sd);
     else crossBy(got.rows, takes2, order, T2, W2, sd);
+    const mine = mineNow2();
     noteTimes(
-      [...got.rows.values()].filter((g2) => MIRRORED.has(g2.kind)).map((g2) => ({ k: g2.k, m: void 0, t: ansNum(g2.X["t"]) }))
+      [...got.rows.values()].filter((g2) => MIRRORED.has(g2.kind) && inStep2(mine.get(g2.k), N2.rows[g2.k])).map((g2) => ({ k: g2.k, m: mine.get(g2.k), t: ansNum(g2.X["t"]) }))
     );
     if (photo) takePhoto(N2, photo);
     N2.n = got.top;
@@ -14022,12 +14087,14 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   function firstRead(takes2, order, T2, W2, sd) {
     const theirs = withTaken(bare(), takes2, order);
-    if (!holdsRecords(state)) {
+    if (!madeHere(state)) {
       setState(normalize({ ...theirs, draft: draftCopy(T2) }));
       return;
     }
     const M3 = draftCopy(state.draft);
-    const { joined: joined2 } = firstJoin(normalize({ ...state, draft: null }), normalize({ ...theirs, draft: null }));
+    const mine = normalize({ ...state, draft: null });
+    stripDemo(mine);
+    const { joined: joined2 } = firstJoin(mine, normalize({ ...theirs, draft: null }));
     setState(normalize({ ...joined2, draft: draftCopy(M3 || T2) }));
     if (M3 && T2 && M3.id !== T2.id) {
       W2.held = { id: M3.id, copy: null };
@@ -14064,9 +14131,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         keep.add(k2);
         continue;
       }
-      const cLive = !!c4 && c4.place !== "good", rLive = r4.place !== "good";
+      const cLive = !!c4 && c4.place === "log", rLive = r4.place === "log";
       if (cLive !== rLive) {
         if (cLive) keep.add(k2);
+        continue;
+      }
+      if (!cLive) {
+        if (c4 && c4.place === "trash" && (r4.place !== "trash" || c4.t > r4.t)) keep.add(k2);
         continue;
       }
       sd.clashes++;
@@ -14189,89 +14260,144 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         }
       }
     if (!frozen.size) return false;
-    const out = [];
-    const moved = [];
     const now3 = laterThanSeen(Date.now());
+    const copy = /* @__PURE__ */ new Map();
+    const changed = /* @__PURE__ */ new Set();
+    const same = /* @__PURE__ */ new Set();
+    const moved = [];
+    let unread = false;
+    let draftRow2 = null;
     for (const d3 of snap.docs) {
-      if (!d3.exists || !isChunkId(d3.id) || d3.id === "draft") continue;
+      if (!d3.exists || !isChunkId(d3.id)) continue;
       const b2 = rec(d3.data());
       if (!b2 || typeof b2["json"] !== "string") continue;
       const h3 = hashStr(b2["json"]);
-      if (frozen.has(d3.id) && frozenAt.get(d3.id) === h3) continue;
+      const kept = frozen.has(d3.id) && frozenAt.get(d3.id) === h3;
       let D2;
       try {
         D2 = normChunk(d3.id, parseJson(b2["json"]));
       } catch (e5) {
         log("rows-look", e5);
+        D2 = null;
+      }
+      if (!D2) {
+        unread = true;
         continue;
       }
-      if (!D2) continue;
+      if (kept) same.add(d3.id);
       const times = timesIn(b2["rt"]) || {};
       const writer = ansText(b2["w"]).split(".")[0] || "docs";
       const at2 = ansNum(b2["et"]) || ansNum(b2["at"]);
-      const base = frozen.has(d3.id) ? frozenSides(d3.id, frozen.get(d3.id) ?? null) : null;
-      const copy = docSides(d3.id, D2);
-      for (const k2 of /* @__PURE__ */ new Set([...copy.keys(), ...base ? base.keys() : []])) {
-        const c4 = copy.get(k2), bs = base ? base.get(k2) : void 0, g2 = rows2.get(k2);
-        const r4 = g2 ? rowSide(g2) : null;
-        if (base && sameSide(c4, bs)) continue;
-        if (r4 && sameSide(c4, r4)) continue;
-        if (!c4 && bs && r4 && !sameSide(r4, bs)) continue;
-        const cut2 = k2.indexOf("/");
-        const kind = k2.slice(0, cut2), id = k2.slice(cut2 + 1);
-        const X = g2 ? heldAfter(g2.X, void 0) : void 0;
-        if (!c4) {
-          if (!base || !X || placeOf2(X) !== "log" || !TRASH_KINDS.includes(kind) || !g2 || g2.body == null) continue;
-          out.push({
-            kind,
-            id,
-            body: g2.body,
-            t: X.t,
-            dev: X.dev,
-            a: X.a,
-            gone_saw: X.t,
-            gone_saw_dev: X.dev,
-            gone_good: false,
-            gone_t: now3,
-            gone_dev: cloud.devId || "",
-            gone_day: today(),
-            gone_clash: false
-          });
-          continue;
-        }
-        const t4 = times[c4.rk] || at2;
-        const v3 = { t: t4, dev: writer, a: 0 };
-        const body = bodyOf(c4.x);
-        if (c4.place === "log") out.push({ kind, id, body, ...v3 });
-        else
-          out.push({
-            kind,
-            id,
-            body,
-            ...v3,
-            gone_saw: v3.t,
-            gone_saw_dev: v3.dev,
-            gone_good: false,
-            gone_t: now3,
-            gone_dev: writer,
-            gone_day: c4.day || null,
-            gone_clash: c4.clash
-          });
+      if (d3.id === "draft") {
+        if (!kept) draftRow2 = draftCrossed(D2, frozen.get("draft") ?? null, rows2.get(DRAFT_KEY), at2, writer);
+        if (!kept) moved.push(frozenRow(d3.id, at2, h3, { d: Hx(D2["draft"] ?? null), draft: D2["draft"] ?? null }, now3));
+        continue;
       }
-      moved.push({
-        kind: "frozen",
-        id: d3.id,
-        body: canon({ at: at2, h: h3, b: baseOfDoc(copy) }),
-        t: now3,
-        dev: cloud.devId || "",
-        a: 0
-      });
+      const sides = docSides(d3.id, D2);
+      for (const [k2, c4] of sides) {
+        const was = copy.get(k2);
+        if (!was || was.place !== "log" && c4.place === "log") copy.set(k2, { ...c4, t: times[c4.rk] || at2, writer });
+        if (!kept) changed.add(k2);
+      }
+      if (!kept) moved.push(frozenRow(d3.id, at2, h3, baseOfDoc(sides), now3));
+    }
+    const base = /* @__PURE__ */ new Map();
+    for (const [id, b2] of frozen) {
+      if (id === "draft") continue;
+      for (const [k2, s3] of frozenSides(id, b2)) {
+        const was = base.get(k2);
+        if (!was || was.place !== "log" && s3.place === "log") base.set(k2, s3);
+        if (!same.has(id)) changed.add(k2);
+      }
+    }
+    const out = [];
+    for (const k2 of changed) {
+      const c4 = copy.get(k2), bs = base.get(k2), g2 = rows2.get(k2);
+      const r4 = g2 ? rowSide(g2) : null;
+      if (bs && sameSide(c4, bs)) continue;
+      if (r4 && sameSide(c4, r4)) continue;
+      if (!c4 && bs && r4 && !sameSide(r4, bs)) continue;
+      const cut2 = k2.indexOf("/");
+      const kind = k2.slice(0, cut2), id = k2.slice(cut2 + 1);
+      if (!c4) {
+        const X = g2 ? heldAfter(g2.X, void 0) : void 0;
+        if (unread || !bs || !X || placeOf2(X) !== "log" || !TRASH_KINDS.includes(kind) || !g2 || g2.body == null) continue;
+        out.push({
+          kind,
+          id,
+          body: g2.body,
+          t: X.t,
+          dev: X.dev,
+          a: X.a,
+          gone_saw: X.t,
+          gone_saw_dev: X.dev,
+          gone_good: false,
+          gone_t: now3,
+          gone_dev: cloud.devId || "",
+          gone_day: today(),
+          gone_clash: false
+        });
+        continue;
+      }
+      const v3 = { t: c4.t, dev: c4.writer, a: 0 };
+      const body = bodyOf(c4.x);
+      if (c4.place === "log") out.push({ kind, id, body, ...v3 });
+      else
+        out.push({
+          kind,
+          id,
+          body,
+          ...v3,
+          gone_saw: v3.t,
+          gone_saw_dev: v3.dev,
+          gone_good: false,
+          gone_t: now3,
+          gone_dev: c4.writer,
+          gone_day: c4.day || null,
+          gone_clash: c4.clash
+        });
     }
     for (let i5 = 0; i5 < out.length; i5 += WRITE_ROWS2)
       if (!rec(await soon(R2.push(out.slice(i5, i5 + WRITE_ROWS2))))) return false;
+    if (draftRow2 && !rec(await soon(R2.push([draftRow2])))) return false;
     for (let i5 = 0; i5 < moved.length; i5 += WRITE_ROWS2)
       if (!rec(await soon(R2.push(moved.slice(i5, i5 + WRITE_ROWS2))))) return false;
-    return out.length > 0 || moved.length > 0;
+    return out.length > 0 || moved.length > 0 || !!draftRow2;
+  }
+  var frozenRow = (id, at2, h3, b2, t4) => ({
+    kind: "frozen",
+    id,
+    body: canon({ at: at2, h: h3, b: b2 }),
+    t: t4,
+    dev: cloud.devId || "",
+    a: 0
+  });
+  function draftCrossed(D2, F3, g2, at2, writer) {
+    const A2 = F3 ? draftCopy(F3["draft"]) : null;
+    const M3 = draftCopy(D2["draft"]);
+    if (sameDraft(M3, A2)) return null;
+    let T2 = null;
+    try {
+      T2 = g2 && g2.body ? draftCopy(parseJson(g2.body)) : null;
+    } catch (e5) {
+      log("rows-look", e5);
+      return null;
+    }
+    let to;
+    if (sameDraft(T2, A2)) to = M3;
+    else if (A2 && M3 && T2 && M3.id === A2.id && T2.id === A2.id) to = mergeWorkout(A2, M3, T2, false, { conflicts: 0 });
+    else return null;
+    if (sameDraft(to, T2)) return null;
+    const X = g2 ? heldAfter(g2.X, void 0) : null;
+    return {
+      kind: "draft",
+      id: "draft",
+      body: to ? bodyOf(to) : "null",
+      t: Math.max(at2, X ? X.t + 1 : 1),
+      dev: writer,
+      a: 0,
+      ...X ? { over_t: X.t, over_dev: X.dev } : {}
+    };
   }
   async function lookAtSwitch() {
     const R2 = cloud.db && cloud.db.rows;
@@ -14288,7 +14414,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     W2.crossed = false;
     nowOut(W2);
   }
-  var holdsRecords = (S4) => !!(S4.sessions.length || S4.cardio.length || S4.bodyweights.length || S4.measurements.length || S4.injuries.length || S4.draft);
   function stamp(k2) {
     const at2 = laterThanSeen(Date.now());
     const ch = chunksOf(state);
@@ -14317,6 +14442,52 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     N2.n = top;
     W2.n = top;
     nowOut(W2);
+  }
+  function backChanges(N2, W2) {
+    const mine = mineNow2();
+    const keys = new Set(mine.keys());
+    for (const k2 in N2.rows) if (MIRRORED.has(k2.slice(0, k2.indexOf("/")))) keys.add(k2);
+    const takes2 = [];
+    let order = null;
+    for (const k2 of keys) {
+      const m3 = mine.get(k2), h3 = N2.rows[k2];
+      if (k2 === PHOTO_KEY2 || inStep2(m3, h3)) continue;
+      if (k2 === ORDER_KEY) {
+        order = orderOf(state);
+        continue;
+      }
+      const cut2 = k2.indexOf("/");
+      const kind = k2.slice(0, cut2), id = k2.slice(cut2 + 1);
+      if (!m3) {
+        takes2.push({ kind, id, place: "good", data: null, day: "", clash: false });
+        continue;
+      }
+      const body = copyNow(m3);
+      if (body !== null)
+        takes2.push({ kind, id, place: m3.place, data: parseJson(body), day: m3.day || "", clash: !!m3.clash });
+    }
+    return { takes: takes2, order, agreed: W2.draft ? W2.draft.copy : null };
+  }
+  function rowsBackDue() {
+    const C2 = ctxNow();
+    if (!C2 || !cloud.uid || !cloud.on || rowsDecideHere() || blockedNow()) return false;
+    return nowFor(cloud.uid, C2.ep()).crossed;
+  }
+  async function crossBackNow() {
+    const C2 = ctxNow();
+    const S4 = ctx2;
+    const acct2 = cloud.uid;
+    if (!C2 || !S4 || !acct2) return;
+    const { N: N2 } = notesFor(acct2, C2.ep());
+    const W2 = nowFor(acct2, C2.ep());
+    if (!W2.crossed) return;
+    if (editsPending()) trackEdits();
+    otherTab();
+    if (!await S4.crossBack(backChanges(N2, W2))) return;
+    W2.crossed = false;
+    W2.out = {};
+    W2.held = null;
+    writeAll(N2, W2);
   }
   function rowsUnsent() {
     if (!cloud.on || !cloud.uid) return false;
@@ -14388,6 +14559,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       notesOut(N2);
       return false;
     }
+    if (rowsHeld()) return false;
     const d3 = rec(await soon(R2.digest()));
     const mine = notesDigest(N2);
     if (!d3 || ansNum(d3["top"]) !== N2.n || ansNum(d3["n"]) !== mine.n || d3["sum"] !== mine.sum) return false;
@@ -14396,7 +14568,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const at2 = Date.now();
     const layout = JSON.stringify({
       ...L2,
-      made: N2.made,
+      made: typeof L2["made"] === "string" ? L2["made"] : N2.made,
       decides: "rows",
       level: LEVEL,
       gen: ansNum(L2["gen"]) + 1,
@@ -14453,22 +14625,37 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const top = N2.n;
       if (!await writeDocsBack()) continue;
       const L2 = layoutNow() || {};
+      const made = typeof L2["made"] === "string" ? L2["made"] : N2.made;
+      if (!made) return "failed";
       const layout = JSON.stringify({
         ...L2,
-        made: N2.made,
+        made,
         decides: "docs",
         level: BACK_LEVEL,
         gen: ansNum(L2["gen"]) + 1,
         at: top,
         hold: true
       });
+      const now3 = Date.now();
+      const rows2 = [{ kind: "meta", id: "layout", body: layout, t: now3, dev: cloud.devId || "", a: 0 }];
+      const o3 = N2.rows[ORDER_ROW];
+      if (o3 && placeOf2(o3) !== "good")
+        rows2.push({
+          kind: "core",
+          id: "order",
+          body: null,
+          t: o3.t,
+          dev: o3.dev,
+          a: o3.a,
+          gone_saw: o3.t,
+          gone_saw_dev: o3.dev,
+          gone_good: true,
+          gone_t: now3,
+          gone_dev: cloud.devId || ""
+        });
       let A2;
       try {
-        A2 = rec(
-          await soon(
-            R2.push([{ kind: "meta", id: "layout", body: layout, t: Date.now(), dev: cloud.devId || "", a: 0 }], top)
-          )
-        );
+        A2 = rec(await soon(R2.push(rows2, top)));
       } catch (e5) {
         if (/rows_moved/.test(String(rec(e5)?.["message"] || e5))) continue;
         throw e5;
@@ -14539,16 +14726,15 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const C2 = ctxNow();
     return C2 ? C2.writers() : {};
   };
-  var heldBack = () => (layoutNow() || {})["hold"] === true;
   function gateNow() {
     const C2 = ctxNow();
-    if (!C2 || !cloud.uid || rowsDecide() || blockedNow() || heldBack()) return null;
+    if (!C2 || !cloud.uid || rowsDecide() || blockedNow() || rowsHeld()) return null;
     const { N: N2 } = notesFor(cloud.uid, C2.ep());
     return gateIn(N2, writersNow(), cloud.devId || "", today(), Date.now(), CLEAN_DAYS[ENV]);
   }
   async function gatePass() {
     const C2 = ctxNow();
-    if (!C2 || !cloud.uid || !cloud.on || offWhy() || rowsDecide() || blockedNow() || heldBack() || !device.ok)
+    if (!C2 || !cloud.uid || !cloud.on || offWhy() || rowsDecide() || blockedNow() || rowsHeld() || !device.ok)
       return false;
     const { N: N2 } = notesFor(cloud.uid, C2.ep());
     if (N2.chk.day !== today()) return false;
@@ -14659,7 +14845,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var MSG_MAX = 200, STACK_LINES = 4, STACK_MAX = 400, BROWSER_MAX = 160, SCREEN_MAX = 40, AREA_MAX = 24;
   var REPEAT_LEN = 40;
   var sent = /* @__PURE__ */ new Set();
-  var held2 = [];
+  var held3 = [];
   var stopped = false;
   var cut = (t4, n3) => Array.from(t4).slice(0, n3).join("");
   var QUOTES = /['"`‘’“”«»]/;
@@ -14734,19 +14920,21 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     });
   }
   function errlogFlush() {
-    if (acct.checked && !cloud.on) held2.length = 0;
     if (!target()) return;
-    while (held2.length) {
-      const row = held2.shift();
+    while (held3.length) {
+      const row = held3.shift();
       if (row) send2(row);
     }
+  }
+  function errlogChecked(signedIn) {
+    if (!signedIn) held3.length = 0;
   }
   function errlogStart() {
     onLog((area, err) => {
       const row = shapeOf(area, err);
       if (!row) return;
       if (target()) send2(row);
-      else if (!stopped && !acct.checked && held2.length < MAX_HELD) held2.push(row);
+      else if (!stopped && !acct.checked && held3.length < MAX_HELD) held3.push(row);
     });
   }
 
@@ -15159,17 +15347,17 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       photoTook(remote ? remote.url : null, remote ? remote.et : 0, me);
       return;
     }
-    const held4 = photoHeld();
+    const held5 = photoHeld();
     if (n3 && n3.up) {
       if (remote && remote.et > n3.et) photoTook(remote.url, remote.et, me);
-      else await photoSend(held4, n3.et, d3, me);
+      else await photoSend(held5, n3.et, d3, me);
       return;
     }
     if (remote) {
-      if (remote.url !== held4 || !n3 || n3.et !== remote.et) photoTook(remote.url, remote.et, me);
+      if (remote.url !== held5 || !n3 || n3.et !== remote.et) photoTook(remote.url, remote.et, me);
       return;
     }
-    if (held4) await photoSend(held4, n3 ? n3.et : Date.now(), null, me);
+    if (held5) await photoSend(held5, n3 ? n3.et : Date.now(), null, me);
   }
   function photoTook(url, et, me) {
     const was = photoHeld();
@@ -15281,6 +15469,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   async function cloudFlush() {
     if (!cloud.on) return;
     if (rowsDecideHere()) return rowSync();
+    if (rowsBackDue()) return crossBackNow();
     notesCatchUp();
     if (!pulled) return cloudPull();
     const asked2 = rowsAsked();
@@ -15478,25 +15667,70 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (!await withTimeout(ref(id).setIf(doc, seenOf(read.get(id) ?? null)), SYNC_MS.net, "sync-write")) return false;
       cloud.meta[id] = { h: hashStr(json), at: at2, b: baseOf(id, parseJson(json)) };
     }
+    const pd = snap.docs.find((d3) => d3.id === PHOTO_DOC && d3.exists);
+    const pn = photoNote();
+    const url = photoHeld();
+    if (pd || url !== null) {
+      const et = pn ? pn.et : Date.now();
+      const doc = { v: 1, at: Date.now(), et, w: writeMark(), json: JSON.stringify(url), back: true };
+      const was = pd ? rec(pd.data()) : null;
+      if (!(was && typeof was.json === "string" && was.json === doc.json && Number(was.et) === et)) {
+        if (!await withTimeout(ref(PHOTO_DOC).setIf(doc, seenOf(was)), SYNC_MS.net, "photo-write")) return false;
+        photoSent(et, cloud.uid);
+      }
+    }
     cloud.sent = {};
     saveMeta();
     return true;
   }
-  async function crossBack() {
+  async function crossBack(ch) {
     const db = cloud.db;
-    if (!db || !cloud.uid) return;
-    const snap = await withTimeout(db.collection(`data/users/${cloud.uid}`).get(), SYNC_MS.net, "sync-pull");
+    if (!db || !cloud.uid) return false;
+    let snap;
+    try {
+      snap = await withTimeout(db.collection(`data/users/${cloud.uid}`).get(), SYNC_MS.net, "sync-pull");
+    } catch (e5) {
+      log("sync-pull", e5);
+      cloudFail(e5);
+      return false;
+    }
     const meta = {};
+    const parts = {};
+    const times = {};
     for (const d3 of snap.docs) {
       const b2 = d3.exists && isChunkId(d3.id) ? rec(d3.data()) : null;
       if (!b2 || typeof b2.json !== "string") continue;
-      meta[d3.id] = { h: hashStr(b2.json), at: Number(b2.at) || 0, b: baseOf(d3.id, parseJson(b2.json)) };
+      let data;
+      try {
+        data = rec(parseJson(b2.json));
+      } catch (e5) {
+        log("sync-parse", e5);
+        return false;
+      }
+      parts[d3.id] = data;
+      times[d3.id] = timesIn(b2.rt);
+      meta[d3.id] = { h: hashStr(b2.json), at: Number(b2.at) || 0, b: baseOf(d3.id, data) };
     }
+    const before2 = chunksOf(state);
+    const draftWas = state.draft;
+    let next2 = withTaken(assemble(parts), ch.takes, ch.order);
+    if (canon(draftWas ?? null) !== canon(ch.agreed ?? null)) {
+      next2 = normalize({ ...next2, draft: draftWas });
+      const D2 = meta["draft"];
+      meta["draft"] = { h: "", at: D2 ? D2.at : 0, b: baseOf("draft", { draft: ch.agreed }) };
+    }
+    const after2 = chunksOf(next2);
+    for (const id of /* @__PURE__ */ new Set([...Object.keys(before2), ...Object.keys(parts), ...Object.keys(after2)]))
+      if (id !== "draft") recordTimesAfter(id, before2[id], parts[id], after2[id], times[id] ?? null);
+    setState(next2);
     cloud.meta = meta;
     cloud.sent = {};
     writers = writersOf(snap.docs);
     saveMeta();
-    cq(cloudFlush);
+    if (writeTakenIn()) seenAsIs();
+    fx.rerenderKeepScroll();
+    cq(cloudPull);
+    return true;
   }
   var writers = {};
   function writersOf(docs) {
@@ -15665,6 +15899,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   async function pullAll(said4) {
     if (!cloud.on || !cloud.db) return;
     if (rowsDecideHere()) return rowSync();
+    if (rowsBackDue()) return crossBackNow();
     if (editsPending()) trackEdits();
     if (offline()) {
       conflictNote({ conflicts: said4 });
@@ -15719,7 +15954,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     trackEdits();
     const local = chunksOf(state);
-    const held4 = heldNow();
+    const held5 = heldNow();
     const first = !Object.keys(cloud.meta).length;
     const agreedDraft = cloud.meta.draft && cloud.meta.draft.b ? cloud.meta.draft.b.draft : null;
     let draftMerged = false, draftRemoteWins = false;
@@ -15756,7 +15991,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       rowsRemoved(before2);
       undoKeeps(stat.lost);
       putCopiesAside(aside);
-      keepLastCopies(held4);
+      keepLastCopies(held5);
       absorbLegacy(leg);
       if (draftMerged) {
         const remoteDraft = remote.draft ? draftOf(rec(remote.draft.data)) : null;
@@ -15893,9 +16128,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
   }
   function holdsLog() {
-    const mine = { ...state };
-    stripDemo(mine);
-    return !!(realCount(mine) || mine.bodyweights.length || mine.measurements.length || state.draft || mine.cardio.length || mine.routines.some((r4) => !plainTemplate(r4) && !routineEmpty(r4)) || mine.exercises.some((e5) => e5.custom));
+    return madeHere(state);
   }
   async function keepHere(from) {
     const notes2 = { meta: cloud.meta, editAt: cloud.editAt, last: cloud.last };
@@ -16138,7 +16371,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     const other = otherTabTimes();
     trackEdits();
-    const held4 = heldNow();
+    const held5 = heldNow();
     const stat = { conflicts: 0, byTime: 0, lost: [] };
     const dr0 = state.draft;
     let kept = null;
@@ -16163,7 +16396,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (changedSince(dr0, agreed)) kept = keepLost2(dr0, state.draft, agreed, true, true);
       if (changedSince(incoming.draft, agreed)) keepLost2(incoming.draft, state.draft, agreed, true, true);
     }
-    keepLastCopies(held4);
+    keepLastCopies(held5);
     device.lastSaved = text;
     clearTimer(saveT);
     saveT = null;
@@ -19486,7 +19719,7 @@ It stays under **Recently deleted** for ${TRASH_DAYS} days (the ${TRASH_MAX} mos
 
   // src/app/park.ts
   var who = () => cloud.acct || "";
-  function held3() {
+  function held4() {
     const r4 = parkedRec();
     return r4 && typeof r4["uid"] === "string" ? { uid: r4["uid"], draft: r4["draft"], at: typeof r4["at"] === "number" ? r4["at"] : null } : null;
   }
@@ -19502,7 +19735,7 @@ It stays under **Recently deleted** for ${TRASH_DAYS} days (the ${TRASH_MAX} mos
     return d3 ? ` Kept until ${fmtDate(d3.until)}.` : "";
   }
   function parkTidy() {
-    const h3 = held3();
+    const h3 = held4();
     if (!h3) return;
     if (h3.at == null) {
       prefSet(PARKED_KEY, JSON.stringify({ uid: h3.uid, draft: h3.draft, at: Date.now() }));
@@ -19521,17 +19754,17 @@ It stays under **Recently deleted** for ${TRASH_DAYS} days (the ${TRASH_MAX} mos
   var backHere = null;
   function letGo() {
     if (backHere == null) return;
-    if (heldId(held3()) === backHere) prefDel(PARKED_KEY);
+    if (heldId(held4()) === backHere) prefDel(PARKED_KEY);
     backHere = null;
   }
   var hooked = false;
   var waiting2 = () => {
-    const h3 = held3();
+    const h3 = held4();
     return h3 && backHere != null && heldId(h3) === backHere ? null : h3;
   };
   var parkedHeld = () => waiting2() != null;
   var parkedNames = (exId) => {
-    const h3 = held3();
+    const h3 = held4();
     const d3 = h3 ? rec(h3.draft) : null;
     const ex = d3 ? arr(d3["ex"]) : null;
     return !!ex && ex.some((b2) => rec(b2)?.["exId"] === exId);
@@ -19542,12 +19775,12 @@ It stays under **Recently deleted** for ${TRASH_DAYS} days (the ${TRASH_MAX} mos
   };
   function parkDraft() {
     const d3 = state.draft;
-    if (!d3 || d3.editingId || held3() != null) return false;
+    if (!d3 || d3.editingId || held4() != null) return false;
     return prefSet(PARKED_KEY, JSON.stringify({ uid: who(), draft: d3, at: Date.now() }));
   }
   function unpark() {
     if (state.draft || !parkedHere()) return false;
-    const h3 = held3();
+    const h3 = held4();
     const d3 = h3 ? normalize({ draft: h3.draft }).draft : null;
     if (!d3) {
       log("park", "a set-aside workout could not be read");
@@ -21179,11 +21412,11 @@ It stays under **Recently deleted** for ${TRASH_DAYS} days (the ${TRASH_MAX} mos
     return nx >= 0 ? nx : d3.ex.findIndex((x2, j3) => blockUntouched(x2) && open(x2, j3));
   }
   function liftsOn(d3) {
-    const held4 = (x2) => {
+    const held5 = (x2) => {
       const j3 = d3.ex.indexOf(x2);
       return j3 >= 0 && setIdx(W.onSet, j3) >= 0 && (W.foldWait.has(x2) || blkIsOpen(j3, x2));
     };
-    const left = (x2) => (!blockDone(x2) || held4(x2)) && !blkIsShut(d3.ex.indexOf(x2), x2);
+    const left = (x2) => (!blockDone(x2) || held5(x2)) && !blkIsShut(d3.ex.indexOf(x2), x2);
     const i5 = blkIdx(W.onLift);
     const at2 = i5 >= 0 ? d3.ex[i5] : void 0;
     const nx = at2 && !left(at2) ? nextLift(d3, i5) : -1;
@@ -21355,7 +21588,7 @@ It stays under **Recently deleted** for ${TRASH_DAYS} days (the ${TRASH_MAX} mos
     const most = pageMost();
     const y1 = Math.max(0, Math.min(most, y0 + a2 - ft - sm - sp));
     const vEnd = y0 + a2 - y1;
-    const held4 = Math.max(0, top0 - a2);
+    const held5 = Math.max(0, top0 - a2);
     let calm = false;
     try {
       calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -21395,7 +21628,7 @@ It stays under **Recently deleted** for ${TRASH_DAYS} days (the ${TRASH_MAX} mos
       }
       const k2 = Math.max(0, Math.min(1, (now3 - t0) / FOLD_MS.glide));
       const e5 = 1 - (1 - k2) ** GLIDE_EASE;
-      a1.style.marginTop = `${m0 + held4 * (1 - e5)}px`;
+      a1.style.marginTop = `${m0 + held5 * (1 - e5)}px`;
       const v3 = top0 + (vEnd - top0) * e5;
       pageTo(Math.max(0, pageY() + a1.getBoundingClientRect().top - v3));
       if (k2 < 1) {
@@ -27594,6 +27827,7 @@ ${JSON.stringify(ctx3, null, 1)}`;
     });
     acct.user = await A2.user();
     acct.checked = true;
+    errlogChecked(!!acct.user);
     if (!acct.user && A2.refused && A2.refused()) signInAgain();
     fbCheckReader();
     const L2 = A2.landing;

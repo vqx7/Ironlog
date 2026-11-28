@@ -12,7 +12,7 @@ import { daysBetween, iso, today } from './util';
 import { cloud } from './store';
 import { ENV, device } from './storage';
 import { fmtDate } from './format';
-import { blockedNow, ctxNow, layoutNow, notesFor, notesOut, offWhy, placeOf, rowsDecide, send } from './rowsnotes';
+import { blockedNow, ctxNow, notesFor, notesOut, offWhy, placeOf, rowsDecide, rowsHeld, send } from './rowsnotes';
 import type { Day, Notes } from './rowsnotes';
 import { switchNow } from './rowsswitch';
 
@@ -112,14 +112,12 @@ const writersNow = (): Readonly<Record<string, Writer>> => {
   const C = ctxNow();
   return C ? C.writers() : {};
 };
-/** Whether "Switch back" asked that no device switch the account again (the layout's `hold`). */
-const heldBack = (): boolean => (layoutNow() || {})['hold'] === true;
 
 /** How the switch stands on this phone now, for Settings > "More"; null where there is nothing to switch (the rows
     decide, or the account cannot be synced by this build). */
 export function gateNow(): Gate | null {
   const C = ctxNow();
-  if (!C || !cloud.uid || rowsDecide() || blockedNow() || heldBack()) return null;
+  if (!C || !cloud.uid || rowsDecide() || blockedNow() || rowsHeld()) return null;
   const { N } = notesFor(cloud.uid, C.ep());
   return gateIn(N, writersNow(), cloud.devId || '', today(), Date.now(), CLEAN_DAYS[ENV]);
 }
@@ -127,7 +125,7 @@ export function gateNow(): Gate | null {
     (decision 4: by itself, no tap). */
 export async function gatePass(): Promise<boolean> {
   const C = ctxNow();
-  if (!C || !cloud.uid || !cloud.on || offWhy() || rowsDecide() || blockedNow() || heldBack() || !device.ok)
+  if (!C || !cloud.uid || !cloud.on || offWhy() || rowsDecide() || blockedNow() || rowsHeld() || !device.ok)
     return false;
   const { N } = notesFor(cloud.uid, C.ep());
   if (N.chk.day !== today()) return false;

@@ -43,6 +43,7 @@ import { NO_ANSWER, fbCheckReader } from './report';
 import { captchaTake, captchaWait } from './captcha';
 import type { Tap } from './workstate';
 import { pageTo } from './frame';
+import { errlogChecked } from './errlog';
 
 /** The confirmation's wait, in milliseconds: how long it tries at most, when it slows, how often it tries before and after, the least gap between two tries, and how long a browser that opened the link reads the marker as this one's. */
 const WAIT_MS = {
@@ -252,6 +253,7 @@ export async function acctInit(): Promise<void> {
   });
   acct.user = await A.user();
   acct.checked = true;
+  errlogChecked(!!acct.user);
   /* The phone opened signed in and the server refused the sign-in as the
      account library refreshed it: the library signed the phone out itself,
      and this says so. The log stays. */

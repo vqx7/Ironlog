@@ -12,23 +12,24 @@
 
 import { arr, parseJson, rec } from './records';
 import type { Rec } from './records';
-import { CORE_FIELDS, chunksOf, isChunkId } from './chunks';
+import { CORE_FIELDS, chunksOf, isChunkId, stripDemo } from './chunks';
 import { Hx, canon, mergeSession, mergeWorkout, recordKey, storedJson } from './merge';
+import type { Lost } from './merge';
 import { hashStr, today } from './util';
 import { draftSession } from './session';
 import type { DraftLike } from './session';
 import { normalize } from './normalize';
 import { cloud, fx, setState, state } from './store';
-import type { CloudRows, CloudStatus, RowIn, State } from './store';
-import { device, log, prefDel, prefGet, prefSet } from './storage';
+import type { CloudRows, CloudStatus, RowIn } from './store';
+import { device, log, prefDel, prefGet, prefSet, undoKeeps } from './storage';
 import { normChunk, timesIn } from './syncnotes';
 import { photoHeld, photoNote, photoPending, photoSent, photoTake } from './photo';
 import { storedElsewhere, writeTakenIn } from './save';
 import { editsPending, laterThanSeen, seenAsIs, trackEdits } from './edits';
 import { saveMeta } from './syncnotes';
-import { conflictNote, draftNote, keepLost, lostNote } from './twoplaces';
+import { changedSince, conflictNote, draftNote, keepLost, lostNote } from './twoplaces';
 import type { Kept } from './twoplaces';
-import { firstJoin } from './firstjoin';
+import { firstJoin, madeHere } from './firstjoin';
 import {
   KIND,
   MIRRORED,
@@ -47,6 +48,7 @@ import {
   notesOut,
   placeOf,
   rowsDecide,
+  rowsDecideHere,
   rowsOnForget,
   sameHeld,
   soon,
@@ -66,8 +68,9 @@ interface SyncCtx {
   mergeStored(text: string): void;
   /** Switch back: every document written over with the log, marked so the guard lets it through (sync.ts). */
   writeBack(): Promise<boolean>;
-  /** The documents taken as agreed once another phone switched the account back, then a send (sync.ts). */
-  crossBack(): Promise<void>;
+  /** Another phone switched the account back: the documents read into the log and taken as agreed, this phone's
+      changes not yet in the rows laid over them, then a pull and a send (sync.ts). True once done. */
+  crossBack(ch: BackChanges): Promise<boolean>;
 }
 let ctx: SyncCtx | null = null;
 /** Starts the rows' sync with what the document sync tells it. */
@@ -90,10 +93,13 @@ interface Ver {
   dev: string;
   a: number;
 }
-/** A write sent with no answer yet: its version, and where and what it said the record is, so a row read later with it is known as this phone's own. */
+/** A write sent with no answer yet: its version, where and what it said the record is, so a row read later with it is
+    known as this phone's own, and the change number read before it was sent (`n`): the first whole read from that
+    number on brings the write if it reached the account, so it is kept no longer than that read. */
 interface Out extends Ver {
   place: 'log' | 'trash' | 'good';
   s: string;
+  n: number;
   copy?: DraftLike | null | undefined;
 }
 /** The small key: whose account and which log, the change number read, the writes with no answer yet, the workout's row as agreed (its version and its copy), the workouts last agreed before they closed (the base a session two phones made of one is joined by), a workout kept on this phone while the account holds another, and whether this phone has crossed from the documents. */
@@ -152,7 +158,13 @@ function nowIn(acct: string, ep: number): Now {
     const o = rec(O[k]);
     const place = o?.['place'];
     if (o && (place === 'log' || place === 'trash' || place === 'good'))
-      out[k] = { ...verOfRec(o), place, s: ansText(o['s']), ...('copy' in o ? { copy: draftCopy(o['copy']) } : {}) };
+      out[k] = {
+        ...verOfRec(o),
+        place,
+        s: ansText(o['s']),
+        n: ansNum(o['n']),
+        ...('copy' in o ? { copy: draftCopy(o['copy']) } : {})
+      };
   }
   const D = rec(m['draft']);
   const H = rec(m['held']);
@@ -456,14 +468,20 @@ function rule(m: Mine | undefined, h: Held | undefined, g: Got, W: Now): Verdict
   if (inStep(m, h)) return { v: 'take', clash: false };
   const L = lifterOf(m, h);
   if (!L.lifter) return { v: 'take', clash: false };
+  /* The account's row moved only by the app's own writes (its time and device the note's, only their count raised: a
+     name the app kept, a newer build's reading): no one edited it there, and this phone's change stands, unsaid. */
+  if (h && placeOf(h) === theirs && X.t === h.t && X.dev === h.dev) return { v: 'keep', clash: false };
   /* The account's row holds the copy the note holds, in the same place, under another version (deleted and put back
      elsewhere, or written again by the app): it changed nothing of the record, and this phone's change stands. */
   if (h && placeOf(h) === theirs && h.s === X.s && (theirs === 'log' || (X.day === h.day && X.clash === h.clash)))
     return { v: 'keep', clash: false };
   const mineLive = !!m && m.place === 'log',
     theirsLive = theirs === 'log';
-  // Two copies of the session one workout became (Finish on two phones, or the session edited while the other ticks): two sets of ticks, joined.
-  if (mineLive && theirsLive && m.kind === 'session' && baseFor(W, m.id) && g.body) return { v: 'join', clash: false };
+  /* Two copies of the session one workout became, Finish on two phones: two sets of ticks, joined. Only while this
+     phone has agreed no copy of the session with the account (no note of it): once it has, each change of it is an
+     edit, and the later edit is kept and said. */
+  if (!h && mineLive && theirsLive && m.kind === 'session' && baseFor(W, m.id) && g.body)
+    return { v: 'join', clash: false };
   // A copy only put back never beats an edit made elsewhere, whichever arrives first.
   const theirsBack = theirsLive && !!h && placeOf(h) !== 'log' && (X.s === h.s || X.s === h.gs);
   if (putBack(m, h) && theirsLive && !theirsBack) return { v: 'take', clash: false };
@@ -658,7 +676,7 @@ async function syncOnce(R: CloudRows, acct: string, ep: number): Promise<void> {
   if (!W.crossed && !(await cross(R, N, W, sd))) return;
   for (let round = 0; round < DRAFT_TRIES; round++) {
     // A workout kept here and closed since is let go first, so the account's workout is decided as the one open here.
-    releaseHeld(W);
+    releaseHeld(W, sd);
     const got = await pullSince(R, N.n);
     if (!got) {
       turnOff(NO_TABLE);
@@ -667,21 +685,29 @@ async function syncOnce(R: CloudRows, acct: string, ep: number): Promise<void> {
     /* The account asks for a newer build: this phone has stopped and says so, and nothing read is taken or sent. */
     if (blockedNow()) return;
     if (editsPending()) trackEdits();
+    const from = N.n;
     takeRows(N, W, got.rows, sd);
+    /* A write sent before this read began that it did not bring never reached the account (or another phone's write
+       has replaced it since, which the rule just decided): it is no write of this phone's to wait for any more. */
+    for (const k in W.out) if ((W.out[k]?.n ?? 0) <= from) delete W.out[k];
     N.n = Math.max(N.n, got.top);
     W.n = N.n;
     // Another phone switched the account back to its documents: what was read is taken, nothing more sent here, and this
     // phone crosses back to the documents (5.2), whose send then writes what it holds beyond them.
     if (!rowsDecide()) {
-      W.crossed = false;
       writeAll(N, W);
-      await S.crossBack();
+      await crossBackNow();
       return;
     }
     writeAll(N, W);
     const again = await sendOut(R, N, W, sd);
     writeAll(N, W);
     if (!again) break;
+  }
+  // Learnt from a write's answer: crossed back the same way.
+  if (!rowsDecide()) {
+    await crossBackNow();
+    return;
   }
   await dailyCheck(R, N);
   writeAll(N, W);
@@ -696,14 +722,20 @@ async function syncOnce(R: CloudRows, acct: string, ep: number): Promise<void> {
   S.status('synced');
 }
 /** Lets go of a workout kept here once it is no longer open (finished, its session sent alone, or discarded): the
-    account's workout is then taken as on any second phone, and the account's row is never written over by its close. */
-function releaseHeld(W: Now): void {
+    account's workout is then taken as on any second phone, and the account's row is never written over by its close.
+    Another workout open here by then (the next one, started before a sync) is decided against the account's by the
+    table, as any workout here is: so it is kept here too while the account holds the other phone's. */
+function releaseHeld(W: Now, sd: Said): void {
   if (!W.held) return;
   const M = state.draft;
   if (M && M.id === W.held.id) return;
   W.held = null;
   const T = W.draft ? W.draft.copy : null;
-  if (M || !T) return;
+  if (!T) return;
+  if (M) {
+    goWay(T, T, W, sd);
+    return;
+  }
   setState(normalize({ ...state, draft: draftCopy(T) }));
   if (writeTakenIn()) seenAsIs();
   fx.rerenderKeepScroll();
@@ -714,6 +746,27 @@ function writeAll(N: Notes, W: Now): void {
   notesOut(N);
   nowOut(W);
 }
+/** The list of the log a row's kind is kept in ('' for the core values), as Undo's steps name a record. */
+const listOfKind = new Map<string, string>([
+  ...Object.entries(KIND).map(([l, k]): [string, string] => [k, l]),
+  ['setting', 'settings'],
+  ['core', '']
+]);
+/** Notes, for Undo, that this phone's copy of record `k` replaced another phone's copy (`body`): the step that changed the record from the copy agreed (checksum `agreed`) goes back to the other phone's copy. */
+function lostOf(lost: Lost[], k: string, agreed: string, body: string | null | undefined): void {
+  const cut = k.indexOf('/');
+  const list = listOfKind.get(k.slice(0, cut));
+  if (list === undefined || !agreed || body == null) return;
+  let copy: unknown;
+  try {
+    copy = parseJson(body);
+  } catch (e) {
+    // A copy that cannot be read is none to go back to: Undo goes back to the copy this phone held.
+    log('rows-copy', e);
+    return;
+  }
+  lost.push({ key: list + '/' + k.slice(cut + 1), base: undefined, copy, is: v => sumOf(bodyOf(v)) === agreed });
+}
 /** Takes the rows read in: this phone's own writes first, then each other row decided by the rule against what this
     phone changed, all of it put into the log in one change, decided against the log as it is then. */
 function takeRows(N: Notes, W: Now, rows: ReadonlyMap<string, Got>, sd: Said): void {
@@ -721,6 +774,7 @@ function takeRows(N: Notes, W: Now, rows: ReadonlyMap<string, Got>, sd: Said): v
   otherTab();
   const mine = mineNow();
   const takes: Taken[] = [];
+  const lost: Lost[] = [];
   const times: { k: string; m: Mine | undefined; t: number }[] = [];
   let order: Record<string, string[]> | null = null;
   let draftRow: Got | null = null;
@@ -762,6 +816,8 @@ function takeRows(N: Notes, W: Now, rows: ReadonlyMap<string, Got>, sd: Said): v
     }
     if (d.clash) sd.clashes++;
     if (d.v === 'keep') overs.set(g.k, { t: X.t, dev: X.dev, a: X.a });
+    // This phone's edit kept over another phone's: Undo of it goes back to that copy, not past it.
+    if (d.v === 'keep' && d.clash && h) lostOf(lost, g.k, h.s, g.body);
     // The same copy here and in the account: its time is the row's, as on every phone that takes it.
     if (d.v === 'same') times.push({ k: g.k, m, t: X.t });
     if (d.v !== 'take') continue;
@@ -779,6 +835,7 @@ function takeRows(N: Notes, W: Now, rows: ReadonlyMap<string, Got>, sd: Said): v
     setState(withTaken(state, takes, order));
     noteTimes(times);
   }
+  undoKeeps(lost);
   if (photo) takePhoto(N, photo);
   if (draftRow) takeDraft(N, W, draftRow, sd);
   if (!writeTakenIn()) return;
@@ -853,11 +910,14 @@ function goWay(A: DraftLike | null, T: DraftLike | null, W: Now, sd: Said): void
   if (d.held && !W.held) sd.held = true;
   W.held = d.held;
   if (!sameDraft(d.draft, M)) setState(normalize({ ...state, draft: draftCopy(d.draft) }));
+  /* A copy that lost is kept only for what it holds that the copy agreed lacks (changedSince): a load being typed, or
+     nothing done at all, never brings back a workout discarded on the phone it was done on. */
   if (d.join) {
-    const k = joinClosed(d.join.copy, d.join.agreed);
+    const k = changedSince(d.join.copy, d.join.agreed) ? joinClosed(d.join.copy, d.join.agreed) : null;
     sd.mine = { prev: d.join.copy, sets: k };
   } else if (M && !d.held && (!d.draft || d.draft.id !== M.id) && !d.lost) sd.mine = { prev: M, sets: null };
-  if (d.lost) sd.kept = keepLost(d.lost.copy, d.lost.now, d.lost.agreed, false) || sd.kept;
+  if (d.lost && changedSince(d.lost.copy, d.lost.agreed))
+    sd.kept = keepLost(d.lost.copy, d.lost.now, d.lost.agreed, false) || sd.kept;
 }
 
 /* ---------- sending ---------- */
@@ -923,7 +983,7 @@ async function sendOut(R: CloudRows, N: Notes, W: Now, sd: Said): Promise<boolea
       at++;
     }
     // Each write's version is kept before it goes, so a row read later with it is known as this phone's own.
-    for (const r of part) W.out[keyOf(r.kind, r.id)] = outOf(r);
+    for (const r of part) W.out[keyOf(r.kind, r.id)] = outOf(r, N.n);
     nowOut(W);
     let ans: Rec | null;
     try {
@@ -951,10 +1011,10 @@ async function sendOut(R: CloudRows, N: Notes, W: Now, sd: Said): Promise<boolea
   return again;
 }
 /** A write as it is kept until its answer comes: its version, where it says the record is, its copy's checksum, and for the workout its copy. */
-function outOf(r: RowIn): Out {
+function outOf(r: RowIn, n: number): Out {
   const place =
     r.gone_saw != null && r.gone_saw === r.t && r.gone_saw_dev === r.dev ? (r.gone_good ? 'good' : 'trash') : 'log';
-  const o: Out = { t: r.t, dev: r.dev, a: r.a, place, s: r.body == null ? '' : sumOf(r.body) };
+  const o: Out = { t: r.t, dev: r.dev, a: r.a, place, s: r.body == null ? '' : sumOf(r.body), n };
   if (r.kind === 'draft') o.copy = draftCopy(r.body ? parseJson(r.body) : null);
   return o;
 }
@@ -966,6 +1026,7 @@ function answers(N: Notes, W: Now, sent: readonly RowIn[], ans: Rec, sd: Said): 
   let again = false;
   const kept = new Map<string, Got>();
   const back: Taken[] = [];
+  const lost: Lost[] = [];
   const mine = mineNow();
   for (const x of arr(ans['rows']) || []) {
     const g = gotOf(x);
@@ -973,8 +1034,9 @@ function answers(N: Notes, W: Now, sent: readonly RowIn[], ans: Rec, sd: Said): 
     const r = sent.find(q => q.kind === g.kind && q.id === g.id);
     const was = N.rows[g.k];
     delete W.out[g.k];
-    if (g.X['took'] !== true) {
-      // The account holds a later copy: decided by the rule against this phone's change, which the note still names.
+    /* The account holds another copy than the one sent (a later one it kept, whatever it took of this write's mark):
+       decided by the rule against this phone's change, which the note still names, as a row read in is. */
+    if (g.X['took'] !== true || g.body !== undefined) {
       if (g.body !== undefined) kept.set(g.k, g);
       else N.rows[g.k] = heldAfter(g.X, was);
       again = true;
@@ -997,8 +1059,13 @@ function answers(N: Notes, W: Now, sent: readonly RowIn[], ans: Rec, sd: Said): 
         overs.set(g.k, { t: X.t, dev: X.dev, a: X.a });
         again = true;
       }
-    } else sd.clashes++;
+    } else {
+      sd.clashes++;
+      // This phone's copy replaced one it had not seen: Undo of it goes back to that copy.
+      if (was) lostOf(lost, g.k, was.s, wb);
+    }
   }
+  undoKeeps(lost);
   if (back.length) {
     setState(withTaken(state, back, null));
     if (writeTakenIn()) seenAsIs();
@@ -1131,8 +1198,12 @@ async function cross(R: CloudRows, N: Notes, W: Now, sd: Said): Promise<boolean>
   if (dv) agree(W, { t: dv.t, dev: dv.dev, a: dv.a }, T);
   if (!Object.keys(cloud.meta).length) firstRead(takes, order, T, W, sd);
   else crossBy(got.rows, takes, order, T, W, sd);
+  // A record the log now holds as its row says takes the row's time; one kept here (this phone's change, or a join) keeps its own.
+  const mine = mineNow();
   noteTimes(
-    [...got.rows.values()].filter(g => MIRRORED.has(g.kind)).map(g => ({ k: g.k, m: undefined, t: ansNum(g.X['t']) }))
+    [...got.rows.values()]
+      .filter(g => MIRRORED.has(g.kind) && inStep(mine.get(g.k), N.rows[g.k]))
+      .map(g => ({ k: g.k, m: mine.get(g.k), t: ansNum(g.X['t']) }))
   );
   if (photo) takePhoto(N, photo);
   N.n = got.top;
@@ -1156,12 +1227,14 @@ function firstRead(
   sd: Said
 ): void {
   const theirs = withTaken(bare(), takes, order);
-  if (!holdsRecords(state)) {
+  if (!madeHere(state)) {
     setState(normalize({ ...theirs, draft: draftCopy(T) }));
     return;
   }
   const M = draftCopy(state.draft);
-  const { joined } = firstJoin(normalize({ ...state, draft: null }), normalize({ ...theirs, draft: null }));
+  const mine = normalize({ ...state, draft: null });
+  stripDemo(mine); // demo data never goes into an account
+  const { joined } = firstJoin(mine, normalize({ ...theirs, draft: null }));
   setState(normalize({ ...joined, draft: draftCopy(M || T) }));
   if (M && T && M.id !== T.id) {
     W.held = { id: M.id, copy: null };
@@ -1210,11 +1283,16 @@ function crossBy(
       keep.add(k);
       continue;
     }
-    // Changed on both. One side deleted: the other kept. Both live: the later edit, said.
-    const cLive = !!c && c.place !== 'good',
-      rLive = r.place !== 'good';
+    /* Changed on both. Deleted on one side (to Recently deleted or for good): the other kept, the recoverable mistake.
+       Deleted on both: a copy in Recently deleted over none, else the later. Both in the log: the later edit, said. */
+    const cLive = !!c && c.place === 'log',
+      rLive = r.place === 'log';
     if (cLive !== rLive) {
       if (cLive) keep.add(k);
+      continue;
+    }
+    if (!cLive) {
+      if (c && c.place === 'trash' && (r.place !== 'trash' || c.t > r.t)) keep.add(k);
       continue;
     }
     sd.clashes++;
@@ -1331,13 +1409,24 @@ function baseOfDoc(sides: ReadonlyMap<string, Side>): Rec {
   }
   return { a, s: st, f };
 }
-/** The one look (design 4.2, use 2): every document of the account is read, and those changed since the switch's
-    frozen copy of them (written by a phone still on the documents just before the switch, before its rows were made
-    to say the same) cross to the rows together, record by record: a record the document changed and the rows did not
-    is sent as the document holds it, with the document's own time for it and its writer; one the document shows
-    nowhere goes to Recently deleted; with no frozen copy, copies are sent and nothing deleted. The account joins each
-    by its version, so a later edit made on the rows stands. Then each document's frozen row is moved to the copy
-    crossed, records first, so a look stopped half way looks again. True when it sent anything. */
+/** A record as the documents read at the look hold it: its side, its copy, its time and its writer. */
+interface DocCopy extends Side {
+  x: unknown;
+  day: string;
+  clash: boolean;
+  writer: string;
+}
+/** The one look (design 4.2 and 4.4, use 2): every document of the account is read, and what changed since the
+    switch's frozen copy of them (written by a phone still on the documents just before the switch, before its rows
+    were made to say the same) crosses to the rows, record by record. Each record's place and copy are read from every
+    document at once, and its base from every frozen copy at once: a delete, a restore and a date moved across the 15th
+    are each one record in two documents, decided once and sent once. A record changed in the documents and not on the
+    rows is sent as the documents hold it, with the document's own time for it and its writer; one the documents show
+    nowhere goes to Recently deleted, never for good, and only while every document could be read; with no frozen copy,
+    copies are sent and nothing deleted. The account joins each by its version, so a later edit made on the rows
+    stands. The workout's document crosses by 3.6's table, its frozen copy's workout the one agreed. Then each changed
+    document's frozen row is moved to the copy crossed, records first, so a look stopped half way looks again. True
+    when it sent anything. */
 async function oneLook(R: CloudRows, rows: ReadonlyMap<string, Got>): Promise<boolean> {
   const db = cloud.db;
   if (!db || !cloud.uid) return false;
@@ -1357,95 +1446,158 @@ async function oneLook(R: CloudRows, rows: ReadonlyMap<string, Got>): Promise<bo
       }
     }
   if (!frozen.size) return false;
-  const out: RowIn[] = [];
-  const moved: RowIn[] = [];
   const now = laterThanSeen(Date.now());
+  const copy = new Map<string, DocCopy>();
+  const changed = new Set<string>();
+  const same = new Set<string>();
+  const moved: RowIn[] = [];
+  let unread = false;
+  let draftRow: RowIn | null = null;
   for (const d of snap.docs) {
-    if (!d.exists || !isChunkId(d.id) || d.id === 'draft') continue;
+    if (!d.exists || !isChunkId(d.id)) continue;
     const b = rec(d.data());
     if (!b || typeof b['json'] !== 'string') continue;
     const h = hashStr(b['json']);
-    if (frozen.has(d.id) && frozenAt.get(d.id) === h) continue;
+    const kept = frozen.has(d.id) && frozenAt.get(d.id) === h;
     let D: Rec | null;
     try {
       // Read as the documents' base was made of it, so an unchanged record has the fingerprint its frozen copy holds.
       D = normChunk(d.id, parseJson(b['json']));
     } catch (e) {
       log('rows-look', e);
+      D = null;
+    }
+    if (!D) {
+      unread = true;
       continue;
     }
-    if (!D) continue;
+    if (kept) same.add(d.id);
     const times = timesIn(b['rt']) || {};
     const writer = ansText(b['w']).split('.')[0] || 'docs';
     const at = ansNum(b['et']) || ansNum(b['at']);
-    const base = frozen.has(d.id) ? frozenSides(d.id, frozen.get(d.id) ?? null) : null;
-    const copy = docSides(d.id, D);
-    for (const k of new Set([...copy.keys(), ...(base ? base.keys() : [])])) {
-      const c = copy.get(k),
-        bs = base ? base.get(k) : undefined,
-        g = rows.get(k);
-      const r = g ? rowSide(g) : null;
-      if (base && sameSide(c, bs)) continue;
-      if (r && sameSide(c, r)) continue;
-      // Changed on the rows since the switch, and deleted in the document: kept.
-      if (!c && bs && r && !sameSide(r, bs)) continue;
-      const cut = k.indexOf('/');
-      const kind = k.slice(0, cut),
-        id = k.slice(cut + 1);
-      const X = g ? heldAfter(g.X, undefined) : undefined;
-      if (!c) {
-        // Shown nowhere in the document, though its frozen copy held it: to Recently deleted, never for good.
-        if (!base || !X || placeOf(X) !== 'log' || !TRASH_KINDS.includes(kind) || !g || g.body == null) continue;
-        out.push({
-          kind,
-          id,
-          body: g.body,
-          t: X.t,
-          dev: X.dev,
-          a: X.a,
-          gone_saw: X.t,
-          gone_saw_dev: X.dev,
-          gone_good: false,
-          gone_t: now,
-          gone_dev: cloud.devId || '',
-          gone_day: today(),
-          gone_clash: false
-        });
-        continue;
-      }
-      const t = times[c.rk] || at;
-      const v = { t, dev: writer, a: 0 };
-      const body = bodyOf(c.x);
-      if (c.place === 'log') out.push({ kind, id, body, ...v });
-      else
-        out.push({
-          kind,
-          id,
-          body,
-          ...v,
-          gone_saw: v.t,
-          gone_saw_dev: v.dev,
-          gone_good: false,
-          gone_t: now,
-          gone_dev: writer,
-          gone_day: c.day || null,
-          gone_clash: c.clash
-        });
+    if (d.id === 'draft') {
+      if (!kept) draftRow = draftCrossed(D, frozen.get('draft') ?? null, rows.get(DRAFT_KEY), at, writer);
+      if (!kept) moved.push(frozenRow(d.id, at, h, { d: Hx(D['draft'] ?? null), draft: D['draft'] ?? null }, now));
+      continue;
     }
-    moved.push({
-      kind: 'frozen',
-      id: d.id,
-      body: canon({ at, h, b: baseOfDoc(copy) }),
-      t: now,
-      dev: cloud.devId || '',
-      a: 0
-    });
+    const sides = docSides(d.id, D);
+    for (const [k, c] of sides) {
+      const was = copy.get(k);
+      // A record a document holds in the log is there, whatever Recently deleted in the core document says of it.
+      if (!was || (was.place !== 'log' && c.place === 'log')) copy.set(k, { ...c, t: times[c.rk] || at, writer });
+      if (!kept) changed.add(k);
+    }
+    if (!kept) moved.push(frozenRow(d.id, at, h, baseOfDoc(sides), now));
+  }
+  const base = new Map<string, Side>();
+  for (const [id, b] of frozen) {
+    if (id === 'draft') continue;
+    for (const [k, s] of frozenSides(id, b)) {
+      const was = base.get(k);
+      if (!was || (was.place !== 'log' && s.place === 'log')) base.set(k, s);
+      if (!same.has(id)) changed.add(k);
+    }
+  }
+  const out: RowIn[] = [];
+  for (const k of changed) {
+    const c = copy.get(k),
+      bs = base.get(k),
+      g = rows.get(k);
+    const r = g ? rowSide(g) : null;
+    if (bs && sameSide(c, bs)) continue;
+    if (r && sameSide(c, r)) continue;
+    // Changed on the rows since the switch, and deleted in the documents: kept.
+    if (!c && bs && r && !sameSide(r, bs)) continue;
+    const cut = k.indexOf('/');
+    const kind = k.slice(0, cut),
+      id = k.slice(cut + 1);
+    if (!c) {
+      /* Shown in no document, though a frozen copy held it: to Recently deleted, never for good, and only where every
+         document was read (one that could not be read may hold it). */
+      const X = g ? heldAfter(g.X, undefined) : undefined;
+      if (unread || !bs || !X || placeOf(X) !== 'log' || !TRASH_KINDS.includes(kind) || !g || g.body == null) continue;
+      out.push({
+        kind,
+        id,
+        body: g.body,
+        t: X.t,
+        dev: X.dev,
+        a: X.a,
+        gone_saw: X.t,
+        gone_saw_dev: X.dev,
+        gone_good: false,
+        gone_t: now,
+        gone_dev: cloud.devId || '',
+        gone_day: today(),
+        gone_clash: false
+      });
+      continue;
+    }
+    const v = { t: c.t, dev: c.writer, a: 0 };
+    const body = bodyOf(c.x);
+    if (c.place === 'log') out.push({ kind, id, body, ...v });
+    else
+      out.push({
+        kind,
+        id,
+        body,
+        ...v,
+        gone_saw: v.t,
+        gone_saw_dev: v.dev,
+        gone_good: false,
+        gone_t: now,
+        gone_dev: c.writer,
+        gone_day: c.day || null,
+        gone_clash: c.clash
+      });
   }
   for (let i = 0; i < out.length; i += WRITE_ROWS)
     if (!rec(await soon(R.push(out.slice(i, i + WRITE_ROWS))))) return false;
+  // The workout alone: a refused write of it (written on the rows since) is read again and crossed again next time.
+  if (draftRow && !rec(await soon(R.push([draftRow])))) return false;
   for (let i = 0; i < moved.length; i += WRITE_ROWS)
     if (!rec(await soon(R.push(moved.slice(i, i + WRITE_ROWS))))) return false;
-  return out.length > 0 || moved.length > 0;
+  return out.length > 0 || moved.length > 0 || !!draftRow;
+}
+/** A document's frozen row moved to the copy the look crossed: its time, its text's hash and its base. */
+const frozenRow = (id: string, at: number, h: string, b: Rec, t: number): RowIn => ({
+  kind: 'frozen',
+  id,
+  body: canon({ at, h, b }),
+  t,
+  dev: cloud.devId || '',
+  a: 0
+});
+/** The workout the documents hold at the look against the one frozen at the switch and the row's (3.6): the
+    documents' change is the row's when the row has not changed since; one workout changed on both is joined set by
+    set against the frozen one; anything else leaves the row as it is. The row to write, or null. */
+function draftCrossed(D: Rec, F: Rec | null, g: Got | undefined, at: number, writer: string): RowIn | null {
+  const A = F ? draftCopy(F['draft']) : null;
+  const M = draftCopy(D['draft']);
+  if (sameDraft(M, A)) return null;
+  let T: DraftLike | null = null;
+  try {
+    T = g && g.body ? draftCopy(parseJson(g.body)) : null;
+  } catch (e) {
+    // A workout row that cannot be read is no copy to cross against: the row stands.
+    log('rows-look', e);
+    return null;
+  }
+  let to: DraftLike | null;
+  if (sameDraft(T, A)) to = M;
+  else if (A && M && T && M.id === A.id && T.id === A.id) to = mergeWorkout(A, M, T, false, { conflicts: 0 });
+  else return null;
+  if (sameDraft(to, T)) return null;
+  const X = g ? heldAfter(g.X, undefined) : null;
+  return {
+    kind: 'draft',
+    id: 'draft',
+    body: to ? bodyOf(to) : 'null',
+    t: Math.max(at, X ? X.t + 1 : 1),
+    dev: writer,
+    a: 0,
+    ...(X ? { over_t: X.t, over_dev: X.dev } : {})
+  };
 }
 /** The one look, for the switch just written by this phone: the frozen rows it wrote, read back, and the documents read. */
 export async function lookAtSwitch(): Promise<void> {
@@ -1465,16 +1617,6 @@ export async function lookAtSwitch(): Promise<void> {
   nowOut(W);
 }
 
-/** Whether a log holds anything the lifter made: a session, a cardio entry, a weigh-in, a measurement, an injury or a workout. */
-const holdsRecords = (S: State): boolean =>
-  !!(
-    S.sessions.length ||
-    S.cardio.length ||
-    S.bodyweights.length ||
-    S.measurements.length ||
-    S.injuries.length ||
-    S.draft
-  );
 /** Notes record `k` as edited here now, so the look sends it as the lifter's change, later than the account's copy. */
 function stamp(k: string): void {
   const at = laterThanSeen(Date.now());
@@ -1505,6 +1647,71 @@ export function rowsSwitched(N: Notes, top: number, draft: unknown): void {
   N.n = top;
   W.n = top;
   nowOut(W);
+}
+
+/* ---------- crossing back (design 5.2) ---------- */
+
+/** What this phone holds that the rows do not, laid over the documents when it crosses back: each record that differs
+    from its note (its copy, where it is, or its deletion for good), the lists' order where it moved, and the workout
+    as last agreed, the base the documents' own merge joins this phone's workout against. */
+export interface BackChanges {
+  takes: Taken[];
+  order: Record<string, string[]> | null;
+  agreed: DraftLike | null;
+}
+/** This phone's changes not yet in the rows (above). */
+function backChanges(N: Notes, W: Now): BackChanges {
+  const mine = mineNow();
+  const keys = new Set<string>(mine.keys());
+  for (const k in N.rows) if (MIRRORED.has(k.slice(0, k.indexOf('/')))) keys.add(k);
+  const takes: Taken[] = [];
+  let order: Record<string, string[]> | null = null;
+  for (const k of keys) {
+    const m = mine.get(k),
+      h = N.rows[k];
+    if (k === PHOTO_KEY || inStep(m, h)) continue;
+    if (k === ORDER_KEY) {
+      order = orderOf(state);
+      continue;
+    }
+    const cut = k.indexOf('/');
+    const kind = k.slice(0, cut),
+      id = k.slice(cut + 1);
+    if (!m) {
+      takes.push({ kind, id, place: 'good', data: null, day: '', clash: false });
+      continue;
+    }
+    const body = copyNow(m);
+    if (body !== null)
+      takes.push({ kind, id, place: m.place, data: parseJson(body), day: m.day || '', clash: !!m.clash });
+  }
+  return { takes, order, agreed: W.draft ? W.draft.copy : null };
+}
+/** Whether this phone crossed to the rows of an account whose documents decide again (Switch back on another phone),
+    and has not yet crossed back: it does so before anything else is synced, however it learnt of it. */
+export function rowsBackDue(): boolean {
+  const C = ctxNow();
+  if (!C || !cloud.uid || !cloud.on || rowsDecideHere() || blockedNow()) return false;
+  return nowFor(cloud.uid, C.ep()).crossed;
+}
+/** Crosses back to the documents (5.2): they are read into the log and taken as agreed, with this phone's changes not
+    yet in the rows laid over them, each with its time, and a pull then joins the workout and sends the rest. The small
+    key says so once that is done, so a crossing stopped half way is made again at the next sync. */
+export async function crossBackNow(): Promise<void> {
+  const C = ctxNow();
+  const S = ctx;
+  const acct = cloud.uid;
+  if (!C || !S || !acct) return;
+  const { N } = notesFor(acct, C.ep());
+  const W = nowFor(acct, C.ep());
+  if (!W.crossed) return;
+  if (editsPending()) trackEdits();
+  otherTab();
+  if (!(await S.crossBack(backChanges(N, W)))) return;
+  W.crossed = false;
+  W.out = {};
+  W.held = null;
+  writeAll(N, W);
 }
 
 /* ---------- what else asks the rows' sync ---------- */

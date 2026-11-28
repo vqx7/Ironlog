@@ -188,8 +188,9 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   were just proven equal and the documents are guarded (SUPABASE.md Part 9): from then a document write without
   `back` is refused. A phone then syncs by the rows alone: each record by its content against the table, kept,
   taken, joined or the later edit by its own version; the account's layout is heeded at every answer. Two different
-  workouts each stay on their own phone (decision 3). **Switch back** writes the log over every document, then the
-  layout back at the first phase's level with `made` kept and `hold`, and every other phone crosses back. Two tabs of
+  workouts each stay on their own phone (decision 3). **Switch back** writes the log and the photo over every document, then the
+  layout back at the first phase's level with `made` kept and `hold`; every other phone crosses back however it learns
+  of it, reading the documents into its log with its own changes not yet in the rows laid over them. Two tabs of
   one phone that change one record in the same moment keep the later copy whole (PENDING NEW-226).
 - **The app's error log (2.79, `errlog.ts`, SUPABASE.md Part 9):** only faults, cut to a fixed shape with nothing of
   the log, a field, a name or an email; once a visit each, ten at most, signed in and online, never waited for.

@@ -34,7 +34,6 @@ import {
   isChunkId,
   legacyBody,
   PHOTO_DOC,
-  realCount,
   stripDemo,
   unionById
 } from './chunks';
@@ -49,7 +48,9 @@ import { photoHeld, photoNote, photoOf, photoPending, photoSent, photoTake } fro
 import { ROWS_UPDATE, rowsRemoved, rowsSoon, rowsStart } from './rows';
 import { errlogFlush } from './errlog';
 import { rowsAsked, rowsBlocked, rowsDecideHere, rowsForget, rowsGate } from './rowsnotes';
-import { rowSync, rowsUnsent, rowsyncStart } from './rowsync';
+import { crossBackNow, rowSync, rowsBackDue, rowsUnsent, rowsyncStart } from './rowsync';
+import type { BackChanges } from './rowsync';
+import { withTaken } from './rowsapply';
 import { rowsLogKeys } from './rowslog';
 import { acct, cloud, fx, setState, state, ui } from './store';
 import type { Base, CloudDb, CloudDbIn, CloudDoc, CloudRef, CloudSeen, CloudStatus, State, SyncNote } from './store';
@@ -91,7 +92,7 @@ import {
 import { editsPending, laterThanSeen, markEdit, recordKeys, resyncLocalH, seenAsIs, trackEdits } from './edits';
 import { changedSince, conflictNote, draftNote, keepLost, lostNote } from './twoplaces';
 import type { Kept } from './twoplaces';
-import { firstJoin, joinLogs } from './firstjoin';
+import { firstJoin, joinLogs, madeHere } from './firstjoin';
 
 /** Sync's timings, in milliseconds: a save once the taps pause, a flush once
     they pause (the edit notes' own wait is the tracker's, edits.ts), the wait for any answer from the account,
@@ -860,6 +861,7 @@ export async function cloudFlush(): Promise<void> {
   if (!cloud.on) return;
   // An account whose rows decide is synced by its rows (rowsync.ts); its documents are never written again here.
   if (rowsDecideHere()) return rowSync();
+  if (rowsBackDue()) return crossBackNow();
   notesCatchUp();
   /* No pull has come through since the sync started (it failed, or got no
      answer): this one pulls first, which then sends. A retry that only sent
@@ -1122,29 +1124,78 @@ async function writeBack(): Promise<boolean> {
     if (!(await withTimeout(ref(id).setIf(doc, seenOf(read.get(id) ?? null)), SYNC_MS.net, 'sync-write'))) return false;
     cloud.meta[id] = { h: hashStr(json), at, b: baseOf(id, parseJson(json)) };
   }
+  // The profile photo too, as the rows hold it, with its own change time: its document still holds the one of the switch.
+  const pd = snap.docs.find(d => d.id === PHOTO_DOC && d.exists);
+  const pn = photoNote();
+  const url = photoHeld();
+  if (pd || url !== null) {
+    const et = pn ? pn.et : Date.now();
+    const doc: CloudDoc = { v: 1, at: Date.now(), et, w: writeMark(), json: JSON.stringify(url), back: true };
+    const was = pd ? rec(pd.data()) : null;
+    if (!(was && typeof was.json === 'string' && was.json === doc.json && Number(was.et) === et)) {
+      if (!(await withTimeout(ref(PHOTO_DOC).setIf(doc, seenOf(was)), SYNC_MS.net, 'photo-write'))) return false;
+      photoSent(et, cloud.uid);
+    }
+  }
   cloud.sent = {};
   saveMeta();
   return true;
 }
-/* Another phone switched the account back to its documents: they now hold that phone's log, which was the rows'. They
-   are taken as the agreed copies, so what this phone holds beyond them (its own changes, and what it took from the
-   rows since, each with its time) is what its next send writes to them. */
-/** Takes the documents as they are now as the agreed copies (above), then sends. */
-async function crossBack(): Promise<void> {
+/* Another phone switched the account back to its documents: they now hold that phone's log, which was the rows', and
+   whatever a phone on the documents saved to them since. They become this phone's log and its agreed copies, with this
+   phone's own changes not yet in the rows laid over them (the rows' sync gives them), each keeping its time while the
+   rest take the documents' times; so the next send writes those changes alone. The workout is joined by the documents'
+   own merge, the workout last agreed on the rows its base. */
+/** Crosses back (above), then pulls and sends: true once the documents are read and taken. */
+async function crossBack(ch: BackChanges): Promise<boolean> {
   const db = cloud.db;
-  if (!db || !cloud.uid) return;
-  const snap = await withTimeout(db.collection(`data/users/${cloud.uid}`).get(), SYNC_MS.net, 'sync-pull');
+  if (!db || !cloud.uid) return false;
+  let snap: Awaited<ReturnType<ReturnType<CloudDb['collection']>['get']>>;
+  try {
+    snap = await withTimeout(db.collection(`data/users/${cloud.uid}`).get(), SYNC_MS.net, 'sync-pull');
+  } catch (e) {
+    log('sync-pull', e);
+    cloudFail(e);
+    return false;
+  }
   const meta: Record<string, SyncNote> = {};
+  const parts: Record<string, Rec | null> = {};
+  const times: Record<string, Record<string, number> | null> = {};
   for (const d of snap.docs) {
     const b = d.exists && isChunkId(d.id) ? rec(d.data()) : null;
     if (!b || typeof b.json !== 'string') continue;
-    meta[d.id] = { h: hashStr(b.json), at: Number(b.at) || 0, b: baseOf(d.id, parseJson(b.json)) };
+    let data: Rec | null;
+    try {
+      data = rec(parseJson(b.json));
+    } catch (e) {
+      // A document that cannot be read: nothing is taken, and the crossing is made again at the next sync.
+      log('sync-parse', e);
+      return false;
+    }
+    parts[d.id] = data;
+    times[d.id] = timesIn(b.rt);
+    meta[d.id] = { h: hashStr(b.json), at: Number(b.at) || 0, b: baseOf(d.id, data) };
   }
+  const before = chunksOf(state);
+  const draftWas = state.draft;
+  let next = withTaken(assemble(parts), ch.takes, ch.order);
+  if (canon(draftWas ?? null) !== canon(ch.agreed ?? null)) {
+    next = normalize({ ...next, draft: draftWas });
+    const D = meta['draft'];
+    meta['draft'] = { h: '', at: D ? D.at : 0, b: baseOf('draft', { draft: ch.agreed }) };
+  }
+  const after = chunksOf(next);
+  for (const id of new Set([...Object.keys(before), ...Object.keys(parts), ...Object.keys(after)]))
+    if (id !== 'draft') recordTimesAfter(id, before[id], parts[id], after[id], times[id] ?? null);
+  setState(next);
   cloud.meta = meta;
   cloud.sent = {};
   writers = writersOf(snap.docs);
   saveMeta();
-  cq(cloudFlush);
+  if (writeTakenIn()) seenAsIs();
+  fx.rerenderKeepScroll();
+  cq(cloudPull);
+  return true;
 }
 /** Each document's last writer, as the last whole read of the documents found it (its write mark names the device,
     `writeMark`): how the switch sees a device on a build that writes no row of its own (rowsgate.ts). */
@@ -1372,6 +1423,7 @@ export async function cloudPull(): Promise<void> {
 async function pullAll(said: number): Promise<void> {
   if (!cloud.on || !cloud.db) return;
   if (rowsDecideHere()) return rowSync();
+  if (rowsBackDue()) return crossBackNow();
   if (editsPending()) trackEdits();
   if (offline()) {
     conflictNote({ conflicts: said });
@@ -1697,19 +1749,9 @@ async function undoSignIn(): Promise<void> {
     log('auth', e);
   }
 }
-/** Whether the log on this device holds anything the lifter made, as a first link reads it: never demo data; a routine the lifter built or a custom exercise count. */
+/** Whether the log on this device holds anything the lifter made, as a first link reads it (madeHere). */
 function holdsLog(): boolean {
-  const mine = { ...state };
-  stripDemo(mine);
-  return !!(
-    realCount(mine) ||
-    mine.bodyweights.length ||
-    mine.measurements.length ||
-    state.draft ||
-    mine.cardio.length ||
-    mine.routines.some(r => !plainTemplate(r) && !routineEmpty(r)) ||
-    mine.exercises.some(e => e.custom)
-  );
+  return madeHere(state);
 }
 /** Keeps the log here aside for its account, with its notes, as it stands once written (a set ticked while the copy is written makes a second copy): 'room' when the phone has no room for it. */
 async function keepHere(from: string): Promise<'kept' | 'room' | 'busy'> {

@@ -477,10 +477,11 @@ function keepLook(e: UndoStep): boolean {
     let post: Rec | null | undefined;
     keepLost = keepLost.filter(x => {
       const was = heldIn(pre, x.key);
-      if (!was || Hx(was.v) !== x.base) return true;
+      const agreed = (v: unknown): boolean => (x.is ? x.is(v) : Hx(v) === x.base);
+      if (!was || !agreed(was.v)) return true;
       if (post === undefined) post = e.post == null ? null : rec(parseJson(e.post));
       const after = post ? heldIn(post, x.key) : null;
-      if (post && after && Hx(after.v) === x.base) return true;
+      if (post && after && agreed(after.v)) return true;
       was.put(x.copy);
       changed = true;
       return false;

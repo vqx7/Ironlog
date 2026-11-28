@@ -17,8 +17,10 @@ import type { Session } from './types';
 import type { DraftLike } from './session';
 
 /** The conflicts a merge counted, and how many of them each record's own edit times decided (byTime). */
-/** A copy that lost a clash to this side's: its key (recordKey), the fingerprint of the copy both sides had agreed on, and the copy itself. */
-export type Lost = { key: string; base: string | undefined; copy: unknown };
+/** A copy that lost a clash to this side's: its key (recordKey), the fingerprint of the copy both sides had agreed on,
+    and the copy itself; or, where the agreed copy is known only by another checksum (the account's rows), `is`, which
+    tells it. */
+export type Lost = { key: string; base: string | undefined; copy: unknown; is?: (v: unknown) => boolean };
 /** What a merge counts: its clashes, those decided by the records' own times, and, when the caller keeps them (`lost`), the other side's copies that lost one. */
 type Stat = { conflicts: number; byTime?: number; lost?: Lost[] };
 
