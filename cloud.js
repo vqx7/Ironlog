@@ -153,11 +153,11 @@
     const status = +(e && e.status) || 0;
     /* What the server said, when the app has no words of its own for it, is kept for the error log (serverSaid) and
        never shown (2.28, the 2.27 review's 2.27-F7: a Postgres or sign-in service sentence reached the screen). */
-    const OTHER = 'Something went wrong with your account just now. Try again; if it keeps happening, report a problem.';
+    const OTHER = 'Something went wrong with your account. Try again; report a problem if it repeats.';
     let text = OTHER;
     // A setup step still to do, shown in Your data like a table without
     // permissions ('denied'), while sync keeps retrying.
-    if (PREVIEW && /docs_preview/.test(msg) && /PGRST205|42P01|does not exist|schema cache/i.test(msg + code)) return Object.assign(new Error('Preview sync is not set up yet. The preview keeps its log on this phone meanwhile.'), { code: 'denied' });
+    if (PREVIEW && /docs_preview/.test(msg) && /PGRST205|42P01|does not exist|schema cache/i.test(msg + code)) return Object.assign(new Error('The preview\'s account table is not set up yet. Its log stays on this phone.'), { code: 'denied' });
     /* The account is gone (r55.1, V 2026-10-19: a phone still signed in to an
        account deleted on another phone kept saying its log would sync): the
        docs table's rows belong to the account (a foreign key, SUPABASE.md),
@@ -173,14 +173,14 @@
     else if (/already registered|user_already_exists/i.test(msg + code)) text = 'An account with this email already exists. Sign in instead.';
     else if (/email_address_invalid|unable to validate email|email address .* is invalid/i.test(msg + code)) text = 'That email address does not look right. Check it and try again.';
     // A confirmation code that is wrong, used or expired: Supabase answers all three the same way, so one message (r45 review).
-    else if (/otp_expired|token has expired or is invalid/i.test(msg + code)) return Object.assign(new Error('That code is wrong or has expired. Use the newest email, or send a new one.'), { code: 'bad_code' });
+    else if (/otp_expired|token has expired or is invalid/i.test(msg + code)) return Object.assign(new Error('That code is wrong or expired. Use the newest email, or send a new one.'), { code: 'bad_code' });
     // One email per address a minute: "you can only request this after 42 seconds".
     else if (/request this after (\d+) seconds?/i.test(msg)) return Object.assign(new Error(`Wait ${msg.match(/after (\d+) seconds?/i)[1]} seconds, then try again.`), { code: 'wait' });
     else if (/rate limit|over_email_send_rate_limit|too many/i.test(msg + code) || status === 429) text = 'Too many emails in the last hour. Try again later.';
     // The server's own rule, stricter than the app's: said in the app's words, the server's sentence kept for the log.
     else if (/weak_password|password should/i.test(msg + code)) text = 'The account server wants a stronger password. Choose a longer one.';
     else if (/same_password|should be different/i.test(msg + code)) text = 'Choose a password different from the old one.';
-    else if (/send a request to the edge function/i.test(msg)) text = 'Could not delete the account just now. Check you have signal and try again; if it keeps failing, report a problem.';
+    else if (/send a request to the edge function/i.test(msg)) text = 'Could not delete the account. Check your signal, try again, or report a problem.';
     else if (/failed to fetch|network|load failed|fetch/i.test(msg) || e instanceof TypeError) text = 'No connection. Try again when you have signal.';
     const out = new Error(text);
     if ((text === OTHER || /weak_password|password should/i.test(msg + code)) && msg) out.serverSaid = msg.slice(0, 300);
@@ -190,7 +190,7 @@
     // a sign-out: say so and keep retrying. 401/403 otherwise, or an expired
     // or rejected token, means this sign-in is no longer valid and sync
     // switches itself off (cloudFail treats 'revoked' that way).
-    if (code === '42501' || /permission denied/i.test(msg)) { out.message = 'Your account could not be reached just now. Your log is safe on this phone; it syncs once this is fixed. Report a problem if it keeps happening.'; out.code = 'denied'; return out; }
+    if (code === '42501' || /permission denied/i.test(msg)) { out.message = 'Your account refused the save. Your log is safe here. Report it if it repeats.'; out.code = 'denied'; return out; }
     out.code = status === 401 || status === 403 || /jwt|PGRST30[0-3]/i.test(code + msg) ? 'revoked' : (code || 'error');
     return out;
   }
@@ -234,7 +234,7 @@
       return 0;
     } catch (e) { return 0; }
   }
-  const BREACHED = 'This password has appeared in a data breach, so it is easy to guess. Choose a different one.';
+  const BREACHED = 'This password is in a known data breach. Choose a different one.';
   /* The sign-up bot check's token (r66, PENDING 378): given by the app only when config.ts has a Turnstile key
      (src/app/captcha.ts), and then sent with each request Supabase checks once its CAPTCHA protection is on. With
      none, the request is exactly what it was. */
@@ -308,7 +308,7 @@
       const { data, error } = await sb.functions.invoke('delete-account', { method: 'POST' });
       if (error) {
         const status = error.context && error.context.status;
-        if (status === 404) throw Object.assign(new Error('Deleting an account is not available yet. Report a problem and the owner will delete it for you.'), { code: 'not_deployed' });
+        if (status === 404) throw Object.assign(new Error('Deleting an account is not available yet. Report a problem and the owner deletes it.'), { code: 'not_deployed' });
         if (status === 401) throw Object.assign(new Error('Your sign-in has expired. Sign out, sign in again, then delete.'), { code: 'revoked' });
         throw friendly(error);
       }
