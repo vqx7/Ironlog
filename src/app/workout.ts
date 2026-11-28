@@ -44,7 +44,18 @@ import {
 } from './session';
 import type { DraftBlock, DraftSet } from './types';
 import type { ExerciseLike } from './model';
-import { distU, distShow, rirShow, setShort, bestLine, effTgt, fmtDateLong, loadColWord, machineName } from './display';
+import {
+  distU,
+  distShow,
+  rirShow,
+  setShort,
+  bestLine,
+  effTgt,
+  fmtDateLong,
+  loadColWord,
+  machineName,
+  machineSetup
+} from './display';
 
 import { section, tipButton, fieldValue, helpButton, howText, drawing, drawScreen } from './view';
 
@@ -71,20 +82,28 @@ import { closeX } from './sheetsmisc';
 /** What the New machine tag on an exercise says, tapped. */
 const NEW_TIP =
   "A new machine or gym: its targets, trend, stalls, PRs and bests start over from this session. Earlier sessions stay in History. Use it only when the loads there don't compare; take it off in the ⋯ menu.";
-/* The machine a machine lift is on, named on its card once the lifter names it (V, 2026-11-15), or New machine
-   when the session marks it new; a tap opens its Machine sheet. A machine with no name is not said: its last session
-   would be a date to decode. A free weight marked New machine or gym keeps its tag and tip. */
-/** What an exercise's card says of the machine it is on (above). */
-function machineTag(d: NonNullable<typeof state.draft>, exId: string, bi: number): Part {
-  if (!onMachines(EX(exId)))
-    return markedNew(d, exId) ? html` · <span class="tag" data-tip=${NEW_TIP}>New machine</span>` : '';
+/* A free weight marked New machine or gym keeps its tag and tip in the line under its name. */
+/** What the line under a free weight's name says of a new machine or gym (above). */
+function machineTag(d: NonNullable<typeof state.draft>, exId: string): Part {
+  if (onMachines(EX(exId))) return '';
+  return markedNew(d, exId) ? html` · <span class="tag" data-tip=${NEW_TIP}>New machine</span>` : '';
+}
+/* A machine, cable or Smith lift's own line (V's friend, 2026-11-25: gyms have several machines for one lift, and a
+   lifter writes the machine into each session's note to tell them apart): the machine it is on and how the lifter
+   sets it, both kept with the machine, a tap that opens its Machine sheet to switch. Said once the lifter has named
+   the machine or typed how it is set (in the lift's note sheet or its Machine sheet), so a lifter with one machine
+   for a lift sees nothing; New machine when the session marks it new. Under the card's head, across the card. */
+/** A machine lift's line saying the machine it is on and how it is set (above); nothing for a free weight or a
+    machine the lifter has said nothing of. */
+function machineLine(exId: string, bi: number): Part {
+  if (!onMachines(EX(exId))) return '';
   const k = draftMachine(exId);
-  const name = k ? machineName(exId, k) : null;
-  const said = name || (k === NEW_MACHINE ? 'New machine' : null);
-  return said
-    ? // The dot before it goes with it when the line wraps.
-      html` <span class="u-wsnw">· <button type="button" class="tag mctag" data-act="machineOpen" data-b=${String(bi)} aria-label=${`Machine: ${said}. Change`}>${said}</button></span>`
-    : '';
+  const name = k ? machineName(exId, k) || (k === NEW_MACHINE ? 'New machine' : null) : null;
+  const setup = k ? machineSetup(exId, k) : null;
+  if (!k || (!name && !setup)) return '';
+  if (!name)
+    return html`<p class="small mcline">Setup: <button type="button" class="tag mctag" data-act="machineOpen" data-b=${String(bi)} aria-label=${`Machine setup: ${setup}. Change`}>${setup}</button></p>`;
+  return html`<p class="small mcline">Machine: <button type="button" class="tag mctag" data-act="machineOpen" data-b=${String(bi)} aria-label=${`Machine: ${name}. Change`}>${name}</button>${setup ? html` · ${setup}` : nothing}</p>`;
 }
 /** The gap above the cardio buttons when there are entries, in pixels. */
 const CARDIO_ADD_GAP_PX = 10;
@@ -251,7 +270,7 @@ export function readyCard(d: Draft, low: number): Part {
     return html`<p class="callout u-m8-0-0" id="readyCard">Made lighter: the exercises not started are ${shareWords(LIGHTER_SET_SHARE)} the sets at about ${pctOf(LIGHT_SHARE)}% loads.</p>`;
   if (low < 2)
     return html`<p class="callout u-m8-0-0" id="readyCard">Keep the loads. Leave an extra rep in reserve if it feels heavy.</p>`;
-  return html`<div class="callout yellow u-m8-0-0" id="readyCard"><p class="u-m0">Low readiness today. ${tipButton(`A lighter or shorter session fits a low day better than pushing. Make it lighter changes only the exercises not started: ${shareWords(LIGHTER_SET_SHARE)} the sets, about ${pctOf(LIGHT_SHARE)}% loads, nothing to beat.`)}</p><div class="row u-mt8">${open ? html`<button class="btn sm" data-act="makeLight">Make it lighter</button>` : ''}${left > 0 ? html`<button class="btn sm" data-act="shortOpen">Short on time</button>` : ''}</div></div>`;
+  return html`<div class="callout yellow u-m8-0-0" id="readyCard"><p class="u-m0">Low readiness today. ${tipButton(`A lighter or shorter session fits a low day better than pushing. **Make it lighter** changes only the exercises not started: ${shareWords(LIGHTER_SET_SHARE)} the sets, about ${pctOf(LIGHT_SHARE)}% loads, nothing to beat.`)}</p><div class="row u-mt8">${open ? html`<button class="btn sm" data-act="makeLight">Make it lighter</button>` : ''}${left > 0 ? html`<button class="btn sm" data-act="shortOpen">Short on time</button>` : ''}</div></div>`;
 }
 
 /* Bodyweight, asked once in the first session with a bodyweight lift when
@@ -437,15 +456,15 @@ function blockPart(
     !!b.lastR &&
     b.lastR.some(r => r != null) &&
     b.sets.some((s, i) => !s.done && !s.warm && !s.drop && s.r == null && lastRFor(b, i) != null);
-  return html`<section class=${'block' + ssCls} id=${`blk-${bi}`} data-bi=${bi}>${ss && gk === 0 ? html`<p class="ssh">Superset ${ss}</p>` : ''}<div class="bh">${bgrip(bi, ex.name)}<div class="bh-m"><h3 aria-labelledby=${ex.note ? `bhn-${bi}` : nothing}><span id=${`bhn-${bi}`}>${ex.name}</span>${ex.note ? html` ${tipButton(ex.note, 'About ' + ex.name)}` : ''}</h3><p class="small muted">${ssLbl}<button type="button" class="linkbtn bmus" data-act="bMus" data-b=${String(bi)} aria-label=${`${ML[ex.primary]}: show the muscles worked on the body`}>${ML[ex.primary]}</button> · <span class="u-wsnw">${work || p.sets}×${repSpan(p.repMin, p.repMax, '-')}${ex.timed ? 's' : ''}${ex.perSide ? '/side' : ''}</span>${nr ? '' : html` <span class="u-wsnw">@${b.inj || ((d.light || d.deload || b.light) && b.last) ? effLeastShort(rirScale(), LIGHT_RIR) : effTgt(p.rir)}</span>`} · ${p.rest}s${b.inj ? html` · <span class="tag red">Injury: ${injLabel(b.inj)}</span>` : ''}${machineTag(d, b.exId, bi)}</p></div>
+  return html`<section class=${'block' + ssCls} id=${`blk-${bi}`} data-bi=${bi}>${ss && gk === 0 ? html`<p class="ssh">Superset ${ss}</p>` : ''}<div class="bh">${bgrip(bi, ex.name)}<div class="bh-m"><h3 aria-labelledby=${ex.note ? `bhn-${bi}` : nothing}><span id=${`bhn-${bi}`}>${ex.name}</span>${ex.note ? html` ${tipButton(ex.note, 'About ' + ex.name)}` : ''}</h3><p class="small muted">${ssLbl}<button type="button" class="linkbtn bmus" data-act="bMus" data-b=${String(bi)} aria-label=${`${ML[ex.primary]}: show the muscles worked on the body`}>${ML[ex.primary]}</button> · <span class="u-wsnw">${work || p.sets}×${repSpan(p.repMin, p.repMax, '-')}${ex.timed ? 's' : ''}${ex.perSide ? '/side' : ''}</span>${nr ? '' : html` <span class="u-wsnw">@${b.inj || ((d.light || d.deload || b.light) && b.last) ? effLeastShort(rirScale(), LIGHT_RIR) : effTgt(p.rir)}</span>`} · ${p.rest}s${b.inj ? html` · <span class="tag red">Injury: ${injLabel(b.inj)}</span>` : ''}${machineTag(d, b.exId)}</p></div>
       <div class="bh-acts"><div class="bh-btns"><button class="ib" aria-label=${`Fold ${ex.name}`} data-act="bFold" data-b=${bi}>▴</button><button class=${'ib' + (b.note || (b.pics && b.pics.length) ? ' noted' : '')} aria-label=${b.note || (b.pics && b.pics.length) ? `Note on ${ex.name}: edit` : `Add a note to ${ex.name}`} data-act="bNote" data-b=${bi} data-tip="A note or a picture: a cue, a seat setting, a niggle">✎</button><button class="ib" aria-label="Exercise options" data-act="bMenu" data-b=${bi}>⋯</button></div><button type="button" class="ubadge" data-act="unitOpen" data-b=${bi} aria-label=${`${ex.name}: weights in ${liftU(ex)}. Change`}>${liftU(ex)}</button></div></div>
-      ${
+      ${machineLine(b.exId, bi)}${
         b.target
           ? html`<p class="hint"><b>${d.date === today() ? 'Today' : 'Target'}: ${targetText(b)}</b>${why ? html` ${tipButton(why, 'Why this target')}` : ''}<span class="tp muted u-dblock">${lastHead(b, dupB)}</span>${bl ? html`<span class="tp muted u-dblock">${bl}</span>` : ''}${b.easier ? html`<span class="tp ez">${b.easier}</span>` : ''}${progressLine(b, bi)}</p>`
           : html`<p class="hint">${hintOnce(b.hint || '', b.hintAgain, ex.assist ? 'assisted' : ex.bw ? 'bodyweight' : 'loaded', hintSeen)}</p>`
       }${bi === bwAt ? bwWarn(b.exId, d.date) : ''}${bi === calIdx ? html`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b=${bi}>Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>` : ''}
       ${ss && partner && gk === 0 ? html`<p class="small muted u-m2-0-0">Superset with ${partner}; rest after the ${grp.length === 2 ? 'pair' : 'group'}.</p>` : ''}
-      ${b.lastNote && !b.note ? html`<p class="small lnote">Your note, ${fmtDate(b.lastNote.date)}: ${b.lastNote.text} <button class="linkbtn" data-act="noteReuse" data-b=${bi}>Use again</button></p>` : ''}
+      ${b.lastNote && !b.note ? html`<p class="small lnote">Your note from ${fmtDate(b.lastNote.date)}: ${b.lastNote.text}</p>` : ''}
       ${b.note ? html`<p class="small bnote" id=${`bn-${bi}`}>${b.note}</p>` : html`<p class="small bnote" id=${`bn-${bi}`} hidden></p>`}${picStrip(bi, false)}
       <div class=${'sg head' + (nr ? ' norir' : '')}><span data-tip="Tap a set's number to mark it a warm-up or a drop set">#</span><span class="lsh">Last</span><span class="lh">${colWord === 'Per side' ? html`<span class="lhn">Per </span>side` : colWord}</span><span class=${side ? 'hastip' : nothing} data-tip=${side ?? nothing}>${ex.timed ? (ex.perSide ? 'Sec/side' : 'Sec') : ex.perSide ? 'Reps/side' : 'Reps'}</span>${nr ? '' : html`<span>${effName()}</span>`}<span>Done</span></div>${repeatKeyed(
         b.sets,
@@ -540,7 +559,7 @@ export function viewWorkout(d: Draft): TemplateResult {
     b => b.bid,
     (b, bi) => blockPart(d, b, bi, letters, hintSeen, calIdx, bwAt)
   )}<div class="row"><button class="btn u-f1" data-act="pickSession">+ Add exercise</button>${d.editingId ? '' : html`<button class="btn" data-act="pickEx">Pick for me</button>`}</div>${d.editingId ? '' : cardioDraftCard(d)}<label class="field u-mt12">Notes<textarea data-bind="draftNotes" maxlength=${LIMITS.note} .defaultValue=${d.notes || ''} .value=${fieldValue(d.notes || '')}></textarea></label>${picStrip(null)}
-  <div class="row fin-row u-mt12"><button class="btn danger" data-act="discard">${d.editingId ? 'Cancel edit' : 'Discard'}</button><button class="btn primary u-f1" data-act="finish" data-tip="Only sets marked done are saved; Finish asks about any with reps but no checkmark.">${d.editingId ? 'Save changes' : 'Finish and save'}</button></div>`;
+  <div class="row fin-row u-mt12"><button class="btn danger" data-act="discard">${d.editingId ? 'Cancel edit' : 'Discard'}</button><button class="btn primary u-f1" data-act="finish" data-tip="Only sets marked done are saved; **Finish** asks about any with reps but no checkmark.">${d.editingId ? 'Save changes' : 'Finish and save'}</button></div>`;
 }
 
 /* ---------- drawing it again ---------- */

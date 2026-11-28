@@ -6,7 +6,7 @@
 // what the rule gives, with the rule's numbers and the app's own words. A failure names its rule. Each rule was changed
 // in a copy of the page to show its check fails there (PENDING, CA-1). The targets themselves are tests/progression.js's
 // (P-1 to P-37); saving and sync tests/storage-sync.js's. SESSION_ONLY=L-1,L-5 runs some rules.
-const { open } = require('./h');
+const { open, settled, placeOf } = require('./h');
 const fails = [];
 const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 1200) : ''); } else console.log('ok  ', m); return !!c; };
 const FILE = process.argv[2] || 'index.html';
@@ -137,7 +137,7 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     await P.tap('#tabs [data-tab="history"]', 150); await P.tap('#tabs [data-tab="today"]', 200);
     ok(await P.ev(id => !!document.querySelector('#view [data-act="sDone"]') && window.__ironlog.state.draft.id === id, id), 'L-2: while it is in progress, Today shows the workout itself', await P.ev(() => document.getElementById('view').innerText.slice(0, 120)));
     await P.ev(() => window.__ironlog.ACT.startSession({ dataset: { day: '0', light: '0' } })); await wait(250);
-    ok((await P.draft()).id === id && (await P.toasts()).includes('Your workout in progress is open. Finish or discard it first.'), 'L-2: starting another opens the one in progress and says "Your workout in progress is open. Finish or discard it first."', await P.toasts());
+    ok((await P.draft()).id === id && (await P.toasts()).includes('Your workout is open. Finish or Discard it first.'), 'L-2: starting another opens the one in progress and says "Your workout is open. Finish or Discard it first." (2.78.2; "Your workout in progress is open. Finish or discard it first." before)', await P.toasts());
     await P.close();
   }
 
@@ -430,9 +430,13 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
   if (run('L-16')) {
     const P = await lifter({ settings: { autoDone: false } });
     await start(P);
+    const id = (await P.draft()).ex[1].exId;
     await P.tap(tick(1, 0));
+    // Ticked ahead of the untouched first exercise, the second moves up above it.
+    const at = await placeOf(P.page, id);
+    ok(at === 0, 'L-16: the second exercise, ticked first, moves up above the untouched first', at);
     // Remove, from the exercise's ⋯ menu: one with a set logged asks first.
-    await P.tap(btn('bMenu', 1), 250); await P.tap('#modal [data-act="bMenuDo"][data-op="bDel"]', 250);
+    await P.tap(btn('bMenu', at), 250); await P.tap('#modal [data-act="bMenuDo"][data-op="bDel"]', 250);
     const m = await P.modal();
     ok(m && m.kind === 'confirm', 'L-16: removing an exercise with a set logged asks first', m);
     if (m && m.kind === 'confirm') await mOk(P);
@@ -440,7 +444,7 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     ok(d.ex.length === 1 && (await P.toasts()).includes('Exercise removed'), 'L-16: then it goes, saying "Exercise removed", with Undo', { n: d.ex.length, t: await P.toasts() });
     await P.tap('#toast button', 250);
     const d2 = await P.draft();
-    ok(d2.ex.length === 2 && d2.ex[1].sets[0].done, 'L-16: Undo brings it back with its ticked set', d2.ex.map(b => b.exId));
+    ok(d2.ex.length === 2 && d2.ex[at].exId === id && d2.ex[at].sets[0].done, 'L-16: Undo brings it back with its ticked set', d2.ex.map(b => b.exId));
     await P.close();
   }
 
@@ -631,9 +635,14 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
        started now asks, a step up (185 + 10 = 195 lb), with last time as saved; the raises, started, keep what they
        started with. Before, it came back asking for 24+ reps at 185 lb beside the old last time. */
     const P = await lifter({ settings: { autoDone: false } });
-    await start(P); await P.tap(tick(1, 0));
+    await start(P);
+    const rid = (await P.draft()).ex[1].exId;
+    await P.tap(tick(1, 0));
+    // Ticked ahead of the untouched bench, the raises move up above it; each lift is then read by name.
+    const ri = await placeOf(P.page, rid);
+    ok(ri === 0, 'L-19: the raises, ticked ahead of the untouched bench, move up above it', ri);
     // Its target, the load it asked and its rows, compared by value (the copy set aside is read back with its keys in another order).
-    const raises = () => P.ev(() => { const b = window.__ironlog.state.draft.ex[1]; const t = b.tgt || {}; return JSON.stringify({ tgt: Object.keys(t).sort().map(k => [k, t[k]]), sw: b.sw, sets: b.sets.map(x => [x.w, x.r, !!x.done]) }); });
+    const raises = () => P.ev(id => { const b = window.__ironlog.state.draft.ex.find(x => x.exId === id); const t = b.tgt || {}; return JSON.stringify({ tgt: Object.keys(t).sort().map(k => [k, t[k]]), sw: b.sw, sets: b.sets.map(x => [x.w, x.r, !!x.done]) }); }, rid);
     const raisesBefore = await raises();
     await P.tap('#tabs [data-tab="history"]', 200);
     await P.tap('#view [data-act="histToggle"][data-id="last"]', 150); await P.tap('#view [data-act="histEdit"][data-id="last"]', 300);
@@ -644,7 +653,7 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     const saved = await P.ev(() => window.__ironlog.state.sessions.find(x => x.id === 'last').ex.find(b => b.exId === 'bench').sets.map(x => x.r));
     if (saved.join() !== '10,10,10') ok(false, 'L-19: (setup) the edit saved the bench as 10, 10, 10', saved);
     await P.tap('#tabs [data-tab="today"]', 300);
-    const bench = await P.ev(() => { const e = document.getElementById('blk-0'); return { grey: [...e.querySelectorAll('input[data-f="w"]')].map(i => i.value || i.placeholder), text: e.innerText.replace(/\s+/g, ' ') }; });
+    const bench = await P.ev(() => { const e = document.getElementById('blk-' + window.__ironlog.state.draft.ex.findIndex(b => b.exId === 'bench')); return { grey: [...e.querySelectorAll('input[data-f="w"]')].map(i => i.value || i.placeholder), text: e.innerText.replace(/\s+/g, ' ') }; });
     const up = String(185 + BAR_STEP_LB);
     ok(bench.grey.length === 3 && bench.grey.every(v => v === up) && bench.text.includes(`${up} lb`) && /185×10 – ✓ 2 185×10 – ✓ 3 185×10/.test(bench.text) && !/185×7/.test(bench.text), `L-19: the workout set aside comes back with the bench, not started, at ${up} lb, read from last week as the edit saved it (NEW-152)`, bench);
     ok((await raises()) === raisesBefore, 'L-19: the raises, started before, keep what they started with (NEW-152)', { before: raisesBefore, after: await raises() });
@@ -1537,14 +1546,19 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
       }
       await X.close();
     }
-    /* Wherever the block puts a control just above the load column's heading (a note from last time with Use again, a
-       bodyweight lift's Add bodyweight, a note's pictures), at 390 and 320 px: the heading holds no control, a tap at the
+    /* Wherever the block puts a control just above the load column's heading (a machine lift's line naming its machine,
+       which since 2.78.2 holds the control a note from last time held with Use again, a bodyweight lift's Add
+       bodyweight, a note's pictures), at 390 and 320 px: the heading holds no control, a tap at the
        bottom edge of that control does what it does and never switches the unit, and the badge still takes 44 px or
        more each way, measured by taps, over no other control. */
     const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
     for (const w of [390, 320]) {
       for (const [what, o, prep, b] of [
-        ['a note from last time with Use again', { seed: '(S) => { S.sessions[0].ex[0].note = "Seat 4, handles level, elbows at 45, pause on the chest"; }' }, null, 0],
+        ['a machine lift\'s line naming its machine, under a note from last time', { items: [['latPulldown', 3, 8, 12, REST_BENCH], ['dbLateral', 2, 10, 15, 60]], seed: '(S) => { S.sessions[0].ex[0].note = "Slow on the way down, full stretch at the top"; }' }, async X => {
+          await X.tap('#view [data-act="bNote"][data-b="0"]', 250);
+          await X.page.fill('#mcName', 'Hammer Strength'); await X.page.fill('#mcSet', 'Seat 4, wide handle');
+          await X.tap('#modal [data-act="noteSave"]', 300);
+        }, 0],
         ['Add bodyweight on a bodyweight lift', { items: [['bench', 3, 6, 10, REST_BENCH], ['pullup', 3, 6, 10, REST_BENCH]] }, null, 1],
         ['a note\'s pictures', {}, async X => {
           await X.tap('#view [data-act="bNote"][data-b="0"]', 250);
@@ -1569,7 +1583,7 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
           const others = [...document.querySelectorAll('button, a, input, select, textarea, label.btn, [data-act]')].filter(e => e !== b && !b.contains(e) && !e.contains(b) && !(e.closest('details:not([open])') && !e.closest('summary')))
             .filter(e => { const z = e.getBoundingClientRect(); return z.width && z.height && z.left < x2 && z.right > x1 && z.top < y2 && z.bottom > y1; })
             .map(e => ({ act: e.dataset.act || e.tagName, box: [z => z.left, z => z.top, z => z.right, z => z.bottom].map(f => Math.round(f(e.getBoundingClientRect()))) }));
-          const above = [...document.querySelectorAll('#blk-' + b.dataset.b + ' [data-act="noteReuse"], #blk-' + b.dataset.b + ' [data-act="bwOpen"], #blk-' + b.dataset.b + ' .pthumb')].map(e => { const z = e.getBoundingClientRect(); return { act: e.dataset.act, x: z.left + Math.min(z.width / 2, 20), y: z.bottom - 2 }; });
+          const above = [...document.querySelectorAll('#blk-' + b.dataset.b + ' .mcline [data-act="machineOpen"], #blk-' + b.dataset.b + ' [data-act="bwOpen"], #blk-' + b.dataset.b + ' .pthumb')].map(e => { const z = e.getBoundingClientRect(); return { act: e.dataset.act, x: z.left + Math.min(z.width / 2, 20), y: z.bottom - 2 }; });
           const headCtl = document.querySelectorAll(`#blk-${b.dataset.b} .sg.head button, #blk-${b.dataset.b} .sg.head [data-act]`).length;
           return { h: Math.round(y2 - y1 + 1), w: Math.round(x2 - x1 + 1), others, above, headCtl };
         }, `#view [data-act="unitOpen"][data-b="${b}"]`);
@@ -1784,7 +1798,7 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     let m = await sheet();
     ok(/^Machine Chest Press ✕ Machine Nov 7 · 200 lb × 11 ✎ Add a machine$/.test(m.text), 'L-41: unnamed, the machine is listed by its last session', m);
     let n = await naming('0');
-    ok(n.title === 'Name this machine' && n.field === '' && JSON.stringify(n.chips) === '["Hammer Strength","Life Fitness"]' && n.save === 'Save', 'L-41: its pencil asks its name, offering the names given on other lifts, the most used first (Hammer Strength on two), and no name of a machine a lift does not have (Ghost)', n);
+    ok(n.title === 'This machine' && n.field === '' && JSON.stringify(n.chips) === '["Hammer Strength","Life Fitness"]' && n.save === 'Save', 'L-41: its pencil asks its name, offering the names given on other lifts, the most used first (Hammer Strength on two), and no name of a machine a lift does not have (Ghost)', n);
     await P.tap('#modal [data-act="machineChip"][data-v="Hammer Strength"]', 120);
     ok(await P.ev(() => document.getElementById('mcName').value) === 'Hammer Strength', 'L-41: a name offered, tapped, is typed into the field');
     await save();
@@ -1821,7 +1835,7 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     await P.tap('#modal [data-act="machinePick"][data-k="0"]', 300);
     ok(/^Machine Chest Press: Hammer Strength$/.test(await P.toast()) && await tag(0) === 'Hammer Strength' && /Today: 33\+ reps over 3 sets at 200 lb/.test(await hint()), 'L-41: Hammer Strength picked: "Machine Chest Press: Hammer Strength", the card names it, read from its own sessions (33+ at 200 lb)', { t: await P.toast(), tag: await tag(0), h: await hint() });
     await sheet(); n = await naming(sid);
-    ok(n.title === 'Name this machine' && n.field === 'Newtech', 'L-41: a named machine\'s pencil opens its name to change', n);
+    ok(n.title === 'This machine' && n.field === 'Newtech', 'L-41: a named machine\'s pencil opens its name to change', n);
     await P.page.fill('#mcName', ''); await save();
     m = await P.ev(() => ({ text: document.querySelector('#modal .sheet').innerText.replace(/\s+/g, ' ').trim() }));
     nm = await names();
@@ -1848,7 +1862,8 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
       tag: (b = 0) => P.ev(b => { const t = document.querySelector(`#blk-${b} .mctag`); return t ? t.textContent.trim() : null; }, b),
       names: () => P.ev(() => { const e = window.__ironlog.state.exercises.find(x => x.id === 'machPress'); return e.machines ? JSON.parse(JSON.stringify(e.machines)) : null; }),
       edit: async id => { await P.ev(() => { const L = window.__ironlog; L.ui.tab = 'history'; L.render(); }); await wait(150); await P.tap(`#view [data-act="histToggle"][data-id="${id}"]`, 150); await P.tap(`#view [data-act="histEdit"][data-id="${id}"]`, 300); },
-      sets: async (b, w, rs) => { for (let i = 0; i < rs.length; i++) { await P.page.fill(field('w', b, i), String(w)); await P.page.fill(field('r', b, i), String(rs[i])); await P.ev(() => { const a = document.activeElement; if (a && a.blur) a.blur(); }); await wait(60); if (!(await P.ev(([b, i]) => window.__ironlog.state.draft.ex[b].sets[i].done, [b, i]))) await P.tap(tick(b, i), 120); } },
+      // Each set on its exercise where it is now (its id kept): a lift added again and ticked ahead of untouched ones moves up.
+      sets: async (b, w, rs) => { const bid = await P.ev(b => window.__ironlog.state.draft.ex[b].bid, b); for (let i = 0; i < rs.length; i++) { await settled(P.page); b = await P.ev(id => window.__ironlog.state.draft.ex.findIndex(x => x.bid === id), bid); await P.page.fill(field('w', b, i), String(w)); await P.page.fill(field('r', b, i), String(rs[i])); await P.ev(() => { const a = document.activeElement; if (a && a.blur) a.blur(); }); await wait(60); if (!(await P.ev(([b, i]) => window.__ironlog.state.draft.ex[b].sets[i].done, [b, i]))) await P.tap(tick(b, i), 120); } await settled(P.page); },
       finish: async () => { await P.ev(() => { const t = document.getElementById('toast'); if (t) t.hidden = true; }); await P.tap('#view [data-act="finish"]', 300); for (let k = 0; k < 6; k++) { const m = await P.modal(); if (!m) break; if (m.kind === 'confirm') await mOk(P); else { await P.ev(() => window.__ironlog.ACT.mClose()); await wait(150); } } },
       week: async t => { await P.ev(t => window.__setClock(t), t); await P.ev(() => { const L = window.__ironlog; L.invalidate(); L.ui.tab = 'today'; L.render(); }); await wait(150); }
     });
@@ -1888,7 +1903,7 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
       await X.edit('e2'); await X.sheet(); await addMachine(P);
       await X.sheet();
       let n = await X.pencil('new');
-      ok(n.title === 'Name this machine' && n.save === 'Save', 'L-41: in an edit, the pencil of a machine just added names it (Name this machine, Save), as in a workout (REV21-2)', n);
+      ok(n.title === 'This machine' && n.save === 'Save', 'L-41: in an edit, the pencil of a machine just added names it (This machine since 2.78.2, Name this machine before; Save), as in a workout (REV21-2)', n);
       await X.save('Hamer');
       ok(/^Named Hamer$/.test(await P.toast()), 'L-41: and saved, it says "Named Hamer"', await P.toast());
       n = await X.pencil('new'); await X.save('Hammer');
@@ -1914,7 +1929,7 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
       await start(P); let m = await X.sheet();
       ok(!m.add && JSON.stringify(m.on) === '["0"]' && /Machine New machine\s*✎$/.test(m.text), 'L-41: a lift never done lists the machine it is on, New machine, with its pencil, and offers none to add (REV21-4)', m);
       const n = await X.pencil('0');
-      ok(n.title === 'Name this machine', 'L-41: its pencil names it', n);
+      ok(n.title === 'This machine', 'L-41: its pencil names it', n);
       await X.save('Hammer'); await X.close();
       ok(await X.tag() === 'Hammer', 'L-41: and the card says Hammer', await X.tag());
       await X.sets(0, 100, [10, 10, 9]); await X.finish();
@@ -2429,6 +2444,88 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
      machine added and named "Hammer" with Nov 5 on it, then Nov 8 back on the second and Nov 10 on the first, each by
      name. Every change below is made as a lifter makes it; after each, every session is on the machine it was on, but
      the one a pick moved. */
+  if (run('L-47')) {
+    // L-47 (2.78.2; V's friend, 2026-11-25: several machines for one lift, the machine written into each session's
+    // note): a machine, cable or Smith lift's note sheet holds the machine's name and how it is set above the note,
+    // kept with the machine, the note taking the typing (REV34-1: a note typed at once went into the name); the card
+    // then says them under the lift's head, carried to the next session on it, and a setup typed for a machine with no
+    // name is said too (REV34-2); a machine with nothing said of it has no line; a free weight's note has no machine;
+    // the day's note has no Use again.
+    const ok47 = okAs('L-47');
+    const P = await lifter({ items: [['latPulldown', 3, 8, 12, 120], ['dbLateral', 2, 10, 15, 60]], movable: true, seed: `(S, L) => { S.sessions[0].ex[1].note = 'Slow on the way down'; }` });
+    await start(P);
+    const line = b => P.ev(b => { const e = document.querySelector(`#blk-${b} .mcline`); return e ? e.innerText.replace(/\s+/g, ' ').trim() : ''; }, b);
+    ok47(!(await line(0)) && !(await line(1)), 'a machine lift with no machine named, and a free weight, have no machine line', { a: await line(0), b: await line(1) });
+    // The free weight's note: no machine to name, and last time's note shown as it was, without Use again.
+    const lnote = await P.ev(() => { const e = document.querySelector('#blk-1 .lnote'); return e ? { t: e.innerText.replace(/\s+/g, ' ').trim(), reuse: !!e.querySelector('[data-act="noteReuse"]') } : null; });
+    ok47(lnote && /^Your note from Nov 7: Slow on the way down$/.test(lnote.t) && !lnote.reuse, 'last time\'s note shows as "Your note from" its day, with no Use again (2.78.1: Use again copied it in)', lnote);
+    await P.tap(btn('bNote', 1), 250);
+    ok47(!(await P.ev(() => !!document.getElementById('mcName'))), 'a free weight\'s note sheet has no machine to name');
+    await P.ev(() => window.__ironlog.ACT.mClose()); await wait(150);
+    // The machine lift's note: the machine's two fields, then the day's note, which takes the typing.
+    await P.tap(btn('bNote', 0), 250);
+    const sheet = await P.ev(() => ({ name: !!document.getElementById('mcName'), set: !!document.getElementById('mcSet'), focus: document.activeElement && document.activeElement.id, text: document.querySelector('#modal .sheet').innerText.replace(/\s+/g, ' ') }));
+    ok47(sheet.name && sheet.set && sheet.focus === 'mNote' && /Machine \(kept for next time\)/.test(sheet.text) && /Today's note/.test(sheet.text), 'a machine lift\'s note sheet holds the machine, its name and how it is set, above the note, which takes the typing (2.78.2 as first built focused the name: a note typed at once became the machine\'s name)', sheet);
+    // A setup typed with no name: said on the card, and the message says what changed (REV34-2).
+    await P.page.fill('#mcSet', 'Pin 7'); await P.tap('#modal [data-act="noteSave"]', 300);
+    const setOnly = { line: await line(0), toast: await P.toast() };
+    ok47(setOnly.line === 'Setup: Pin 7' && setOnly.toast === 'Setup saved', 'a setup typed for a machine with no name: the card says it, and the message says the setup was saved (as first built: shown nowhere, "Machine name taken off")', setOnly);
+    await P.ev(() => window.__ironlog.ACT.undo()); await wait(250);
+    ok47((await line(0)) === '', 'Undo takes the setup back, and with nothing said of the machine the card has no line', await line(0));
+    await P.tap(btn('bNote', 0), 250);
+    await P.page.fill('#mcName', 'Panatta circular'); await P.page.fill('#mcSet', 'Seat 4, wide handle'); await P.page.fill('#mNote', 'Felt strong');
+    await P.tap('#modal [data-act="noteSave"]', 300);
+    const saved = await P.ev(() => { const L = window.__ironlog, e = L.state.exercises.find(x => x.id === 'latPulldown'); return { names: e.machines || null, sets: e.machineSet || null, note: L.state.draft.ex[0].note }; });
+    ok47(saved.names && Object.values(saved.names)[0] === 'Panatta circular' && saved.sets && Object.values(saved.sets)[0] === 'Seat 4, wide handle' && saved.note === 'Felt strong', 'saved: the machine keeps its name and setup, the session its own note', saved);
+    ok47((await line(0)) === 'Machine: Panatta circular · Seat 4, wide handle', 'the card names the machine and how it is set, under the lift\'s head', await line(0));
+    const toast = await P.toast();
+    ok47(toast === 'Machine: Panatta circular', 'saying which machine it is now, with Undo', toast);
+    // Undo takes the machine's name and setup back in one step, the note staying.
+    await P.ev(() => window.__ironlog.ACT.undo()); await wait(250);
+    const undone = await P.ev(() => { const L = window.__ironlog, e = L.state.exercises.find(x => x.id === 'latPulldown'); return { names: e.machines || null, sets: e.machineSet || null, note: L.state.draft.ex[0].note }; });
+    ok47(!undone.names && !undone.sets && undone.note === 'Felt strong', 'Undo takes the machine\'s name and setup back in one step, the day\'s note staying', undone);
+    await P.tap(btn('bNote', 0), 250);
+    await P.page.fill('#mcName', 'Panatta circular'); await P.page.fill('#mcSet', 'Seat 4, wide handle');
+    await P.tap('#modal [data-act="noteSave"]', 300);
+    // The next session on the lift: the same machine, named, with its setup, and no name typed.
+    await P.ev(() => { const L = window.__ironlog, d = L.state.draft; for (const b of d.ex) for (const x of b.sets) { x.w = x.w || 50; x.r = 10; x.done = true; } d._rampAsked = true; d._leftAsked = true; L.ACT.finishNow(); }); await wait(300);
+    await P.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); }); await wait(150);
+    await P.ev(() => window.__setClock('2026-11-13T10:00:00'));
+    await start(P);
+    const next = await line(0);
+    ok47(next === 'Machine: Panatta circular · Seat 4, wide handle', 'the next session on the lift names the same machine and its setup, nothing typed', next);
+    const m2 = await P.ev(() => document.getElementById('mNote') === null);
+    await P.tap(btn('bNote', 0), 250);
+    const f2 = await P.ev(() => ({ name: document.getElementById('mcName').value, set: document.getElementById('mcSet').value, focus: document.activeElement && document.activeElement.id }));
+    ok47(m2 && f2.name === 'Panatta circular' && f2.set === 'Seat 4, wide handle' && f2.focus === 'mNote', 'its note sheet holds the machine as it is, and the day\'s note is focused now the machine has a name', f2);
+    await P.ev(() => window.__ironlog.ACT.mClose()); await wait(150);
+    // The Machine sheet lists it with its setup; another machine added has its own line, with no setup.
+    await P.tap('#view .mcline [data-act="machineOpen"]', 250);
+    const list = await P.ev(() => [...document.querySelectorAll('#modal .mcrow')].map(r => r.innerText.replace(/\s+/g, ' ').trim()));
+    ok47(list.length === 1 && /^Panatta circular Seat 4, wide handle · Nov 11/.test(list[0]), 'the Machine sheet lists the machine by its name, its setup, then its last session', list);
+    await addMachine(P, 'Hammer Strength');
+    await P.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); }); await wait(150);
+    ok47((await line(0)) === 'Machine: Hammer Strength', 'another machine picked is named on its own, with no setup until one is typed', await line(0));
+    await P.close();
+
+    // Kept as stored: a save before setups loads as it was, a setup survives being read again, and two logs joined
+    // keep each machine's setup, machine by machine.
+    const Q = await lifter({ items: [['latPulldown', 3, 8, 12, 120]] });
+    const kept = await Q.ev(() => {
+      const L = window.__ironlog;
+      const e = { ...L.state.exercises.find(x => x.id === 'latPulldown') };
+      const plain = L.normalize(JSON.parse(JSON.stringify(L.state))).exercises.find(x => x.id === 'latPulldown');
+      const withSet = L.normalize({ ...JSON.parse(JSON.stringify(L.state)), exercises: L.state.exercises.map(x => (x.id === 'latPulldown' ? { ...x, machineSet: { '0': '  Seat   4  ', bad$: 'x', s2: '' } } : x)) }).exercises.find(x => x.id === 'latPulldown');
+      const a = { ...e, machines: { '0': 'Panatta' }, machineSet: { '0': 'Seat 4' } }, b = { ...e, machines: { s9: 'Hammer' }, machineSet: { '0': 'Seat 9', s9: 'Pin 3' } };
+      const j = L.joinExercises([a], [b])[0];
+      return { plainHas: JSON.stringify(plain).includes('machineSet'), withSet: withSet.machineSet, joined: j.machineSet, names: j.machines };
+    });
+    ok47(!kept.plainHas, 'a save with no setup loads with none: the field absent from what is stored, so the record reads as before', kept);
+    ok47(JSON.stringify(kept.withSet) === JSON.stringify({ '0': 'Seat 4' }), 'a setup is read back in one line, an empty one or one under no machine\'s key dropped', kept.withSet);
+    ok47(JSON.stringify(kept.joined) === JSON.stringify({ '0': 'Seat 4', s9: 'Pin 3' }) && kept.names.s9 === 'Hammer', 'two logs joined keep each machine\'s setup machine by machine, this log\'s first', kept);
+    await Q.close();
+  }
+
   if (run('L-46')) {
     const LBk = 0.45359237;
     const sweepSeed = `(S, L) => { const LB = ${LBk}; const mk = (id, date, w, x, more) => ({ id, date, dayIdx: 0, dayId: 'A', dayName: 'Push', routineId: 'R1', notes: '', ex: [{ exId: 'machPress', rr: [8, 12], ps: 3, sets: [11, 11, 10].map(r => ({ w: w * LB, r, rir: 2, done: true })), ...(x || {}) }, ...(more ? [{ exId: 'bench', rr: [6, 10], ps: 3, sets: [8, 8, 7].map(r => ({ w: 185 * LB, r, rir: 2, done: true })) }] : [])] }); S.sessions = [mk('a1', '2026-10-01', 200), mk('a2', '2026-10-08', 205, null, true), mk('b1', '2026-10-15', 120, { nw: true }, true), mk('b2', '2026-10-22', 125), mk('c1', '2026-10-29', 60, { nw: true, mc: 'c1' }), mk('c2', '2026-11-05', 65, { mc: 'c1' }), mk('b3', '2026-11-08', 130, { mc: 'b1' }), mk('a3', '2026-11-10', 210, { mc: '0' })]; S.exercises.find(e => e.id === 'machPress').machines = { 0: 'Cybex', c1: 'Hammer' }; }`;

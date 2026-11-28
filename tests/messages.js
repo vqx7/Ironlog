@@ -172,7 +172,7 @@ const tapAway = P => P.page.mouse.click(195, 420);
     ok(!over.text && /edited on two devices/.test(after.text), '6. news raised while a sheet is open waits, and shows once the sheet closes (2.78: over the sheet)', { over, after });
     await hide(); await tapAway(P); await wait(100);
     // News showing when a sheet opens goes, and comes back once it closes.
-    await news('Signed in. Syncing your log.'); await wait(150);
+    await news('Signed in. Saving your log to your account.'); await wait(150);
     await sheet(); await wait(200);
     const under = await shown(P);
     await close(); await wait(250);

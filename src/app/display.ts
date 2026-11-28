@@ -943,6 +943,14 @@ export function machineName(exId: string, key: string): string | null {
   return (k && e && e.machines && e.machines[k]) || null;
 }
 
+/** How the lifter set one of a lift's machines (seat 4, wide handle; NEW_MACHINE: the one the session in progress marks
+    new), or null. */
+export function machineSetup(exId: string, key: string): string | null {
+  const e = state.exercises.find(x => x.id === exId);
+  const k = key === NEW_MACHINE ? newMachineKey() : key;
+  return (k && e && e.machineSet && e.machineSet[k]) || null;
+}
+
 /* A lift's machines as a file names them (the CSV's machine column, which import reads back): by the name the lifter
    gave one, else by the day it was first used, as the Machine sheet says a machine with no name by a day; each label the
    lift's alone, a second of the same name or day taking "-2". */

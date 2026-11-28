@@ -44,9 +44,9 @@ export function iconSheet(): TemplateResult {
   ${
     safe
       ? html`<p class="small u-m0-0n10">Your log is in your account, so nothing is lost.</p>`
-      : html`<p class="small callout yellow u-m0-0n10"><b>Removing ${APP_NAME} from the home screen also removes the log on this phone.</b> Sign in first so it is kept in your account, or save a backup.</p><div class="row u-mb10">${AUTH() ? html`<button class="btn sm primary" data-act="acctOpen" data-mode="signin">Sign in</button>` : ''}<button class="btn sm" data-act="export">Save a backup</button></div>`
+      : html`<p class="small callout yellow u-m0-0n10"><b>Removing ${APP_NAME} from the home screen deletes the log on this phone.</b> Sign in or save a backup first.</p><div class="row u-mb10">${AUTH() ? html`<button class="btn sm primary" data-act="acctOpen" data-mode="signin">Sign in</button>` : ''}<button class="btn sm" data-act="export">Save a backup</button></div>`
   }
-  <ol class="steps"><li>Press and hold ${APP_NAME} on your home screen and remove it.</li><li>Open ${location.host + location.pathname.replace(/index\.html$/, '')} in Safari, tap Share, then Add to Home Screen.</li><li>Open the new icon${safe ? ' and sign in' : ''}.</li></ol>
+  <ol class="steps"><li>Press and hold ${APP_NAME} on your home screen and remove it.</li><li>Open ${location.host + location.pathname.replace(/index\.html$/, '')} in Safari, tap <b>Share</b>, then <b>Add to Home Screen</b>.</li><li>Open the new icon${safe ? ' and sign in' : ''}.</li></ol>
   <button class="btn fullw u-mt12" data-act="iconLater">Done</button></div>`;
 }
 
@@ -93,7 +93,7 @@ export function installSheet(m: { how?: string | undefined }): TemplateResult {
      matters: a log already kept in this browser does not follow the app. */
   const tip =
     (ios
-      ? 'An iPhone installs web apps only from the Share menu; Apple allows no install button. If Add to Home Screen is not in the list, scroll down or tap More. Keep Open as Web App on if it is shown. '
+      ? 'An iPhone installs web apps only from the Share menu; Apple allows no install button. If **Add to Home Screen** is not in the list, scroll down or tap **More**. Keep **Open as Web App** on if it is shown. '
       : '') +
     `Then open ${APP_NAME} from your home screen: it starts full screen and works offline. A log kept in this browser does not move by itself: sign in inside the app, or export a backup here and import it there.`;
   const hasLog = state.sessions.some(x => !x.demo) && !acct.user;

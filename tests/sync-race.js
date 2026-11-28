@@ -178,7 +178,7 @@ fs.cpSync(DIST, tmp, { recursive: true });
     // Waited for, not timed: the flush ends either way (the review of 2.28 saw a fixed wait end before it under load).
     await A.page.waitForFunction(() => window.__ironlog.cloudState().status !== 'saving', null, { timeout: 20000 }).catch(() => {});
     const c = await A.ev(() => window.__ironlog.cloudState());
-    ok(c.status !== 'synced' && /workout in progress is too large/.test(String(c.err)), '5: 2.27-F2: a workout in progress over the size cap is said to be the workout, not a month of sessions (2.27: "One month of sessions is too large")', { status: c.status, err: c.err });
+    ok(c.status !== 'synced' && /Your workout is too large/.test(String(c.err)), '5: 2.27-F2: a workout in progress over the size cap is said to be the workout, not a month of sessions (2.27: "One month of sessions is too large")', { status: c.status, err: c.err });
     await A.ctx.close();
   }
 

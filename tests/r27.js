@@ -180,7 +180,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     await page.click('#saveState'); await wait(80);
     const si = await ev(() => { const m = document.getElementById('menuAcct'); return { t: m.innerText, out: !!m.querySelector('[data-act="acctSignOut"]'), dot: document.getElementById('saveState').className }; });
     ok(/Signed in as/.test(si.t) && /m@example\.com/.test(si.t) && si.out, 'signed in from the menu: it shows the email and Sign out', si);
-    ok(/\bok\b|\bbusy\b/.test(si.dot) && /Synced|Syncing/.test(si.t), 'the button carries the sync dot, and the menu says Synced', si);
+    ok(/\bok\b|\bbusy\b/.test(si.dot) && /Saved to your account|Saving to your account/.test(si.t), 'the button carries the save dot, and the menu says Saved to your account (Synced before 2.78.2)', si);
     await page.click('#menuAcct [data-act="acctSignOut"]'); await wait(150);
     const outSheet = await ev(() => { const m = window.__ironlog.ui.modal; return m && (m.kind === 'confirm' || m.kind === 'signout' || /Sign out|keep/i.test(document.getElementById('modal').innerText)); });
     ok(outSheet, 'Sign out from the menu asks whether to keep the log on this phone');

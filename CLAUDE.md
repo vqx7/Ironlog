@@ -3,7 +3,7 @@
 A hypertrophy and strength tracker for one lifter, V, used on a phone at the gym. It ships as a standalone
 installable web app: built from `src/` into one page, served by GitHub Pages at https://ironapp.org, working
 offline, with the log on the phone and an optional account that syncs it. Every pull request also publishes a
-preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r126, version 2.78.1, state schema v5.
+preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r127, version 2.78.2, state schema v5.
 
 The Claude artifact version was retired by V on 2026-09-27 (`OWNER.md` Done): never work on it or republish it.
 `cloudProvider()` still takes Claude's db when `window.claude` exists, because the sync suites use it as their
@@ -195,7 +195,7 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   marked New machine or gym restarts them too, its PRs, bests and dumbbell steps with them, and keeps every session
   shown (`liftReadIn`, r61). A machine, cable or Smith lift is read per machine (V, 2026-11-14, 390 C): its ⋯ Machine
   sheet lists the machines it was done on, by the names the lifter gives them (one with none by its last session's
-  date and weight; V, 2026-11-15, NEW-168), the name of the one in use on its card; its target, PRs, bests and readings come from the machine
+  date and weight; V, 2026-11-15, NEW-168), the one in use said on its card once named, with how it is set (`machineSet`, kept with the machine and asked first in a machine lift's note sheet; 2.78.2, NEW-222); its target, PRs, bests and readings come from the machine
   it is on, the one last done on unless another is picked; its sets and volume count as one exercise; its kg or lb is
   the machine's own: the unit picked while the lift is on a machine is kept for that machine (`machineU`) and comes
   back when it is picked again (the full review's L4-5). A machine lift's session names the machine it was done on
@@ -248,15 +248,27 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   never show over one, and a one-time note goes through `noteOnce`, never its own wait for the toast (2.78.1). Today
   carries one line above its start card, never two (V, 2026-11-25). Only `toast.ts` looks at the toast
   (`tests/hygiene.js`).
+- **Words (V, 2026-11-25, 2.78.2):** few words, plain ones. No paragraph a screen or sheet shows on its own past 22
+  words (more goes behind an i, a fold or into the Guide; a question in paragraphs, a blank line starting one), no
+  message past 15, a routine's line who it is for in 5 (`tests/wording.js`; a name, number or list from the log counts
+  as one word, so app words a placeholder picks are counted when written). A cut keeps the fact, the condition or the
+  next step: a refusal says nothing was done. Nothing a lifter reads says "sync" or "cloud": the account is "your account" and a log is
+  saved to it; a logged error's own words are diagnostics. A button's or a screen's name in the app's words is bold: `**Name**` in a string (drawn by `marks.ts`),
+  `<b>` in markup and the Guide; never in a heading.
 - **Screen frame (2.78.1, NEW-218):** the page scrolls inside `#page`; the document never scrolls, so nothing an
   iPhone does to the visible area can carry the bars along the bottom up the screen. The page is scrolled by
   `frame.ts` or by an element's `scrollIntoView` (which scrolls the frame), never through the document, and the frame
-  adds no second status bar: it begins under it (`tests/hygiene.js`, `tests/frame.js`). An iPhone's keyboard and pickers are checked on the preview on an
-  iPhone before a merge (OWNER.md F2), since no engine here has them.
+  adds no second status bar: it begins under it (`tests/hygiene.js`, `tests/frame.js`). The keyboard is the frame's
+  too (2.78.2, NEW-224): while one is up for a field in the page, `frame.ts` ends the page where the keyboard begins,
+  the bars along the bottom step aside, and the page's own scroll shows the field above the keyboard, so iOS has
+  nothing to move; the height is learned the first time and fitted for as a field takes focus after that. An
+  iPhone's keyboard and pickers are checked on the preview on an iPhone before a merge (OWNER.md F2, F3), since no
+  engine here has them.
 - **Phone:** 44 px touch targets, no sideways scroll at 320 px, light and dark both checked. Rows of seven (the
-  week bar, the calendar, Consistency) reach 44 px from 375 px phones up; at 320 px seven cannot. No code follows the
-  on-screen keyboard (Safari does not shrink the page for it, and code that did fought iOS): a sheet you type in
-  opens tall, its fields at the top, so they are never under it (PENDING 322). No browser here has an on-screen
+  week bar, the calendar, Consistency) reach 44 px from 375 px phones up; at 320 px seven cannot. No code moves a sheet
+  with the on-screen keyboard (Safari does not shrink the page for it, and code that did fought iOS): a sheet you
+  type in opens tall, its fields at the top, so they are never under it (PENDING 322). The page's fields are fitted
+  by `frame.ts` (the screen frame, above), which moves nothing iOS moves. No browser here has an on-screen
   keyboard, so a change to how sheets meet it is tried on V's phone before a release carries it.
 - **One source (V, r49):** a value that names, identifies or configures the app is defined once, in
   `src/app/config.ts`. Every storage key, cache name and backup mark is built from `STORAGE_ID` ("ironlog"), which

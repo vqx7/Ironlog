@@ -10,7 +10,7 @@ import { uid, EPS, WEEK_DAYS, LETTERS, numWord, upFirst } from './util';
 import { STEP_LB } from './units';
 import { EXIn, activeRoutineIn, profIn, rirHalfOnIn } from './model';
 import { isCompound, libExercises, profHeavy } from './library';
-import { SESSION_CAP, HARD_RIR, RIR_CALL_TOP, HALF_SET, HELPER_CREDIT, lighterSets } from './formulas';
+import { HARD_RIR, RIR_CALL_TOP, HALF_SET, HELPER_CREDIT, lighterSets } from './formulas';
 
 /** A plan item as a routine is first made: normalize() adds its superset
     link (null) when the routine is saved. */
@@ -28,7 +28,7 @@ interface TemplateDay {
 }
 
 /** A ready-made routine: its name, its lines, and its days. */
-type Template = { key: string; name: string; who: string; meta: string; hidden?: boolean; days: TemplateDay[] };
+type Template = { key: string; name: string; who: string; hidden?: boolean; days: TemplateDay[] };
 
 /** The weekday names, Monday first, in the order a weekly routine's days are kept. */
 export const DAYS: readonly string[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -111,7 +111,6 @@ const LEGACY: Template = {
   hidden: true,
   name: 'One muscle a day, high volume',
   who: '',
-  meta: '',
   days: LEGACY_DAYS.map(([name, items, rest]) =>
     rest
       ? { name, items: [], rest: true }
@@ -169,14 +168,14 @@ export const TEMPLATES: readonly Template[] = (() => {
   const I = (exId: string, sets: number, repMin: number, repMax: number, rir: number, rest: number): TemplateItem => ({ exId, sets, repMin, repMax, rir, rest });
   const D = (name: string, items: TemplateItem[]): TemplateDay => ({ name, items }), R = (): TemplateDay => ({ name: 'Rest', items: [], rest: true });
   // A routine's line under its name, unless it gives its own: its training days a week, read from its days (a week long, every one of them).
-  const tpl = (t: { key: string; name: string; who: string; meta?: string; days: TemplateDay[] }): Template => ({ ...t, meta: t.meta ?? `${t.days.filter(d => !d.rest).length} days a week` });
+  const tpl = (t: Template): Template => t;
   return [
     /* New to lifting (7 exercises, about 19 sets and over an hour, with
        incline curls and hack squats, is not a first routine). Five exercises a day on machines and dumbbells, 2 to 3 sets,
        3 reps in reserve (easy to judge: stop when a rep slows down), about
        45 minutes. Weekly sets sit under the usual 10 on purpose; add a set as
        it gets easy. */
-    tpl({key:'full3',name:'Full body, 3 days',who:'New to lifting: five exercises a day, machines and dumbbells, stopping well short of failure. Add a set once it feels easy',days:[
+    tpl({key:'full3',name:'Full body, 3 days',who:'New to lifting',days:[
       D('Full body A',[I('legPress',3,8,12,3,120),I('machPress',3,8,12,3,120),I('latPulldown',3,8,12,3,120),I('seatedCurl',2,10,15,2,75),I('dbLateral',2,10,15,2,60)]),R(),
       D('Full body B',[I('goblet',3,8,12,3,120),I('incDb',3,8,12,3,120),I('cableRow',3,8,12,3,120),I('dbRdl',3,8,12,3,120),I('pressdown',2,10,15,2,60)]),R(),
       D('Full body C',[I('legPress',3,8,12,3,120),I('dbBench',3,8,12,3,120),I('machRow',3,8,12,3,120),I('lyingCurl',2,10,15,2,75),I('dbCurl',2,10,15,2,60)]),R(),R()]}),
@@ -186,27 +185,27 @@ export const TEMPLATES: readonly Template[] = (() => {
        routine. The main barbell lifts at 6 to 10 and 2 in reserve, the
        rest at 1, 6 to 9 hard sets a week for each major muscle (a helper
        muscle counting half), about an hour a day. Conventions, as everywhere here. */
-    tpl({key:'full3t',name:'Full body, 3 days, trained',who:'Past your first year: the main lifts and their accessories, the whole body three times a week',days:[
+    tpl({key:'full3t',name:'Full body, 3 days, trained',who:'After your first year',days:[
       D('Full body A',[I('backSquat',3,6,10,2,180),I('bench',3,6,10,2,150),I('cableRow',3,8,12,1,120),I('seatedCurl',3,10,15,1,75),I('dbLateral',3,10,20,1,60),I('inclineCurl',2,10,15,1,60)]),R(),
       D('Full body B',[I('rdl',3,6,10,2,150),I('ohp',3,6,10,2,150),I('pullup',3,6,10,2,150),I('legPress',3,10,15,1,120),I('cableFly',3,10,15,1,75),I('standCalf',3,10,15,1,60)]),R(),
       D('Full body C',[I('hackSquat',3,8,12,1,150),I('incDb',3,8,12,1,120),I('latPulldown',3,8,12,1,120),I('lyingCurl',3,10,15,1,75),I('cableLateral',3,10,20,1,60),I('ohCableExt',3,10,15,1,60),I('seatedCalf',3,10,15,1,60)]),R(),R()]}),
     /* Two days a week: the whole body each day, about an hour. */
-    tpl({key:'full2',name:'Full body, 2 days',who:'Two sessions a week: the whole body each time',days:[
+    tpl({key:'full2',name:'Full body, 2 days',who:'Busy weeks',days:[
       D('Full body A',[I('backSquat',3,6,10,2,180),I('bench',3,6,10,2,150),I('cableRow',3,8,12,2,120),I('seatedCurl',3,10,15,1,75),I('dbLateral',3,10,20,1,60),I('inclineCurl',2,10,15,1,60)]),R(),R(),
       D('Full body B',[I('rdl',3,6,10,2,150),I('incDb',3,8,12,2,120),I('latPulldown',3,8,12,2,120),I('legPress',3,10,15,1,120),I('cableLateral',3,10,20,1,60),I('ohCableExt',2,10,15,1,60),I('standCalf',3,10,15,1,60)]),R(),R(),R()]}),
-    tpl({key:'ul4',name:'Upper / lower, 4 days',who:'The common all-round choice',days:[
+    tpl({key:'ul4',name:'Upper / lower, 4 days',who:'The all-round choice',days:[
       D('Upper A',[I('bench',4,6,10,2,150),I('bbRow',3,6,10,2,150),I('latPulldown',4,8,12,1,120),I('cableFly',2,10,15,1,75),I('dbLateral',5,10,20,1,60),I('facePull',2,12,20,1,60),I('pressdown',3,10,15,1,60),I('inclineCurl',3,10,15,1,60)]),
       D('Lower A',[I('backSquat',3,6,10,2,180),I('rdl',3,6,10,2,150),I('legExt',3,10,15,1,75),I('seatedCurl',3,10,15,1,75),I('standCalf',4,10,15,1,60),I('cableCrunch',3,10,15,1,60)]),R(),
       D('Upper B',[I('incDb',4,8,12,2,120),I('cableRow',4,8,12,1,120),I('pullup',3,6,10,2,150),I('cableLateral',5,10,20,1,60),I('reversePecDeck',3,12,20,1,60),I('ohCableExt',3,10,15,1,60),I('hammer',3,10,15,1,60)]),
       D('Lower B',[I('hackSquat',3,8,12,1,150),I('hipThrust',3,8,12,1,120),I('lyingCurl',3,10,15,1,75),I('bss',2,8,12,1,90),I('seatedCalf',4,10,15,1,60),I('hangingLegRaise',3,10,15,1,60)]),R(),R()]}),
-    tpl({key:'ppl6',name:'Push / pull / legs, 6 days',who:'Training most days, wants more volume',days:[
+    tpl({key:'ppl6',name:'Push / pull / legs, 6 days',who:'Training most days',days:[
       D('Push A',[I('bench',3,6,10,2,150),I('seatedDbPress',3,8,12,1,120),I('cableFly',3,10,15,1,75),I('cableLateral',4,10,20,1,60),I('ohCableExt',3,10,15,1,60)]),
       D('Pull A',[I('pullup',4,6,10,1,150),I('bbRow',3,6,10,2,150),I('facePull',3,12,20,1,60),I('inclineCurl',3,10,15,1,60),I('hammer',2,10,15,1,60)]),
       D('Legs A',[I('backSquat',3,6,10,2,180),I('rdl',3,6,10,2,150),I('legExt',3,10,15,1,75),I('seatedCurl',3,10,15,1,75),I('standCalf',4,10,15,1,60),I('cableCrunch',3,10,15,1,60)]),
       D('Push B',[I('incBench',3,6,10,2,150),I('machShoulder',3,8,12,1,120),I('pecDeck',3,10,15,0,75),I('dbLateral',4,12,20,0,60),I('pressdown',3,10,15,1,60)]),
       D('Pull B',[I('latPulldown',4,8,12,1,120),I('machRow',3,8,12,1,120),I('reversePecDeck',3,12,20,0,60),I('bayesianCurl',3,10,15,0,60),I('reverseCurl',2,10,15,1,60)]),
       D('Legs B',[I('hackSquat',3,8,12,1,150),I('hipThrust',3,8,12,1,120),I('lyingCurl',3,10,15,1,75),I('bss',2,8,12,1,90),I('seatedCalf',4,10,15,1,60),I('hangingLegRaise',3,10,15,1,60)]),R()]}),
-    tpl({key:'split5',name:'Body-part split, 5 days',who:'The classic gym split, one or two muscles a day',days:[
+    tpl({key:'split5',name:'Body-part split, 5 days',who:'Five gym days a week',days:[
       D('Chest',[I('bench',3,6,10,2,150),I('incDb',3,8,12,1,120),I('cableFly',3,10,15,1,75),I('dips',2,8,12,1,120),I('cableCrunch',3,10,15,1,60)]),
       D('Back',[I('pullup',4,6,10,1,150),I('bbRow',3,6,10,2,150),I('cableRow',3,8,12,1,120),I('latPulldown',3,8,12,1,120),I('reversePecDeck',3,12,20,0,60)]),
       D('Legs',[I('backSquat',3,6,10,2,180),I('rdl',3,6,10,2,150),I('legPress',3,10,15,1,120),I('legExt',3,10,15,1,75),I('seatedCurl',4,10,15,1,75),I('hipThrust',3,8,12,1,120),I('standCalf',4,10,15,1,60)]),
@@ -217,10 +216,10 @@ export const TEMPLATES: readonly Template[] = (() => {
        two days: when all five sets reach 5, the load goes up a step; two
        sessions short of 5 bring it down to what the estimate says fits.
        Fewer sets per muscle than the weekly targets, on purpose. */
-    tpl({key:'str5',name:'Strength, 5 x 5',who:'Stronger squat, bench, press, row, and deadlift: five sets of five, a step more each time all five reach 5',meta:'every other day',days:[
+    tpl({key:'str5',name:'Strength, 5 x 5',who:'Getting stronger, every other day',days:[
       D('Strength A',[I('backSquat',5,5,5,2,180),I('bench',5,5,5,2,180),I('bbRow',5,5,5,2,150)]),R(),
       D('Strength B',[I('backSquat',5,5,5,2,180),I('ohp',5,5,5,2,180),I('deadlift',1,5,5,2,240)]),R()]}),
-    tpl({key:'db3',name:'Dumbbells only, 3 days',who:'Home or hotel gym: dumbbells and a bench. A lighter start, like full body: fewer sets a week than the targets, so add a set as it gets easy',days:[
+    tpl({key:'db3',name:'Dumbbells only, 3 days',who:'Home or hotel gym',days:[
       D('Dumbbell A',[I('goblet',3,8,15,2,120),I('dbBench',3,8,12,2,120),I('dbRow',3,8,12,2,90),I('dbLateral',3,12,20,1,60),I('dbRearFly',3,12,20,1,60),I('dbCurl',3,10,15,1,60),I('slCalf',3,10,15,1,45)]),R(),
       D('Dumbbell B',[I('dbRdl',3,8,12,2,120),I('seatedDbPress',3,8,12,2,120),I('csDbRow',3,8,12,1,90),I('revLunge',3,8,12,2,90),I('dbLateral',3,12,20,1,60),I('ohDbExt',3,10,15,1,60),I('reverseCrunch',2,10,15,1,60)]),R(),
       D('Dumbbell C',[I('bss',3,8,12,2,90),I('incDb',3,8,12,2,120),I('dbPullover',3,10,15,1,75),I('slRdl',3,8,12,1,75),I('dbRearFly',2,12,20,1,60),I('hammer',3,10,15,1,60),I('slCalf',3,10,15,1,45)]),R(),R()]}),
@@ -229,7 +228,7 @@ export const TEMPLATES: readonly Template[] = (() => {
        most 11 sets for one muscle in a session (the app's per-session line),
        isolation lifts at 1 RIR with a few at 0, no neck work (tracked only).
        Installs before r30 keep their copy; Plan changes it. */
-    tpl({key:'onemuscle',name:'One muscle a day, high volume',who:`Experienced, six days a week. Long sessions with many sets for one muscle, up to ${SESSION_CAP}`,days:[
+    tpl({key:'onemuscle',name:'One muscle a day, high volume',who:'Experienced, 6 days a week',days:[
       D('Chest',[I('incBench',4,6,10,1,180),I('bench',3,6,10,1,180),I('lowHighFly',2,10,15,1,90),I('pecDeck',2,12,15,0,75),I('cableCrunch',3,10,15,1,60)]),
       D('Back',[I('pullup',4,6,10,1,150),I('landmineRow',3,8,12,1,120),I('cableRow',2,8,12,1,120),I('dbPullover',3,10,15,1,90),I('kelsoShrug',2,10,15,1,90),I('rackPull',2,5,8,2,180)]),
       D('Legs A: quads',[I('hackSquat',4,6,12,1,180),I('legPress',3,10,15,1,150),I('legExt',2,10,15,0,90),I('bss',2,8,12,1,120),I('adductor',3,10,15,1,75),I('standCalf',4,8,12,1,60),I('tibRaise',2,15,25,1,45)]),

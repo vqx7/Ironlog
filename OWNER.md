@@ -829,10 +829,10 @@ grant execute on function public.records_digest() to authenticated;
 
 4. New query, `select version();`, Run, and send Claude the line it answers.
 
-5. Merge the 2.78 pull request. For the next 7 days use the app as usual. Look at Settings > "More" now and then. The line should read "Rows check: N clean days, 0 differences, 0 removed by a sync", N going up by one a day.
+5. Merge the 2.78 pull request. For the next 7 days use the app as usual. Look at Settings > "More" now and then. The line should read "Rows check: N clean days, 0 differences, 0 removed by another phone" ("0 removed by a sync" before 2.78.2), N going up by one a day.
    - "N waiting" at the end, or "Rows check: not run yet": nothing to do.
    - A difference counted, or "Rows check: off (...)": tap "Copy diagnostics" under it. A sheet titled "Diagnostics" opens with text; copy that text and paste it to Claude.
-   - "removed by a sync" counts records that left this phone's log by a sync and not by your deleting them here. On one phone it stays 0. With a second phone it counts what you deleted for good on the other.
+   - "removed by another phone" ("removed by a sync" before 2.78.2) counts records that left this phone's log because another phone removed them, not by your deleting them here. On one phone it stays 0. With a second phone it counts what you deleted for good on the other.
    - With two phones, the same record changed on both with no sync between is counted as a difference when the documents kept the copy with the earlier time (an edit on one phone, a delete on the other). That is the check working, not a fault, but it sets the clean days back to 0, so paste it to Claude all the same.
 
 ### F2. The bars stay at the bottom (2.78.1; about 5 minutes, on the preview, before you merge 2.78.1)
@@ -849,6 +849,18 @@ From 2.78.1 the page scrolls inside its own frame and the screen as a whole neve
 8. Your friend sends his iOS version (Settings > General > About), and whether Settings > Accessibility > Motion has "Reduce Motion" on and "Prefer Cross-Fade Transitions" on.
 
 Anything that moves: a screenshot to Claude, and do not merge.
+
+### F3. Fewer words, bold names, the machine line, the keyboard (2.78.2; about 8 minutes, on the preview, before you merge 2.78.2)
+
+1. Plan > Routine > **New from a template** (or a new phone's first pages): each routine reads its name, then who it is for and its time on one short line ("New to lifting · 45 to 50 min").
+2. Any message or tip that names a button or a screen shows the name in bold (**Settings**, **Plan**), with no stars.
+3. Nothing says "sync" or "cloud": the menu says "Saved to your account", Settings has **Save now** and "Last saved". (The list of logged errors under Settings > More is the app's own diagnostics for Claude, in its own words.)
+4. Start a workout with a machine or cable lift. Tap the ✎ on its card: the note's sheet holds the machine's Name and "How you set it" above "Today's note", and what you type goes in the note. Save a name and a setup: the card shows "Machine: <name> · <setup>" under the lift. Next time on that lift, the same line shows.
+5. A free weight's note has no machine fields, and last time's note reads "Your note from <day>: ..." with no **Use again**.
+6. The keyboard, in the home-screen preview. In a workout, tap a load or reps field low on the screen, then one high on it. Each time: the tab bar and the rest timer are gone while the keyboard is up (nothing floats above it, nothing sits under its toolbar), the field shows just above the keyboard, and the top of the page stays under the status bar. The very first time, the screen may settle once as the app learns the keyboard's height; after that nothing should move as the keyboard comes.
+7. With the keyboard up, the keyboard's ˄ ˅ arrows go to the next field: the bars stay away and each field shows above the keyboard. Tap ✓: the keyboard goes, the bars come back on the bottom edge.
+
+Anything that reads wrong or robotic: a screenshot to Claude.
 
 ## Checks on your phone (items 7 and 63)
 Status: to do whenever you are at the gym; tell Claude what you see. Newest first; the rest stay listed until you say they are done.

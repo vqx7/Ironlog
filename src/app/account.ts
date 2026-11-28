@@ -196,7 +196,7 @@ async function waitTry(manual: boolean): Promise<void> {
     obOutClear();
     prefDel(ACCT_LATER);
     if (waitSheet()) back();
-    await syncAndSay('Email confirmed. Signed in and syncing.');
+    await syncAndSay('Email confirmed. You are signed in.');
     acctRerender();
   } catch (e) {
     // Not confirmed yet is what a try finds while the email waits, so only other errors are logged.
@@ -234,7 +234,7 @@ export async function acctInit(): Promise<void> {
       waitStop();
       if (waitSheet()) {
         back();
-        syncAndSay('Email confirmed. Signed in and syncing.');
+        syncAndSay('Email confirmed. You are signed in.');
       }
     }
     /* The sign-in answered (signed in, its token refreshed, or the library's
@@ -289,7 +289,7 @@ export async function acctInit(): Promise<void> {
         kind: 'account',
         mode: 'sent',
         title: 'Email confirmed',
-        msg: 'Signed in. Your log syncs to your account.'
+        msg: 'Signed in. Your log is saved to your account.'
       });
       cloudInit();
     } else openModal({ kind: 'account', mode: 'where', title: 'Email confirmed' });
@@ -398,7 +398,7 @@ async function acctCode(): Promise<void> {
     obOutClear();
     prefDel(ACCT_LATER);
     if (ui.modal === m) back();
-    syncAndSay('Email confirmed. Signed in and syncing.');
+    syncAndSay('Email confirmed. You are signed in.');
     acctRerender();
   };
   try {
@@ -500,7 +500,7 @@ async function acctSubmit(): Promise<void> {
       obOutClear();
       prefDel(ACCT_LATER);
       done(null);
-      await syncAndSay('Signed in. Syncing your log.');
+      await syncAndSay('Signed in. Saving your log to your account.');
       acctRerender();
     } else if (m.mode === 'signup') {
       const r = await limited(A.signUp(email, pw, tk));
@@ -511,7 +511,7 @@ async function acctSubmit(): Promise<void> {
         acct.user = r.user;
         obOutClear();
         done(null);
-        await syncAndSay('Account created. Syncing your log.');
+        await syncAndSay('Account created. Saving your log to it.');
         acctRerender();
       }
     } else if (m.mode === 'forgot') {
@@ -563,7 +563,8 @@ export const ACCOUNT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     await cloudInit();
     acctRerender();
     // A sign-in the server refused has signed the phone out and said so (sync.ts, cloudFail): nothing to add to that.
-    if (!cloud.on && acct.user) toast('Still not syncing. Check your connection, or sign out and in again.');
+    if (!cloud.on && acct.user)
+      toast('Still not saving to your account. Check your connection, or sign out and in again.');
   },
   // From a problem report, signing in goes back to it, with what was typed in it.
   acctOpen(t) {
@@ -639,7 +640,7 @@ export const ACCOUNT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (t.dataset.v === 'here') {
       if (typeof A.release === 'function') A.release();
       closeModal();
-      await syncAndSay('Signed in here. Syncing your log.');
+      await syncAndSay('Signed in here. Saving your log to your account.');
       acctRerender();
       return;
     }
@@ -669,7 +670,7 @@ export const ACCOUNT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const del = A.deleteAccount;
     confirmBox(
       'Delete your account?',
-      'Your account and the synced copy of your log are deleted for good. The copy on this phone stays; export a backup first to keep one elsewhere.',
+      'Your account and the copy of your log saved in it are deleted for good.\n\nThe copy on this phone stays; export a backup first to keep one elsewhere.',
       'Delete account',
       async () => {
         toast('Deleting your account');

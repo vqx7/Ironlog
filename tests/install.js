@@ -58,7 +58,7 @@ const IPHONE_CHROME = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Ap
   await A.ev(() => { const L = window.__ironlog; localStorage.removeItem(L.KEY + '.installLater'); L.render(); }); await A.page.waitForTimeout(150);
   await A.page.click('#installBar [data-act="installLater"]'); await A.page.waitForTimeout(150);
   const said = await A.ev(() => document.getElementById('toast').innerText.replace(/\s+/g, ' ').trim());
-  ok(said.startsWith('Hidden. Install stays in the menu at the top right, under Your data and backups.'), 'Not now says what it hid and where it stays: the menu at the top right, under Your data and backups (NEW-140)', said);
+  ok(said.startsWith('Hidden. Install stays in the menu, under Your data and backups.'), 'Not now says what it hid and where it stays: the menu, under Your data and backups (NEW-140; "at the top right" cut in 2.78.2, the menu being the one button there)', said);
   await A.page.click('#saveState'); await A.page.waitForTimeout(250);
   await A.page.click('#modal [data-act="goBackup"]'); await A.page.waitForTimeout(300);
   ok(!!(await A.ev(() => document.querySelector('#installPanel [data-act="install"]'))), 'and the path it names leads there: the menu > Your data and backups offers Install');
@@ -76,7 +76,7 @@ const IPHONE_CHROME = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Ap
   await I.page.click('#modal [data-act="mClose"]');
   await I.page.click('#installBar [data-act="installLater"]'); await I.page.waitForTimeout(150);
   const saidI = await I.ev(() => document.getElementById('toast').innerText.replace(/\s+/g, ' ').trim());
-  ok(saidI.startsWith('Hidden. Add to Home Screen stays in the menu at the top right, under Your data and backups.'), 'iPhone: Not now names Add to Home Screen, as its button does (NEW-140)', saidI);
+  ok(saidI.startsWith('Hidden. Add to Home Screen stays in the menu, under Your data and backups.'), 'iPhone: Not now names Add to Home Screen, as its button does (NEW-140)', saidI);
   // A log of the lifter's own in the tab, signed out (REV33-2): installing does not carry it (the home-screen app keeps
   // its own storage) and an account does, so Create account is the one line, Get the app once it is dismissed, and the
   // install sheet offers the account where it says the log does not move.

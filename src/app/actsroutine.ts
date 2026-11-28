@@ -28,8 +28,6 @@ import { fitTargets } from './targets';
 import type { Tap } from './workstate';
 import { pageTo } from './frame';
 
-/** How long a first run's routine note stays when it says more (Your training applied, the targets fitted), in milliseconds. */
-const READY_SAID = 6000;
 /** A new routine's days, laid out as Build my own's (three training days and no rest would plan 7 sessions a week): 1 is a rest day. */
 const NEW_DAYS = [0, 1, 0, 1, 0, 1, 1] as const;
 
@@ -89,7 +87,6 @@ export const ROUTINE_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     // The same template added again, unchanged, is opened rather than duplicated.
     const same = state.routines.find(x => routineSig(x) === routineSig(r));
     if (from === 'welcome') {
-      let fit = false;
       let pa: ReturnType<typeof profApplyList> = [];
       act(() => {
         // First run: the untouched starter routine is replaced by the pick, not
@@ -100,7 +97,7 @@ export const ROUTINE_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
           state.routines.push(r);
           state.activeRoutineId = r.id;
         }
-        fit = fitTargets(state.routines.find(x => x.id === state.activeRoutineId));
+        fitTargets(state.routines.find(x => x.id === state.activeRoutineId));
         // Your training, set in this sheet, applied as its Apply does (else Strength set here leaves the pick's plans as they were, and Settings then offers to apply it).
         pa = profApplyList(activeRoutine());
         for (const x of pa) Object.assign(x.it, x.ch);
@@ -110,11 +107,9 @@ export const ROUTINE_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       ui.tab = 'today';
       pageTo(0);
       render();
-      toast(
-        `${r.name} is ready${pa.length ? ', set to Your training' : ''}${fit ? '. Weekly set targets now match it; change them in Settings.' : ''}`,
-        null,
-        fit || pa.length ? READY_SAID : 0
-      );
+      /* The few words V approved (2026-11-25). What the pick set beside the routine is not said here: the weekly targets
+         now its plan's show in Plan and Stats, and Your training's reps, reps in reserve and rest are on each lift. */
+      toast(`${r.name} is ready.`);
       // No bodyweight note over this message: Today's bodyweight card asks just below it.
       return;
     }
@@ -129,7 +124,7 @@ export const ROUTINE_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     });
     ui.bRoutine = r.id;
     render();
-    toast(`${r.name} added. Tap Make active to use it.`);
+    toast(`${r.name} added. Tap **Make active** to use it.`);
   },
   rNew() {
     openModal({ kind: 'routineNew' });

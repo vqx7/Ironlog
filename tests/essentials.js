@@ -221,7 +221,8 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   const capHit = await ev(() => { const L = window.__ironlog; const out = []; for (const t of L.TEMPLATES.filter(t => !t.hidden)) { const r = L.routineFromTemplate(t.key); for (const d of r.days) { if (d.rest) continue; const ms = L.sessionMuscleSets(d); const o = Object.entries(ms).filter(([, v]) => v > 11); if (o.length) out.push(t.key + ' ' + d.name); } } return out; });
   ok(!capHit.length, 'no ready-made day passes 11 sets for one muscle, the high-volume one included since r30', capHit);
   // r28: said in plain words instead of the 11-set figure.
-  ok(await ev(() => /many sets for one muscle/.test(window.__ironlog.TEMPLATES.find(t => t.key === 'onemuscle').who)), 'the high-volume template warns of long sessions with many sets for one muscle');
+  // 2.78.2 (V: "trim the paragraphs"): the name says the volume and the line under it who it suits and how often it trains.
+  ok(await ev(() => { const t = window.__ironlog.TEMPLATES.find(t => t.key === 'onemuscle'); return /high volume/.test(t.name) && /Experienced/.test(t.who) && /6 days a week/.test(t.who); }), 'the high-volume template says it is for experienced lifters, 6 days a week, its name saying the volume');
   // A new routine has no history: with "Fill in suggested loads" on, the load typed on set 1 fills the empty rows below.
   await ev(() => { const L = window.__ironlog; L.state.settings.loadFill = 'fill'; L.ui.tab = 'today'; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); (document.getElementById('page')||document.documentElement).scrollTo(0, 0); });
   await F.page.click('.hero [data-act="startSession"]:not([data-light])'); await F.page.waitForTimeout(200);

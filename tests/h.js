@@ -144,6 +144,24 @@ function settle(p, what, ms = 30000) {
   let t; const late = new Promise(r => { t = setTimeout(() => { console.log(`note ${what} did not finish in ${ms / 1000} s; went on without it`); r(); }, ms); });
   return Promise.race([Promise.resolve(p).catch(() => {}), late]).finally(() => clearTimeout(t));
 }
+/* Waits, up to 5 s, until no exercise in the workout in progress is due to move up; false if one still is. An
+   exercise ticked ahead of untouched ones moves up once the screen is calm (orderAt and orderRun in
+   src/app/worksets.ts), as a lifter resting between sets sees it. Suites tap a row by its exercise's place (data-b),
+   so a suite that taps on before that move passes only while it taps faster than the calm comes, and on a slow
+   machine types into and ticks another exercise. After such a tick a suite waits here, then taps where it is. */
+async function settled(page) {
+  for (let k = 0; k < 50; k++) {
+    const due = await page.evaluate(() => { const L = window.__ironlog, d = L.state.draft; return !!d && d.ex.some(b => L.orderAt(b) >= 0); });
+    if (!due) return true;
+    await new Promise(r => setTimeout(r, 100));
+  }
+  return false;
+}
+// The place of exercise `id` in the workout in progress (-1 if it is not there), once none is due to move up.
+async function placeOf(page, id) {
+  await settled(page);
+  return page.evaluate(id => { const d = window.__ironlog.state.draft; return d ? d.ex.findIndex(b => b.exId === id) : -1; }, id);
+}
 /* The source files as written (r49): the page parts and the typed modules in
    src/app/, at any depth. The page's script is bundled and carries no
    comments, so a check that must see comments reads these. */
@@ -254,4 +272,4 @@ function screenLeaks(shot) {
   for (const t0 of [...shot.tree, shot.text]) { const t = shown(t0); const m = bad.exec(t); if (m) out.push(t.slice(Math.max(0, m.index - 80), m.index + 80)); }
   return out;
 }
-module.exports = { open, tab, cspFix, build, engine, ENGINE, touchDriver, offlineLoad, settle, sourceFiles, sourceTexts, screenOf, screenDiff, screenLeaks };
+module.exports = { open, tab, cspFix, build, engine, ENGINE, touchDriver, offlineLoad, settle, settled, placeOf, sourceFiles, sourceTexts, screenOf, screenDiff, screenLeaks };

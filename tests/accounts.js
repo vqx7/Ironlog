@@ -188,9 +188,9 @@ fs.cpSync(DIST, tmp, { recursive: true });
   await openData(A);
   ok(/Signed in as v@example\.com/.test(await text(A, '#acctPanel')), 'Your data shows who is signed in');
   const pIn = await note(A, '#privacy');
-  ok(pIn.line === 'Privacy: your log syncs to your Ironlog account.' && pIn.tip.startsWith("No ads, no tracking. Your log syncs to your Ironlog account. Only you and the app's owner can see it. Reports you send go to the app owner. It is stored in a Supabase database."), 'the privacy line says where the log goes, and its i who can see it (the line\'s words before r69, word for word)', pIn);
-  ok(/Synced/.test(await A.ev(() => document.getElementById('saveState').getAttribute('aria-label'))), 'the header says Synced');
-  ok(/Synced to your account and saved on this device/i.test(await A.ev(() => document.getElementById('view').innerText)) && !/Claude account/i.test(await A.ev(() => document.getElementById('view').innerText)), 'Settings says "your account", never "Claude account", in the installed app');
+  ok(pIn.line === 'Privacy: your log is saved to your Ironlog account.' && pIn.tip.startsWith("No ads, no tracking. Your log is saved to your Ironlog account. Only you and the app's owner can see it. Reports you send go to the app owner. It is stored in a Supabase database."), 'the privacy line says where the log goes, and its i who can see it (the line\'s words before r69, "syncs to" since 2.78.2 "is saved to")', pIn);
+  ok(/Saved to your account/.test(await A.ev(() => document.getElementById('saveState').getAttribute('aria-label'))), 'the header says Saved to your account (Synced before 2.78.2)');
+  ok(/Saved to your account and on this device/i.test(await A.ev(() => document.getElementById('view').innerText)) && !/Claude account/i.test(await A.ev(() => document.getElementById('view').innerText)), 'Settings says "your account", never "Claude account", in the installed app');
   await A.ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); });
   ok(!(await A.ev(() => document.getElementById('acctBar'))), 'signed in: no prompt on Today');
   // 2.33 (ST-2): signed in on the built app, with its own account script, Today offers a profile photo once; Not now ends it.
@@ -297,7 +297,7 @@ fs.cpSync(DIST, tmp, { recursive: true });
   ok(await synced(W2), 'the link opened (elsewhere), back to the app: signed in and syncing without typing anything');
   ok(!(await sheet(W2)) && !(await W2.ev(() => window.__ironlog.acctWaiting())) && !(await W2.ev(() => localStorage.getItem('ironlog.v1.acctWait'))), 'the sheet closes, the password is forgotten and the marker removed');
   ok(sessIn(rowsOf('auto@example.com')).join() === 'sW2', 'the phone\'s log is in the new account', sessIn(rowsOf('auto@example.com')));
-  ok(/Email confirmed\. Signed in/.test(await W2.ev(() => document.getElementById('toast').innerText)), 'and it says so');
+  ok(/Email confirmed\. You are signed in/.test(await W2.ev(() => document.getElementById('toast').innerText)), 'and it says so');
 
   // ---- 8c. "Here in this browser": that browser stays signed in and syncs its log.
   const tok = async email => (await (await fetch(fake.base + '/auth/v1/token?grant_type=password', { method: 'POST', headers: { apikey: 'x', 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password: 'auto pass 12' }) })).json());
@@ -319,7 +319,7 @@ fs.cpSync(DIST, tmp, { recursive: true });
   await D4.ev(() => localStorage.setItem('ironlog.v1.acctWait', JSON.stringify({ t: Date.now() })));
   await D4.page.goto(linkOf(await tok('auto@example.com'))); await D4.page.waitForFunction(() => window.__ironlog, null, { timeout: 15000 }); await wait(1200);
   sh = await sheet(D4);
-  ok(sh && sh.mode === 'sent' && /Signed in\. Your log syncs to your account\./.test(sh.text) && await synced(D4), 'opened where the app waits: signed in and syncing, no question', sh);
+  ok(sh && sh.mode === 'sent' && /Signed in\. Your log is saved to your account\./.test(sh.text) && await synced(D4), 'opened where the app waits: signed in and syncing, no question', sh);
 
   // ---- 9. Password reset: request, then the emailed link opened in a browser.
   await openData(D);
@@ -379,7 +379,10 @@ fs.cpSync(DIST, tmp, { recursive: true });
   await logOn(A, 'sA-denied', 140); await A.ev(() => window.__ironlog.flush()); await wait(800);
   await openData(A);
   const st = await A.ev(() => window.__ironlog.cloudState());
-  ok(st.on && /could not be reached just now/.test(st.err || '') && ((await text(A, '#syncInfo')).match(/could not be reached just now/g) || []).length === 1, 'refused by the database: says the table permissions need fixing and keeps retrying', st);
+  ok(st.on && /Your account refused the save/.test(st.err || '') && ((await text(A, '#syncInfo')).match(/Your account refused the save/g) || []).length === 1, 'refused by the database: says the table permissions need fixing and keeps retrying', st);
+  // Refused is not offline (REV34-9): the phone is online, so nothing says to wait for the connection.
+  const refusedSaid = { info: await text(A, '#syncInfo'), menu: await A.ev(() => document.getElementById('saveState').getAttribute('aria-label')) };
+  ok(/Not saving/.test(refusedSaid.info) && !/back online|Waiting to save/.test(refusedSaid.info) && /Your account needs attention/.test(refusedSaid.menu), 'refused: Settings says Not saving and the reason, never "once back online", and the menu says the account needs attention', refusedSaid);
   fake.setDeny(false);
   await A.ev(() => window.__ironlog.flush()); await wait(800);
   ok(sessIn(rowsOf('v@example.com')).includes('sA-denied') && (await A.ev(() => window.__ironlog.cloudState().status)) === 'synced', 'once fixed, sync catches up');

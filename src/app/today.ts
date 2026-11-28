@@ -580,7 +580,7 @@ export function bwDueCard(): Part {
     last
       ? `Last ${fmtBody(last.kg)} ${bodyU()}, ${ago} days ago.`
       : 'Pull-ups, dips, and push-ups count it, plus any weight you add; without it they count only what you add. Optional.'
-  } ${tipButton('Bodyweight lifts use your latest weigh-in for weight lifted and estimates. How often to ask is in Settings > Measurements.', 'About weigh-ins')}</p>
+  } ${tipButton('Bodyweight lifts use your latest weigh-in for weight lifted and estimates. How often to ask is in **Settings** > **Measurements**.', 'About weigh-ins')}</p>
 <div class="row"><label class="field u-f1_m0" for="bwDueVal"><span class="vh">Bodyweight (${bodyU()})</span>${bodyField('bwDueVal', { placeholder: last ? fmtBody(last.kg) : `Weight (${bodyU()})`, grey: last ? fmtBody(last.kg) : undefined, label: `Bodyweight (${bodyU()})` })}</label>${bodyUnitTap('bwDueVal')}<button class="btn sm primary" data-act="addBW" data-in="bwDueVal">Save</button><button class="btn sm" data-act="bwLater">Later</button></div></div>`;
 }
 
@@ -1057,7 +1057,7 @@ function movingCard(): TemplateResult | null {
     title: 'Lifts moving',
     sub: `${all.length} rising${one ? ` · ${all[0].wk} wks` : ''}`,
     help: 'moving',
-    helpBody: `The lifts Stats and the coach call clearly rising, strongest first. Each line is the lift's trend over ${one ? `the ${all[0].wk} weeks` : 'the weeks'} it covers, without lighter or deload sessions; the set beside it is the heaviest of its latest session. Tap a lift to open it on Stats.`,
+    helpBody: `The lifts **Stats** and the coach call clearly rising, strongest first. Each line is the lift's trend over ${one ? `the ${all[0].wk} weeks` : 'the weeks'} it covers, without lighter or deload sessions; the set beside it is the heaviest of its latest session. Tap a lift to open it on **Stats**.`,
     body: html`<div class="mvcard">${rows}</div>`
   });
 }
@@ -1147,7 +1147,7 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     pageTo(0);
     render();
     toast(
-      `Deload week on until Sunday: ${shareWords(LIGHTER_SET_SHARE)} sets, about ${pctOf(LIGHT_SHARE)}% loads. It clears fatigue; it does not add growth.`,
+      `Deload week until Sunday: ${shareWords(LIGHTER_SET_SHARE)} sets, about ${pctOf(LIGHT_SHARE)}% loads.`,
       false,
       DELOAD_TOAST_MS
     );
@@ -1246,7 +1246,7 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (!x) return;
     confirmBox(
       'Delete weigh-in?',
-      `${fmtDate(x.date)}: ${fmtBody(x.kg)} ${bodyU()}. Undo is offered right after.`,
+      `${fmtDate(x.date)}: ${fmtBody(x.kg)} ${bodyU()}. **Undo** is offered right after.`,
       'Delete',
       () => {
         act(
@@ -1305,7 +1305,7 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (!x) return;
     confirmBox(
       'Delete measurements?',
-      `The tape entry from ${fmtDate(x.date)}. Undo is offered right after.`,
+      `The tape entry from ${fmtDate(x.date)}. **Undo** is offered right after.`,
       'Delete',
       () => {
         act(
@@ -1337,13 +1337,13 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   acctLater() {
     prefSet(ACCT_LATER, '1');
     rerenderKeepScroll();
-    toast('Hidden. Sign in and Create account stay in the menu at the top right.');
+    toast('Hidden. **Sign in** and **Create account** stay in the menu at the top right.');
   },
   installLater() {
     prefSet(INSTALL_LATER, '1');
     rerenderKeepScroll();
     toast(
-      `Hidden. ${/^ios/.test(installKind()) ? 'Add to Home Screen' : 'Install'} stays in the menu at the top right, under Your data and backups.`
+      `Hidden. **${/^ios/.test(installKind()) ? 'Add to Home Screen' : 'Install'}** stays in the menu, under **Your data and backups**.`
     );
   },
   iconLater() {

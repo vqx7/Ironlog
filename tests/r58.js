@@ -545,7 +545,7 @@ const SCREENS = [
     // The muscle map's legend says what Tracked only means for every such muscle, not only the four tracked since r29 (the review of r58).
     const tip = await q(async () => {
       const L = window.__ironlog; L.ui.tab = 'today'; L.render(); await new Promise(r => setTimeout(r, 150));
-      const i = document.querySelector('#view .bm-legend .st-track'); return i && i.parentElement.dataset.tip;
+      const i = document.querySelector('#view .bm-legend .st-track'); return i && i.parentElement.dataset.tip.replace(/\*\*/g, ''); // as shown: the marks gone
     });
     // Reworded in 2.34 (99, V 2026-11-08: plainer, not longer); the same two things said.
     ok(tip === 'Counted, no weekly target, so never marked under or over. Set one in Settings, Weekly set targets.', '9. the map\'s Tracked only tip covers every muscle with no target and says how to give one', tip);

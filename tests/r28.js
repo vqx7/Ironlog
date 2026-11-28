@@ -278,7 +278,8 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
     ok(q.hbTop < q.h2Bottom && q.right < 40, 'Plan: the ? sits at the top right, not on a row of its own', q);
     // The routine picker gives each routine's session length as a range, matching Today's day.
     await ev(() => window.__ironlog.ACT.rTemplate()); await wait(80);
-    const pick = await ev(() => ({ m: [...document.querySelectorAll('#modal .tpl-m')].map(e => e.innerText), jargon: /10-set|11 sets/.test(document.getElementById('modal').innerText) }));
+    // Since 2.78.2 the minutes follow who it is for on one line ("New to lifting · 45 to 50 min").
+    const pick = await ev(() => ({ m: [...document.querySelectorAll('#modal .tpl-w')].map(e => e.innerText.split(' · ').pop()), jargon: /10-set|11 sets/.test(document.getElementById('modal').innerText) }));
     ok(pick.m.length >= 5 && pick.m.every(t => /(\d+ to \d+ min|~\d+ min)/.test(t)) && !pick.jargon, 'the routine picker shows minutes as a range, without set-count jargon', pick.m.slice(0, 2));
     await ev(() => window.__ironlog.ACT.mClose());
 

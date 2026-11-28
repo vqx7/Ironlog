@@ -158,7 +158,7 @@ function setRemove(t: Tap): void {
   const at = i;
   confirmBox(
     `Remove ${what.toLowerCase()}?`,
-    `${ex.name}${val ? `: ${val}` : ''}, ${x.done ? 'logged' : 'typed, not ticked'}. Undo is offered right after.`,
+    `${ex.name}${val ? `: ${val}` : ''}, ${x.done ? 'logged' : 'typed, not ticked'}. **Undo** is offered right after.`,
     'Remove set',
     () => {
       const dd = state.draft;
@@ -238,7 +238,7 @@ function blockRemove(t: Tap): void {
     if (ui.modal) closeModal();
     confirmBox(
       `Remove ${EX(blk.exId).name}?`,
-      `${logged ? `${logged} logged set${logged === 1 ? '' : 's'}` : ''}${logged && typed ? ' and ' : ''}${typed ? `${typed} typed set${typed === 1 ? '' : 's'}` : ''} go with it. Undo is offered right after.`,
+      `${logged ? `${logged} logged set${logged === 1 ? '' : 's'}` : ''}${logged && typed ? ' and ' : ''}${typed ? `${typed} typed set${typed === 1 ? '' : 's'}` : ''} go with it. **Undo** is offered right after.`,
       'Remove exercise',
       go,
       true
@@ -259,7 +259,7 @@ function cardioRemove(t: Tap): void {
     const did = d.id;
     confirmBox(
       `Remove ${(CARDIOL[c.kind || ''] || 'entry').toLowerCase()}?`,
-      `${c.min ? c.min + ' min' : 'An entry with your notes'}. Undo is offered right after.`,
+      `${c.min ? c.min + ' min' : 'An entry with your notes'}. **Undo** is offered right after.`,
       'Remove',
       () => {
         const dd = state.draft;
@@ -611,7 +611,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (blocked)
       confirmBox(
         `${exName(b.exId)}: ${sets} left`,
-        `Set ${blocked.si + 1} has no weight or reps to take, or looks far off, so tick it on its own. Or skip the sets left.${repeats}`,
+        `Set ${blocked.si + 1} has no weight or reps to take, or looks far off, so tick it on its own.\n\nOr skip the sets left.${repeats}`,
         'Skip them',
         skip
       );
@@ -745,7 +745,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     ui.away = state.draft ? state.draft.id : null;
     pageTo(0);
     render();
-    toast('Saved. Resume it from Today.');
+    toast('Saved. **Resume** it from Today.');
   },
   wkResume() {
     ui.away = null;
@@ -826,20 +826,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     rerenderKeepScroll();
     const b = d.ex[bi];
     if (b && b.plan.ss)
-      toast(d.dayId ? 'Superset. Finish offers to keep it in your plan.' : 'Superset for this session');
-  },
-  noteReuse(t) {
-    const b = tapBlock(t);
-    const ln = b && b.lastNote;
-    if (!b || !ln) return;
-    act(
-      () => {
-        b.note = ln.text;
-      },
-      { inProgress: true }
-    );
-    rerenderKeepScroll();
-    toast('Note carried into this session');
+      toast(d.dayId ? 'Superset. **Finish** offers to keep it in your plan.' : 'Superset for this session');
   },
   cDraftAdd(t) {
     const d = state.draft;

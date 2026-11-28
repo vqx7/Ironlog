@@ -323,6 +323,9 @@ html,body{height:100%;overflow:hidden;overscroll-behavior:none}
    no scroll padding, the bars that stick at its top stick at 0. An element's own scroll margin lands it where it
    landed while the document scrolled under the status bar. */
 #page{height:100%;overflow-x:hidden;overflow-y:auto;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch}
+/* While a keyboard is up for a field in the page, frame.ts ends the page where the keyboard begins (its height set
+   on #page) and the bars along the bottom step aside: nothing floats above the keyboard or hides under its toolbar. */
+body.keys .tabs,body.keys #timer{visibility:hidden}
 body.modal-open #page{overflow-y:hidden}
 /* An app, not a web page (r65.2, PENDING 369): a double tap is a tap, never a zoom (pinch stays, which iOS keeps
    for accessibility whatever a page says); a long press on the app's own words selects nothing and opens no Copy
@@ -751,6 +754,8 @@ body.blkdrag .block .bh h3{font-size:17px;white-space:nowrap;overflow:hidden;tex
 .mcpen{width:44px;height:44px}
 /* The machine on an exercise's card: a tag that opens its Machine sheet. */
 .mctag{position:relative;border:0;font-family:inherit;cursor:pointer;color:var(--ink)}
+/* A machine lift's line under its name: the machine it is on, and how it is set. */
+.mcline{margin:3px 0 0;color:var(--muted)}
 /* "Per side" is "Side" under 360 px, so the load column's heading is one line at every width. */
 @media (max-width:359px){.lhn{display:none}}
 .sg .n{font:700 15px var(--font);font-variant-numeric:tabular-nums;color:var(--muted);text-align:center}

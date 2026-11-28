@@ -148,7 +148,7 @@ const routine = n => ({ id: 'Rb', name: 'Chest', schedule: 'weekly', days: [{ id
     ok(!fresh.hidden.includes('program:schedule') && fresh.shown && fresh.select, '2. 381: a new install shows Plan\'s Schedule section, its cycle or fixed weekdays choice on the page (r69: hidden)', fresh);
     ok(['today:tiles', 'today:coach', 'today:body', 'program:pvol'].every(k => fresh.hidden.includes(k)), '2. the other four sections a new install hides stay hidden (a guard)', fresh.hidden);
     // R70-4, the review of r70: Layout's Default layout tip says what the button does now.
-    const tip = await F.page.evaluate(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.render(); const b = document.querySelector('[data-act="layoutDefault"]'); return b ? b.getAttribute('data-tip') : null; });
+    const tip = await F.page.evaluate(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.render(); const b = document.querySelector('[data-act="layoutDefault"]'); return b ? b.getAttribute('data-tip').replace(/\*\*/g, '') : null; }); // as shown: the marks gone
     ok(!!tip && !/Schedule/.test(tip) && /Weekly volume hidden on Plan/.test(tip), '2. R70-4: the Default layout tip no longer says Schedule is hidden', tip);
     // A phone's own layout with Schedule hidden, saved and opened again: it stays hidden.
     const kept = await F.page.evaluate(() => { const L = window.__ironlog; const S = L.state; S.settings.hidden = ['program:schedule']; L.state = L.normalize(S); L.saveNow(); L.render(); return { hidden: L.state.settings.hidden.slice(), shown: !!document.querySelector('#view [data-sk="program:schedule"]') }; });

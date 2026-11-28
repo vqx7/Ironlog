@@ -46,7 +46,7 @@ const BAD = 'password1234';
   };
   const D = await device();
   let r = await signup(D, 'a@example.com', BAD);
-  ok(r && r.mode === 'signup' && /appeared in a data breach/.test(r.err) && !fake.users.has('a@example.com'), 'a breached password is refused at sign-up, with a plain message, and no account is made', r);
+  ok(r && r.mode === 'signup' && /is in a known data breach/.test(r.err) && !fake.users.has('a@example.com'), 'a breached password is refused at sign-up, with a plain message, and no account is made', r);
   const a0 = asked[asked.length - 1];
   ok(a0 && a0.pre === sha(BAD).slice(0, 5) && a0.pre.length === 5 && a0.headers['add-padding'] === 'true', 'only the first 5 characters of the password\'s SHA-1 hash are sent, with padding asked for', a0 && a0.pre);
   r = await signup(D, 'a@example.com', 'a strong one 77');
@@ -60,7 +60,7 @@ const BAD = 'password1234';
   // Setting a new password (after a reset link) is checked too.
   fake.confirm('a@example.com');
   const n = await D.ev(async ([bad]) => { try { await window.ironlogAuth.signIn('a@example.com', 'a strong one 77'); await window.ironlogAuth.updatePassword(bad); return 'changed'; } catch (e) { return e.code + ': ' + e.message; } }, [BAD]);
-  ok(/^breached: This password has appeared in a data breach/.test(n), 'a breached password is refused as a new password too', n);
+  ok(/^breached: This password is in a known data breach/.test(n), 'a breached password is refused as a new password too', n);
   ok(fake.users.get('a@example.com').password === 'a strong one 77', 'and the old password still works');
   ok(!D.errors.length && !D2.errors.length, 'no page errors (' + [...D.errors, ...D2.errors].join(' | ') + ')');
   await browser.close(); await fake.close();

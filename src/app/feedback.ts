@@ -38,7 +38,7 @@ export const FB_CTX_MAX = 15000;
 
 /** The tip on the report sheet that says what the app attaches to a report (fbContext builds it). */
 export const FB_WHAT =
-  'Attached by the app: the build, your device and browser, screen size, which screen you came from, whether a session was open, sync status, and up to 10 recent errors with where in the app each happened. Never your workouts. It goes to the app owner.';
+  'Attached by the app: the build, your device and browser, screen size, which screen you came from, whether a session was open, whether your log reached your account, and up to 10 recent errors with where in the app each happened. Never your workouts. It goes to the app owner.';
 
 /* A report's screenshot is written by whoever sent it, through the API as
    well as the app, so the Inbox shows it only when it is a plain base64 JPEG

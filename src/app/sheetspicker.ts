@@ -251,5 +251,5 @@ export function shortSheet(m: { mins?: number | null | undefined }): TemplateRes
     }
     ${body}
     <div class="row u-mt12">${trims ? html`<button class="btn primary" data-act="shortApply">Trim the session</button>` : ''}<button class="btn" data-act="mClose">${trims ? 'Cancel' : 'Close'}</button></div>
-    <p class="small muted hastip u-m8-0-0" data-tip="Kept longest: priority and lagging muscles, exercises already started, and at least one exercise per muscle. The rest lose sets down to 2, then drop out, later exercises first. Trimmed work does not count against trends. Undo is in the message after.">What gets cut first</p></div>`;
+    <p class="small muted hastip u-m8-0-0" data-tip="Kept longest: priority and lagging muscles, exercises already started, and at least one exercise per muscle. The rest lose sets down to 2, then drop out, later exercises first. Trimmed work does not count against trends. **Undo** is in the message after.">What gets cut first</p></div>`;
 }

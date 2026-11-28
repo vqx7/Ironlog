@@ -2,7 +2,7 @@
 // PENDING.md; V, 2026-11-10). The text stays beside the screen that draws it; this reads the source and changes nothing.
 //   node scripts/copy.js            the list as JSON on stdout
 //   node scripts/copy.js --md FILE  the list as Markdown, grouped by module
-// What it reads: the page's markup (src/03-body.html), and in src/app/ the text and the tip, label, placeholder and title
+// What it reads: the page's markup (src/03-body.html), the account script (scripts/cloud-supabase.js), and in src/app/ the text and the tip, label, placeholder and title
 // attributes of every lit-html template, and every other string or template of two or more words (messages, toasts,
 // confirm boxes, the Guide, help and tip constants). What it leaves out: class lists, data-act names, error-log areas,
 // selectors, ids, addresses and code, which no lifter reads. A string built from parts lists each part with ${...} kept.
@@ -33,12 +33,16 @@ function textOf(markup) {
 // Words a lifter reads: at least one run of three letters, not a bare identifier, class list, selector, address or code.
 function readable(s) {
   const t = s.trim();
-  if (!/[A-Za-z]{3}/.test(t)) return false;
+  // Read with each ${...} as one letter: a template's own words, not the code it calls.
+  const bare = t.replace(/\$\{[^{}]*(\{[^{}]*\}[^{}]*)*\}/g, 'x');
+  if (!/[A-Za-z]{3}/.test(bare)) return false;
   if (/^(https?:|mailto:|\.\/|\/|#|data:|blob:)/.test(t)) return false;
   if (/^[a-z][A-Za-z0-9]*$/.test(t)) return false; // an identifier: a key, an id, a data-act name
   if (/^[a-z0-9_\-:.#\[\]= ]+$/.test(t) && !/ [a-z]+ [a-z]+ /.test(' ' + t + ' ')) return false; // class lists and selectors
   if (/^[\w-]+(\s*[:;{}][\s\w-]*)+$/.test(t)) return false; // CSS
-  if (/[{};]\s*$/.test(t) && /[=(]/.test(t)) return false; // code
+  // Code: a braced, semicoloned or assigning text, read without its placeholders, since a sentence can end in one
+  // that calls a function ("Last backup file ${fmtDate(d)}").
+  if (/[{};]\s*$/.test(bare) && /[=(]/.test(bare)) return false;
   return true;
 }
 
@@ -71,7 +75,12 @@ function fromSource(file) {
     return '';
   };
   const add = (n, kind, s) => {
-    const t = s.replace(/\s+/g, ' ').trim();
+    // A blank line is a paragraph break (the question sheet draws one), kept as one; other white space is one space.
+    const t = s
+      .split(/\n\s*\n/)
+      .map(p => p.replace(/\s+/g, ' ').trim())
+      .filter(Boolean)
+      .join('\n\n');
     if (t && readable(t)) out.push({ file: path.relative(ROOT, file), line: at(n), in: fnOf(n), kind, text: t });
   };
   const visit = n => {
@@ -138,7 +147,9 @@ const all = [
     .readdirSync(APP)
     .filter(f => f.endsWith('.ts'))
     .sort()
-    .flatMap(f => fromSource(path.join(APP, f)))
+    .flatMap(f => fromSource(path.join(APP, f))),
+  // The account script's own words, which reach Settings and the account sheets as the account's messages.
+  ...fromSource(path.join(ROOT, 'scripts', 'cloud-supabase.js'))
 ];
 
 const i = process.argv.indexOf('--md');

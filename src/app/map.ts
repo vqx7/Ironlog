@@ -858,7 +858,7 @@ ${stage}
         : html`<span><i class="st-under"></i>Below target ${counts['under']}</span>${counts['plan'] ? html`<span class="hastip" data-tip=${ON_PLAN_TIP}><i class="st-plan"></i>On plan ${counts['plan']}</span>` : nothing}`
     }<span><i class="st-in"></i>On target ${counts['in']}</span><span><i class="st-over"></i>Above ${counts['over']}</span><span><i class="st-none"></i>${src === 'week' ? 'Not yet' : 'None'} ${counts['none']}</span>${
       counts['track']
-        ? html`<span class="hastip" data-tip="Counted, no weekly target, so never marked under or over. Set one in Settings, Weekly set targets."><i class="st-track"></i>Tracked only ${counts['track']}</span>`
+        ? html`<span class="hastip" data-tip="Counted, no weekly target, so never marked under or over. Set one in **Settings**, **Weekly set targets**."><i class="st-track"></i>Tracked only ${counts['track']}</span>`
         : nothing
     }</div>
 ${detail}`

@@ -511,11 +511,11 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
     const A = await phone({ cloud: C, uid: 'u4' });
     ok(await A.synced(), 'S-4: (setup) the phone syncs');
     m = await A.menu(); d = await A.ev(DOT);
-    ok(m.cls === 'ok' && m.txt === 'Synced' && d.shown && d.bg === d.green, 'S-4: synced: a green dot, "Synced"', { m, d });
+    ok(m.cls === 'ok' && m.txt === 'Saved to your account' && d.shown && d.bg === d.green, 'S-4: synced: a green dot, "Saved to your account" ("Synced" before 2.78.2)', { m, d });
     C.hold(/draft$/);
     await start(A); await wait(FLUSH_MS + 400);
     m = await A.menu(); d = await A.ev(DOT);
-    ok(m.cls === 'busy' && m.txt === 'Syncing' && d.shown && d.bg === d.grey, 'S-4: while syncing: a grey dot, "Syncing"', { m, d });
+    ok(m.cls === 'busy' && m.txt === 'Saving to your account' && d.shown && d.bg === d.grey, 'S-4: while syncing: a grey dot, "Saving to your account" ("Syncing" before 2.78.2)', { m, d });
     C.release(); await wait(400);
     /* A send that keeps losing its race to another device saving the same document (here written again just before
        each read) is tried again after a wait, with signal: a grey dot, "Syncing", never that the phone is offline. Once
@@ -524,7 +524,7 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
     await tick(A, 0, 1); await wait(FLUSH_MS + LATE_MS + 600);
     m = await A.menu(); d = await A.ev(DOT);
     const ahead = C.writtenAhead();
-    ok(ahead >= 6 && m.cls === 'busy' && m.txt === 'Syncing' && d.shown && d.bg === d.grey, 'S-4: a send another device keeps saving ahead of: a grey dot, "Syncing", not "Offline, saved on this device" (REV28-2)', { m, d, ahead });
+    ok(ahead >= 6 && m.cls === 'busy' && m.txt === 'Saving to your account' && d.shown && d.bg === d.grey, 'S-4: a send another device keeps saving ahead of: a grey dot, "Syncing", not "Offline, saved on this device" (REV28-2)', { m, d, ahead });
     C.writeAhead(null); await A.flush();
     ok(await A.synced(), 'S-4: and once the other device stops, the next send goes through: "Synced"', await A.menu());
     /* The same, the connection dropping as the send gives up (at the sixth write ahead, the third try's own read): the
@@ -598,12 +598,12 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
     const C = cloudOf();
     const A = await phone({ cloud: C, uid: 'u5', seed: real });
     ok(await A.synced(), 'S-5: (setup) the phone syncs');
-    ok((await A.menu()).txt === 'Synced' && !(await A.ev(() => window.__ironlog.backupDue())), 'S-5: an account synced in the last 7 days needs no backup', await A.menu());
+    ok((await A.menu()).txt === 'Saved to your account' && !(await A.ev(() => window.__ironlog.backupDue())), 'S-5: an account synced in the last 7 days needs no backup', await A.menu());
     await A.ev(d => { window.__ironlog.cloud.last = Date.now() - d * 864e5; window.__ironlog.cloud.status = 'offline'; window.__ironlog.render(); }, BACKUP_DAYS + 1);
     ok(await A.ev(() => window.__ironlog.backupDue()), `S-5: an account that has not synced for more than ${BACKUP_DAYS} days: a backup is due`);
     await settingsOpen(A, 'dataSec');
     const callout = await A.ev(() => { const c = document.querySelector('#dataSec .callout.yellow'); return c ? c.textContent.replace(/\s+/g, ' ').trim() : null; });
-    ok(callout === 'Backup due. No backup file yet. Your account has not synced this week. Export one below.', 'S-5: Your data says so in sentences with a space between them (NEW-123)', callout);
+    ok(callout === 'Backup due. No backup file yet. Nothing has reached your account this week. Export one below.', 'S-5: Your data says so in sentences with a space between them (NEW-123)', callout);
     await A.close();
   }
 
@@ -716,7 +716,7 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       const saidB1 = await B1.ev(() => (window.__toasts || []).map(t => t.text));
       // Said with what the merge kept, in one message (toast.ts joins what one change says).
       // NEW-136: said as "saved on another device" until 2.56; it was another tab of this phone.
-      ok(saidB1.some(t => t.includes('The workout in progress was saved in another tab. What was done here since was added to it.')), 'S-6: and the tab behind says so, as another tab (REV12-6, NEW-136)', saidB1);
+      ok(saidB1.some(t => t.includes('Your workout was saved in another tab. Sets done here since were added to it.')), 'S-6: and the tab behind says so, as another tab (REV12-6, NEW-136)', saidB1);
       await A1.close();
     }
     /* REV-2: a note changed in tab A, then in tab B, which has not heard it; Undo in B's Settings keeps A's note. Both
@@ -822,7 +822,7 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       const sets = s ? s.ex.flatMap(b => b.sets.map(x => x.r)) : null;
       ok(!st.draft && JSON.stringify(sets) === '[8,7]', 'S-6: a set ticked in a tab behind the other, in the workout the other finished, joins the saved session, and the workout stays closed (REV12-6)', { draft: !!st.draft, sets });
       const said8 = await B8.ev(() => (window.__toasts || []).map(t => t.text));
-      ok(said8.includes('The workout in progress was saved in another tab. What was done here since was added to it.'), 'S-6: and the tab behind says so, as another tab (REV12-6: dropped without a word; NEW-136: "on another device" until 2.56)', said8);
+      ok(said8.includes('Your workout was saved in another tab. Sets done here since were added to it.'), 'S-6: and the tab behind says so, as another tab (REV12-6: dropped without a word; NEW-136: "on another device" until 2.56)', said8);
       ok((await B8.ev(() => !window.__ironlog.state.draft)), 'S-6: and the tab behind shows it closed too');
       await A8.close();
     }
@@ -929,7 +929,7 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       const got = { A: setsOf(await A.ev(() => window.__ironlog.state)), B: setsOf(await B.ev(() => window.__ironlog.state)), account: acct, saidA: await A.toasts(), saidB: await B.toasts() };
       ok(got.A === 3 && got.B === 3 && acct.length === 1 && acct[0] === 3, 'S-6: signed in, a set ticked in a tab behind after the other finished: the session has its 3 sets in both tabs and in the account', got);
       ok(![...got.saidA, ...got.saidB].some(t => /edited on two devices|changed in two tabs/.test(t)), 'S-6: and no message says it was edited twice: the tab behind keeps the notes the other wrote (REV13-10)', got);
-      ok(got.saidB.some(t => t.includes('The workout in progress was saved in another tab. What was done here since was added to it.')) && ![...got.saidA, ...got.saidB].some(t => /another device/.test(t)), 'S-6: the tab behind says the workout was saved in another tab, and nothing names another device (NEW-136)', got);
+      ok(got.saidB.some(t => t.includes('Your workout was saved in another tab. Sets done here since were added to it.')) && ![...got.saidA, ...got.saidB].some(t => /another device/.test(t)), 'S-6: the tab behind says the workout was saved in another tab, and nothing names another device (NEW-136)', got);
       await A.close();
     }
     {
@@ -1920,7 +1920,7 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       const as = await A.sessions();
       const joined = as.find(s => s.id === did);
       ok(!(await A.draft()) && joined && joined.sets.some(([w, r]) => w === 120 && r === 3) && joined.sets.length === 6, 'finished on B while A ticked one more: the set joins the saved session on A, and the workout is closed there', { draft: await A.draft(), joined });
-      ok(!!(await A.shown(/saved on another device\. What was done here since was added to it/)), 'A is told the workout was saved on the other phone, with what was done here since', await A.toast());
+      ok(!!(await A.shown(/Your workout was saved on another device\. Sets done here since were added to it/)), 'A is told the workout was saved on the other phone, with what was done here since', await A.toast());
       await B.sync();
       const bs = await B.sessions();
       ok(bs.find(s => s.id === did) && bs.find(s => s.id === did).sets.length === 6, 'B then has the joined session, with A\'s extra set', bs.find(s => s.id === did));
@@ -1933,7 +1933,7 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       ok(!(await B.draft()) && !cloud.doc('u1', 'draft').draft, 'B discards it: its draft document is empty', cloud.doc('u1', 'draft'));
       await A.tick(1, 80, 9); await A.flush(); await wait(1600); await A.flush();
       ok(!(await A.draft()) && (await A.sessions()).some(s => s.id === xid && s.sets.length === 2), 'discarded on B while A ticked another set: A\'s workout closes and its ticked sets are saved as a session', { draft: await A.draft(), sessions: await A.sessions() });
-      ok(!!(await A.shown(/closed on another device\. Its ticked sets are saved in History/)), 'A is told the workout was closed on the other phone and its sets saved', await A.toast());
+      ok(!!(await A.shown(/Your workout was closed on another device\. Your sets are in History/)), 'A is told the workout was closed on the other phone and its sets saved', await A.toast());
       await B.sync();
       ok(!(await B.draft()) && (await B.sessions()).some(s => s.id === xid && s.sets.length === 2), 'B then has that session and stays closed', { draft: await B.draft(), sessions: await B.sessions() });
       /* The review of 2.68 to 2.70, REV20-2: discarded on A, the phone it was done on, after B only pulled it and wrote it
@@ -2057,7 +2057,7 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       const of = P => P.ev(id => { const S = window.__ironlog.state; return { draft: !!S.draft, s: S.sessions.filter(q => q.id === id).map(q => q.date + ' ' + q.ex.flatMap(b => b.sets.map(x => `${x.w}x${x.r}`)).join(',')), aside: S.trash.filter(t => String(t.id).startsWith(id)).length }; }, wid);
       const own = await of(A);
       ok(!own.draft && JSON.stringify(own.s) === '["2026-10-08 100x8,100x7,100x6"]' && own.aside === 0, '(1c) a workout dated to the other half-month on the phone that finished it: the other phone\'s own send joins its set to that session, on its date, once, nothing put aside (REV29-1)', own);
-      ok((await A.toasts()).slice(said0).some(t => /saved on another device\. What was done here since was added to it/.test(t)) && !(await A.toasts()).slice(said0).some(t => /closed on another device|two devices/.test(t)), '(1c) and A says the workout was saved on the other phone, with what was done here since (REV29-1)', (await A.toasts()).slice(said0));
+      ok((await A.toasts()).slice(said0).some(t => /Your workout was saved on another device\. Sets done here since were added to it/.test(t)) && !(await A.toasts()).slice(said0).some(t => /closed on another device|two devices/.test(t)), '(1c) and A says the workout was saved on the other phone, with what was done here since (REV29-1)', (await A.toasts()).slice(said0));
       await A.sync(); await B.sync(); await A.sync();
       const acct = cloud.sessionsIn ? cloud.sessionsIn(uid) : [];
       const both = { A: await of(A), B: await of(B), account: acct.filter(q => q.id === wid).map(q => q.date) };
@@ -2119,7 +2119,7 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       await P.ev(() => { window.__uid = 'acctG'; const o = IDBObjectStore.prototype.put; window.__put0 = o; IDBObjectStore.prototype.put = function (...a) { if (/-aside$/.test(this.transaction.db.name)) throw new DOMException('The quota has been exceeded.', 'QuotaExceededError'); return o.apply(this, a); }; });
       P.ev(() => { window.__ironlog.cloudInit(); }); await wait(700);
       await P.page.click('#modal [data-act="mAlt"]'); await wait(800);
-      ok(!(await P.cloudState()).on && (await P.cloudState()).acct === 'acctB' && (await P.ev(() => window.__ironlog.state.sessions.length)) === 1 && !!(await P.shown(/not enough room on this phone to keep the other log aside/)) && !(await P.ev(() => window.__ironlog.asideList())).length, 'with no room to keep the log aside, Use this account\'s log replaces nothing: the log and its notes stay, the sign-in is undone, and the phone says why', { state: await P.cloudState(), toast: await P.toast(), aside: await P.ev(() => window.__ironlog.asideList()) });
+      ok(!(await P.cloudState()).on && (await P.cloudState()).acct === 'acctB' && (await P.ev(() => window.__ironlog.state.sessions.length)) === 1 && !!(await P.shown(/No room on this phone for the other log/)) && !(await P.ev(() => window.__ironlog.asideList())).length, 'with no room to keep the log aside, Use this account\'s log replaces nothing: the log and its notes stay, the sign-in is undone, and the phone says why', { state: await P.cloudState(), toast: await P.toast(), aside: await P.ev(() => window.__ironlog.asideList()) });
       await P.ev(() => { IDBObjectStore.prototype.put = window.__put0; });
       // Use this account's log: the phone's log is kept aside for B, account C's own (empty) log is used.
       await P.ev(() => window.__ironlog.cloudStop());
@@ -2241,7 +2241,7 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       const sb = (await B.ev(() => window.__ironlog.state.sessions.map(s => ({ t: s.t, n: s.ex.reduce((a, b) => a + b.sets.length, 0) }))))[0];
       const said = await B.toasts();
       ok(sb && sb.n === 2 && sb.t === aStart, 'two starts: the set phone B ticked first joins the session, which keeps the start phone A timed it from', { sb, aStart });
-      ok(!said.some(t => /edited on two devices/.test(t)) && said.some(t => /What was done here since was added to it/.test(t)), 'two starts: and phone B is told only of the join, not of an item edited on two devices (REV13-5 and REV13-6: "2 items were edited on two devices")', said);
+      ok(!said.some(t => /edited on two devices/.test(t)) && said.some(t => /Sets done here since were added to it/.test(t)), 'two starts: and phone B is told only of the join, not of an item edited on two devices (REV13-5 and REV13-6: "2 items were edited on two devices")', said);
     }
 
     // ---- NEW-134: one phone finishes the workout and starts the next; the other, offline and behind, ticks one more
@@ -2531,7 +2531,7 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       await P.flush(); await wait(1200); await P.flush(); await wait(400);
       const d = await P.draftOf(), ss = await P.ev(() => window.__ironlog.state.sessions.map(s => ({ id: s.id, sets: s.ex.map(b => b.sets.map(x => `${x.w}x${x.r}`).join(' ')).join(' | ') })));
       const t = (await P.toasts()).join(' / ');
-      ok(d && d.id === WA && d.rows === '60x10 typed 62.5x9 -' && ss.some(s => s.id === WB && s.sets === '100x8') && /kept for this account.*saved in History/.test(t), `${how}: this phone's workout stays open as it was, the one kept for B is saved in History, and the phone says so (d04ec3b: W_B opened, W_A closed, nothing said)`, { d, WA, WB, ss, t });
+      ok(d && d.id === WA && d.rows === '60x10 typed 62.5x9 -' && ss.some(s => s.id === WB && s.sets === '100x8') && /This phone's workout stays open\. The account's is saved in History/.test(t), `${how}: this phone's workout stays open as it was, the one kept for B is saved in History, and the phone says so (d04ec3b: W_B opened, W_A closed, nothing said)`, { d, WA, WB, ss, t });
     }
     noPageErrors('S-14', pages, /quota has been exceeded/i);
     await browser.close();
@@ -2840,7 +2840,7 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
 
   /* ---------- S-17, S-18, S-20: the account's answers ---------- */
   for (const [rule, code, said, off] of [
-    ['S-17', 'revoked', 'Your sign-in has expired. Sign in again to sync. Your log stays on this phone.', true],
+    ['S-17', 'revoked', 'Sign-in expired. Sign in again to keep saving. Your log stays on this phone.', true],
     ['S-18', 'gone', 'This account no longer exists. Your log stays on this phone.', true],
     ['S-20', 'quota_exceeded', null, false]
   ]) {
@@ -2856,9 +2856,9 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       ok(!cs.on, `${rule}: this phone is signed out of the account`, cs);
       ok((await P.toasts()).includes(said), `${rule}: and says "${said}"`, await P.toasts());
     } else {
-      ok(cs.on && cs.err === 'The cloud copy is full. Export a backup and delete old demo data.', 'S-20: the account\'s storage full: the app says "The cloud copy is full. Export a backup and delete old demo data."', cs);
+      ok(cs.on && cs.err === 'Your account is full. Export a backup and delete old demo data.', 'S-20: the account\'s storage full: the app says "The cloud copy is full. Export a backup and delete old demo data."', cs);
       await settingsOpen(P, 'dataSec');
-      ok((await P.ev(() => document.getElementById('dataSec').innerText)).includes('The cloud copy is full. Export a backup and delete old demo data.'), 'S-20: Your data says so', await P.ev(() => document.getElementById('dataSec').innerText.slice(0, 400)));
+      ok((await P.ev(() => document.getElementById('dataSec').innerText)).includes('Your account is full. Export a backup and delete old demo data.'), 'S-20: Your data says so', await P.ev(() => document.getElementById('dataSec').innerText.slice(0, 400)));
     }
     C.clear(); await P.close();
   }
@@ -2874,7 +2874,7 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
     ok(len > 250000, 'S-19: (setup) the half-month document is over the size cap', len);
     await P.flush(); await wait(300);
     const cs = await P.cloud();
-    ok(cs.err === 'One month of sessions is too large to sync. Export a backup.', 'S-19: the app says which part of the log is too large to sync', cs);
+    ok(cs.err === 'One month of sessions is too large to save to your account. Export a backup.', 'S-19: the app says which part of the log is too large to save', cs);
     ok(!C.doc('u19', 's-2026-11-1') && C.doc('u19', 'b-2026') && C.doc('u19', 'b-2026').bodyweights.length === 1, 'S-19: that document is left unsent, and the others still sync', C.ids('u19'));
     ok((await P.stored()).sessions.length === 70, 'S-19: nothing is lost on the phone');
     await P.close();

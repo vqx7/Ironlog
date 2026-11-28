@@ -79,6 +79,9 @@ export interface Exercise {
   machineU?: Record<string, Unit> | undefined;
   /** The equipment a lift the library refiled is set to is the lifter's pick, though it is the library's old one (library.ts LIB_EQUIP_BEFORE). */
   equipOwn?: true | undefined;
+  /** How each of the lift's machines is set (seat 4, wide handle), by the machine's key, as the lifter typed it; absent
+      until one is typed. Last, where a build before it keeps the fields it does not know. */
+  machineSet?: Record<string, string> | undefined;
 }
 
 /** A routine day's exercise: the plan for it. */

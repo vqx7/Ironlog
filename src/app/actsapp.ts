@@ -174,7 +174,7 @@ function exportBackup(): Promise<void> {
     'Backup saved',
     markExported,
     'Backup text',
-    'Copy all of this and keep it somewhere safe. Paste it into Import on any device to restore.'
+    'Copy all of this and keep it somewhere safe. Paste it into **Import** on any device to restore.'
   );
 }
 /* One row per set, in display units, for anyone who wants this in a spreadsheet. Import reads it back as sessions,
@@ -424,7 +424,7 @@ export const APP_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const el = document.querySelector(`#view > [data-sk="${k}"]`);
     if (el) el.scrollIntoView({ block: 'nearest' });
     const lab = (HIDEABLE.find(x => x[0] + ':' + x[1] === k) || [])[2] || 'Section';
-    toast(`${lab} added. Hide it again in Settings, Layout.`);
+    toast(`${lab} added. Hide it again in **Settings**, **Layout**.`);
   },
   goLayout() {
     if (ui.modal) closeModal();
@@ -454,7 +454,7 @@ export const APP_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       ex = el0 ? el0.getAttribute('data-ex') : t.dataset.ex || null;
     const sec = raw && DSEC_ALIAS[raw] ? DSEC_ALIAS[raw] : raw;
     if (sec && state.settings.hidden.includes('dash:' + sec)) {
-      toast('Hidden. Settings, Layout brings it back.');
+      toast('Hidden. **Settings**, **Layout** brings it back.');
       return;
     }
     if (raw === 'svol') ui.volMode = 'load';
@@ -501,7 +501,8 @@ export const APP_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   undo() {
     const r = undoStep();
     if (r === 'none') toast('Nothing left to undo');
-    else if (r === 'open') toast('Finish or discard the open workout first, then Undo brings this one back.');
+    else if (r === 'open')
+      toast('**Finish** or **Discard** the open workout first, then **Undo** brings this one back.');
     else if (r === 'failed') toast('Could not undo that');
     else if (r === 'unchanged') toast('Nothing to undo: that change was already reversed or edited since.');
     else {
@@ -566,7 +567,7 @@ export const APP_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     openModal({
       kind: 'text',
       title: 'Backup text',
-      help: 'Select all and copy. Paste it into Import on any device to restore.',
+      help: 'Select all and copy. Paste it into **Import** on any device to restore.',
       text: JSON.stringify({ app: STORAGE_ID, exported: new Date().toISOString(), state }),
       readonly: true,
       backup: true

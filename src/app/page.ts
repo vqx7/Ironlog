@@ -354,10 +354,13 @@ export function openModal(m: Modal): void {
   /* On a phone, focusing a search box the moment a picker opens throws up the
      keyboard over the list you came to scroll. Touch screens get the sheet
      focused instead; a tap on the search box brings the keyboard when wanted.
-     A text field is preferred otherwise; never the confirm button of a
+     A text field is preferred otherwise, the one a sheet marks to type in
+     first (data-first) before the first; never the confirm button of a
      destructive question, or a stray Enter would carry out the deletion. */
   const noKb = (m.kind === 'picker' || m.kind === 'past') && coarse();
-  const target = (!noKb && el.querySelector('input,select,textarea')) || el.querySelector('.sheet');
+  const target =
+    (!noKb && (el.querySelector('[data-first]') || el.querySelector('input,select,textarea'))) ||
+    el.querySelector('.sheet');
   if (target instanceof HTMLElement)
     try {
       target.focus({ preventScroll: true });
@@ -455,7 +458,7 @@ function photoTip(ph: string): void {
     setTimeout(
       () =>
         noteOnce(
-          'Your profile photo was kept small by an earlier version, so it looks soft opened large. Open the menu, tap your photo and choose Change photo to keep it sharp.',
+          'Your profile photo looks soft. Tap it in the menu and choose **Change photo**.',
           PHOTO_TIP_MS.show,
           seen => {
             if (seen) prefSet(PHOTO_TIP, '1');

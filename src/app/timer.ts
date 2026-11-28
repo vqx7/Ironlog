@@ -97,7 +97,7 @@ function wakeTip(): void {
   setTimeout(
     () =>
       noteOnce(
-        'A locked screen holds the rest alert until you unlock. Settings can keep the screen on.',
+        'A locked screen delays the alert until you unlock. **Settings** can keep the screen on.',
         TIMER_MS.tipShow,
         seen => {
           if (seen) prefSet(k, '1');

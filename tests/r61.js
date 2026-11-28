@@ -327,9 +327,10 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
       L.ACT.startSession({ dataset: { day: '0' } });
     });
     await wait(200);
+    // The New machine tag: on the machine line under the head since 2.78.2, in the head before.
     const block = () => ev(() => {
       const L = window.__ironlog; const b = L.state.draft.ex[0]; const el = document.getElementById('blk-0');
-      return { target: b.target, hint: b.hint, sw: b.sw, w: b.sets.map(x => x.w), nw: b.nw === true, tag: !!el && !!el.querySelector('.bh') && /New machine/.test(el.querySelector('.bh').innerText), prs: el ? el.querySelectorAll('[data-pr], .bf-pr').length : -1 };
+      return { target: b.target, hint: b.hint, sw: b.sw, w: b.sets.map(x => x.w), nw: b.nw === true, tag: !!el && /New machine/.test(((el.querySelector('.mcline') || el.querySelector('.bh') || {}).innerText) || ''), prs: el ? el.querySelectorAll('[data-pr], .bf-pr').length : -1 };
     });
     /* The menu as a lifter opens it: the ⋯ on the exercise, then the option by its words. The leg press is a machine, so
        since 2.67 (390 C) its menu has Machine, whose sheet has the machines it was done on (the first, "0") and Add a

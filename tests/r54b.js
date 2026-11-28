@@ -263,11 +263,11 @@ const FILE = process.argv[2] || 'index.html';
     await wait(150);
     const t = await ev(() => { const row = document.querySelector('[data-act="sDone"][data-b="0"][data-s="0"]').closest('.sg'); const el = document.getElementById('toast'); const toast = el && !el.hidden ? el.innerText : ''; return { light: window.__ironlog.state.draft.light, pr: row.getAttribute('data-pr'), toast }; });
     ok(t.light && t.pr === 'Weight PR' && /Weight PR: Barbell Bench Press/.test(t.toast), 'a Lighter day, the bench at 105 x 8 after 100 x 8 every week: the PR is announced as the set is logged, as on any day', t);
-    // This set started the device's first rest, which says once, 0.6 s later, that a locked screen holds the rest alert: it
+    // This set started the device's first rest, which says once, 0.6 s later, that a locked screen delays the alert: it
     // waits for the PR's message to go, where it used to take its place (found in r54, a run where this check read the toast late).
     await wait(1000);
     const t2 = await ev(() => { const el = document.getElementById('toast'); return el && !el.hidden ? el.innerText : ''; });
-    const tip = await page.waitForFunction(() => { const el = document.getElementById('toast'); return !!el && !el.hidden && /A locked screen holds the rest alert/.test(el.innerText); }, null, { timeout: 9000 }).then(() => true, () => false);
+    const tip = await page.waitForFunction(() => { const el = document.getElementById('toast'); return !!el && !el.hidden && /A locked screen delays the alert until you unlock/.test(el.innerText); }, null, { timeout: 9000 }).then(() => true, () => false);
     ok(/Weight PR: Barbell Bench Press/.test(t2) && tip, 'the first rest\'s one-time tip about a locked screen waits until the PR\'s message has gone, then shows (it took the PR\'s place 0.6 s after the set)', { t2, tip });
     await ev(() => { const L = window.__ironlog; L.state.draft = null; L.saveNow(); L.render(); });
   }

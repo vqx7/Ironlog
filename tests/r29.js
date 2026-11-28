@@ -283,7 +283,9 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
       return { bad, short, toast: document.getElementById('toast') ? document.getElementById('toast').textContent : '' };
     });
     ok(!fit.bad.length && !fit.short.length, 'each weekly minimum comes down to what the routine plans, so following it is on target; maximums unchanged', fit);
-    ok(/Weekly set targets now match it/.test(fit.toast), 'and the toast says so', fit.toast);
+    // The toast in the words V approved for 2.78.2 (2026-11-25): the routine's name and "is ready". It no longer says the
+    // targets were matched (until 2.78.1: "Weekly set targets now match it"); Plan and Stats show them.
+    ok(/^[^.]+ is ready\.$/.test(fit.toast.trim()), 'and the toast says only that the routine is ready (2.78.2: the targets matched no longer said in it)', fit.toast);
     // Targets someone already set are never touched.
     const kept = await ev(() => { const L = window.__ironlog; const s = L.state.settings; s.bands = JSON.parse(JSON.stringify(L.BANDS)); s.bands.chest = [12, 22]; const before = JSON.stringify(s.bands); const R = L.routineFromTemplate('ppl6') || L.state.routines[0]; const ch = L.fitTargets(R); return { ch, same: JSON.stringify(s.bands) === before }; });
     ok(kept.ch === false && kept.same, 'targets changed by the lifter are left as they are', kept);

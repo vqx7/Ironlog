@@ -30,7 +30,7 @@ const LAYOUT_KEY = ROWS_KEY + '.layout';
 /** The level of sync a build has: 1 writes the rows beside the documents, which decide. An account whose layout asks for more is one this build cannot sync. */
 const LEVEL = 1;
 /** What a phone on a build that cannot sync its account says. */
-export const ROWS_UPDATE = 'Update the app to keep syncing. Your log stays on this phone.';
+export const ROWS_UPDATE = 'Update the app to keep saving to your account. Your log stays on this phone.';
 /** The characters of the account's checksum the notes keep of each copy. */
 const SUM_LEN = 12;
 /** The rows of one read, and of one write; a write also stays under WRITE_BYTES of copies. */
@@ -1095,7 +1095,7 @@ export function rowsDiag(): { line: string; findings: Finding[] } | null {
   const c = notes.chk;
   const n = (k: number, one: string, many: string): string => `${k} ${k === 1 ? one : many}`;
   return {
-    line: `Rows check: ${n(c.clean, 'clean day', 'clean days')}, ${n(c.diffs, 'difference', 'differences')}, ${c.removed} removed by a sync${Object.keys(notes.wait).length ? `, ${Object.keys(notes.wait).length} waiting` : ''}`,
+    line: `Rows check: ${n(c.clean, 'clean day', 'clean days')}, ${n(c.diffs, 'difference', 'differences')}, ${c.removed} removed by another phone${Object.keys(notes.wait).length ? `, ${Object.keys(notes.wait).length} waiting` : ''}`,
     findings: notes.find
   };
 }

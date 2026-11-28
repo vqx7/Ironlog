@@ -66,7 +66,7 @@ export function menuSheet(m: { first?: true | undefined }): TemplateResult {
   const dot = st.cls ? html`<span class=${'mdot ' + st.cls} aria-hidden="true"></span>` : nothing;
   const acc = u
     ? html`<div class="row spread u-fwrnw_g10"><div class="u-minw0"><p class="small muted u-m0">Signed in as</p><p class="u-m2-0-0_owany"><b>${u.email}</b></p></div><button class="btn sm" data-act="acctSignOut">Sign out</button></div>
-    <p class="small u-m8-0-0">${dot}${cloud.on ? st.txt : 'Not syncing right now.'}${cloud.on ? nothing : html` <button class="linkbtn" data-act="acctRetry">Try again</button>`}</p>`
+    <p class="small u-m8-0-0">${dot}${cloud.on ? st.txt : 'Not saving to your account right now.'}${cloud.on ? nothing : html` <button class="linkbtn" data-act="acctRetry">Try again</button>`}</p>`
     : A
       ? html`<p class="u-m0"><b>Not signed in.</b> Your log is on this phone only.</p><div class="row u-mt10"><button class="btn primary" data-act="acctOpen" data-mode="signin">Sign in</button><button class="btn" data-act="acctOpen" data-mode="signup">Create account</button></div>`
       : html`<p class="small u-m0">${dot}${st.txt}</p>`;

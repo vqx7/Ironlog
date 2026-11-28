@@ -16,6 +16,7 @@ import { estMin, min5 } from './format';
 import { numIn, today } from './util';
 import { state, ui } from './store';
 import { trashShown } from './act';
+import { marked } from './marks';
 
 declare global {
   interface Window {
@@ -248,7 +249,7 @@ function howLink(key: string): TemplateResult {
 
 /** An explanation, hidden until its "How this works" is tapped: words, or a part with the words it marks bold. */
 export function howText(key: string, text: Part): TemplateResult {
-  return html`<p class="ht" id=${`help-${key}`} ?hidden=${live(!ui.help.has(key))}>${text}</p>
+  return html`<p class="ht" id=${`help-${key}`} ?hidden=${live(!ui.help.has(key))}>${typeof text === 'string' ? marked(text) : text}</p>
 `;
 }
 

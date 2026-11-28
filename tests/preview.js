@@ -146,7 +146,7 @@ fs.cpSync(path.join(ROOT, 'dist-preview'), path.join(tmp, 'preview'), { recursiv
   await p2.fill('#modal [data-abind="email"]', 'v@example.com'); await p2.fill('#modal [data-abind="pw"]', 'pass word 1');
   await p2.click('#modal [data-act="acctSubmit"]'); await wait(1500);
   const msg = await p2.evaluate(() => { const c = window.__ironlog.cloudState(); return String(c.err || '') + ' ' + document.body.innerText; });
-  ok(/Preview sync is not set up yet/.test(msg), 'without the preview table, the preview says sync is not set up yet', msg.slice(0, 300));
+  ok(/The preview's account table is not set up yet/.test(msg), 'without the preview table, the preview says its account table is not set up yet', msg.slice(0, 300));
   await ctx2.close();
 
   // Signed out, with the live log on this phone (Android, or one browser): it copies from the phone.

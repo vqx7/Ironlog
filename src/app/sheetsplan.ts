@@ -31,7 +31,7 @@ export function templatesSheet(m: { from?: string | undefined; imported?: boolea
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Pick a routine</h3>${closeX()}</div>
     
     ${m.from === 'welcome' ? html`<div class="ob-prof" id="obProf"><button class="ob-prof-h" data-act="obProfTog" aria-expanded=${String(!!ui.obProf)}>Your training <span class="muted">(optional)</span></button>${ui.obProf ? html`<div class="stack">${profFields()}</div>` : ''}</div>` : ''}
-    <p class="small muted u-m0-0-8">${m.imported ? 'Your workouts are in. The names in the file did not say which days they were, so pick the routine you follow, or the closest; your targets and the next workout come from it. Change anything later in Plan.' : 'A starting point with sets, reps, and rest worked out. Change anything later in Plan.'}</p>
+    <p class="small muted u-m0-0-8">${m.imported ? 'Your workouts are in. The names in the file did not say which days they were, so pick the routine you follow, or the closest; your targets and the next workout come from it. Change anything later in Plan.' : 'Change anything later in Plan.'}</p>
     <div class="tpl-list">${TEMPLATES.filter(t => !t.hidden).map(t => {
       const r = routineFromTemplate(t.key);
       if (!r) return '';
@@ -41,7 +41,7 @@ export function templatesSheet(m: { from?: string | undefined; imported?: boolea
         hi = Math.max(...mins);
       const min = lo === hi ? estMin(lo) : `${lo} to ${hi} min`;
       const fits = !!pd && Math.abs((tr.length * WEEK_DAYS) / r.days.length - pd) <= FIT_DAYS;
-      return html`<button class="tpl" data-act="tplPick" data-k=${t.key}><span class="tpl-t">${t.name}${fits ? html` <span class="pill">Fits your days</span>` : ''}</span><span class="tpl-w">${t.who}</span><span class="tpl-m">${t.meta} · ${min} · ${tr.map(d => d.name).join(', ')}</span></button>`;
+      return html`<button class="tpl" data-act="tplPick" data-k=${t.key}><span class="tpl-t">${t.name}${fits ? html` <span class="pill">Fits your days</span>` : ''}</span><span class="tpl-w">${t.who} · ${min}</span></button>`;
     })}</div></div>`;
 }
 

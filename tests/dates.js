@@ -74,7 +74,7 @@ const tab = (P, t) => P.page.evaluate(t => { const L = window.__ironlog; L.ui.ta
     await tab(P, 'today');
     await P.page.click('#view .hero [data-act="startSession"]:not([data-light])'); await wait(250);
     const t = await text(P);
-    ok(t.includes(`Your note, ${D.dec15}: Felt strong`), `4. the session shows last year's note with its year (Your note, ${D.dec15})`, t.slice(0, 900));
+    ok(t.includes(`Your note from ${D.dec15}: Felt strong`), `4. the session shows last year's note with its year (Your note from ${D.dec15})`, t.slice(0, 900));
     await P.page.evaluate(() => { const L = window.__ironlog; L.state.draft = null; L.saveNow(); L.render(); });
   }
   if (run(5)) {

@@ -130,7 +130,8 @@ const imgOf = (page, sel) => page.evaluate(sel => new Promise(res => {
   }
 
   if (run(3)) {
-    const TIP = 'Your profile photo was kept small by an earlier version, so it looks soft opened large. Open the menu, tap your photo and choose Change photo to keep it sharp.';
+    // As shown: the button's name is marked bold in the message, its marks gone on screen.
+    const TIP = 'Your profile photo looks soft. Tap it in the menu and choose Change photo.';
     /** The app opened again holding a photo kept at `edge` px as the phone's copy, as an older build left it, shown in the menu button. */
     const withPhoto = async (edge, D0) => {
       const D = D0 || await app();

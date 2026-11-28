@@ -1,7 +1,7 @@
 // Regressions for the r14 acceptance pass: in-session Undo, Swap, warm-ups and
 // last time's reps, import count, RIR strip above the timer, trimmed targets,
 // Short on time, day scrolling, deload count, counts, and timing.
-const { open } = require('./h');
+const { open, placeOf } = require('./h');
 const fails = []; const ok = (c, m) => { if (!c) { fails.push(m); console.log('FAIL', m); } else console.log('ok  ', m); };
 (async () => {
   const { browser, page, errors } = await open('index.html', { touch: true, w: 390, h: 844, clock: '2026-09-20T10:00:00' });
@@ -37,22 +37,27 @@ const fails = []; const ok = (c, m) => { if (!c) { fails.push(m); console.log('F
   await ev(() => window.__ironlog.ACT.undo());
   ok(await ev(n => window.__ironlog.state.draft.ex[3].sets.length === n && window.__ironlog.state.draft.ex[1].sets[1].done, n3), 'Undo restores a removed logged set after another set was logged');
 
-  // Swap keeps logged sets, and Undo reverses the swap.
+  // Swap keeps logged sets, and Undo reverses the swap. The third lift is ticked first, so it moves up to the top.
   await start();
-  const sw0 = await ev(() => { const d = window.__ironlog.state.draft; return { ex: d.ex.map(b => b.exId), n: d.ex[2].sets.length }; });
+  const sw0 = await ev(() => { const d = window.__ironlog.state.draft; return { id: d.ex[2].exId, n: d.ex[2].sets.length }; });
   await tick(2, 0);
-  await ev(() => { const L = window.__ironlog; L.ACT.bSwap({ dataset: { b: '2' } }); });
+  const at = await placeOf(page, sw0.id);
+  ok(at === 0, 'the third lift, ticked ahead of the two untouched above it, moves up to the top (' + at + ')');
+  const ex0 = await ev(() => window.__ironlog.state.draft.ex.map(b => b.exId));
+  await ev(b => { const L = window.__ironlog; L.ACT.bSwap({ dataset: { b: String(b) } }); }, at);
   await page.waitForTimeout(80);
-  await ev(() => document.querySelector('#pickList .pick[data-ex]:not([data-ex="' + window.__ironlog.state.draft.ex[2].exId + '"])').click());
+  await ev(b => document.querySelector('#pickList .pick[data-ex]:not([data-ex="' + window.__ironlog.state.draft.ex[b].exId + '"])').click(), at);
   await page.waitForTimeout(150);
-  const sw1 = await ev(() => { const d = window.__ironlog.state.draft; return { ex: d.ex.map(b => b.exId), keptDone: d.ex[2].sets.filter(s => s.done).length, next: d.ex[3].sets.length }; });
-  ok(sw1.ex.length === sw0.ex.length + 1 && sw1.ex[2] === sw0.ex[2] && sw1.keptDone === 1 && sw1.next === sw0.n - 1, 'Swap keeps the logged set on the old exercise and gives the new one the sets left (' + JSON.stringify(sw1) + ')');
+  const sw1 = await ev(b => { const d = window.__ironlog.state.draft; return { ex: d.ex.map(x => x.exId), keptDone: d.ex[b].sets.filter(s => s.done).length, next: d.ex[b + 1].sets.length }; }, at);
+  ok(sw1.ex.length === ex0.length + 1 && sw1.ex[at] === sw0.id && sw1.keptDone === 1 && sw1.next === sw0.n - 1, 'Swap keeps the logged set on the old exercise and gives the new one the sets left (' + JSON.stringify(sw1) + ')');
   await ev(() => window.__ironlog.ACT.undo());
-  ok(await ev(e => { const d = window.__ironlog.state.draft; return JSON.stringify(d.ex.map(b => b.exId)) === e && d.ex[2].sets.length > 1 && d.ex[2].sets[0].done; }, JSON.stringify(sw0.ex)), 'Undo reverses the swap');
+  ok(await ev(([e, b]) => { const d = window.__ironlog.state.draft; return JSON.stringify(d.ex.map(x => x.exId)) === e && d.ex[b].sets.length > 1 && d.ex[b].sets[0].done; }, [JSON.stringify(ex0), at]), 'Undo reverses the swap');
 
-  // A warm-up added at the top does not shift last time's reps.
+  // A warm-up added at the top does not shift last time's reps. Its lift is the second, so its first tick moves it up
+  // above the untouched first: after that tick the lift is found by name.
   await start();
-  const lr = await ev(() => window.__ironlog.state.draft.ex[1].lastR.slice());
+  const wl = await ev(() => { const b = window.__ironlog.state.draft.ex[1]; return { id: b.exId, lr: b.lastR.slice() }; });
+  const lr = wl.lr;
   await ev(() => window.__ironlog.ACT.wAdd({ dataset: { b: '1' } })); await page.waitForTimeout(80);
   const ph = await ev(() => [...document.querySelectorAll('.sg input[data-f="r"][data-b="1"]')].map(i => i.placeholder));
   // Since r64 (V's decision 3, the r63 audit's P-S4-5) a warm-up has grey reps of its own: last time's warm-up, else the
@@ -60,11 +65,14 @@ const fails = []; const ok = (c, m) => { if (!c) { fails.push(m); console.log('F
   const top = await ev(() => String(window.__ironlog.state.draft.ex[1].plan.repMax));
   ok(ph[0] === top && ph[1] === String(lr[0]) && ph[2] === String(lr[1]), 'placeholders after a warm-up: its own, the top of the range (' + top + '), then last time\'s ' + lr.slice(0, 2).join(', ') + ' (' + ph.join('|') + ')');
   await page.click('[data-act="sDone"][data-b="1"][data-s="0"]'); await page.waitForTimeout(60);
-  const w0 = await ev(() => { const x = window.__ironlog.state.draft.ex[1].sets[0]; const t = document.getElementById('toast'); return { done: !!x.done, r: x.r, w: x.w, toast: t && !t.hidden ? t.textContent : '' }; });
+  const w0 = await ev(id => { const x = window.__ironlog.state.draft.ex.find(b => b.exId === id).sets[0]; const t = document.getElementById('toast'); return { done: !!x.done, r: x.r, w: x.w, toast: t && !t.hidden ? t.textContent : '' }; }, wl.id);
   ok(w0.done ? w0.r === +top && w0.w != null : /Add the weight first/.test(w0.toast), 'ticking an empty warm-up takes its own grey reps, the top of the range, with its load, or asks for its load ' + JSON.stringify(w0));
-  await tick(1, 1);
-  ok(await ev(r => window.__ironlog.state.draft.ex[1].sets[1].r === r, lr[0]), 'working set 1 logs last time\'s first set');
-  const num = await ev(() => [...document.querySelectorAll('#blk-1 .sg:not(.head) .n')].map(n => n.textContent));
+  // The warm-up ticked moves the lift up; refused, the working set ticked next does.
+  let wb = await placeOf(page, wl.id);
+  await tick(wb, 1);
+  wb = await placeOf(page, wl.id);
+  ok(await ev(([b, r]) => window.__ironlog.state.draft.ex[b].sets[1].r === r, [wb, lr[0]]), 'working set 1 logs last time\'s first set');
+  const num = await ev(b => [...document.querySelectorAll(`#blk-${b} .sg:not(.head) .n`)].map(n => n.textContent), wb);
   ok(num[0] === 'W' && num[1] === '1', 'the warm-up row is marked W and working sets count from 1 (' + num.slice(0, 3).join(',') + ')');
   // Since r69 the bar alone counts the sets done (the header said it too until then): its words and what it says to a screen reader agree with the sets ticked.
   const wd = await ev(() => { const d = window.__ironlog.state.draft; const w = d.ex.reduce((a, b) => a + b.sets.filter(s => s.done && !s.warm).length, 0); const band = document.querySelector('.sprog .band'); return { head: !!document.getElementById('doneCount'), bar: document.getElementById('sessOf').textContent, now: band && band.getAttribute('aria-valuenow'), w }; });

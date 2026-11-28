@@ -1103,7 +1103,7 @@ function stallsBody(stalled: readonly (readonly [string, ExStat])[]): {
       ? html`${stalled.map(
           ([id, s]) =>
             html`<div class="row spread u-p6-0_bb1-solid-line"><span><span class="plate yellow u-h14_van2"></span> ${exName(id)}</span><span class="muted small">last ${fmtDate(s.last.date)}</span></div>`
-        )}${tired ? html`<p class="small hastip u-cred_mt8" data-tip="Several main lifts flat together often points to fatigue. Check sleep, food, and stress; Deload week is under More options on Today (${shareWords(LIGHTER_SET_SHARE)} the sets, about ${pctOf(LIGHT_SHARE)}% loads, kept out of your trends). Isolation and core lifts are not counted here.">${bigN} main lifts stalled at once: likely fatigue</p>` : nothing}`
+        )}${tired ? html`<p class="small hastip u-cred_mt8" data-tip="Several main lifts flat together often points to fatigue. Check sleep, food, and stress; Deload week is under **More options** on Today (${shareWords(LIGHTER_SET_SHARE)} the sets, about ${pctOf(LIGHT_SHARE)}% loads, kept out of your trends). Isolation and core lifts are not counted here.">${bigN} main lifts stalled at once: likely fatigue</p>` : nothing}`
       : html`<p class="muted">No stalls detected.</p>`
   }${
     lw
@@ -1220,7 +1220,7 @@ export function viewDash(): TemplateResult {
   const nS = state.sessions.length;
   const head = dashHead(nS);
   const none = !nS
-    ? html`<div class="card"><p class="u-m0"><b>No sessions yet.</b> Trends start after a few sessions. ${tipButton('Trends, stall detection, and rankings need a few sessions of each exercise. To preview the full Stats page, load demo data in Settings.', 'About Stats')}</p></div>`
+    ? html`<div class="card"><p class="u-m0"><b>No sessions yet.</b> Trends start after a few sessions. ${tipButton('Trends, stall detection, and rankings need a few sessions of each exercise. To preview the full **Stats** page, load demo data in **Settings**.', 'About Stats')}</p></div>`
     : nothing;
   const R4 = recent4w();
   const prs4 = R4.prs.length;

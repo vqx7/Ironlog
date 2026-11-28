@@ -11,6 +11,7 @@ import { fmtDate, sessTm } from './format';
 import { CARDIO } from './library';
 import { isRestWeek } from './live';
 import { distU, sessionsOn } from './display';
+import { marked } from './marks';
 import type { ConfirmSheet, TextSheet } from './modals';
 
 /** The close button every sheet has in its header. */
@@ -19,16 +20,16 @@ export const closeX = (): TemplateResult => html`<button class="ib" aria-label="
 /* A question (confirmBox). A second answer is a button beside the first, or
    a quiet link under them; Cancel goes unless the second answer is the only
    other one. */
-/** The question sheet. */
+/** The question sheet: a blank line in its body starts a paragraph, so a long question reads in short ones. */
 export function confirmSheet(m: ConfirmSheet): TemplateResult {
   const alt = m.alt;
-  return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${m.title}</h3></div><p>${m.body}</p><div class="row u-mt12"><button class=${'btn ' + (m.danger ? 'danger' : 'primary')} data-act="mOk">${m.okLabel}</button>${alt && !alt.quiet ? html`<button class="btn" data-act="mAlt">${alt.label}</button>` : ''}${alt && alt.only ? '' : html`<button class="btn" data-act="mClose">Cancel</button>`}</div>${alt && alt.quiet ? html`<button class="linkbtn alt-quiet" data-act="mAlt">${alt.label}</button>` : ''}</div>`;
+  return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${m.title}</h3></div>${m.body.split('\n\n').map(p => html`<p>${marked(p)}</p>`)}<div class="row u-mt12"><button class=${'btn ' + (m.danger ? 'danger' : 'primary')} data-act="mOk">${m.okLabel}</button>${alt && !alt.quiet ? html`<button class="btn" data-act="mAlt">${alt.label}</button>` : ''}${alt && alt.only ? '' : html`<button class="btn" data-act="mClose">Cancel</button>`}</div>${alt && alt.quiet ? html`<button class="linkbtn alt-quiet" data-act="mAlt">${alt.label}</button>` : ''}</div>`;
 }
 
 /** The text sheet: read-only text with Copy, or a field to paste into with Import. */
 export function textSheet(m: TextSheet): TemplateResult {
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${m.title}</h3>${closeX()}</div>
-    <p class="small muted">${m.help}</p><textarea id="mText" aria-label=${m.title || 'Text'} class="u-minh220_fs13" ?readonly=${!!m.readonly}>${m.text || ''}</textarea>
+    <p class="small muted">${marked(m.help)}</p><textarea id="mText" aria-label=${m.title || 'Text'} class="u-minh220_fs13" ?readonly=${!!m.readonly}>${m.text || ''}</textarea>
     <div class="row u-mt10">${m.readonly ? html`<button class="btn primary" data-act="copyText">Copy</button>` : html`<button class="btn primary" data-act="importText">Import</button>`}<button class="btn" data-act="mClose">Close</button></div></div>`;
 }
 
