@@ -155,6 +155,8 @@
        never shown (2.28, the 2.27 review's 2.27-F7: a Postgres or sign-in service sentence reached the screen). */
     const OTHER = 'Something went wrong with your account. Try again; report a problem if it repeats.';
     let text = OTHER;
+    // The account's rows decide now and its documents are frozen (SUPABASE.md, Part 9): the app reads this name and goes on by the rows.
+    if (/docs_frozen/.test(msg)) return Object.assign(new Error('docs_frozen'), { code: 'error' });
     // A setup step still to do, shown in Your data like a table without
     // permissions ('denied'), while sync keeps retrying.
     if (PREVIEW && /docs_preview/.test(msg) && /PGRST205|42P01|does not exist|schema cache/i.test(msg + code)) return Object.assign(new Error('The preview\'s account table is not set up yet. Its log stays on this phone.'), { code: 'denied' });
@@ -429,7 +431,19 @@
     push: (rows, top) => rowsCall(() => sb.rpc(RECORDS + '_push', top == null ? { p: rows } : { p: rows, only_if_top: top })),
     pull: (since, most) => rowsCall(() => sb.rpc(RECORDS + '_pull', { since, most })),
     digest: () => rowsCall(() => sb.rpc(RECORDS + '_digest')),
-    list: (since, most) => rowsCall(() => sb.from(RECORDS).select(LISTED).gt('seq', since).order('seq').limit(most))
+    list: (since, most) => rowsCall(() => sb.from(RECORDS).select(LISTED).gt('seq', since).order('seq').limit(most)),
+    // Whether the documents are guarded once the rows decide (SUPABASE.md, Part 9): null where its SQL was never run.
+    guarded: () => rowsCall(() => sb.rpc(PREVIEW ? 'docs_preview_guarded' : 'docs_guarded'))
+  };
+  /* The app's own error log (SUPABASE.md, Part 9): one row added, never read back (no select: nobody may read the
+     table through the app). Null where the account has no table for it yet, which the app then stops asking. */
+  db.errors = {
+    async add(row) {
+      const { error } = await authed(() => sb.from(PREVIEW ? 'app_errors_preview' : 'app_errors').insert(row));
+      if (!error) return true;
+      if (noRows(error)) return null;
+      throw friendly(error);
+    }
   };
   /* Feedback (PENDING 58): anyone can add a report, signed in or out; only
      accounts listed in feedback_readers (the app owner) can read them. The
