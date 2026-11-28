@@ -13,10 +13,17 @@
 //   date    - the date a session or workout was last given, with no other phone doing more to it meanwhile than
 //             tick its sets, is its date;
 //   sets    - every set ticked on any phone is in the workout's session or the open workout, once;
+//   open    - (strict) a workout started on a phone and not yet finished or discarded on any phone is still open there;
+//   closed  - (strict) a workout finished on a phone is open on no phone once all have synced;
 //   rows    - where the account has rows: they say what the log says, record by record, and no row ever went back
 //             to an earlier version.
+// With o.strict, what the documents cannot decide is failed like anything else, as the rows must decide it: every set
+// ticked on any phone is in its session or an open workout once, two different workouts open on two phones each end
+// whole, and a date or note given to a workout on a phone that had not seen it finished is the one kept. Strict
+// histories also Undo, type a workout's note, and keep two workouts open on two phones (each on its own phone: the
+// account holds one workout at a time, and a phone keeps its own until it is finished).
 const path = require('path');
-const { phoneOf, accountOf, rng } = require('./sim');
+const { phoneOf, accountOf, rng, tabGroup } = require('./sim');
 /* Two copies are the same when the app's own comparison says so (merge.ts canon: the order of fields and a unit its
    number gives are no difference). Always this checkout's, whatever build a phone of the history runs. */
 let ref = null;
@@ -52,17 +59,25 @@ const DO = {
   },
   tick(P, o) { const d = P.state().draft; const s = d && d.ex[0] && d.ex[0].sets[o.i]; if (!s || s.done) return false; P.edit(S => { S.draft.ex[0].sets[o.i].done = true; }); return true; },
   redate(P, o) { const d = P.state().draft; if (!d || d.date === o.v) return false; P.edit(S => { S.draft.date = o.v; }); return true; },
-  // As the app's own Finish (workfinish.ts): the session takes the place of one of its id already in the log, and of its copy in Recently deleted.
+  /* As the app's own Finish (workfinish.ts): the session takes the place of one of its id already in the log, and of its
+     copy in Recently deleted. Its fields in the order normalize writes them, as Finish builds it: a copy in another
+     order is another text of the same session, which two tabs would each write over the other's. */
   finish(P) {
     const d = P.state().draft; const s = d && P.E.draftSession(d); if (!s) return false;
-    P.edit(S => { const sess = P.E.draftSession(S.draft); const i = S.sessions.findIndex(x => x.id === sess.id); if (i >= 0) S.sessions[i] = sess; else S.sessions.push(sess); S.trash = S.trash.filter(t => !(t.kind === 'session' && t.id === sess.id)); S.draft = null; });
+    P.edit(S => { const sess = P.E.normalize({ sessions: [P.E.draftSession(S.draft)] }).sessions[0]; const i = S.sessions.findIndex(x => x.id === sess.id); if (i >= 0) S.sessions[i] = sess; else S.sessions.push(sess); S.trash = S.trash.filter(t => !(t.kind === 'session' && t.id === sess.id)); S.draft = null; });
     return true;
   },
-  discard(P) { if (!P.state().draft) return false; P.edit(S => { S.draft = null; }); return true; }
+  discard(P) { if (!P.state().draft) return false; P.edit(S => { S.draft = null; }); return true; },
+  wnote(P, o) { const d = P.state().draft; if (!d || d.notes === o.v) return false; P.edit(S => { S.draft.notes = o.v; }); return true; }
 };
-const NET = new Set(['off', 'on', 'flush', 'pull', 'sync', 'race', 'wait', 'drop', 'check']);
+/* Undo of the last change on phone P that kept an Undo step (del, restore, forgood), read as the change it makes: an
+   Undo of a delete is a restore, of a restore a delete, of "Deleted for good" the entry back in Recently deleted, so
+   the rules above check it as they check those. */
+const UNDONE = { del: 'restore', restore: 'del', forgood: 'unforgood' };
+const NET = new Set(['off', 'on', 'flush', 'pull', 'sync', 'race', 'wait', 'drop', 'check', 'freeze', 'thaw', 'switch', 'squeeze']);
 
-/* One history. o.outside: the caller writes rows of the account itself; o.dirs: the build of each phone; o.rows: the rows' database (rowsdb.js) or 'missing' or null;
+/* One history. o.switched: the account's rows decide from the start (the first phone switches it); o.switchable: a
+   phone may switch it during the history (the action 'switch'); o.outside: the caller writes rows of the account itself; o.dirs: the build of each phone; o.tabs: { i: j }, phone i a tab of phone j (one storage and its locks); o.rows: the rows' database (rowsdb.js) or 'missing' or null;
    o.script: the actions to replay, or o.seed and o.steps to write them from; o.name: the account's name in the
    rows' database. Answers { script, fails: [{ rule, id, said }], acts, C, phones, counts }. */
 async function history(o) {
@@ -72,27 +87,48 @@ async function history(o) {
   const pick = a => a[Math.floor(rnd() * a.length)];
   const skews = o.skews || [0, 0, 0];
   const phones = [];
+  // The tabs of one phone share its storage (o.tabs).
+  const groups = {};
+  for (const j of Object.values(o.tabs || {})) groups[j] = groups[j] || tabGroup();
+  const groupOf = i => groups[i] || (o.tabs && o.tabs[i] !== undefined ? groups[o.tabs[i]] : undefined);
   // The first phone's log, read as the app reads any log (normalize), before it ever signs in.
-  const A = phoneOf(o.dirs[0], { name: 'A', clock, seed: 101, skew: skews[0] }).start(S => {
+  const A = phoneOf(o.dirs[0], { name: 'A', clock, seed: 101, skew: skews[0], group: groupOf(0), env: o.env }).start(S => {
     S.sessions.push(mkSession('s1', '2026-11-16'), mkSession('s2', '2026-11-03'), mkSession('s3', '2026-10-27'), mkSession('s4', '2026-10-20'));
     S.bodyweights.push({ id: 'w1', date: '2026-11-01', kg: 80, demo: false });
     S.cardio.push({ id: 'c1', date: '2026-11-04', kind: 'run', min: 20, hr: null, when: 'solo', note: 'start', demo: false });
     S.settings.userName = 'start'; S.settings.onboarded = true;
   });
   clock.t += 2000; await A.tick(); A.signIn(C); await A.sync(); phones.push(A);
-  for (let i = 1; i < o.dirs.length; i++) { const P = phoneOf(o.dirs[i], { name: 'ABC'[i], clock, seed: 101 + i, skew: skews[i] }).start(); P.signIn(C); await P.sync(); phones.push(P); }
+  // o.switched: the account switched to its rows by the first phone once it synced; the others then sign in to it.
+  if (o.switched) { await A.settle(); if (!(await A.E.switchNow())) throw new Error('the account did not switch to its rows'); await A.sync(); }
+  for (let i = 1; i < o.dirs.length; i++) { const P = phoneOf(o.dirs[i], { name: 'ABC'[i], clock, seed: 101 + i, skew: skews[i], group: groupOf(i), env: o.env }).start(); P.signIn(C); await P.sync(); phones.push(P); }
   // What the lifter did, by record: every action that changed a log, with the phone, its place in the history and the round (the stretch between two moments when every phone had synced).
+  const starter = {};
+  /* Two tabs of one phone hold one log, so one workout at a time: a second workout started in the other tab, or one
+     workout or its session changed in both before either heard the other, is decided by the tabs' own merge, which
+     keeps the later change whole. Counted apart (known) and not failed: PENDING NEW-226. With the storage events
+     delivered between taps (heardAll), "before either heard" is an action taken in that moment (x.now). */
+  const TABS_TWICE = 'one workout or its session changed in two tabs of one phone at once, or two started there';
+  const tabbed = new Set();
+  const sameGroup = (i, j) => i !== j && !!o.tabs && ((o.tabs[i] !== undefined ? o.tabs[i] : i) === (o.tabs[j] !== undefined ? o.tabs[j] : j));
   const acts = {}; const made = new Set(['s1', 's2', 's3', 's4']); const forgood = new Set(); const raced = new Set(); const ticked = {}; const known = {}; const closed = {}; const fails = []; let round = 0, seq = 0, n = 0;
+  const strict = !!o.strict, undos = phones.map(() => []);
+  let switchedAt = o.switched ? 0 : -1, switchSeq = o.switched ? 0 : -1, autoSwitched = false;
+  /* The strict rules hold a record only where the rows decided all it went through: from the start (o.switched), or
+     for a record no action touched before a switch made during the history; what the documents decided before it is
+     held to the documents' rules. */
+  const sid = id => strict && (!o.switchable || (switchSeq >= 0 && (acts[id] || []).every(x => x.seq > switchSeq)));
+  const rowsNow = () => strict && (!o.switchable || switchSeq >= 0);
   const said = (id, p, op) => { (acts[id] = acts[id] || []).push({ p, op, round, seq: ++seq }); };
   const versions = new Map(); const seenFindings = new Set();
   const pushes = () => C.calls.filter(c => c.name === 'push').length;
   /** Every phone online and synced until a whole round of syncs writes nothing; false when that never came. */
   const settle = async () => {
-    for (const P of phones) { P.off = false; P.drop = null; }
+    for (const P of phones) { P.off = false; P.drop = null; if (P.frozen) P.thaw(); }
     for (let i = 0; i < 9; i++) {
       const w = C.writes.length, r = pushes();
       clock.t += 61000;
-      for (const P of phones) { await P.tick(); await P.sync(); }
+      for (const P of phones) { await heardAll(); await P.tick(); await P.sync(); switchedNow(); }
       if (i > 0 && C.writes.length === w && pushes() === r) return true;
     }
     return false;
@@ -101,7 +137,8 @@ async function history(o) {
     const quiet = await settle();
     const fail = (rule, id, text) => { if (!fails.some(f => f.rule === rule && f.id === id)) fails.push({ rule, id, said: text, round }); };
     if (!quiet) fail('quiet', '', 'the phones never stopped writing');
-    const V = phones.map(P => view(P.state())), T = V.map(canon);
+    // Strict: each phone's open workout is its own (two different workouts each stay on their own phone); one workout open on two phones is checked by `sets`.
+    const V = phones.map(P => (rowsNow() ? { ...view(P.state()), draft: null } : view(P.state()))), T = V.map(canon);
     for (let i = 1; i < phones.length; i++) if (T[i] !== T[0]) {
       const part = Object.keys(V[0]).find(k => canon(V[0][k]) !== canon(V[i][k]));
       fail('same', part, `phone A and phone ${phones[i].name} hold a different log (${part})`);
@@ -113,7 +150,7 @@ async function history(o) {
         const a = acts[id] || [], dels = a.filter(x => x.op === 'del' || x.op === 'discard'), last = a[a.length - 1];
         const inTrash = S.trash.some(t => t.id === id || t.id.startsWith(id + '-'));
         if (!live.has(id) && !inTrash && !forgood.has(id) && !(S.draft && S.draft.id === id)) fail('held', id, `${id} is in no log and not in Recently deleted on ${P.name}, and no one deleted it for good`);
-        if (closed[id] === 'open' || closed[id] === 'discarded' || raced.has(id)) continue;
+        if (closed[id] === 'open' || closed[id] === 'discarded' || (!sid(id) && raced.has(id))) continue;
         if (!dels.length && !live.has(id)) fail('kept', id, `${id} was never deleted and is not in the log on ${P.name}`);
         const lastDel = dels[dels.length - 1], rest = [...a].reverse().find(x => x.op === 'restore');
         if (lastDel && rest && rest.seq > lastDel.seq && !forgood.has(id)) {
@@ -124,16 +161,20 @@ async function history(o) {
         }
         if (last && last.op === 'del' && live.has(id) && !a.some(x => x.round === last.round && x.p !== last.p)) fail('deleted', id, `${id} was deleted last, with no other phone touching it, and is in the log on ${P.name}`);
         const dated = a.filter(x => x.op === 'move' || x.op === 'redate' || x.op === 'start' || x.op === 'add'), ld = dated[dated.length - 1];
-        if (ld && ld.v && live.has(id) && !a.some(x => x.round >= ld.round && x.p !== ld.p && x.op !== 'tick') && !a.some(x => x.seq > ld.seq && (x.op === 'del' || x.op === 'restore'))) {
+        const busy = x => x.op !== 'tick' && !(sid(id) && (x.op === 'finish' || x.op === 'wnote'));
+        if (ld && ld.v && live.has(id) && !a.some(x => x.round >= ld.round && x.p !== ld.p && busy(x)) && !a.some(x => x.seq > ld.seq && (x.op === 'del' || x.op === 'restore'))) {
           const got = S.sessions.find(s => s.id === id).date;
           // A saved workout moved on one phone while another, not caught up, ticked a set of it: one of the two things the documents cannot decide (below).
-          if (got !== ld.v && ld.op === 'move' && a.some(x => x.op === 'tick' && x.p !== ld.p && x.round === ld.round)) known[LATER] = (known[LATER] || 0) + 1;
+          if (!sid(id) && got !== ld.v && ld.op === 'move' && a.some(x => x.op === 'tick' && x.p !== ld.p && x.round === ld.round)) known[LATER] = (known[LATER] || 0) + 1;
+          else if (got !== ld.v && tabbed.has(id)) known[TABS_TWICE] = (known[TABS_TWICE] || 0) + 1;
           else if (got !== ld.v) fail('date', id, `${id}: the date given last (${ld.v}) is not its date on ${P.name} (${got})`);
         }
-        const notes = a.filter(x => x.op === 'note'), ln = notes[notes.length - 1];
-        if (ln && live.has(id) && !a.some(x => x.round >= ln.round && x.p !== ln.p && x.op !== 'note-seen') && !a.some(x => x.seq > ln.seq && x.op !== 'move')) {
+        const notes = a.filter(x => x.op === 'note' || x.op === 'wnote'), ln = notes[notes.length - 1];
+        const touched = x => x.op !== 'note-seen' && !(sid(id) && (x.op === 'tick' || x.op === 'finish' || x.op === 'redate'));
+        if (ln && live.has(id) && !a.some(x => x.round >= ln.round && x.p !== ln.p && touched(x)) && !a.some(x => x.seq > ln.seq && x.op !== 'move' && !(sid(id) && (x.op === 'tick' || x.op === 'finish' || x.op === 'redate')))) {
           const got = S.sessions.find(s => s.id === id).notes;
-          if (got !== ln.v) fail('edit', id, `${id}: the note typed last (${ln.v}) is not the one kept on ${P.name} (${got})`);
+          if (got !== ln.v && tabbed.has(id)) known[TABS_TWICE] = (known[TABS_TWICE] || 0) + 1;
+          else if (got !== ln.v) fail('edit', id, `${id}: the note typed last (${ln.v}) is not the one kept on ${P.name} (${got})`);
         }
       }
       for (const w of Object.keys(ticked)) {
@@ -147,15 +188,18 @@ async function history(o) {
            deleted. That happens when the phone that tapped Finish had not seen a set the other had ticked and that
            phone ticks again before it syncs; when Finish is tapped on both; when the saved session is edited or
            moved, or the open workout's date changed, on one phone while the other ticks; and when a third phone
-           ticks. The rows of the release after hold each record, and the workout, as a row of its own. */
+           ticks, or the phone that ticked late, the workout finished on the other meanwhile, edits or moves the saved
+           session before it syncs. The rows of the release after hold each record, and the workout, as a row of its own. */
         const a = acts[w] || [];
         const fin = a.find(x => x.op === 'finish');
         const late = fin ? new Set(a.filter(x => x.op === 'tick' && x.round === fin.round && x.p !== fin.p).map(x => x.p)) : new Set();
         const both = fin && a.some(x => x.op === 'tick' && x.p !== fin.p && x.round === fin.round && x.seq < fin.seq && a.some(y => y.op === 'tick' && y.p === x.p && y.round === fin.round && y.seq > fin.seq));
-        const why = raced.has(w) ? 'two workouts started on two phones at once'
-          : late.size > 1 || both || new Set(a.filter(x => x.op === 'finish').map(x => x.p)).size > 1 || a.some(x => x.op === 'tick' && a.some(y => y.round === x.round && y.p !== x.p && (y.op === 'note' || y.op === 'move' || y.op === 'restore' || y.op === 'redate'))) ? LATER
+        const why = tabbed.has(w) ? TABS_TWICE : sid(w) ? '' : raced.has(w) ? 'two workouts started on two phones at once'
+          : late.size > 1 || both || new Set(a.filter(x => x.op === 'finish').map(x => x.p)).size > 1 || a.some(x => x.op === 'tick' && a.some(y => y.round === x.round && (y.p !== x.p || (fin && fin.p !== x.p && fin.round === x.round && y.seq > fin.seq)) && (y.op === 'note' || y.op === 'move' || y.op === 'restore' || y.op === 'redate'))) ? LATER
           : '';
-        const reps = [...S.sessions.filter(s => s.id === w || s.id.startsWith(w + '-')).flatMap(s => s.ex.flatMap(b => b.sets.map(x => x.r))), ...(S.draft && S.draft.id === w ? S.draft.ex.flatMap(b => b.sets.filter(x => x.done).map(x => x.r)) : [])];
+        // Strict: the workout open on any phone counts, once (a workout held on one phone is open there alone).
+        const open = S.draft && S.draft.id === w ? S.draft : rowsNow() ? (phones.map(Q => Q.state().draft).find(d => d && d.id === w) || null) : null;
+        const reps = [...S.sessions.filter(s => s.id === w || s.id.startsWith(w + '-')).flatMap(s => s.ex.flatMap(b => b.sets.map(x => x.r))), ...(open ? open.ex.flatMap(b => b.sets.filter(x => x.done).map(x => x.r)) : [])];
         for (const r of ticked[w]) {
           const k = reps.filter(x => x === r).length;
           if (k === 1) continue;
@@ -163,6 +207,13 @@ async function history(o) {
           else fail('sets', w, `workout ${w}: the set of ${r} reps, ticked, is ${k ? k + ' times' : 'not'} in its session or the open workout on ${P.name}`);
         }
       }
+    }
+    for (const w of Object.keys(starter).filter(sid)) {
+      if (tabbed.has(w)) continue;
+      const on = phones.filter(Q => Q.state().draft && Q.state().draft.id === w).map(Q => Q.name);
+      if (closed[w] === 'finished' && on.length) fail('closed', w, `workout ${w}, finished, is still open on ${on.join(' and ')}`);
+      const Q = phones[starter[w]], d = Q.state().draft;
+      if (closed[w] === 'open' && !(d && d.id === w)) fail('open', w, `workout ${w}, started on ${Q.name} and not finished or discarded, is not open there (${d ? d.id + ' is' : 'none is'})`);
     }
     if (C.has && o.rows !== 'missing') {
       const P = phones[0], S = P.state(), E = P.E, rows = await C.rows();
@@ -172,6 +223,9 @@ async function history(o) {
       for (const t of S.trash) if (!want.has(t.kind + '/' + t.id)) want.set(t.kind + '/' + t.id, { place: 'trash', body: E.canon(t.data), day: t.date, clash: !!t.clash });
       for (const k of Object.keys(S.settings)) want.set('setting/' + k, { place: 'log', body: E.canon(S.settings[k]) });
       for (const k of ['activeRoutineId', 'deloadWeek']) want.set('core/' + k, { place: 'log', body: E.canon(S[k] ?? null) });
+      // Where the rows decide (the account's layout says so), the order of the lists the lifter orders is a row of its own; where the documents decide, it is none.
+      const lay = rows.find(r => r.kind === 'meta' && r.id === 'layout');
+      if (lay && /"decides":"rows"/.test(lay.body || '')) want.set('core/order', { place: 'log', body: E.canon({ routines: S.routines.map(x => x.id), exercises: S.exercises.map(x => x.id), injuries: S.injuries.map(x => x.id) }) });
       const mirrored = new Set([...Object.values(KIND), 'setting', 'core']);
       // The times the documents hold for each record, on any phone, and the records a phone sent over the account's copy (a finding says so).
       const LIST = Object.fromEntries(Object.entries(KIND).map(([l, k]) => [l, k]));
@@ -191,17 +245,23 @@ async function history(o) {
         const was = versions.get(k), now = [r.t, r.dev, r.a];
         if (was && (was[0] > now[0] || (was[0] === now[0] && (was[1] > now[1] || (was[1] === now[1] && was[2] > now[2]))))) fail('rows', k, `the row ${k} went back from version ${was.join(' ')} to ${now.join(' ')}`);
         versions.set(k, now);
-        if (r.kind === 'draft') { const body = S.draft ? E.canon(S.draft) : 'null'; if (r.body !== body) fail('rows', k, 'the row of the open workout is not the open workout'); continue; }
+        if (r.kind === 'draft') {
+          // Strict: the account's workout is the one open on a phone that keeps none of its own apart, so it is open on some phone, or none is open.
+          const bodies = rowsNow() ? phones.map(Q => (Q.state().draft ? E.canon(Q.state().draft) : 'null')) : [S.draft ? E.canon(S.draft) : 'null'];
+          if (!bodies.includes(r.body) && !(rowsNow() && r.body === 'null')) fail('rows', k, 'the row of the open workout is not the open workout');
+          continue;
+        }
         if (!mirrored.has(r.kind)) continue;
         const w = want.get(k), place = placeOf(r);
         if (!w) { if (place !== 'good') fail('rows', k, `the account holds a row for ${k} (${place}) and the log holds no such record`); continue; }
         if (place !== w.place) fail('rows', k, `${k} is in ${w.place === 'log' ? 'the log' : 'Recently deleted'} on the phone and the row says ${place}`);
         else if (r.body !== w.body) fail('rows', k, `the row of ${k} holds another copy than the log`);
-        else if (place === 'log' && r.t !== 0 && !over.has(k) && times.has(k) && !times.get(k).has(r.t)) fail('rows', k, `the row of ${k} is timed ${r.t}, which is not the time the documents hold for it (${[...times.get(k)].join(', ')})`);
+        // While the documents decide, a row is timed as they time its record; once the rows decide, the row's own version is the record's time.
+        else if (!rowsNow() && place === 'log' && r.t !== 0 && !over.has(k) && times.has(k) && !times.get(k).has(r.t)) fail('rows', k, `the row of ${k} is timed ${r.t}, which is not the time the documents hold for it (${[...times.get(k)].join(', ')})`);
         else if (w.place === 'trash' && (r.gone_day !== w.day || r.gone_clash !== w.clash)) fail('rows', k, `the row of ${k} holds another day in Recently deleted than the log (${r.gone_day} against ${w.day})`);
       }
       for (const k of want.keys()) if (!seen.has(k)) fail('rows', k, `the log holds ${k} and the account has no row for it`);
-      if (S.draft && !seen.has('draft/draft')) fail('rows', 'draft/draft', 'a workout is open and the account has no row for it');
+      if (S.draft && !seen.has('draft/draft') && !rowsNow()) fail('rows', 'draft/draft', 'a workout is open and the account has no row for it');
       for (const Q of phones) for (const f of (Q.E.rowsDiag && Q.E.rowsDiag() ? Q.E.rowsDiag().findings : [])) {
         if (/notes were not|another checksum/.test(f.why)) fail('rows', f.key, `${Q.name}: ${f.why}`);
         /* A difference is recorded when the documents kept a copy against the order of the times, which takes two
@@ -217,12 +277,32 @@ async function history(o) {
     }
     round++;
   };
+  /* A browser hands a tab the other tab's writes as storage events, a moment after each write: a lifter's tap, made
+     seconds apart, comes after the events already queued. Each action waits for them (a turn of the event loop for
+     each tab that has one, until none is left), so a tab acts on what the other tab last wrote, as it would on a phone.
+     x.now: the action is taken in that moment, before the tab has heard, the one way two tabs change one record at once. */
+  const heardAll = async () => {
+    for (let i = 0; i < 8 && phones.some(Q => Q.heard.length && !Q.frozen); i++) await new Promise(q => setImmediate(q));
+  };
   /** One action of the script. */
   const run = async x => {
     const P = phones[x.p % phones.length];
+    if (!x.now) await heardAll();
     if (x.op === 'check') return check();
     if (x.op === 'off') { P.off = true; return; }
     if (x.op === 'on') { P.off = false; return; }
+    if (x.op === 'freeze') { P.freeze(); return; }
+    /* Two phones at the same moment: while this phone syncs, just before it writes its rows, the other phone does
+       x.then and sends it, so the account holds a copy this phone's write is made over unseen. */
+    if (x.op === 'squeeze') {
+      const Q = phones[x.q % phones.length]; let once = true;
+      P.hook = async (kind, when) => { if (once && kind === 'rows-push' && when === 'before') { once = false; await run({ ...x.then, p: x.q }); await Q.flush(); } };
+      try { await P.sync(); } finally { P.hook = null; }
+      return;
+    }
+    // The account switched to its rows by this phone, where it may (its log in step with the account): every other phone learns of it and crosses.
+    if (x.op === 'switch') { if (switchSeq < 0 && P.E.switchNow && (await P.E.switchNow())) { switchedAt = round; switchSeq = seq; } clock.t += 1500; await P.tick(); return; }
+    if (x.op === 'thaw') { P.thaw(); await P.tick(); return; }
     if (x.op === 'drop') { P.drop = { kind: x.kind, when: x.when, n: 1 }; return; }
     if (x.op === 'wait') { clock.t += x.ms; for (const Q of phones) await Q.tick(); return; }
     if (x.op === 'flush' || x.op === 'pull' || x.op === 'sync') { await P[x.op](); return; }
@@ -233,10 +313,26 @@ async function history(o) {
       try { await P.pull(); } finally { P.hook = null; }
       return;
     }
+    if (x.op === 'undo') {
+      const p = x.p % phones.length, last = undos[p].pop();
+      if (!last) return;
+      const r = P.E.undoStep();
+      if (r && typeof r === 'object') {
+        const op = UNDONE[last.op];
+        said(last.id, p, op);
+        if (op === 'unforgood') forgood.delete(last.id);
+      }
+      clock.t += 1500; await P.tick();
+      return;
+    }
     const d0 = P.state().draft, did = DO[x.op](P, x);
     if (did) {
-      const id = x.op === 'tick' || x.op === 'redate' || x.op === 'finish' || x.op === 'discard' ? d0.id : x.id;
+      const id = x.op === 'tick' || x.op === 'redate' || x.op === 'finish' || x.op === 'discard' || x.op === 'wnote' ? d0.id : x.id;
+      if (x.op === 'del' || x.op === 'restore' || x.op === 'forgood') undos[x.p % phones.length].push({ op: x.op, id: x.id });
       if (id) said(id, x.p % phones.length, x.op), (acts[id][acts[id].length - 1].v = x.v);
+      // Ticks join set by set between tabs too; what the tabs' merge keeps whole is a change of the workout or session itself, made in the moment before its tab heard the other's.
+      const whole = ['finish', 'note', 'move', 'redate', 'wnote', 'start'];
+      if (x.now && id && whole.includes(x.op) && (id in starter || closed[id]) && (acts[id] || []).some(y => y.round === round && whole.includes(y.op) && sameGroup(y.p, x.p % phones.length))) tabbed.add(id);
       if (x.op === 'set') said('userName', x.p % phones.length, x.op);
       if (x.op === 'add') made.add(x.id);
       if (x.op === 'forgood') forgood.add(x.id);
@@ -247,26 +343,38 @@ async function history(o) {
            workout is open again on the other phone. Which sets are where is then not asked of either. */
         const other = phones.filter(Q => Q !== P && Q.state().draft && Q.state().draft.id !== x.id).map(Q => Q.state().draft.id);
         if (other.length) for (const w of [...other, x.id]) raced.add(w);
+        for (let j = 0; j < phones.length; j++) { const d = phones[j].state().draft; if (sameGroup(x.p % phones.length, j) && d && d.id !== x.id) { tabbed.add(d.id); tabbed.add(x.id); } }
         closed[x.id] = 'open';
+        starter[x.id] = x.p % phones.length;
       }
       if (x.op === 'tick') (ticked[d0.id] = ticked[d0.id] || new Set()).add(d0.ex[0].sets[x.i].r);
-      if (x.op === 'finish') { made.add(d0.id); if (closed[d0.id] !== 'discarded') closed[d0.id] = 'finished'; }
+      if (x.op === 'finish') {
+        made.add(d0.id); if (closed[d0.id] !== 'discarded') closed[d0.id] = 'finished';
+        if ((acts[d0.id] || []).some(y => y.op === 'finish' && sameGroup(y.p, x.p % phones.length))) tabbed.add(d0.id);
+      }
       if (x.op === 'discard') closed[d0.id] = 'discarded';
     }
     // The edit is noted and, with signal, sent, as the app does a moment after a save.
     clock.t += 1500 + (x.ms || 0); await P.tick();
+    switchedNow();
+  };
+  /* The account switches by itself at a daily check once every device has had its clean days (rowsgate.ts): the
+     moment it did is noted as if by the switch op, so the rules hold records from then by the rows' rules. */
+  const switchedNow = () => {
+    if (switchSeq >= 0 || !phones.some(Q => Q.E.rowsDecideHere && Q.E.rowsDecideHere())) return;
+    switchSeq = seq; switchedAt = round; autoSwitched = true;
   };
   const script = [];
   if (o.script) for (const x of o.script) await run(x);
   else {
-    const W = [['note', 14], ['move', 12], ['del', 8], ['restore', 9], ['forgood', 2], ['add', 3], ['bw', 3], ['cardio', 3], ['set', 3], ['start', 5], ['tick', 12], ['redate', 4], ['finish', 6], ['discard', 1], ['off', 4], ['on', 5], ['flush', 5], ['pull', 9], ['sync', 4], ['race', 3], ['wait', 5], ['drop', 3], ['check', 3]];
+    const W = [['note', 14], ['move', 12], ['del', 8], ['restore', 9], ['forgood', 2], ['add', 3], ['bw', 3], ['cardio', 3], ['set', 3], ['start', 5], ['tick', 12], ['redate', 4], ['finish', 6], ['discard', 1], ['off', 4], ['on', 5], ['flush', 5], ['pull', 9], ['sync', 4], ['race', 3], ['wait', 5], ['drop', 3], ['check', 3], ...(strict ? [['undo', 4], ['wnote', 3]] : []), ...(o.switchable ? [['switch', 3]] : [])];
     const total = W.reduce((s, w) => s + w[1], 0);
     for (let step = 0; step < (o.steps || 60); step++) {
       let r = rnd() * total, op = W[0][0];
       for (const [name, w] of W) { if (r < w) { op = name; break; } r -= w; }
       const p = Math.floor(rnd() * phones.length), P = phones[p], S = P.state();
       // A phone showing an open workout mostly works on it: sets ticked, its date changed, Finish, and both phones caught up now and then, so two phones hold one workout between them.
-      if (S.draft && rnd() < 0.4) op = pick(['tick', 'tick', 'tick', 'redate', 'finish', 'pull', 'check', 'check']);
+      if (S.draft && rnd() < 0.4) op = pick(strict ? ['tick', 'tick', 'tick', 'redate', 'wnote', 'finish', 'pull', 'check', 'check'] : ['tick', 'tick', 'tick', 'redate', 'finish', 'pull', 'check', 'check']);
       const x = { p, op };
       const live = S.sessions.map(s => s.id), bin = S.trash.filter(t => t.kind === 'session' && !t.clash).map(t => t.id);
       // A hot record is picked more often, so the phones change the same one with no signal between them.
@@ -283,16 +391,20 @@ async function history(o) {
       else if (op === 'tick') { if (!S.draft) continue; x.i = Math.floor(rnd() * 4); }
       else if (op === 'redate') { if (!S.draft) continue; x.v = pick(DATES.slice(0, 6)); }
       else if (op === 'finish' || op === 'discard') { if (!S.draft) continue; }
+      else if (op === 'wnote') { if (!S.draft) continue; x.v = 'w' + ++n; }
       else if (op === 'race') { x.q = (p + 1 + Math.floor(rnd() * (phones.length - 1))) % phones.length; }
       else if (op === 'wait') { x.ms = pick([2000, 20000, 61000, 90000, 90000, 26 * 3600000]); }
       else if (op === 'drop') { x.kind = pick(['*', 'set', 'list', 'rows-push', 'rows-pull']); x.when = pick(['before', 'after']); }
+      // Now and then a tab acts in the moment another tab writes, before it has heard (x.now).
+      if (o.tabs && rnd() < 0.15) x.now = true;
       script.push(x); await run(x);
     }
     const end = { p: 0, op: 'check' }; script.push(end); await run(end);
   }
   // What the app logs of a dropped connection, of a write another phone won, and of a record it put back is no error.
-  const errors = phones.flatMap(P => P.errors().filter(e => !/offline|unavailable|no answer|raced|Another device|^sync-kept/.test(e)).map(e => `${P.name}: ${e}`));
-  return { script: o.script || script, fails, known, acts, C, phones, errors, clock, run, check, versions, counts: { writes: C.writes.length, calls: C.calls.length, rounds: round } };
+  // A document refused once the rows decide is how a phone not yet told of the switch learns of it.
+  const errors = phones.flatMap(P => P.errors().filter(e => !/offline|unavailable|no answer|raced|Another device|^sync-kept|docs_frozen/.test(e)).map(e => `${P.name}: ${e}`));
+  return { script: o.script || script, fails, known, acts, C, phones, errors, clock, run, check, versions, switchedAt, autoSwitched, counts: { writes: C.writes.length, calls: C.calls.length, rounds: round } };
 }
 /** The shortest script found that still fails as `still` asks of its result (a rule's name, or a test of the result): actions taken out one at a time until none can go. */
 async function shrink(o, script, still) {

@@ -657,8 +657,8 @@ function privacyLine(): TemplateResult {
       'privacy',
       'Privacy',
       `your log is saved to your ${APP_NAME} account.`,
-      `No ads, no tracking. Your log is saved to your ${APP_NAME} account. Only you and the app's owner can see it. Reports you send go to the app owner.`,
-      'It is stored in a Supabase database. Database rules let each account read and write only its own data. The person who runs that database, the app owner, can see stored data and your email address, as with any app without end-to-end encryption. Your email is used only to sign in and reset your password, and nothing is shared or sold. A new password is checked against known breaches with only the first 5 characters of its hash; the password never leaves the phone. Backup files go only where you save them.',
+      `No ads, no tracking. Your log is saved to your ${APP_NAME} account. Only you and the app's owner can see it. Reports you send and app errors go to the app owner.`,
+      "It is stored in a Supabase database. Database rules let each account read and write only its own data. The person who runs that database, the app owner, can see stored data and your email address, as with any app without end-to-end encryption. Your email is used only to sign in and reset your password, and nothing is shared or sold. A new password is checked against known breaches with only the first 5 characters of its hash; the password never leaves the phone. Backup files go only where you save them. An app error sends its version, the screen, the error's own words and the browser, never your log; errors are deleted after 90 days.",
       'About privacy'
     );
   if (!claude && AUTH())
@@ -947,7 +947,15 @@ function moreBody(hasDemo: boolean): TemplateResult {
 ${
   rows
     ? html`<p class="small muted u-m0-0-6" id="rowsLine">${rows.line}</p>
+${
+  rows.hold
+    ? html`<div class="row" id="rowsHold"><span class="small muted u-f1">${rows.hold.text}</span><button class="btn sm" data-act="rowsForget" data-dev=${rows.hold.dev}>Forget it</button></div>
 `
+    : rows.back
+      ? html`<div class="row"><button class="btn sm" data-act="rowsBack">Switch back</button></div>
+`
+      : nothing
+}`
     : nothing
 }${
     logBuf.length

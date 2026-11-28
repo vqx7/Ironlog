@@ -2,22 +2,18 @@
 
 Everything that needs you, in one place, with the exact code to paste. Claude keeps this file current: an item moves to Done only when you confirm it, or when Claude can check it from here (and says how it checked). Build work and decisions are tracked in `PENDING.md`; this file is only what you do by hand.
 
-Last updated: 2026-11-12. Live: version 2.50 (pull request #95, merged by you 2026-11-12). Next: #96 (2.51), then 2.52 to 2.57 in order as their pull requests open.
+Last updated: 2026-11-28. Live: version 2.78.2 (pull request #126, merged by you). Next: 2.79 (build r128), one pull request.
 
 ## Now, in this order
 
-0. For 2.78, before you merge it: F1 below (two pastes in Supabase and one line to send, about 3 minutes).
-1. Merge #96 (2.51): retargeted to main by Claude after #95, all eight jobs green on its head (f35c9cd). Then each next pull request as it opens (2.52 to 2.57), tried on the preview first (the checks for each are in its pull request).
-2. From 2.28, two steps in Supabase, about 5 minutes, unless you have done them since 2026-11-06 (tell Claude either way, so this list can say so):
-   - B1a again: paste the block below and Run. It takes each account's report count and document count one write at a time (2.27-F14). Safe to run more than once.
-   - B4 again: paste the function below over the old one and Deploy. Its webhook secret is compared in a way a caller cannot time (2.27-F14), and it marks every ticket untrusted (r66).
-   - Then E2 (2 minutes, read-only): it shows what your live project actually has.
-3. C6: add the code to the confirmation email (5 minutes, below). The app asks a new person for the code the email should carry.
-4. D6: delete the old branches and stop them piling up (2 minutes, below).
-5. D5: lock down every account (two-step verification everywhere, push protection, DNSSEC, Claude's GitHub access limited to Ironlog). `docs/SECURITY.md` has the whole list and what each step protects.
-6. E1, the sign-up bot check, when you want it (10 minutes, below).
-7. Before friends sign up, decide item 15 in PENDING.md, optional encryption: today you can read every account's log in Supabase's Table Editor, and the app's privacy line says so. After that, if you want it, decision 129 (make the repository private), which hides the repository, not the app.
-8. At the gym: Checks on your phone (below). The ones that matter most now are at the top of that list.
+1. G1 below: the test project for the real-server checks (about 10 minutes, once).
+2. G2 below: one paste in Supabase, the documents guard and the app's error log, the preview's first, then the live ones, then the saved query (about 3 minutes).
+3. Before you merge 2.79: on each phone, Settings > Your data > **Export backup (.json)**, and keep the file. Your friend the same.
+4. F4 below, on the preview with a copy of your log: the switch (at once there), a workout, **Switch back** (about 10 minutes).
+5. Merge 2.79. On your first two days on the live app, do the checklist in F4's last part. Settings > "More" counts the clean days, and your account switches by itself on the third. Your friend and anyone else does nothing but update as usual.
+6. If anything looks wrong: Settings > "More" > **Switch back** on one phone, keep the app open until it says done, then open the app on each other device.
+
+The older steps (B1a and B4 again, E2, C6, D6, D5, E1, item 15, the phone checks of 2.52 to 2.61): tell Claude where each stands, and each comes back into this list where it is still to do.
 
 ## When you want problem reports to reach you (item 58, about 20 minutes)
 
@@ -861,6 +857,184 @@ Anything that moves: a screenshot to Claude, and do not merge.
 7. With the keyboard up, the keyboard's ˄ ˅ arrows go to the next field: the bars stay away and each field shows above the keyboard. Tap ✓: the keyboard goes, the bars come back on the bottom edge.
 
 Anything that reads wrong or robotic: a screenshot to Claude.
+
+### G1. The test project for the real-server checks (2.79; about 10 minutes, once)
+
+From 2.79 every pull request also runs the app's own account code against a real Supabase project, which nothing else here can show (its sign-in, its row rule, its limits). It must be a second project that holds no real data.
+
+1. Supabase > New project. Name it `ironlog-test`, any region, the free plan. Keep the database password it shows: step 4 needs it.
+2. In the new project: Authentication > Sign In / Providers > Email: turn "Confirm email" off, and Save. The checks make their two accounts (`ci-a@ironapp.org`, `ci-b@ironapp.org`) with no email sent.
+3. Project Settings > API Keys: copy the publishable key. Project Settings > Data API: copy the project's URL.
+4. The Connect button at the top > Session pooler: copy its connection string, and put the database password from step 1 in place of `[YOUR-PASSWORD]`.
+5. On GitHub: the Ironlog repository > Settings > Secrets and variables > Actions > New repository secret, three times: `SUPA_TEST_URL` (step 3's URL), `SUPA_TEST_ANON_KEY` (step 3's key) and `SUPA_TEST_DB_URL` (step 4's string).
+
+Nothing of the live project is used. Without the three secrets the check says it was skipped; with them it must pass for the app to publish. The daily keep-awake run pings the test project too.
+
+### G2. The documents guard and the app's error log (2.79; about 3 minutes, before you merge 2.79)
+
+In your live project's SQL Editor, SUPABASE.md Part 9, in its order:
+
+1. The preview's first. New query. Paste this and Run:
+
+```sql
+-- The preview build's copy of the documents guard and of the error log: the same text under the preview's names
+-- (2.79), so nothing tried in a preview reaches the live tables.
+create or replace function public.docs_preview_frozen() returns trigger language plpgsql set search_path = '' as $$
+declare lay text;
+begin
+  select r.body into lay from public.records_preview r where r.user_id = new.user_id and r.kind = 'meta' and r.id = 'layout';
+  if lay is not null and (lay::jsonb ->> 'decides') is distinct from 'docs' and not (new.data ? 'back') then
+    raise exception 'docs_frozen' using errcode = 'P0001';
+  end if;
+  return new;
+end $$;
+revoke all on function public.docs_preview_frozen() from public, anon, authenticated;
+create trigger docs_preview_frozen before insert or update on public.docs_preview for each row execute function public.docs_preview_frozen();
+
+create or replace function public.docs_preview_guarded() returns boolean language sql stable set search_path = '' as $$ select true $$;
+revoke all on function public.docs_preview_guarded() from public, anon;
+grant execute on function public.docs_preview_guarded() to authenticated;
+
+create table public.app_errors_preview (
+  id bigint generated always as identity primary key,
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  at timestamptz not null default now(),
+  version text not null check (char_length(version) between 1 and 16),
+  build text not null check (char_length(build) between 1 and 40),
+  screen text not null check (char_length(screen) between 1 and 40),
+  area text not null check (char_length(area) between 1 and 24),
+  message text not null check (char_length(message) between 1 and 200),
+  stack text not null default '' check (char_length(stack) <= 400),
+  browser text not null default '' check (char_length(browser) <= 160)
+);
+create index app_errors_preview_at on public.app_errors_preview (at);
+create index app_errors_preview_user_at on public.app_errors_preview (user_id, at);
+alter table public.app_errors_preview enable row level security;
+create policy "add own" on public.app_errors_preview for insert to authenticated with check ((select auth.uid()) = user_id);
+revoke all on public.app_errors_preview from anon, authenticated;
+grant insert (version, build, screen, area, message, stack, browser) on public.app_errors_preview to authenticated;
+
+create or replace function public.app_errors_preview_cap() returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  perform pg_advisory_xact_lock(hashtextextended('app_errors_preview ' || new.user_id::text, 0));
+  if (select count(*) from public.app_errors_preview e where e.user_id = new.user_id and e.at > now() - interval '1 day') >= 50 then
+    return null;
+  end if;
+  new.at := now();
+  return new;
+end $$;
+revoke all on function public.app_errors_preview_cap() from public, anon, authenticated;
+create trigger app_errors_preview_cap before insert on public.app_errors_preview for each row execute function public.app_errors_preview_cap();
+
+create or replace function public.app_errors_preview_trim() returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  delete from public.app_errors_preview e where e.at < now() - interval '90 days';
+  return null;
+end $$;
+revoke all on function public.app_errors_preview_trim() from public, anon, authenticated;
+create trigger app_errors_preview_trim after insert on public.app_errors_preview for each statement execute function public.app_errors_preview_trim();
+```
+
+2. Then the live ones, in a new query. Paste this and Run:
+
+```sql
+-- Once an account's rows decide (2.79), its documents are frozen: a write to them is refused, so a phone on an older
+-- build cannot save where no phone on 2.79 reads, and says so, keeping its log. A write that carries `back` is
+-- "Switch back" itself, which writes the log over the documents before the account goes back to them.
+create or replace function public.docs_frozen() returns trigger language plpgsql set search_path = '' as $$
+declare lay text;
+begin
+  select r.body into lay from public.records r where r.user_id = new.user_id and r.kind = 'meta' and r.id = 'layout';
+  if lay is not null and (lay::jsonb ->> 'decides') is distinct from 'docs' and not (new.data ? 'back') then
+    raise exception 'docs_frozen' using errcode = 'P0001';
+  end if;
+  return new;
+end $$;
+revoke all on function public.docs_frozen() from public, anon, authenticated;
+create trigger docs_frozen before insert or update on public.docs for each row execute function public.docs_frozen();
+
+-- What the app asks before it lets an account switch: the guard above is in place.
+create or replace function public.docs_guarded() returns boolean language sql stable set search_path = '' as $$ select true $$;
+revoke all on function public.docs_guarded() from public, anon;
+grant execute on function public.docs_guarded() to authenticated;
+
+-- The app's own error log (2.79): what broke, on which build and screen; never what the lifter typed or logged,
+-- and no name or email. Signed-in phones may only add rows; nobody reads them through the app.
+create table public.app_errors (
+  id bigint generated always as identity primary key,
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  at timestamptz not null default now(),
+  version text not null check (char_length(version) between 1 and 16),
+  build text not null check (char_length(build) between 1 and 40),
+  screen text not null check (char_length(screen) between 1 and 40),
+  area text not null check (char_length(area) between 1 and 24),
+  message text not null check (char_length(message) between 1 and 200),
+  stack text not null default '' check (char_length(stack) <= 400),
+  browser text not null default '' check (char_length(browser) <= 160)
+);
+create index app_errors_at on public.app_errors (at);
+create index app_errors_user_at on public.app_errors (user_id, at);
+alter table public.app_errors enable row level security;
+create policy "add own" on public.app_errors for insert to authenticated with check ((select auth.uid()) = user_id);
+revoke all on public.app_errors from anon, authenticated;
+grant insert (version, build, screen, area, message, stack, browser) on public.app_errors to authenticated;
+
+-- At most 50 rows an account a day: past that a row is dropped without an error, so a phone never retries it.
+-- The time is the database's. Runs with the owner's rights to count rows nobody may read.
+create or replace function public.app_errors_cap() returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  perform pg_advisory_xact_lock(hashtextextended('app_errors ' || new.user_id::text, 0));
+  if (select count(*) from public.app_errors e where e.user_id = new.user_id and e.at > now() - interval '1 day') >= 50 then
+    return null;
+  end if;
+  new.at := now();
+  return new;
+end $$;
+revoke all on function public.app_errors_cap() from public, anon, authenticated;
+create trigger app_errors_cap before insert on public.app_errors for each row execute function public.app_errors_cap();
+
+-- Rows older than 90 days are deleted whenever any is added.
+create or replace function public.app_errors_trim() returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  delete from public.app_errors e where e.at < now() - interval '90 days';
+  return null;
+end $$;
+revoke all on function public.app_errors_trim() from public, anon, authenticated;
+create trigger app_errors_trim after insert on public.app_errors for each statement execute function public.app_errors_trim();
+```
+
+   To check: New query, `select public.docs_guarded(), public.docs_preview_guarded();` answers `true` twice.
+
+3. The errors, when you want to read them: New query, paste this, Run, then **Save** it as "App errors":
+
+```sql
+select version, area, message, count(*) as times, count(distinct user_id) as accounts, max(at) as last, min(stack) as stack
+from public.app_errors where at > now() - interval '7 days'
+group by version, area, message order by times desc, last desc;
+```
+
+4. Which accounts' rows decide, before any revert of 2.79 (never revert while any does; **Switch back** first): New query, paste this, Run, then **Save** it as "Accounts on rows":
+
+```sql
+select u.email, r.body::jsonb ->> 'decides' as decides, r.body::jsonb ->> 'level' as level, r.body::jsonb ->> 'hold' as held_back
+from public.records r join auth.users u on u.id = r.user_id
+where r.kind = 'meta' and r.id = 'layout' order by decides desc, u.email;
+```
+
+### F4. The switch on the preview, and Switch back (2.79; about 10 minutes, on the preview, before you merge 2.79)
+
+On the preview no clean days are needed: the account switches at its first daily check.
+
+1. In the preview, signed in: Settings > Your data > **Copy my log in** (your live log, copied into the preview).
+2. Close the preview and open it again. Settings > "More" says "Saving by rows since" today, with **Switch back** under it.
+3. Do a short workout: three sets ticked, then **Finish**. On a second device signed in to the preview, the session is there.
+4. On that second device, change the session's note. On the first, it shows within a few seconds of opening the app.
+5. Settings > "More" > **Switch back** > **Switch back**. Keep the app open until it says "Switched back. Open the app on your other devices." Open the preview on the second device: the session and its note are there, and Settings > "More" shows the rows check line again.
+6. **Copy diagnostics** on the first device, and paste it to Claude.
+
+Anything missing or wrong: a screenshot to Claude, and do not merge.
+
+**The checklist, on the live app on your first two days after the merge** (the account switches by itself on the third clean day; Settings > "More" counts them): a workout to **Finish**; a past set edited (History > the session > ✎); a session's date moved across the 15th and back; a session deleted and restored (Settings > Your data > **Recently deleted**); a weigh-in; a routine and a setting changed; and one change from your second device, made once the first phone shows "Saved". Then Settings > "More" should read "0 differences".
 
 ## Checks on your phone (items 7 and 63)
 Status: to do whenever you are at the gym; tell Claude what you see. Newest first; the rest stay listed until you say they are done.

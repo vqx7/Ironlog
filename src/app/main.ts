@@ -336,6 +336,7 @@ import {
 import { readyCard } from './workout';
 import { fbContext, fbShrink } from './report';
 import { rowsBusy, rowsDiag } from './rows';
+import { errlogStart } from './errlog';
 import { accountStart, acctInit, syncLine, waiting } from './account';
 import { impBuild, impMatch, importData, impStart, liveLogFetch, routineFromLog } from './importflow';
 import { makeDemo } from './demo';
@@ -928,6 +929,8 @@ function start(): void {
     closeModal,
     draftBack
   });
+  // The app's error log listens from the first error recorded (errlog.ts).
+  errlogStart();
   storageStart();
   syncStart();
   // The screen frame's watch, which puts the document back wherever iOS leaves it moved.

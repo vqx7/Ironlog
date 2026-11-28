@@ -19,5 +19,37 @@
     "rule": "date",
     "from": "seed 2860 of the histories on the source of 2.76, shrunk",
     "script": [{"p":1,"op":"start","id":"k6","v":"2026-11-03"},{"p":1,"op":"check"},{"p":0,"op":"tick","i":2},{"p":1,"op":"redate","v":"2026-10-27"},{"p":1,"op":"finish"},{"p":0,"op":"tick","i":3},{"p":1,"op":"check"}]
+  },
+  {
+    "name": "two different workouts started on two phones, a set ticked on each",
+    "found": "one phone's own workout saved to History while it was still open there, the other's opened in its place (NEW-206)",
+    "rule": "open",
+    "on": "2.78",
+    "from": "written for 2.79's design (3.6, R-13)",
+    "script": [{"p":0,"op":"start","id":"k1","v":"2026-11-20"},{"p":1,"op":"start","id":"k2","v":"2026-11-20"},{"p":0,"op":"tick","i":0},{"p":1,"op":"tick","i":1},{"p":0,"op":"check"}]
+  },
+  {
+    "name": "one workout ticked on two phones with no signal between them, and Finish tapped on both",
+    "found": "a set ticked on one phone lost from the saved session (NEW-207, Finish on both)",
+    "rule": "sets",
+    "on": "2.78",
+    "from": "written for 2.79's design (3.7)",
+    "script": [{"p":0,"op":"start","id":"k1","v":"2026-11-20"},{"p":0,"op":"check"},{"p":1,"op":"off"},{"p":0,"op":"tick","i":0},{"p":1,"op":"tick","i":1},{"p":0,"op":"finish"},{"p":1,"op":"finish"},{"p":1,"op":"on"},{"p":0,"op":"check"}]
+  },
+  {
+    "name": "a workout finished on one phone while the other, not caught up, changes only its date",
+    "found": "the date changed on the phone behind dropped (NEW-225)",
+    "rule": "date",
+    "on": "2.78",
+    "from": "the design's probe of 2.78 (dateonly.js), as a history",
+    "script": [{"p":0,"op":"start","id":"k1","v":"2026-11-20"},{"p":0,"op":"tick","i":0},{"p":1,"op":"check"},{"p":1,"op":"off"},{"p":0,"op":"finish"},{"p":1,"op":"redate","v":"2026-11-16"},{"p":1,"op":"on"},{"p":0,"op":"check"}]
+  },
+  {
+    "name": "a workout finished on one phone while the other, not caught up, types only its note",
+    "found": "the note typed on the phone behind dropped (NEW-225)",
+    "rule": "edit",
+    "on": "2.78",
+    "from": "the review of 2.79's design (REV35, any-change-joins.js), as a history",
+    "script": [{"p":0,"op":"start","id":"k1","v":"2026-11-20"},{"p":0,"op":"tick","i":0},{"p":1,"op":"check"},{"p":1,"op":"off"},{"p":0,"op":"finish"},{"p":1,"op":"wnote","v":"typed on B"},{"p":1,"op":"on"},{"p":0,"op":"check"}]
   }
 ]

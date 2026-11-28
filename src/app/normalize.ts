@@ -1364,7 +1364,23 @@ function cleanTrash(listed: unknown[]): Trashed[] {
         ? [{ id: fixId(t.id), kind, date: t.date, data, ...(t.clash === true ? { clash: true as const } : {}) }]
         : [];
     })
-    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+    /* Newest day first, then by id and kind: every phone puts the same entries in one order, so the limits below drop
+       the same ones wherever a list is made from the account's rows. */
+    .sort((a, b) =>
+      a.date < b.date
+        ? 1
+        : a.date > b.date
+          ? -1
+          : a.id < b.id
+            ? -1
+            : a.id > b.id
+              ? 1
+              : a.kind < b.kind
+                ? -1
+                : a.kind > b.kind
+                  ? 1
+                  : 0
+    )
     .slice(0, TRASH_MAX);
   while (trash.length > 1 && JSON.stringify(trash).length > TRASH_BYTES) trash.pop();
   return trash;

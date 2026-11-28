@@ -152,8 +152,20 @@ export const logCut = (t: unknown): string =>
 /** What the error log keeps: the first lines of a stack and how many characters of it, a message's characters, and how many entries. */
 const LOG_LIMITS = { stackLines: 4, stackChars: 400, messageChars: 300, kept: 60 } as const;
 
+/** What runs after each error is recorded (onLog): its area and the error as given. */
+const logHooks: ((area: string, err: unknown) => void)[] = [];
+/** Runs `f` after each error is recorded, with its area and the error as given (the app's error log, errlog.ts). */
+export function onLog(f: (area: string, err: unknown) => void): void {
+  logHooks.push(f);
+}
 /** Records an error under an area, with the first lines of its stack, in the log Settings can copy. */
 export function log(area: string, err: unknown): void {
+  for (const f of logHooks)
+    try {
+      f(area, err);
+    } catch (e) {
+      /* a listener of the log must never stop it */
+    }
   try {
     const E = rec(err);
     // What an account server said that the app does not show (serverSaid, scripts/cloud-supabase.js) is kept here.
@@ -465,10 +477,11 @@ function keepLook(e: UndoStep): boolean {
     let post: Rec | null | undefined;
     keepLost = keepLost.filter(x => {
       const was = heldIn(pre, x.key);
-      if (!was || Hx(was.v) !== x.base) return true;
+      const agreed = (v: unknown): boolean => (x.is ? x.is(v) : Hx(v) === x.base);
+      if (!was || !agreed(was.v)) return true;
       if (post === undefined) post = e.post == null ? null : rec(parseJson(e.post));
       const after = post ? heldIn(post, x.key) : null;
-      if (post && after && Hx(after.v) === x.base) return true;
+      if (post && after && agreed(after.v)) return true;
       was.put(x.copy);
       changed = true;
       return false;

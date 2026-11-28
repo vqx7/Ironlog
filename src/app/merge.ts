@@ -17,8 +17,10 @@ import type { Session } from './types';
 import type { DraftLike } from './session';
 
 /** The conflicts a merge counted, and how many of them each record's own edit times decided (byTime). */
-/** A copy that lost a clash to this side's: its key (recordKey), the fingerprint of the copy both sides had agreed on, and the copy itself. */
-export type Lost = { key: string; base: string | undefined; copy: unknown };
+/** A copy that lost a clash to this side's: its key (recordKey), the fingerprint of the copy both sides had agreed on,
+    and the copy itself; or, where the agreed copy is known only by another checksum (the account's rows), `is`, which
+    tells it. */
+export type Lost = { key: string; base: string | undefined; copy: unknown; is?: (v: unknown) => boolean };
 /** What a merge counts: its clashes, those decided by the records' own times, and, when the caller keeps them (`lost`), the other side's copies that lost one. */
 type Stat = { conflicts: number; byTime?: number; lost?: Lost[] };
 
@@ -447,6 +449,9 @@ export function mergeWorkout(
   stat: Stat
 ): DraftLike {
   const out: DraftLike = { ...local, ex: mergeExercises(base.ex, local.ex, remote.ex, remoteWins, stat, 'place') };
+  /* The workout's own fields (its date, its notes, its day) field by field against the copy agreed, as a session's
+     are (mergeSession): a note typed on one phone while the other ticks sets is kept. */
+  mergeFields(rec(out) || {}, rec(base), rec(local) || {}, rec(remote) || {}, ['ex', 'id'], remoteWins, stat);
   // The next sets adjusted from a set stay on the rows under it when rows were added above it: its place follows its row.
   for (const b of out.ex) {
     const a = b.adj;

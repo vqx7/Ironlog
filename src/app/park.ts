@@ -14,7 +14,7 @@ import { fmtDate } from './format';
 import { normalize } from './normalize';
 import { arr, rec } from './records';
 import { PARKED_KEY, log, parkedRec, prefDel, prefSet } from './storage';
-import { onSaved } from './sync';
+import { onSaved } from './save';
 import { cloud, fx, state, ui } from './store';
 import { addDays, iso, today } from './util';
 

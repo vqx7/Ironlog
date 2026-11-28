@@ -52,7 +52,7 @@ src/01-03, 99       the page's markup and styles
 Layer 0, config and record shapes: config, types
 Layer 1, data: util, units, library, routines, formulas, records, machines, gym, profile, model, layout, md5
 Layer 2, engine and analytics: session, loads, setread, usual, prs, trend, volume, goals, importing, format, charts, analytics, bests, time, weeks, coach, loadsteps, engine, oddloads, adjust, plans, pick
-Layer 3, storage and sync: chunks, merge, modals, store, live, providers, normalize, storage, sync, act, targets, pics, photo, park, rows
+Layer 3, storage and sync: chunks, merge, modals, store, live, providers, normalize, storage, save, syncnotes, edits, twoplaces, firstjoin, sync, act, targets, pics, photo, park, rowsnotes, rowslog, rowsmirror, rowsapply, rowsync, rowsswitch, rowsgate, rows, errlog
 Layer 4, screens: frame, marks, icons, feedback, effort, toast, timer, tips, guide, sheets, sheetsmisc, notepics, bwnudge, sheetslift, sheetsplan, sheetsexercise, sheetspicker, sheetsapp, captcha, sheetsaccount, sheetsimport, env, outside, display, view, page, update, history, settings, graphs, plan, stats, calendar, week, map, today, workstate, worksets, workfinish, workout, worktaps, workfields, workdrag, report, account, importflow, demo, actsapp, actsroutine, actspick, actsstart, actslift, screens, events
 Layer 5, the page's start: main
 

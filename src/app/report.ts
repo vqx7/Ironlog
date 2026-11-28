@@ -21,15 +21,18 @@ import { FB_CATS, FB_CTX_MAX, FB_DAY, FB_IMG_MB, FB_MAX, FB_MIN, FB_TITLE } from
 import { ENV, KEY, log, logBuf, prefGet, prefSet } from './storage';
 import type { LogEntry } from './types';
 import { arr, parseJson } from './records';
-import { withTimeout } from './sync';
+import { cloudPull, cq, withTimeout } from './sync';
 import { appU, exName } from './live';
 import { acct, cloud, sessionShown, state, ui } from './store';
 import type { FeedbackModal, Modal } from './modals';
 import { FB, codeOf, said } from './providers';
 import type { Report } from './providers';
 import { rowsDiag } from './rows';
+import { forgetDevice } from './rowsgate';
+import { switchBack } from './rowsswitch';
+import { rowsNumbers } from './rowsync';
 import { isStandalone } from './env';
-import { closeModal, openModal, renderModal, rerenderKeepScroll } from './page';
+import { closeModal, confirmBox, openModal, renderModal, rerenderKeepScroll } from './page';
 import { toast } from './toast';
 import { ML, EQL } from './library';
 import type { Tap } from './workstate';
@@ -399,6 +402,40 @@ export const REPORT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       }
     }
   },
+  /** Forget it, on the line that names a device the switch waits for: that device no longer counts until it is opened again. */
+  rowsForget(t) {
+    const dev = t && t.dataset ? t.dataset.dev : undefined;
+    if (!dev) return;
+    void forgetDevice(dev).then(ok => {
+      toast(
+        ok
+          ? 'That device no longer counts until it is opened again.'
+          : 'Could not forget that device. Nothing was changed.'
+      );
+      rerenderKeepScroll();
+    });
+  },
+  /** Switch back, once the rows decide: the account goes back to its documents deciding, asked first. */
+  rowsBack() {
+    confirmBox(
+      'Switch back?',
+      'Switch back to the earlier way of saving?\n\nKeep the app open until it says done, then open it on your other devices.',
+      'Switch back',
+      () => {
+        void switchBack().then(r => {
+          toast(
+            r === 'done'
+              ? 'Switched back. Open the app on your other devices.'
+              : r === 'unsent'
+                ? 'Not switched back: a change is still to be saved. Try again in a minute.'
+                : 'Could not switch back. Nothing was changed. Try again in a minute.'
+          );
+          if (r === 'done') cq(cloudPull);
+          rerenderKeepScroll();
+        });
+      }
+    );
+  },
   diagCopy() {
     const t = JSON.stringify(
       {
@@ -406,6 +443,7 @@ export const REPORT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         version: DISPLAY_VERSION,
         cloud: { on: cloud.on, status: cloud.status, err: cloud.err, last: cloud.last },
         rows: rowsDiag(),
+        rowsNumbers: rowsNumbers(),
         log: logBuf
       },
       null,

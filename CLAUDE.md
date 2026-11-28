@@ -3,7 +3,7 @@
 A hypertrophy and strength tracker for one lifter, V, used on a phone at the gym. It ships as a standalone
 installable web app: built from `src/` into one page, served by GitHub Pages at https://ironapp.org, working
 offline, with the log on the phone and an optional account that syncs it. Every pull request also publishes a
-preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r127, version 2.78.2, state schema v5.
+preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r128, version 2.79, state schema v5.
 
 The Claude artifact version was retired by V on 2026-09-27 (`OWNER.md` Done): never work on it or republish it.
 `cloudProvider()` still takes Claude's db when `window.claude` exists, because the sync suites use it as their
@@ -27,7 +27,8 @@ stand-in cloud.
 1. One release is one pull request. GitHub runs every suite in Chromium and in WebKit (the engine of every iPhone
    browser) and publishes the preview; V tries it on the phone and merges on GitHub's website. That run is the
    gate (V, 2026-11-02): every job green on the exact head commit, read from GitHub's API: the four shards in
-   Chromium, the four in WebKit and, since 2.78, the rows' SQL on a Postgres server (`sqltwo`, twice). It runs the list
+   Chromium, the four in WebKit, since 2.78 the rows' SQL on a Postgres server (`sqltwo`, twice) and, since 2.79, the
+   app's own account code on a Supabase test project (`supabase`, OWNER.md G1). It runs the list
    `npm test` runs (`tests/run.js --shard`), so the full local run is not repeated; locally, `npx tsc --noEmit -p .`,
    `npm run join:check`, `tests/hygiene.js` and every suite a change touches.
 2. A change a lifter can see gets a test that fails without it, written before the fix, and run on the build
@@ -78,8 +79,10 @@ stand-in cloud.
   r56: `normalize.ts` (the log as every build reads it), `machines.ts` (the one writer of a machine's name, and how
   two copies read one the app kept), `storage.ts` (the keys, where the save stands (`device`),
   the error log (`log`), Undo's steps, a log kept aside for another account, in IndexedDB as Undo's copies are) and
-  `sync.ts` (every write of the log, the account's documents, the sync notes, another tab, one workout open on two
-  phones, the account question); they reach the screens only through `fx` in `store.ts`, which `main.ts`
+  `sync.ts` (every write of the log, the account's documents, another tab, the account question), with the parts below
+  it that the account's rows share: `save.ts` (the save on the phone), `syncnotes.ts` (the sync notes), `edits.ts` (the
+  lifter's edits noted), `twoplaces.ts` (one workout open on two phones) and `firstjoin.ts` (a first sign-in's join);
+  they reach the screens only through `fx` in `store.ts`, which `main.ts`
   fills at start (`render`, `toast`, `ask`, `confirm`, the session's effects a moved screen calls, and, for `act`, hiding a toast's Undo once a later change is made, r64), and run
   nothing on import (`storageStart()`, `syncStart()`). The screens move here from r57 (phase 5): `view.ts` (the
   host that draws every tab into `#view`, and the parts the moved screens share), `act.ts` (the one way to change
@@ -158,24 +161,39 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   time decides, and between tabs the other tab's copy (2.76). Every time a phone writes is later than every time it
   has seen (`laterThanSeen`). These times move only for the lifter's change: what the app writes on its own (a fix
   made at start, its own bookkeeping, a name it keeps, a newer build's reading of an old log) is sent, but moves none
-  (`app` in act.ts, `editsNoted` and `seenAsIs` in sync.ts).
-- **The account's rows (2.78, first phase; `rows.ts`, `SUPABASE.md` Part 8; the design is in the project,
+  (`app` in act.ts, `editsNoted` and `seenAsIs` in edits.ts).
+- **The account's rows (2.78, first phase; `rows.ts` with `rowsnotes.ts`, `rowslog.ts` and `rowsmirror.ts`, `SUPABASE.md` Part 8; the design is in the project,
   claude/ironlog-2.78-design.md and its second part):** the account also holds one row per record, and the documents still decide
-  what the log is. `rows.ts` makes the rows say what the log says after each sync of the documents and never
-  changes the log (it never calls `setState`), never writes the document sync's notes, and sends its requests
+  what the log is. The rows' modules make the rows say what the log says after each sync of the documents and never
+  change the log (they never call `setState`), never write the document sync's notes, and send their requests
   outside the sync's queue; a failure turns it off until the app is opened again and is said in Settings > "More".
   What it sends is worked out from the log's content against the row it last knew, never from a note that a
   change happened. A row's time is the one the documents hold for the record. A row the account changed, or holds
   as the later copy, is left alone for a minute and a whole read of the documents before the log's copy is sent
   over it, and that is recorded; the wait is noted by the read that brings the changed row in (`takeIn`), whichever
-  part of the module asked for it. One pass runs at a time across a phone's tabs, on the notes as stored. The account joins every write itself (the trigger in Part 8): a phone never
+  part of the rows asked for it. One pass runs at a time across a phone's tabs, on the notes as stored. The account joins every write itself (the trigger in Part 8): a phone never
   decides a row's version by arrival. The layout row (`meta/layout`) says which layer decides and the level of
   build it asks for: a build that does not know it stops syncing and says to update (`rowsGate`, read whatever
   else failed; kept on the phone so the next app open knows before its first request; what cannot be read in it is
   read as more than the build knows). The SQL is one text in `SUPABASE.md` (the preview's is the live table's with the name changed);
   every suite reaches it through `tests/rowsdb.js`, a real Postgres engine, so no suite keeps a copy of the
-  account's rules in JavaScript. A rule added to `rows.ts` or to the SQL gets a copy with that rule broken that
-  must fail (`tests/rows.js`, `tests/sql-rows.js`).
+  account's rules in JavaScript. A rule added to the rows' modules or to the SQL gets a copy with that rule broken that
+  must fail (`tests/rows.js`, `tests/sql-rows.js`, `tests/sql-docs.js`, `tests/sql-errors.js`).
+- **Once the rows decide (2.79; `rowsync.ts`, `rowsapply.ts`, `rowsswitch.ts`, `rowsgate.ts`; the design is in the
+  project, claude/ironlog-2.79-design.md and its second part):** an account switches by itself at a daily check once
+  every device seen in 30 days is on a build that lets the rows decide and has had its clean days (three on the live
+  app, none on the preview: `CLEAN_DAYS` in config.ts); a record the documents took out with no
+  device's mark deleting it is a difference (V, 2026-11-27, decision 2); **Forget it** lets a device no longer used go.
+  The switch is one write guarded by the account's last change, made only where the log, the rows and the documents
+  were just proven equal and the documents are guarded (SUPABASE.md Part 9): from then a document write without
+  `back` is refused. A phone then syncs by the rows alone: each record by its content against the table, kept,
+  taken, joined or the later edit by its own version; the account's layout is heeded at every answer. Two different
+  workouts each stay on their own phone (decision 3). **Switch back** writes the log and the photo over every document, then the
+  layout back at the first phase's level with `made` kept and `hold`; every other phone crosses back however it learns
+  of it, reading the documents into its log with its own changes not yet in the rows laid over them. Two tabs of
+  one phone that change one record in the same moment keep the later copy whole (PENDING NEW-226).
+- **The app's error log (2.79, `errlog.ts`, SUPABASE.md Part 9):** only faults, cut to a fixed shape with nothing of
+  the log, a field, a name or an email; once a visit each, ten at most, signed in and online, never waited for.
 - **Numbers:** no number without a source in `docs/EVIDENCE.md`; a convention is labelled as one there and as a rule of thumb on screen. Studies are named in the Guide's Sources, not in tips (V, 2026-11-08).
   Trends are never shown as a 1RM; a muscle with no clear lift reads unclear, never 0%; weight lifted is never a
   percentage against last week; no projections. Deloads and lighter loads are whole steps, never under the bar on a
@@ -289,7 +307,7 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   a value worked out as the page is drawn; a fixed one is a `u-` class in the stylesheet (r65). Image tags in the
   script are written `\x3cimg`. Any new inline script, outside host or `eval` needs the Content Security Policy in
   `scripts/build.js` changed with it. Keep `window.__ironlog`: it is how the tests reach in.
-- **Tests:** a new check goes in the suite of the feature it checks, never in a suite named for a release (V, 2026-11-10, CA-1; `tests/hygiene.js` refuses a new one). A feature's rules (its spec) are built from the code, V's rulings decide, and where neither does, what a knowledgeable lifter expects; where the code and that disagree, the code is fixed with a test. V is asked only a real decision of taste, never to approve a spec (V, 2026-11-11, CA-1). Never weaken or delete an assertion to make it pass. Suites reach no outside service. A suite left out
+- **Tests:** a new check goes in the suite of the feature it checks, never in a suite named for a release (V, 2026-11-10, CA-1; `tests/hygiene.js` refuses a new one). A feature's rules (its spec) are built from the code, V's rulings decide, and where neither does, what a knowledgeable lifter expects; where the code and that disagree, the code is fixed with a test. V is asked only a real decision of taste, never to approve a spec (V, 2026-11-11, CA-1). Never weaken or delete an assertion to make it pass. Suites reach no outside service, but for `tests/supabase-real.js`, which runs only in its own job against the test project (OWNER.md G1). A suite left out
   of the WebKit run is in `WEBKIT_SKIP` in `tests/run.js`, with the reason.
 
 ## Releasing

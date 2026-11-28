@@ -269,7 +269,8 @@ function what(r) {
      of a copy of the SQL, and a behaviour above must then fail, or the same histories end differently in some order. */
   {
     const real = rowsSql();
-    const swap = (from, to) => { const out = {}; for (const k of Object.keys(real)) { if (!real[k].includes(from)) throw new Error('the SQL no longer holds the text a broken copy replaces: ' + from.slice(0, 60)); out[k] = real[k].split(from).join(to); } return out; };
+    // The joining rules are the rows' tables' (the live one and the preview's); the documents and their guard are left as they are.
+    const swap = (from, to) => { const out = {}; for (const k of ['records', 'records_preview']) { if (!real[k].includes(from)) throw new Error('the SQL no longer holds the text a broken copy replaces: ' + from.slice(0, 60)); out[k] = real[k].split(from).join(to); } return out; };
     const BROKEN = {
       'a mark ordered by its own time, not by the copy it names':
         swap(`if not ((coalesce(new.gone_saw, -1), coalesce(new.gone_saw_dev, ''), new.gone_good, new.gone_t, new.gone_dev)

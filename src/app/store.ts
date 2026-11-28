@@ -219,6 +219,8 @@ export interface CloudDoc {
   json: string;
   /** The time each of its records was last edited by the lifter, by the record's key, where a device knows it. */
   rt?: Record<string, number>;
+  /** Written by "Switch back" (rowsswitch.ts): the one mark the documents guard lets through while the rows decide. */
+  back?: true;
 }
 /** One document in the account, by path: read whole, and written whole only while it still holds what was read. */
 export interface CloudRef {
@@ -260,6 +262,8 @@ export interface CloudRows {
   digest(): Promise<unknown>;
   /** The rows changed since change number `since`, in order, without their copies, at most `most`: what a phone with no notes reads first. */
   list(since: number, most: number): Promise<unknown>;
+  /** Whether the account's documents are guarded once its rows decide (SUPABASE.md, Part 9): true where the guard is in place; absent on a backend that has no such call. */
+  guarded?(): Promise<unknown>;
 }
 /** The account's document store the sync uses: documents by path, a listing of a collection's documents, and, where
     the backend has them, the account's rows. */
@@ -267,6 +271,20 @@ export interface CloudDb {
   doc(path: string): CloudRef;
   collection(path: string): { get(): Promise<{ docs: (CloudSnap & { id: string })[] }> };
   rows?: CloudRows | undefined;
+  /** The app's own error log in the account, where the backend has one (errlog.ts). */
+  errors?: CloudErrors | undefined;
+}
+/** The account's error log: one error added, its row never read back; null where the account has no table for it. */
+interface CloudErrors {
+  add(row: {
+    version: string;
+    build: string;
+    screen: string;
+    area: string;
+    message: string;
+    stack: string;
+    browser: string;
+  }): Promise<unknown>;
 }
 /** A document store as a backend hands it over: scripts/cloud-supabase.js writes conditionally (`setIf`); the
     suites' stand-in, Claude's db (`cloudProvider`, sync.ts), writes plainly (`set`), and the sync gives it a
@@ -279,6 +297,7 @@ export interface CloudDbIn {
   };
   collection(path: string): { get(): Promise<{ docs: (CloudSnap & { id: string })[] }> };
   rows?: CloudRows | undefined;
+  errors?: CloudErrors | undefined;
 }
 
 /** The merge base a sync note keeps for a document (baseOf, sync.ts): per

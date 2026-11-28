@@ -47,7 +47,7 @@ export const DARK_BG = '#08090b';
 /** The version people see (V, 2026-10-16): 2.0 from build r49, the minor
     number up by one for each release merged, the major number for a large change,
     and a third number for a small release put in before the next minor one. */
-export const DISPLAY_VERSION = '2.78.2';
+export const DISPLAY_VERSION = '2.79';
 
 /** The build: shown beside the version in Diagnostics, problem reports and
     backups, so a report is matched to the exact code; also names the service
@@ -55,7 +55,7 @@ export const DISPLAY_VERSION = '2.78.2';
     Problem reports and Copy diagnostics carry it as `build` and the version
     people see as `version`; a backup keeps it under `version`, as every
     build before r49 wrote backups, so old and new backups read the same. */
-export const APP_VERSION = '2026.11.25-r127';
+export const APP_VERSION = '2026.11.28-r128';
 
 /** Version and build together, for Diagnostics and the recovery screen. */
 export const VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
@@ -140,6 +140,11 @@ export const THREE_URLS: readonly string[] =
     behind (scripts/cloud-supabase.js reads it through the build's
     placeholder). */
 export const NET_MS = 20000;
+
+/** The clean daily checks every device of an account needs, each on a day of its own, before the account switches by
+    itself to letting its rows decide (V, 2026-11-25 and 2026-11-27): three on the live app; none on the preview, so the
+    switch and Switch back can be tried there in one sitting with a copy of a log. */
+export const CLEAN_DAYS: Readonly<Record<'live' | 'preview', number>> = { live: 3, preview: 0 };
 
 /** The display modes only an installed copy of the app opens in, as one line of words: the app's (env.ts isStandalone)
     and the account script's reading of where it runs (scripts/cloud-supabase.js, through the build's placeholder),

@@ -22,3 +22,11 @@ jobs:
           URL=$(jq -r .url supabase.config.json)
           KEY=$(jq -r .key supabase.config.json)
           curl -fsS -X POST "$URL/rest/v1/rpc/ping" -H "apikey: $KEY" -H "Content-Type: application/json" -d '{}'
+      # The test project the workflow's job `supabase` uses (OWNER.md G1), once its secrets are set: free projects pause too.
+      - name: Ping the test project
+        env:
+          SUPA_TEST_URL: ${{ secrets.SUPA_TEST_URL }}
+          SUPA_TEST_ANON_KEY: ${{ secrets.SUPA_TEST_ANON_KEY }}
+        if: env.SUPA_TEST_URL != ''
+        run: |
+          curl -fsS -X POST "$SUPA_TEST_URL/rest/v1/rpc/ping" -H "apikey: $SUPA_TEST_ANON_KEY" -H "Content-Type: application/json" -d '{}'
