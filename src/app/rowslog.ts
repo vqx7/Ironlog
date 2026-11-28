@@ -13,7 +13,7 @@ import { B36, KIND, MIRRORED, ansText, keyOf, sumOf } from './rowsnotes';
 import type { Notes } from './rowsnotes';
 
 /** The kinds Recently deleted holds. */
-const TRASHED = new Set(['session', 'cardio', 'routine']);
+export const TRASHED: ReadonlySet<string> = new Set(['session', 'cardio', 'routine']);
 
 /** A record as the log holds it: its row's kind and id, where its time is kept (its document and its key there), the first characters of its copy's checksum, and where it is: in the log, or in Recently deleted with the day shown and whether it is a copy put aside. The profile photo, which is in no document, carries its copy and its time itself. */
 export interface Mine {
@@ -37,7 +37,7 @@ const docSeen = new Map<string, { h: string | undefined; recs: Mine[] }>();
 export const bodyOf = (x: unknown): string => canon(x);
 
 /** One document's records, as rows. */
-function recsOf(doc: string, D: Rec): Mine[] {
+export function recsOf(doc: string, D: Rec): Mine[] {
   const out: Mine[] = [];
   const live = new Set<string>();
   for (const list in KIND) {
@@ -180,7 +180,8 @@ export function logNow(N: Notes): { ch: Record<string, Rec>; mine: Map<string, M
 /** The keys to compare: every record of the log, and every row of a kind this build mirrors. */
 export function keysOf(N: Notes, L: { mine: Map<string, Mine>; photo: boolean }): Set<string> {
   const keys = new Set<string>(L.mine.keys());
-  for (const k in N.rows) if (MIRRORED.has(k.slice(0, k.indexOf('/'))) && (L.photo || k !== 'photo/photo')) keys.add(k);
+  for (const k in N.rows)
+    if (MIRRORED.has(k.slice(0, k.indexOf('/'))) && (L.photo || k !== 'photo/photo') && k !== 'core/order') keys.add(k);
   return keys;
 }
 

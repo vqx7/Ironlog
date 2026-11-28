@@ -1264,11 +1264,11 @@ async function rows_first_phase() {
   const sess = () => rows.filter(r => r.kind === 'session').map(r => r.id + ':' + JSON.parse(r.body).notes + ':' + (live(r) ? 'log' : 'deleted')).sort();
   more = await A.more();
   ok(JSON.stringify(sess()) === JSON.stringify(['r1:edited before the tables:log', 'r2:two:log']) && rows.some(r => r.kind === 'meta' && r.id === 'layout') && rows.filter(r => r.kind === 'device').length === 1, 'with the tables: each session of the log is a row, with the layout and this phone\'s own row', { sess: sess(), kinds: [...new Set(rows.map(r => r.kind))] });
-  ok(more.line === 'Rows check: 1 clean day, 0 differences, 0 removed by another phone' && more.copy, 'Settings > "More" shows "Rows check: 1 clean day, 0 differences, 0 removed by another phone" and "Copy diagnostics" under it', more);
+  ok(more.line === 'Rows check: 1 of 3 clean days, 0 differences, 0 removed with no delete' && more.copy, 'Settings > "More" shows "Rows check: 1 of 3 clean days, 0 differences, 0 removed with no delete" and "Copy diagnostics" under it', more);
   await A.page.click('#view [data-mkey="more"] [data-act="diagCopy"]', { force: true }).catch(async () => { await A.ev(() => { document.querySelectorAll('#view details').forEach(d => { d.open = true; }); }); await A.page.click('#view [data-mkey="more"] [data-act="diagCopy"]'); });
   await wait(300);
   const sheet = await A.ev(() => { const t = document.querySelector('#modal textarea'); return t ? t.value : ''; });
-  ok(/"rows": \{\s+"line": "Rows check: 1 clean day, 0 differences, 0 removed by another phone"/.test(sheet), 'the "Diagnostics" sheet holds the same line', sheet.slice(0, 300));
+  ok(/"rows": \{\s+"line": "Rows check: 1 of 3 clean days, 0 differences, 0 removed with no delete"/.test(sheet), 'the "Diagnostics" sheet holds the same line', sheet.slice(0, 300));
   await A.ev(() => { const L = window.__ironlog; if (L.ui.modal) { const x = document.querySelector('#modal [data-act="mClose"], #modal .sheet-h [aria-label="Close"]'); if (x) x.click(); } L.ui.tab = 'today'; L.render(); });
 
   // ---- An edit and a delete made in the app reach the rows; the log and the documents are what they would be without rows.
@@ -1286,11 +1286,11 @@ async function rows_first_phase() {
   await B.signIn('rows@example.com');
   rows = await rowsOf();
   const bLog = await B.ev(() => window.__ironlog.state.sessions.map(s => s.id + ':' + s.notes).join());
-  ok(bLog === 'r1:edited with the tables' && JSON.stringify(rows.filter(r => r.kind !== 'device')) === before && rows.filter(r => r.kind === 'device').length === 2 && (await B.more()).line === 'Rows check: 1 clean day, 0 differences, 0 removed by another phone', 'a second phone signed in: the same log, no row of the log written again, its own device row added, its check clean', { bLog, devices: rows.filter(r => r.kind === 'device').length, line: (await B.more()).line, wait: await B.ev(() => JSON.parse(localStorage.getItem('ironlog.v1.rows') || '{}').wait), changed: rows.filter(r => r.kind !== 'device' && !before.includes(JSON.stringify(r))).map(r => r.kind + '/' + r.id) });
+  ok(bLog === 'r1:edited with the tables' && JSON.stringify(rows.filter(r => r.kind !== 'device')) === before && rows.filter(r => r.kind === 'device').length === 2 && (await B.more()).line === 'Rows check: 1 of 3 clean days, 0 differences, 0 removed with no delete', 'a second phone signed in: the same log, no row of the log written again, its own device row added, its check clean', { bLog, devices: rows.filter(r => r.kind === 'device').length, line: (await B.more()).line, wait: await B.ev(() => JSON.parse(localStorage.getItem('ironlog.v1.rows') || '{}').wait), changed: rows.filter(r => r.kind !== 'device' && !before.includes(JSON.stringify(r))).map(r => r.kind + '/' + r.id) });
 
-  // ---- The account's layout asks for a newer build: this build stops syncing and says to update; the log stays.
+  // ---- The account's layout asks for a build newer than this one: this build stops syncing and says to update; the log stays.
   const layout = JSON.parse(rows.find(r => r.kind === 'meta' && r.id === 'layout').body);
-  await R.call(U.id, 'records', 'push', [[{ kind: 'meta', id: 'layout', body: JSON.stringify({ ...layout, decides: 'rows', level: 2 }), t: Date.now() + 1000, dev: 'dev-new', a: 0 }]]);
+  await R.call(U.id, 'records', 'push', [[{ kind: 'meta', id: 'layout', body: JSON.stringify({ ...layout, decides: 'rows', level: 3 }), t: Date.now() + 1000, dev: 'dev-new', a: 0 }]]);
   const docsBefore = JSON.stringify([...fake.rows.values()].filter(r => r.user_id === U.id).map(r => r.data.json));
   await A.ev(() => { const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 'r1').notes = 'typed after the switch'; }); });
   await wait(2500); await A.pull(); await A.pull();
@@ -1305,8 +1305,93 @@ async function rows_first_phase() {
   await fake.close();
 }
 
+/* ---------- S-35: the switch to the rows by itself, on the built app, and Switch back (2.79). The live build, one
+   phone, the SQL of SUPABASE.md Parts 8 and 9 behind the stand-in server: Settings > "More" counts the clean days, the
+   account switches by itself at the third, its documents are then refused, a change is saved as its row, a second
+   phone signs in to it, and Switch back by taps puts the documents back with everything in them. ---------- */
+async function rows_switch() {
+  const ok = okAs('S-35');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ironlog-switch-'));
+  fs.cpSync(SRC, tmp, { recursive: true });
+  const PW = 'correct horse 9';
+  const fake = await start(tmp);
+  const ip = path.join(tmp, 'index.html');
+  fs.writeFileSync(ip, H.cspFix(fs.readFileSync(ip, 'utf8').replace(/"url":"https:\/\/[a-z0-9]+\.supabase\.co"/, `"url":"${fake.base}"`), fake.base));
+  const APP = fake.base + '/ironlog/';
+  const R = await fake.recordsOn();
+  const browser = await H.engine.launch();
+  const errors = [];
+  const DAY = 24 * 3600000;
+  let now = Date.now();
+  async function device() {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, serviceWorkers: 'block' });
+    await quietHibp(ctx);
+    const page = await ctx.newPage();
+    // The phone's clock, moved on a day at a time between visits: the daily check counts days by it.
+    await page.clock.setSystemTime(now);
+    page.on('pageerror', e => errors.push('page error: ' + e.message));
+    page.on('console', m => { if (m.type() === 'error' && !/Failed to load resource|status of 4\d\d/.test(m.text())) errors.push('console: ' + m.text()); });
+    const ready = () => page.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart, null, { timeout: 15000 });
+    await page.goto(APP); await ready();
+    await page.evaluate(() => { localStorage.setItem('ironlog.v1.installLater', '1'); localStorage.setItem('ironlog.v1.tipWake', '1'); const L = window.__ironlog; L.state.settings.onboarded = true; L.saveNow(); L.render(); });
+    const D = { ctx, page, ev: (f, a) => page.evaluate(f, a) };
+    D.settled = async () => {
+      const synced = await page.waitForFunction(() => { const c = window.__ironlog.cloudState(); return c.on && c.status === 'synced'; }, null, { timeout: 15000 }).then(() => true, () => false);
+      await wait(300);
+      await page.waitForFunction(() => !window.__ironlog.rowsBusy(), null, { timeout: 15000 }).catch(() => {});
+      return synced;
+    };
+    D.signIn = async email => {
+      await page.click('#saveState'); await wait(250); await page.click('#modal [data-act="acctOpen"][data-mode="signin"]'); await wait(200);
+      await page.fill('#modal [data-abind="email"]', email); await page.fill('#modal [data-abind="pw"]', PW);
+      await page.click('#modal [data-act="acctSubmit"]');
+      await page.waitForFunction(() => { const m = window.__ironlog.ui.modal; return !m || !m.busy; }, null, { timeout: 10000 });
+      await D.settled(); await wait(1500); await D.settled();
+      await page.evaluate(() => { if (window.__ironlog.ui.modal) { const x = document.querySelector('#modal [data-act="mClose"], #modal .sheet-h [aria-label="Close"]'); if (x) x.click(); } });
+    };
+    /** The next day: the clock a day on, the app opened again. */
+    D.nextDay = async () => { now += DAY; await page.clock.setSystemTime(now); await page.reload(); await ready(); await wait(1200); await D.settled(); await wait(800); await D.settled(); };
+    D.more = () => page.evaluate(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.render(); document.querySelectorAll('#view details').forEach(d => { d.open = true; }); const line = document.getElementById('rowsLine'); return { line: line ? line.textContent : null, back: !!document.querySelector('#view [data-act="rowsBack"]') }; });
+    return D;
+  }
+  const mk = (id, date, note) => ({ id, date, dayIdx: 0, dayId: null, dayName: 'Day', routineId: '', free: true, notes: note, ex: [{ exId: 'bench', sets: [{ w: 100, r: 5, rir: 2, warm: false, drop: false }] }] });
+  const U = fake.addUser('switch@example.com', PW);
+  const layout = async () => { const L = (await R.rows(U.id, 'records')).find(r => r.kind === 'meta' && r.id === 'layout'); return L ? JSON.parse(L.body) : null; };
+  const docNote = id => { for (const [k, r] of fake.rows) if (k.startsWith(U.id + ' ')) { try { const j = JSON.parse(r.data.json); const x = (j.sessions || []).find(z => z.id === id); if (x) return x.notes; } catch (e) { /* a document that is not a log */ } } return null; };
+
+  const A = await device();
+  await A.ev(s => { const L = window.__ironlog; L.state.sessions = s; L.state = L.normalize(L.state); L.invalidate(); L.saveNow(); L.render(); }, [mk('q1', '2026-11-03', 'one'), mk('q2', '2026-10-20', 'two')]);
+  await A.signIn('switch@example.com');
+  const days = [(await A.more()).line];
+  await A.nextDay(); days.push((await A.more()).line);
+  ok(/^Rows check: 1 of 3 clean days, 0 differences, 0 removed with no delete/.test(days[0]) && /^Rows check: 2 of 3 clean days/.test(days[1]) && (await layout()).decides === 'docs', 'Settings > "More" counts the clean days toward the switch, and the account does not switch before the third', days);
+  await A.nextDay();
+  const L3 = await layout(), m3 = await A.more();
+  ok(L3.decides === 'rows' && L3.level === 2 && /^Saving by rows since /.test(m3.line) && m3.back, 'on the third clean day the account switches by itself, and Settings says so with **Switch back**', { L3, m3 });
+  await A.ev(() => { const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 'q1').notes = 'edited once the rows decide'; }); });
+  await wait(1500); await A.settled();
+  const row = (await R.rows(U.id, 'records')).find(r => r.kind === 'session' && r.id === 'q1');
+  ok(row && JSON.parse(row.body).notes === 'edited once the rows decide' && docNote('q1') === 'one', 'a change is then saved as its row, and the documents stay as they were at the switch', { row: row && row.body, doc: docNote('q1') });
+  const B = await device();
+  await B.signIn('switch@example.com');
+  ok((await B.ev(() => window.__ironlog.state.sessions.find(s => s.id === 'q1').notes)) === 'edited once the rows decide', 'a second phone signed in takes the log from the rows', await B.ev(() => (window.__ironlog.state.sessions.find(s => s.id === 'q1') || {}).notes));
+  await A.page.click('#view [data-act="rowsBack"]'); await wait(300);
+  await A.page.click('#modal [data-act="mOk"]');
+  await A.page.waitForFunction(() => (document.querySelector('#toast') || {}).textContent && /Switched back/.test(document.querySelector('#toast').textContent), null, { timeout: 20000 }).catch(() => {});
+  await A.settled();
+  const Lb = await layout();
+  ok(Lb.decides === 'docs' && Lb.level === 1 && Lb.hold === true && Lb.made === L3.made && docNote('q1') === 'edited once the rows decide', 'Switch back by taps: the documents hold the log again, the layout says the documents decide, with hold and the same made', { Lb, doc: docNote('q1') });
+  await B.ev(() => window.__ironlog.sync()); await wait(1500); await B.settled();
+  await B.ev(() => { const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 'q2').notes = 'typed on B after Switch back'; }); });
+  await wait(2000); await B.settled();
+  ok(docNote('q2') === 'typed on B after Switch back' && !(await B.ev(() => /^Saving by rows/.test((document.getElementById('rowsLine') || {}).textContent || ''))), 'the other phone crosses back and saves to the documents again', docNote('q2'));
+  ok(errors.length === 0, 'no error on any page', errors.slice(0, 3));
+  await browser.close();
+  await fake.close();
+}
+
 (async () => {
-  for (const [name, f] of [['r55b', from_r55b], ['r55-1b', from_r55_1b], ['r56-1b', from_r56_1b], ['r65b', from_r65b], ['r80b', from_r80b], ['rows', rows_first_phase]]) {
+  for (const [name, f] of [['r55b', from_r55b], ['r55-1b', from_r55_1b], ['r56-1b', from_r56_1b], ['r65b', from_r65b], ['r80b', from_r80b], ['rows', rows_first_phase], ['switch', rows_switch]]) {
     if (ONLY && !ONLY.includes(name)) continue;
     await f();
   }

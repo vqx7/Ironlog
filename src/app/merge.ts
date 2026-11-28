@@ -447,6 +447,9 @@ export function mergeWorkout(
   stat: Stat
 ): DraftLike {
   const out: DraftLike = { ...local, ex: mergeExercises(base.ex, local.ex, remote.ex, remoteWins, stat, 'place') };
+  /* The workout's own fields (its date, its notes, its day) field by field against the copy agreed, as a session's
+     are (mergeSession): a note typed on one phone while the other ticks sets is kept. */
+  mergeFields(rec(out) || {}, rec(base), rec(local) || {}, rec(remote) || {}, ['ex', 'id'], remoteWins, stat);
   // The next sets adjusted from a set stay on the rows under it when rows were added above it: its place follows its row.
   for (const b of out.ex) {
     const a = b.adj;

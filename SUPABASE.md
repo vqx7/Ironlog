@@ -748,6 +748,162 @@ What each part does:
 
 Deleting an account deletes its rows in both tables (`on delete cascade`). To clear the preview's rows only: SQL Editor, `delete from public.records_preview where user_id = auth.uid();` does nothing there (the editor is no app account); use Table Editor > records_preview and delete your rows.
 
+## Part 9: the documents guarded once the rows decide, and the app's own error log (added in 2.79, about 3 minutes)
+
+From 2.79 an account switches to its rows by itself, once its checks are clean (Part 8). From then on its documents are frozen: a phone on an older build can no longer save to them, and says so, keeping its log, so nothing is saved where no phone on 2.79 reads. "Switch back" (Settings > "More") is the one write that may go through. The same paste adds the app's own error log: what broke, on which build and screen, never anything of the log, a name or an email.
+
+1. The preview's first. Supabase > SQL Editor > New query. Paste this and Run:
+
+```sql
+-- The preview build's copy of the documents guard and of the error log: the same text under the preview's names
+-- (2.79), so nothing tried in a preview reaches the live tables.
+create or replace function public.docs_preview_frozen() returns trigger language plpgsql set search_path = '' as $$
+declare lay text;
+begin
+  select r.body into lay from public.records_preview r where r.user_id = new.user_id and r.kind = 'meta' and r.id = 'layout';
+  if lay is not null and (lay::jsonb ->> 'decides') is distinct from 'docs' and not (new.data ? 'back') then
+    raise exception 'docs_frozen' using errcode = 'P0001';
+  end if;
+  return new;
+end $$;
+revoke all on function public.docs_preview_frozen() from public, anon, authenticated;
+create trigger docs_preview_frozen before insert or update on public.docs_preview for each row execute function public.docs_preview_frozen();
+
+create or replace function public.docs_preview_guarded() returns boolean language sql stable set search_path = '' as $$ select true $$;
+revoke all on function public.docs_preview_guarded() from public, anon;
+grant execute on function public.docs_preview_guarded() to authenticated;
+
+create table public.app_errors_preview (
+  id bigint generated always as identity primary key,
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  at timestamptz not null default now(),
+  version text not null check (char_length(version) between 1 and 16),
+  build text not null check (char_length(build) between 1 and 40),
+  screen text not null check (char_length(screen) between 1 and 40),
+  area text not null check (char_length(area) between 1 and 24),
+  message text not null check (char_length(message) between 1 and 200),
+  stack text not null default '' check (char_length(stack) <= 400),
+  browser text not null default '' check (char_length(browser) <= 160)
+);
+create index app_errors_preview_at on public.app_errors_preview (at);
+create index app_errors_preview_user_at on public.app_errors_preview (user_id, at);
+alter table public.app_errors_preview enable row level security;
+create policy "add own" on public.app_errors_preview for insert to authenticated with check ((select auth.uid()) = user_id);
+revoke all on public.app_errors_preview from anon, authenticated;
+grant insert (version, build, screen, area, message, stack, browser) on public.app_errors_preview to authenticated;
+
+create or replace function public.app_errors_preview_cap() returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  perform pg_advisory_xact_lock(hashtextextended('app_errors_preview ' || new.user_id::text, 0));
+  if (select count(*) from public.app_errors_preview e where e.user_id = new.user_id and e.at > now() - interval '1 day') >= 50 then
+    return null;
+  end if;
+  new.at := now();
+  return new;
+end $$;
+revoke all on function public.app_errors_preview_cap() from public, anon, authenticated;
+create trigger app_errors_preview_cap before insert on public.app_errors_preview for each row execute function public.app_errors_preview_cap();
+
+create or replace function public.app_errors_preview_trim() returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  delete from public.app_errors_preview e where e.at < now() - interval '90 days';
+  return null;
+end $$;
+revoke all on function public.app_errors_preview_trim() from public, anon, authenticated;
+create trigger app_errors_preview_trim after insert on public.app_errors_preview for each statement execute function public.app_errors_preview_trim();
+```
+
+2. Then the live tables, in a new query. Paste this and Run:
+
+```sql
+-- Once an account's rows decide (2.79), its documents are frozen: a write to them is refused, so a phone on an older
+-- build cannot save where no phone on 2.79 reads, and says so, keeping its log. A write that carries `back` is
+-- "Switch back" itself, which writes the log over the documents before the account goes back to them.
+create or replace function public.docs_frozen() returns trigger language plpgsql set search_path = '' as $$
+declare lay text;
+begin
+  select r.body into lay from public.records r where r.user_id = new.user_id and r.kind = 'meta' and r.id = 'layout';
+  if lay is not null and (lay::jsonb ->> 'decides') is distinct from 'docs' and not (new.data ? 'back') then
+    raise exception 'docs_frozen' using errcode = 'P0001';
+  end if;
+  return new;
+end $$;
+revoke all on function public.docs_frozen() from public, anon, authenticated;
+create trigger docs_frozen before insert or update on public.docs for each row execute function public.docs_frozen();
+
+-- What the app asks before it lets an account switch: the guard above is in place.
+create or replace function public.docs_guarded() returns boolean language sql stable set search_path = '' as $$ select true $$;
+revoke all on function public.docs_guarded() from public, anon;
+grant execute on function public.docs_guarded() to authenticated;
+
+-- The app's own error log (2.79): what broke, on which build and screen; never what the lifter typed or logged,
+-- and no name or email. Signed-in phones may only add rows; nobody reads them through the app.
+create table public.app_errors (
+  id bigint generated always as identity primary key,
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  at timestamptz not null default now(),
+  version text not null check (char_length(version) between 1 and 16),
+  build text not null check (char_length(build) between 1 and 40),
+  screen text not null check (char_length(screen) between 1 and 40),
+  area text not null check (char_length(area) between 1 and 24),
+  message text not null check (char_length(message) between 1 and 200),
+  stack text not null default '' check (char_length(stack) <= 400),
+  browser text not null default '' check (char_length(browser) <= 160)
+);
+create index app_errors_at on public.app_errors (at);
+create index app_errors_user_at on public.app_errors (user_id, at);
+alter table public.app_errors enable row level security;
+create policy "add own" on public.app_errors for insert to authenticated with check ((select auth.uid()) = user_id);
+revoke all on public.app_errors from anon, authenticated;
+grant insert (version, build, screen, area, message, stack, browser) on public.app_errors to authenticated;
+
+-- At most 50 rows an account a day: past that a row is dropped without an error, so a phone never retries it.
+-- The time is the database's. Runs with the owner's rights to count rows nobody may read.
+create or replace function public.app_errors_cap() returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  perform pg_advisory_xact_lock(hashtextextended('app_errors ' || new.user_id::text, 0));
+  if (select count(*) from public.app_errors e where e.user_id = new.user_id and e.at > now() - interval '1 day') >= 50 then
+    return null;
+  end if;
+  new.at := now();
+  return new;
+end $$;
+revoke all on function public.app_errors_cap() from public, anon, authenticated;
+create trigger app_errors_cap before insert on public.app_errors for each row execute function public.app_errors_cap();
+
+-- Rows older than 90 days are deleted whenever any is added.
+create or replace function public.app_errors_trim() returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  delete from public.app_errors e where e.at < now() - interval '90 days';
+  return null;
+end $$;
+revoke all on function public.app_errors_trim() from public, anon, authenticated;
+create trigger app_errors_trim after insert on public.app_errors for each statement execute function public.app_errors_trim();
+```
+
+   To check: New query, `select public.docs_guarded(), public.docs_preview_guarded();` answers `true` twice. Open the preview signed in: Settings > "More" shows the rows check line with its count of clean days.
+
+3. The errors, when you want to read them: New query, paste this, Run, then **Save** it as "App errors":
+
+```sql
+select version, area, message, count(*) as times, count(distinct user_id) as accounts, max(at) as last, min(stack) as stack
+from public.app_errors where at > now() - interval '7 days'
+group by version, area, message order by times desc, last desc;
+```
+
+4. Which accounts' rows decide (read it before any revert of 2.79: never revert while any does, **Switch back** first): New query, paste this, Run, then **Save** it as "Accounts on rows":
+
+```sql
+select u.email, r.body::jsonb ->> 'decides' as decides, r.body::jsonb ->> 'level' as level, r.body::jsonb ->> 'hold' as held_back
+from public.records r join auth.users u on u.id = r.user_id
+where r.kind = 'meta' and r.id = 'layout' order by decides desc, u.email;
+```
+
+What each part does:
+- **The guard** (`docs_frozen`). A write to an account's documents is refused, with the name `docs_frozen`, while the account's layout says its rows decide, unless the write carries `back`. Another account, whose rows do not decide, writes as before. A layout that cannot be read refuses the write.
+- **The check** (`docs_guarded`). The app asks it before an account switches: an account whose project has no guard never switches.
+- **The error log.** A signed-in phone may only add rows, and only the columns listed: no account can set the time, the id or another account's id, and nobody reads, changes or deletes a row through the app. At most 50 rows an account a day, the rest dropped with no error; rows older than 90 days are deleted whenever a row is added. Deleting an account deletes its rows.
+
 ## Who can see the data
 
 - Other users: never. The rule in step 6 is enforced by the database for every request.

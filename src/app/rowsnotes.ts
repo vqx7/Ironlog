@@ -4,6 +4,7 @@
    and are forgotten wherever the document sync's notes stop describing the log on this phone (rowsForget). */
 
 import { NET_MS } from './config';
+import { today } from './util';
 import { arr, parseJson, rec } from './records';
 import type { Rec } from './records';
 import { md5 } from './md5';
@@ -15,8 +16,9 @@ import { KEY, device, log, prefDel, prefGet, prefSet } from './storage';
 export const ROWS_KEY = KEY + '.rows';
 /** The key the account's layout is kept under, so a build that must not sync knows it when the app is opened. */
 const LAYOUT_KEY = ROWS_KEY + '.layout';
-/** The level of sync a build has: 1 writes the rows beside the documents, which decide. An account whose layout asks for more is one this build cannot sync. */
-export const LEVEL = 1;
+/** The level of sync a build has: 1 writes the rows beside the documents, which decide; 2 lets the rows decide once
+    an account switches to them. An account whose layout asks for more is one this build cannot sync. */
+export const LEVEL = 2;
 /** The characters of the account's checksum the notes keep of each copy. */
 const SUM_LEN = 12;
 /** The rows of one read, and of one write; a write also stays under WRITE_BYTES of copies. */
@@ -25,15 +27,19 @@ const PAGE = 500,
   WRITE_BYTES = 400000;
 /** The findings kept for Diagnostics. */
 const FIND_MAX = 20;
+/** The daily checks a device keeps and its row carries. */
+const DAYS_KEPT = 7;
 /** A change number above any the account can hold: a read from it answers with the account's last number and layout alone. */
 const PAST_ALL = Number.MAX_SAFE_INTEGER;
 /** The base a time is written in, in the notes and in a finding. */
 export const B36 = 36;
-/** The words of a row's line in the notes: one with a deletion mark, and one whose device or count of app writes is not the usual none. */
+/** The words of a row's line in the notes: one with a deletion mark (a word more where it keeps the checksum of a copy deleted for good), and one whose device or count of app writes is not the usual none. */
 const WORDS_MARKED = 9,
   WORDS_NAMED = 4;
 /** Why the rows are off on an account whose rows' SQL was never run: nothing is asked of it again this visit, and nothing is shown. */
 export const NO_TABLE = 'not set up';
+/** The last character a single UTF-16 unit holds. */
+const UNIT_TOP = 0xffff;
 
 /** The lists of the log whose records are rows, each with its rows' kind. */
 export const KIND: Readonly<Record<string, string>> = {
@@ -59,6 +65,8 @@ export interface Held {
   good: boolean;
   day: string;
   clash: boolean;
+  /** Of a row deleted for good, whose copy the account no longer holds: the checksum of the copy its mark named, by which a copy only put back is known. */
+  gs?: string | undefined;
 }
 /** Something the daily check or a write found, kept for Diagnostics: when, the record, what happened, and both sides as text. */
 export interface Finding {
@@ -68,7 +76,24 @@ export interface Finding {
   mine: string;
   theirs: string;
 }
-/** The rows' notes: whose account and which log they describe (the document notes' epoch), the id of the account's layout, the last change number read, each row as held, the records left alone since a time, the daily check, the findings, the day the device's own row was last written, and the profile photo's checksum with the edit time and length it was worked out for. */
+/** One daily check, as a device's row carries it: its day, whether the account's checksum was the notes' that day,
+    and what was found that day: the differences, and of them the records the documents took out with no device
+    deleting them. Clean when the checksum matched and nothing was found. */
+export interface Day {
+  d: string;
+  ok: boolean;
+  diffs: number;
+  gone: number;
+}
+/** Another device of the account as its own row last said: the level of sync its build has, its version's name, its
+    last daily checks, and, once forgotten (Forget it), the time it was last seen then; null while it counts. */
+interface DevSeen {
+  level: number;
+  ver: string;
+  days: Day[];
+  forgot: number | null;
+}
+/** The rows' notes: whose account and which log they describe (the document notes' epoch), the id of the account's layout, the last change number read, each row as held, the records left alone since a time, the daily check, the findings, the day the device's own row was last written, and the profile photo's checksum with the edit time and length it was worked out for. Also the last daily checks (`days`), the other devices as their rows say (`devs`), and the records the document sync took out of the log, since when (`gone`): each is a difference unless a device's mark deletes it within the wait. */
 export interface Notes {
   acct: string;
   ep: number;
@@ -80,14 +105,18 @@ export interface Notes {
   find: Finding[];
   devDay: string | null;
   ph: { at: number; len: number; s: string } | null;
+  days: Day[];
+  devs: Record<string, DevSeen>;
+  gone: Record<string, number>;
 }
 
-/** What the document sync tells this module at start: its notes' epoch (which log they describe), whether it holds anything unsent, when the last whole read of the account it took in was asked for, and how it is told that the account needs a newer build. */
+/** What the document sync tells this module at start: its notes' epoch (which log they describe), whether it holds anything unsent, when the last whole read of the account it took in was asked for, how it is told that the account needs a newer build, and each document's last writer as that read found it (the switch's gate, rowsgate.ts). */
 export interface Ctx {
   ep(): number;
   unsent(): boolean;
   pulledAt(): number;
   stop(): void;
+  writers(): Readonly<Record<string, { dev: string; at: number }>>;
 }
 let ctx: Ctx | null = null;
 /** The notes in memory, for the account and log they were read for. */
@@ -98,6 +127,8 @@ let off: string | null = null;
 let blocked = false;
 /** Whether the account's layout, as an answer last said, gives the rows the say over the log: the first phase's pass then does nothing more. */
 let decide = false;
+/** The account's layout as an answer last carried it, its text whole: a layout written anew keeps every field of it. */
+let layoutBody: string | null = null;
 /** The account `blocked` was last worked out for, and the layout as kept on the phone (LAYOUT_KEY) when this page last read or wrote it. */
 let layoutFor: string | null = null;
 let layoutText: string | null = null;
@@ -111,13 +142,14 @@ let written: string | null = null;
 function heed(L: { decides: string; level: number } | null): void {
   const was = blocked;
   blocked = needsNewer(L);
-  decide = !!L && L.decides !== 'docs';
+  // The rows decide here only where this build can sync by them: a layout that asks for more stops it whatever it says.
+  decide = !!L && L.decides === 'rows' && !blocked;
   layoutFor = cloud.uid;
   /* Kept on the phone for the account: the next time the app is opened it knows before its first request that it
      must not sync, and does not read the documents into the log or send what it holds while the layout is asked for. */
   if (cloud.uid) {
     const text = JSON.stringify({ acct: cloud.uid, decides: L ? L.decides : 'docs', level: L ? L.level : 1 });
-    if (text !== layoutText && (blocked || layoutText !== null)) prefSet(LAYOUT_KEY, text);
+    if (text !== layoutText && (blocked || decide || layoutText !== null)) prefSet(LAYOUT_KEY, text);
     layoutText = text;
   }
   if (blocked && !was && ctx) ctx.stop();
@@ -152,7 +184,7 @@ export const ansText = (v: unknown): string => (typeof v === 'string' ? v : '');
 export const sumOf = (body: string): string => md5(body).slice(0, SUM_LEN);
 
 /** A row as the account answers with it, as the notes keep it. */
-function heldOf(x: Rec): Held {
+export function heldOf(x: Rec): Held {
   return {
     t: ansNum(x['t']),
     dev: ansText(x['dev']),
@@ -170,7 +202,18 @@ export function placeOf(h: Held): 'log' | 'trash' | 'good' {
   if (h.saw === null || h.saw !== h.t || h.sawDev !== h.dev) return 'log';
   return h.good ? 'good' : 'trash';
 }
-const sameHeld = (a: Held | undefined, b: Held): boolean =>
+/** A row as the notes keep it once an answer brings it, `was` the note it replaces: a row deleted for good keeps the
+    checksum of the copy its mark named, which the account drops with the copy. */
+export function heldAfter(x: Rec, was: Held | undefined): Held {
+  const h = heldOf(x);
+  if (placeOf(h) === 'good' && !h.s && was) {
+    const gs = was.s || was.gs;
+    if (gs) h.gs = gs;
+  }
+  return h;
+}
+/** Whether two notes of a row say the same: its version, its copy and its mark. */
+export const sameHeld = (a: Held | undefined, b: Held): boolean =>
   !!a &&
   a.t === b.t &&
   a.dev === b.dev &&
@@ -196,7 +239,8 @@ export function heldText(h: Held): string {
       word(h.sawDev),
       h.good ? 1 : 0,
       h.day,
-      h.clash ? 1 : 0
+      h.clash ? 1 : 0,
+      ...(h.gs ? [h.gs] : [])
     ].join(' ');
   return h.dev === '' && h.a === 0
     ? h.t.toString(B36) + ' ' + h.s
@@ -207,12 +251,13 @@ function heldIn(v: unknown): Held | null {
   if (typeof v !== 'string') return null;
   const p = v.split(' ');
   const plain = p.length === 2;
-  if (!plain && p.length !== WORDS_NAMED && p.length !== WORDS_MARKED) return null;
-  const [t36 = '', w1 = '', w2 = '', w3 = '', saw36 = '', sawWord = '', good = '', day = '', clash = ''] = p;
+  const marked = p.length === WORDS_MARKED || p.length === WORDS_MARKED + 1;
+  if (!plain && p.length !== WORDS_NAMED && !marked) return null;
+  const [t36 = '', w1 = '', w2 = '', w3 = '', saw36 = '', sawWord = '', good = '', day = '', clash = '', gs = ''] = p;
   const t = parseInt(t36, B36),
     a = plain ? 0 : Number(w2);
   if (!Number.isFinite(t) || !Number.isFinite(a)) return null;
-  const saw = p.length === WORDS_MARKED ? parseInt(saw36, B36) : null;
+  const saw = marked ? parseInt(saw36, B36) : null;
   if (saw !== null && !Number.isFinite(saw)) return null;
   let dev: string, sawDev: string;
   try {
@@ -223,7 +268,9 @@ function heldIn(v: unknown): Held | null {
     log('rows-notes', e);
     return null;
   }
-  return { t, dev, a, s: plain ? w1 : w3, saw, sawDev, good: good === '1', day, clash: clash === '1' };
+  const h: Held = { t, dev, a, s: plain ? w1 : w3, saw, sawDev, good: good === '1', day, clash: clash === '1' };
+  if (gs) h.gs = gs;
+  return h;
 }
 
 /* ---------- the notes ---------- */
@@ -238,8 +285,54 @@ const fresh = (acct: string, ep: number): Notes => ({
   chk: { day: null, clean: 0, diffs: 0, removed: 0 },
   find: [],
   devDay: null,
-  ph: null
+  ph: null,
+  days: [],
+  devs: {},
+  gone: {}
 });
+/** One daily check read back, from the notes or from a device's row; null when it is not one. */
+function dayIn(v: unknown): Day | null {
+  const D = rec(v);
+  if (!D || typeof D['d'] !== 'string') return null;
+  return { d: D['d'], ok: D['ok'] === true, diffs: ansNum(D['diffs']), gone: ansNum(D['gone']) };
+}
+/** A device's daily checks read back, the newest kept, oldest first. */
+function daysIn(v: unknown): Day[] {
+  const out: Day[] = [];
+  for (const x of arr(v) || []) {
+    const D = dayIn(x);
+    if (D) out.push(D);
+  }
+  return out.slice(-DAYS_KEPT);
+}
+/** What a device's row says of it (DevSeen), from the row's copy; null when the copy is not one. */
+function devOf(body: unknown): DevSeen | null {
+  let B: Rec | null = null;
+  try {
+    B = typeof body === 'string' ? rec(parseJson(body)) : rec(body);
+  } catch (e) {
+    // A device's row that is not JSON says nothing of it: the device reads as on an older version.
+    log('rows-notes', e);
+    return null;
+  }
+  if (!B) return null;
+  const forgot = B['forgot'];
+  return {
+    level: ansNum(B['level']) || 1,
+    ver: ansText(B['ver']),
+    days: daysIn(B['days']),
+    forgot: typeof forgot === 'number' && Number.isFinite(forgot) ? forgot : null
+  };
+}
+/** Today's check in notes `N`, made where there is none yet (not yet checked: not clean). */
+export function dayNow(N: Notes, day: string): Day {
+  const last = N.days[N.days.length - 1];
+  if (last && last.d === day) return last;
+  const D: Day = { d: day, ok: false, diffs: 0, gone: 0 };
+  N.days.push(D);
+  while (N.days.length > DAYS_KEPT) N.days.shift();
+  return D;
+}
 /** The notes as saved, when they are for this account and this log; else none. Notes for another account or an
     earlier log describe rows this phone must not act on: a record they hold that the log lacks would read as deleted. */
 function notesIn(acct: string, ep: number, text: string | null = prefGet(ROWS_KEY)): Notes | null {
@@ -285,6 +378,14 @@ function notesIn(acct: string, ep: number, text: string | null = prefGet(ROWS_KE
   out.devDay = typeof m['devDay'] === 'string' ? m['devDay'] : null;
   const ph = rec(m['ph']);
   if (ph && typeof ph['s'] === 'string') out.ph = { at: ansNum(ph['at']), len: ansNum(ph['len']), s: ph['s'] };
+  out.days = daysIn(m['days']);
+  const devs = rec(m['devs']) || {};
+  for (const k in devs) {
+    const D = devOf(devs[k]);
+    if (D) out.devs[k] = D;
+  }
+  const gone = rec(m['gone']) || {};
+  for (const k in gone) if (typeof gone[k] === 'number') out.gone[k] = ansNum(gone[k]);
   return out;
 }
 /** Writes the notes, only while the log's own save succeeds: notes saved ahead of the log would describe a log the phone does not hold. Notes not written (the phone is full) are made again from the account at the next start. */
@@ -298,11 +399,13 @@ export function notesOut(N: Notes, own = true): void {
     const other = notesIn(N.acct, N.ep, stored);
     if (other) {
       N.chk.removed = Math.max(N.chk.removed, other.chk.removed);
+      for (const k in other.gone) N.gone[k] ??= other.gone[k] ?? 0;
       for (const f of other.find)
         if (!N.find.some(x => x.at === f.at && x.key === f.key && x.why === f.why)) {
           N.find.push(f);
           N.chk.diffs++;
           N.chk.clean = 0;
+          dayNow(N, today()).diffs++;
         }
       N.find.sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0));
       while (N.find.length > FIND_MAX) N.find.shift();
@@ -335,18 +438,32 @@ export function rowsForget(): void {
   off = null;
   blocked = false;
   decide = false;
+  layoutBody = null;
   layoutFor = null;
   asked = null;
   for (const f of forgets) f();
   // Notes storage would not forget name the log they were for, and are not read for another.
   prefDel(ROWS_KEY);
 }
-/** Notes a finding for Diagnostics, the newest kept. */
-export function found(N: Notes, key: string, why: string, mine: string, theirs: string): void {
-  N.find.push({ at: new Date().toISOString(), key, why, mine, theirs });
+/** Notes what a device's row, as an answer carries its copy, says of that device (a row with no copy: nothing). */
+function deviceSeen(N: Notes, id: string, body: unknown): void {
+  const D = body === null ? null : devOf(body);
+  if (D) N.devs[id] = D;
+  else delete N.devs[id];
+}
+/** Notes a finding for Diagnostics, the newest kept, and counts it against today's check; this device's row is
+    written again with it, so no other device reads this one as clean today (deviceRow). `gone`: a record the
+    documents took out that no device deleted. */
+export function found(N: Notes, key: string, why: string, mine: string, theirs: string, gone = false): void {
+  const at = new Date().toISOString();
+  N.find.push({ at, key, why, mine, theirs });
   while (N.find.length > FIND_MAX) N.find.shift();
   N.chk.diffs++;
   N.chk.clean = 0;
+  const D = dayNow(N, today());
+  D.diffs++;
+  if (gone) D.gone++;
+  N.devDay = null;
 }
 
 /* ---------- the account's answers ---------- */
@@ -354,6 +471,7 @@ export function found(N: Notes, key: string, why: string, mine: string, theirs: 
 /** The layout an answer carries: the id made when the account's rows began, which layer decides, and the level of build it asks for. */
 function layoutOf(v: unknown): { made: string | null; decides: string; level: number } | null {
   if (typeof v !== 'string') return null;
+  layoutBody = v;
   let L: Rec | null = null;
   try {
     L = rec(parseJson(v));
@@ -372,7 +490,7 @@ function layoutOf(v: unknown): { made: string | null; decides: string; level: nu
 }
 /** Whether a layout is one this build cannot sync by: the rows decide, or it asks for a newer build. */
 const needsNewer = (L: { decides: string; level: number } | null): boolean =>
-  !!L && (L.decides !== 'docs' || L.level > LEVEL);
+  !!L && ((L.decides !== 'docs' && L.decides !== 'rows') || L.level > LEVEL);
 
 /** Takes what the account's rows changed since the notes' number into the notes, each changed row of a kind this
     build mirrors noted as waiting from now; false when the account has no rows table. A phone with no notes reads
@@ -391,6 +509,7 @@ export async function takeIn(R: CloudRows, N: Notes): Promise<boolean> {
       if (MIRRORED.has(X['kind'])) N.wait[k] ??= Date.now();
     }
     N.rows[k] = h;
+    if (X['kind'] === 'device' && 'body' in X) deviceSeen(N, X['id'], X['body']);
     return ansNum(X['seq']);
   };
   const none = (): boolean => N.n === 0 && !Object.keys(N.rows).length;
@@ -464,6 +583,10 @@ export async function send(R: CloudRows, N: Notes, rows: RowIn[], sums?: Map<str
       if (X['took'] === true && ansNum(X['seq']) > N.n) own++;
       // The account's checksum of a copy it took as sent is the checksum of the text sent, or the copy did not arrive whole.
       const sentRow = part.find(r => r.kind === X['kind'] && r.id === X['id']);
+      if (X['kind'] === 'device') {
+        const body = X['body'] !== undefined ? X['body'] : X['took'] === true && sentRow ? sentRow.body : undefined;
+        if (body !== undefined) deviceSeen(N, X['id'], body);
+      }
       if (X['took'] === true && X['body'] === undefined && sentRow && sentRow.body !== null && h.s) {
         const s = sums?.get(k) ?? sumOf(sentRow.body);
         if (s !== h.s && h.t === sentRow.t && h.dev === sentRow.dev && h.a === sentRow.a)
@@ -475,6 +598,47 @@ export async function send(R: CloudRows, N: Notes, rows: RowIn[], sums?: Map<str
     if (top - N.n === own) N.n = top;
   }
   return true;
+}
+
+/** Two texts in the order of their bytes, as the account orders them: by code point, which a comparison of UTF-16 units is not for characters past U+FFFF. */
+function bytesCmp(a: string, b: string): number {
+  if (a === b) return 0;
+  const n = Math.min(a.length, b.length);
+  for (let i = 0; i < n; i++) {
+    const x = a.codePointAt(i) ?? 0,
+      y = b.codePointAt(i) ?? 0;
+    if (x !== y) return x < y ? -1 : 1;
+    if (x > UNIT_TOP) i++;
+  }
+  return a.length < b.length ? -1 : 1;
+}
+/** The account's one checksum over its rows (records_digest), worked out from the notes: equal to the account's when the notes hold every row as the account does. */
+export function notesDigest(N: Notes): { n: number; sum: string } {
+  const keys = Object.keys(N.rows).sort((a, b) => {
+    const ca = a.indexOf('/'),
+      cb = b.indexOf('/');
+    return bytesCmp(a.slice(0, ca), b.slice(0, cb)) || bytesCmp(a.slice(ca + 1), b.slice(cb + 1));
+  });
+  const text = keys
+    .map(k => {
+      const h = N.rows[k];
+      const cut = k.indexOf('/');
+      return h
+        ? [
+            k.slice(0, cut),
+            k.slice(cut + 1),
+            h.t,
+            h.dev,
+            h.a,
+            h.s,
+            h.saw === null ? '' : h.saw,
+            h.saw === null ? '' : h.sawDev,
+            h.good ? 1 : 0
+          ].join('\x1f')
+        : '';
+    })
+    .join('\x1e');
+  return { n: keys.length, sum: md5(text) };
 }
 
 /* ---------- the notes, for the other parts of the rows ---------- */
@@ -490,16 +654,20 @@ export function notesFor(acct: string, ep: number): { N: Notes; read: boolean } 
   }
   return { N: notes, read };
 }
-/** Counts `n` records the document sync took out of the log, in the notes as stored (another tab's pass may have written them since this tab read them). `busy`: a pass is under way in this tab, and keeps the count when it writes (notesOut). */
-export function notesRemoved(acct: string, ep: number, n: number, busy: boolean): void {
+/** Notes the records the document sync took out of the log (`keys`), in the notes as stored (another tab's pass may have written them since this tab read them): each waits for a device's mark that deletes it (rowsmirror.ts). `busy`: a pass is under way in this tab, and keeps them when it writes (notesOut). */
+export function notesRemoved(acct: string, ep: number, keys: readonly string[], busy: boolean): void {
   const stored = prefGet(ROWS_KEY);
   const N = notesIn(acct, ep, stored);
   if (!N || !N.n) return;
-  N.chk.removed += n;
+  N.chk.removed += keys.length;
+  const now = Date.now();
+  for (const k of keys) N.gone[k] ??= now;
   if (!busy) {
     notes = N;
     written = stored;
-  }
+  } else if (notes && notes.acct === acct && notes.ep === ep)
+    // The pass under way compares with the notes it holds: it must know these records went, or it would mark them deleted as its own.
+    for (const k of keys) notes.gone[k] ??= now;
   notesOut(N, !busy);
 }
 /** The notes in memory; null before a pass read them for this account and log. */
@@ -520,6 +688,20 @@ export function turnOff(why: string): void {
 export const blockedNow = (): boolean => blocked;
 /** Whether the account's layout, as an answer last said, gives the rows the say over the log. */
 export const rowsDecide = (): boolean => decide;
+/** The account's layout as an answer last carried it, read as a record; null when none was read this visit. */
+export function layoutNow(): Rec | null {
+  try {
+    return rec(parseJson(layoutBody || 'null'));
+  } catch (e) {
+    // Read as none: a layout written anew then starts from the fields it must hold.
+    log('rows-layout', e);
+    return null;
+  }
+}
+/** Takes in the layout an answer of a write carried (a switch, or a switch back): what it says of this build, kept on the phone. */
+export function layoutTaken(v: unknown): void {
+  heed(layoutOf(v));
+}
 /** Whether a read of the layout is under way (rowsGate). */
 export const gateBusy = (): boolean => asking > 0;
 
@@ -553,19 +735,30 @@ async function gate(): Promise<boolean> {
 }
 /** Whether the account's layout asks for a build newer than this one, as last read: this visit, or by an earlier one (kept on the phone for the account). */
 export function rowsBlocked(): boolean {
-  if (layoutFor !== cloud.uid && cloud.uid && cloud.db && cloud.db.rows) {
-    layoutFor = cloud.uid;
-    layoutText = prefGet(LAYOUT_KEY);
-    let L: Rec | null = null;
-    try {
-      L = rec(parseJson(layoutText || 'null'));
-    } catch (e) {
-      // A kept layout that cannot be read is no layout: the account is asked.
-      log('rows-layout', e);
-    }
-    blocked = !!L && L['acct'] === cloud.uid && needsNewer(layoutOf(layoutText));
-  }
+  keptRead();
   return blocked;
+}
+/** Whether the account's rows decide its log, as last read: this visit, or by an earlier one (kept on the phone for the account). */
+export function rowsDecideHere(): boolean {
+  keptRead();
+  return decide;
+}
+/** Reads the layout kept on the phone, once for each account: what an earlier visit learnt of it. */
+function keptRead(): void {
+  if (layoutFor === cloud.uid || !cloud.uid || !cloud.db || !cloud.db.rows) return;
+  layoutFor = cloud.uid;
+  layoutText = prefGet(LAYOUT_KEY);
+  let L: Rec | null = null;
+  try {
+    L = rec(parseJson(layoutText || 'null'));
+  } catch (e) {
+    // A kept layout that cannot be read is no layout: the account is asked.
+    log('rows-layout', e);
+  }
+  const mine = !!L && L['acct'] === cloud.uid;
+  const kept = mine ? layoutOf(layoutText) : null;
+  blocked = needsNewer(kept);
+  decide = !!kept && kept.decides === 'rows' && !blocked;
 }
 /** The read of the layout under way, if one is: a send of the documents that follows a read of them waits for it, so a build the account asks more of sends nothing while the answer is on its way. Null when none is under way, and the send then goes on in the same stretch of work as before the rows. */
 export const rowsAsked = (): Promise<unknown> | null => asked;

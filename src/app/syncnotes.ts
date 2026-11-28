@@ -4,7 +4,7 @@
 
 import { parseJson, rec } from './records';
 import type { Rec } from './records';
-import { isChunkId } from './chunks';
+import { chunksOf, isChunkId } from './chunks';
 import { normalize } from './normalize';
 import type { DraftLike } from './session';
 import { cloud } from './store';
@@ -287,6 +287,23 @@ export function saveMeta(): boolean {
   }
 }
 /** The workout in progress a draft document holds, as normalize() keeps it, or null. */
+/** A document as every build reads it: its records through normalize, so two copies are compared field by field. */
+export function normChunk(id: string, data: unknown): Rec | null {
+  if (!data) return null;
+  // A document read by its fields; one that is no record reads as empty, as spreading it did.
+  const D = rec(data) || {};
+  try {
+    if (id === 'core') return chunksOf(normalize({ ...D, sessions: [], cardio: [], draft: null })).core;
+    if (id === 'draft') return { draft: normalize({ draft: D.draft || null }).draft };
+    if (id.startsWith('b-'))
+      return chunksOf(normalize({ bodyweights: D.bodyweights || [], measurements: D.measurements || [] }))[id] || {};
+    return chunksOf(normalize({ sessions: D.sessions || [], cardio: D.cardio || [] }))[id] || { sessions: [] };
+  } catch (e) {
+    // A document normalize() cannot read is compared as it came.
+    log('sync-norm', e);
+    return D;
+  }
+}
 export const draftOf = (D: Rec | null): DraftLike | null => normalize({ draft: (D && D.draft) || null }).draft;
 /** Record times as stored or sent: each a number, by its key; null when there are none. */
 export function timesIn(v: unknown): Record<string, number> | null {

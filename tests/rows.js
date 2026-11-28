@@ -6,12 +6,18 @@
 //      when nothing changed.
 //   3. The cost at three years of training.
 //   4. Histories written from seeds, on two and on three phones, checked against the lifter's rules.
+//   6. Once the rows decide (2.79): the cases of the design, each a history held to the strict rules, histories
+//      from seeds on two phones, three, with the account switching midway and with two tabs of one phone, and a
+//      copy of the rows' sync with one rule broken that must fail a case.
 //   5. The histories are trusted because they find, on the source of 2.76, the losses the reviews of 2.76 and 2.77
 //      found by hand (tests/sim-cases.json keeps the shortest history of each), and because a copy of the rows
 //      module with one rule broken fails. The strict rules (simlib.js), which the rows must keep once they decide,
 //      find on the source of 2.78 the workout's losses no document sync can decide, by script and from seeds.
 //   ROWS_SEEDS=200 node tests/rows.js     more histories (default 40 with rows, 120 without)
-//   ROWS_PART=mirror|cost|seeds|old|broken node tests/rows.js     one part alone
+//   7. The switch by itself at the daily check (decision 4): what counts toward it, what holds it, Forget it, each
+//      with a copy of the gate with one rule broken that must fail a case.
+//   8. Switch back: the documents written back, the layout with `made` kept and `hold`, every other phone crossing back.
+//   ROWS_PART=mirror|cost|seeds|old|broken|decide|gate|back node tests/rows.js     one part alone
 //   ROWS_PART=mirror ROWS_CASE=workout node tests/rows.js         the mirror's cases whose name holds the text
 const fs = require('fs');
 const os = require('os');
@@ -42,16 +48,16 @@ function sourceAt(sha) {
   execFileSync('tar', ['-x', '-C', dir], { input: git(['archive', sha, 'src/app']) });
   return dir;
 }
-/** A copy of this checkout's source with `from` replaced by `to` in the rows' modules (src/app/rows*.ts): the rows with one rule broken. A rule kept in two places is broken in both (`from` a list of pairs). */
+/** A copy of this checkout's source with `from` replaced by `to` wherever a module of src/app/ holds it: the rows with one rule broken. A rule kept in two places is broken in both (`from` a list of pairs). */
 function brokenCopy(name, from, to) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ironlog-broken-'));
   fs.cpSync(path.join(ROOT, 'src', 'app'), path.join(dir, 'src', 'app'), { recursive: true });
   const app = path.join(dir, 'src', 'app');
-  const files = fs.readdirSync(app).filter(f => /^rows\w*\.ts$/.test(f));
+  const files = fs.readdirSync(app).filter(f => /\.ts$/.test(f));
   const text = new Map(files.map(f => [f, fs.readFileSync(path.join(app, f), 'utf8')]));
   for (const [a, b] of Array.isArray(from) ? from : [[from, to]]) {
     const holds = files.filter(f => text.get(f).includes(a));
-    if (!holds.length) throw new Error(`no rows module holds the text the broken copy "${name}" replaces: ${a.slice(0, 50)}`);
+    if (!holds.length) throw new Error(`no module holds the text the broken copy "${name}" replaces: ${a.slice(0, 50)}`);
     for (const f of holds) text.set(f, text.get(f).split(a).join(b));
   }
   for (const f of files) fs.writeFileSync(path.join(app, f), text.get(f));
@@ -71,6 +77,48 @@ function copyWith(dir, pairs) {
 }
 let accounts = 0;
 const acct = () => 'a' + ++accounts;
+const S6 = (p, op, more) => ({ p, op, ...more });
+/* The rows deciding, case by case (design part 1, 3 to 4): each a history on an account switched to its rows from the
+   start, held to the strict rules (simlib.js); each answers with what went wrong, nothing when right. */
+const DECIDE = {
+  // A delete sent, its answer lost after the account applied it, then put back by Undo: the phone's own write is known as its own, and the session stays.
+  'a write whose answer was lost is this phone\'s own': [S6(0, 'drop', { kind: 'rows-push', when: 'after' }), S6(0, 'del', { id: 's2' }), S6(0, 'undo'), S6(1, 'note', { id: 's1', v: 'typed on B' }), S6(0, 'check')],
+  // Two different workouts, each kept on the phone that started it, each saved whole when finished.
+  'two different workouts each stay on their own phone': [S6(0, 'start', { id: 'k1', v: '2026-11-20' }), S6(1, 'start', { id: 'k2', v: '2026-11-20' }), S6(0, 'tick', { i: 0 }), S6(1, 'tick', { i: 1 }), S6(0, 'check'), S6(1, 'finish'), S6(0, 'tick', { i: 2 }), S6(0, 'check')],
+  // One workout ticked on two phones with no signal, Finish tapped on both: one session with every set.
+  'one workout finished on two phones keeps every set': [S6(0, 'start', { id: 'k1', v: '2026-11-20' }), S6(0, 'check'), S6(1, 'off'), S6(0, 'tick', { i: 0 }), S6(1, 'tick', { i: 1 }), S6(0, 'finish'), S6(1, 'finish'), S6(1, 'on'), S6(0, 'check')],
+  // The saved session edited on one phone while the other, not caught up, ticks: both kept.
+  'the saved session edited while the other phone ticks': [S6(0, 'start', { id: 'k1', v: '2026-11-20' }), S6(0, 'check'), S6(0, 'tick', { i: 0 }), S6(0, 'finish'), S6(1, 'off'), S6(1, 'tick', { i: 1 }), S6(0, 'note', { id: 'k1', v: 'typed after' }), S6(1, 'on'), S6(0, 'check')],
+  // A date and a note changed alone on the phone behind join the session finished elsewhere.
+  // A date and a note changed alone on the phone behind, which saw none of the sets, join the session finished elsewhere.
+  'a date or a note changed on the phone behind joins the session': [S6(0, 'start', { id: 'k1', v: '2026-11-20' }), S6(1, 'check'), S6(1, 'off'), S6(0, 'tick', { i: 0 }), S6(0, 'finish'), S6(1, 'redate', { v: '2026-11-16' }), S6(1, 'wnote', { v: 'typed on B' }), S6(1, 'on'), S6(0, 'check')],
+  // Deleted on A, edited on B (not caught up), restored on A: the restore only puts a copy back, and B's edit stands.
+  'a copy only put back never beats an edit made elsewhere': { expect: { s1: 'edited on B' }, script: [S6(1, 'off'), S6(0, 'del', { id: 's1' }), S6(0, 'sync'), S6(1, 'note', { id: 's1', v: 'edited on B' }), S6(0, 'restore', { id: 's1' }), S6(1, 'on'), S6(0, 'check')] },
+  // The other way round: B's edit reaches the account first, then A's restore, made offline, is read against it.
+  'a put-back that meets an edit it had not seen keeps the edit': { expect: { s1: 'edited on B' }, script: [S6(1, 'off'), S6(0, 'del', { id: 's1' }), S6(0, 'sync'), S6(1, 'note', { id: 's1', v: 'edited on B' }), S6(1, 'on'), S6(1, 'sync'), S6(0, 'off'), S6(0, 'restore', { id: 's1' }), S6(0, 'on'), S6(0, 'check')] },
+  // The edit reaches the account between A's read and A's write of its restore: A's write replaces it unseen, and the answer says so.
+  'a put-back written over an edit it had not seen gives the edit back': { expect: { s1: 'edited on B' }, script: [S6(1, 'off'), S6(0, 'del', { id: 's1' }), S6(0, 'sync'), S6(1, 'note', { id: 's1', v: 'edited on B' }), S6(1, 'on'), S6(0, 'off'), S6(0, 'restore', { id: 's1' }), S6(0, 'on'), S6(0, 'squeeze', { q: 1, then: { op: 'sync' } }), S6(0, 'check')] },
+  // A workout finished on A, which then starts another that follows nothing (a past day), while B still ticks the first: B's late set joins the session, and B closes it.
+  'a workout finished elsewhere joins its session whatever opens next': [S6(1, 'start', { id: 'k1', v: '2026-11-16' }), S6(1, 'tick', { i: 2 }), S6(0, 'check'), S6(1, 'off'), S6(0, 'finish'), S6(0, 'start', { id: 'k2', v: '2026-11-03' }), S6(1, 'tick', { i: 0 }), S6(1, 'on'), S6(0, 'check')],
+  /* Two tabs of one phone and a second phone: a set ticked in each tab, the workout finished in one. The last tick is
+     made in the moment before its tab hears of the finish, and the pull in the moment before the other tab hears of
+     that tick (now), so each tab's sync reads what the other stored without its storage event. */
+  'two tabs of one phone tick and finish one workout': { tabs: { 1: 0 }, dirs: 3, script: [S6(2, 'start', { id: 'k5', v: '2026-11-20' }), S6(0, 'sync'), S6(0, 'tick', { i: 3 }), S6(1, 'check'), S6(1, 'finish'), S6(2, 'tick', { i: 1 }), S6(0, 'tick', { i: 0, now: true }), S6(1, 'pull', { now: true }), S6(2, 'check')] }
+};
+/** Runs the cases of DECIDE on the source at `dir`: what failed, by case. */
+async function decideCases(dir, R, only) {
+  const out = [];
+  for (const [name, c] of Object.entries(DECIDE)) {
+    if (only && !only.includes(name)) continue;
+    const o = Array.isArray(c) ? { script: c } : c;
+    const n = o.dirs || 2;
+    const r = await history({ dirs: Array(n).fill(dir), tabs: o.tabs, rows: R, name: acct(), strict: true, switched: true, script: o.script });
+    for (const f of [...said(r)]) out.push(`${name}: ${f}`);
+    // What a lifter expects of a record the rules above do not name: its note on every phone.
+    for (const [id, note] of Object.entries(o.expect || {})) for (const P of r.phones) { const x = P.state().sessions.find(q => q.id === id); if (!x || x.notes !== note) out.push(`${name}: ${id} on ${P.name} holds ${x ? JSON.stringify(x.notes) : 'nothing'}, not ${JSON.stringify(note)}`); }
+  }
+  return out;
+}
 const said = r => [...r.fails.map(f => f.rule + ': ' + f.said), ...r.errors];
 const diag = P => (P.E.rowsDiag() || { line: '', findings: [] });
 const pushesOf = (C, who, from = 0) => C.calls.slice(from).filter(c => c.who === who && c.name === 'push').flatMap(c => c.keys);
@@ -93,10 +141,11 @@ const CASES = {
       S(0, 'off'), S(0, 'restore', { id: 's4' }), S(0, 'del', { id: 's4' }), S(0, 'on'), S(0, 'check')
     ] });
     const out = said(r);
-    // Phone B deleted a session for good: on phone A it left the log by a sync, which A counts; nothing left B's that way.
-    for (const [P, removed] of [[r.phones[0], 1], [r.phones[1], 0]]) {
+    /* Phone B deleted a session for good: on phone A it left the log by a sync, and B's mark deleting it explains it, so
+       it is no difference (decision 2, V 2026-11-27): only a record gone with no device deleting it is counted. */
+    for (const P of r.phones) {
       const d = diag(P);
-      if (d.line !== `Rows check: 2 clean days, 0 differences, ${removed} removed by another phone`) out.push(`${P.name} says "${d.line}" after two days with nothing wrong`);
+      if (d.line !== 'Rows check: 2 of 3 clean days, 0 differences, 0 removed with no delete') out.push(`${P.name} says "${d.line}" after two days with nothing wrong`);
       if (d.findings.length) out.push(`${P.name} recorded ${d.findings.length} findings: ${d.findings[0].why}`);
     }
     const rows = await r.C.rows();
@@ -116,7 +165,7 @@ const CASES = {
     const C3 = phoneOf(dir, { name: 'C', clock: r.clock, seed: 9 }).start(); C3.signIn(r.C); await C3.sync(); await C3.sync();
     const late = pushesOf(r.C, 'C', from).filter(k => !k.startsWith('device/'));
     if (late.length) out.push('the third phone sent rows the account already held: ' + late.slice(0, 4).join(', '));
-    if (diag(C3).line !== 'Rows check: 1 clean day, 0 differences, 0 removed by another phone') out.push(`the third phone says "${diag(C3).line}"`);
+    if (diag(C3).line !== 'Rows check: 1 of 3 clean days, 0 differences, 0 removed with no delete') out.push(`the third phone says "${diag(C3).line}"`);
     out.push(...said(r));
     return out;
   },
@@ -168,8 +217,9 @@ const CASES = {
     for (const P of r.phones) if (diag(P).findings.length) out.push(`${P.name} recorded a difference: ${diag(P).findings[0].why}`);
     return out;
   },
-  /* A record leaves the log by a sync while the phone's own pass over the rows is under way: it is still counted
-     ("removed by another phone"), though the pass writes the notes after the count was written (REV32-4). */
+  /* A record leaves the log by a sync while the phone's own pass over the rows is under way: it is still noted, though
+     the pass writes the notes after the note was written (REV32-4); the mark B sent deleting it then explains it, so
+     it is no difference (decision 2). */
   async 'a record a sync removed while a pass was under way is still counted'(dir, R) {
     const r = await history({ dirs: [dir, dir], rows: R, name: acct(), script: [{ p: 0, op: 'check' }] });
     const [A, B] = r.phones;
@@ -180,7 +230,7 @@ const CASES = {
     A.hook = null; await A.settle();
     if (once || A.state().bodyweights.some(b => b.id === 'w1')) return ['the read of the documents did not run inside the pass'];
     r.clock.t += 61000; await A.tick(); await A.sync(); await A.sync();
-    return /, 1 removed by another phone/.test(diag(A).line) && A.rowNotes().chk.removed === 1 ? [] : [`phone A says "${diag(A).line}" and its notes hold ${A.rowNotes().chk.removed}`];
+    return /, 0 differences, 0 removed with no delete/.test(diag(A).line) && A.rowNotes().chk.removed === 1 ? [] : [`phone A says "${diag(A).line}" and its notes hold ${A.rowNotes().chk.removed}`];
   },
   /* The account holds a later version of a session than the documents kept (as if the documents had decided against
      the order of the times). The phone waits a minute and a whole read of the documents, then sends the log's copy
@@ -201,11 +251,11 @@ const CASES = {
     if (!r.phones.some(P => /1 difference,/.test(diag(P).line))) out.push('no phone counts the difference: ' + r.phones.map(P => diag(P).line).join(' | '));
     return out;
   },
-  /* The account's layout asks for a newer build (as the release that switches an account to its rows will write):
+  /* The account's layout asks for a build newer than this one (a level above this build's, or a layer it does not know):
      this build stops syncing, says to update, writes nothing more to the account, and keeps the lifter's changes. */
   async 'an account that asks for a newer build: the phone stops syncing and says to update'(dir, R) {
     const out = [];
-    for (const want of [{ decides: 'docs', level: 2 }, { decides: 'rows', level: 1 }]) {
+    for (const want of [{ decides: 'docs', level: 3 }, { decides: 'cubes', level: 1 }]) {
       const name = acct(), r = await history({ dirs: [dir, dir], rows: R, name, outside: true, script: [{ p: 0, op: 'check' }] });
       const [A, B] = r.phones, tag = JSON.stringify(want) + ': ';
       const layout = JSON.parse((await r.C.rows()).find(x => x.kind === 'meta').body);
@@ -272,7 +322,7 @@ const CASES = {
     if (JSON.stringify((await r.C.rows()).filter(x => x.kind !== 'device')) !== before) out.push('a row changed while the notes were made again');
     if (!A2.rowNotes().rows[other]) out.push('the notes made again do not hold the row that was missing');
     r.clock.t += 26 * 3600000; await A2.sync(); await A2.sync();
-    if (!/Rows check: 1 clean day, 1 difference,/.test(diag(A2).line)) out.push(`the day after, Settings says "${diag(A2).line}"`);
+    if (!/Rows check: 1 of 3 clean days, 1 difference,/.test(diag(A2).line)) out.push(`the day after, Settings says "${diag(A2).line}"`);
     return out;
   },
   /* Another phone writes a row at the very moment this phone writes its own, after this phone last read the rows.
@@ -291,7 +341,7 @@ const CASES = {
     A.hook = null;
     if (once) return ['phone A wrote no row'];
     r.clock.t += 26 * 3600000; await A.sync(); await A.sync();
-    if (diag(A).line !== 'Rows check: 2 clean days, 0 differences, 0 removed by another phone') out.push(`the next day phone A says "${diag(A).line}"`);
+    if (diag(A).line !== 'Rows check: 2 of 3 clean days, 0 differences, 0 removed with no delete') out.push(`the next day phone A says "${diag(A).line}"`);
     if (!A.rowNotes().rows['device/dev-third']) out.push("phone A's notes do not hold the third phone's row");
     return out;
   },
@@ -302,7 +352,7 @@ const CASES = {
     const name = acct(), r = await history({ dirs: [dir, dir], rows: R, name, outside: true, script: [{ p: 0, op: 'check' }] });
     const out = [], A = r.phones[0];
     const A2 = phoneOf(dir, { name: 'A', clock: r.clock, storage: A.ls, seed: 8 }).start(); A2.signIn(r.C); await A2.sync();
-    if (diag(A2).line !== 'Rows check: 1 clean day, 0 differences, 0 removed by another phone') return [`the second tab starts with "${diag(A2).line}"`];
+    if (diag(A2).line !== 'Rows check: 1 of 3 clean days, 0 differences, 0 removed with no delete') return [`the second tab starts with "${diag(A2).line}"`];
     // The first tab meets a row the documents decided against, and records the difference (the case above).
     await R.call(name, 'records', 'push', [[{ kind: 'session', id: 's1', body: '{"id":"s1","notes":"not what the documents hold"}', t: r.clock.t + 5000, dev: 'dev-other', a: 0 }]]);
     await r.run({ p: 0, op: 'note', id: 's2', v: 'typed in the first tab' }); await A.flush();
@@ -467,7 +517,7 @@ const CASES = {
     const t0 = Date.now(); await A.sync(); const first = Date.now() - t0;
     const rows = await C.rows(), notes = (A.ls.get(A.E.KEY + '.rows') || '').length, log = (A.ls.get(A.E.KEY) || '').length;
     const pushes = C.calls.filter(c => c.name === 'push'), sent = rows.reduce((n, r) => n + (r.body ? r.body.length : 0), 0);
-    ok(/Rows check: 1 clean day, 0 differences, 0 removed by another phone$/.test(diag(A).line), `three years of training (624 sessions, 1,000 weigh-ins, 150 cardio entries): ${rows.length} rows written in ${pushes.length} writes, ${Math.round(sent / 1024)} KB of copies, ${first} ms here; the first check is clean`, diag(A));
+    ok(/Rows check: 1 of 3 clean days, 0 differences, 0 removed with no delete$/.test(diag(A).line), `three years of training (624 sessions, 1,000 weigh-ins, 150 cardio entries): ${rows.length} rows written in ${pushes.length} writes, ${Math.round(sent / 1024)} KB of copies, ${first} ms here; the first check is clean`, diag(A));
     ok(notes > 0 && notes <= 150000, `the notes the phone keeps of them are ${Math.round(notes / 1024)} KB (150 KB at most), beside a log of ${Math.round(log / 1024)} KB`, notes);
     ok(pushes.every(c => c.n <= 200), 'no write holds more than 200 rows');
     const from = C.calls.length; clock.t += 5000; const t1 = Date.now(); await A.sync(); const idle = Date.now() - t1;
@@ -535,7 +585,10 @@ const CASES = {
          kept case by the rule it names and the seeds by themselves (two phones, with rows, as on V's account). */
       let docs = null;
       try { docs = sourceAt(DOCS_DECIDE); } catch (e) { ok(false, 'the source of 2.78.2 could not be read from git', String((e && e.message) || e).slice(0, 300)); }
-      for (const c of docs ? cases.filter(x => x.on === '2.78') : []) {
+      for (const c of cases.filter(x => x.on === '2.78')) {
+        const now = await history({ dirs: [ROOT, ROOT], rows: R, name: acct(), strict: true, switched: true, script: c.script });
+        ok(said(now).length === 0, `${c.name}: right on this build once the rows decide (${told(c.script)})`, said(now));
+        if (!docs) continue;
         const was = await history({ dirs: [docs, docs], rows: R, name: acct(), strict: true, script: c.script });
         ok(was.fails.some(f => f.rule === c.rule), `${c.name}: on the source of 2.78.2 it fails the rule "${c.rule}" (${told(c.script)}): the strict histories find ${c.found}`, was.fails);
       }
@@ -556,6 +609,435 @@ const CASES = {
       ok(bad >= 5 && rules.held > 0 && rules.back > 0, `40 histories from seeds on the source of 2.76: ${bad} fail a lifter's rule (${Object.keys(rules).map(k => k + ' ' + rules[k]).join(', ')}); the same seeds are clean on this build (part 4)`, rules);
     }
   }
+  let lockCase;
+  if (part('decide')) {
+    /* ---------- 6. the rows decide ---------- */
+    for (const name of Object.keys(DECIDE)) { const out = await decideCases(ROOT, R, [name]); ok(out.length === 0, `the rows decide: ${name}`, out.slice(0, 3)); }
+    {
+      // Each phone of an account switched to its rows says nothing of a clash where two phones made the same change.
+      const r = await history({ dirs: [ROOT, ROOT], rows: R, name: acct(), strict: true, switched: true, script: [S6(0, 'off'), S6(1, 'off'), S6(0, 'note', { id: 's1', v: 'same' }), S6(1, 'note', { id: 's1', v: 'same' }), S6(0, 'on'), S6(1, 'on'), S6(0, 'check')] });
+      const clash = r.phones.flatMap(P => P.toasts).filter(t => /edited on two devices/.test(t));
+      ok(said(r).length === 0 && clash.length === 0, 'the same change made on two phones is no clash, and nothing is said', { said: said(r), clash });
+    }
+    {
+      // A workout kept on this phone while the account holds another counts as not yet saved: "Sign out" and the rest send it first.
+      const r = await history({ dirs: [ROOT, ROOT], rows: R, name: acct(), strict: true, switched: true, script: [S6(0, 'start', { id: 'k1', v: '2026-11-20' }), S6(1, 'start', { id: 'k2', v: '2026-11-20' }), S6(1, 'tick', { i: 0 }), S6(0, 'check')] });
+      const held = r.phones.filter(P => (JSON.parse(P.ls.get(P.E.KEY + '.rows.now') || '{}').held || null) !== null);
+      ok(held.length === 1 && held[0].E.hasUnsent() === true, 'a workout kept on its own phone counts as not yet saved there', held.map(P => P.name));
+    }
+    {
+      // The switch is written only over the account as this phone read it: another phone's write in between refuses it whole, and nothing changed.
+      const name = acct();
+      const r = await history({ dirs: [ROOT, ROOT], rows: R, name, strict: true, script: [S6(0, 'check')] });
+      const [A, B] = r.phones;
+      let fired = false;
+      A.hook = async (kind, when) => { if (!fired && kind === 'rows-push' && when === 'before') { fired = true; await r.run(S6(1, 'note', { id: 's2', v: 'written during the switch' })); } };
+      const first = await A.E.switchNow(); A.hook = null;
+      const layout = JSON.parse((await r.C.rows()).find(x => x.kind === 'meta' && x.id === 'layout').body);
+      ok(first === false && layout.decides === 'docs', 'a switch that another phone wrote a row ahead of is refused whole', { first, layout });
+      await r.check();
+      const again = await A.E.switchNow();
+      await r.check();
+      ok(again === true && said(r).length === 0, 'and the next one, made in step, switches, nothing lost', said(r));
+    }
+    {
+      // An account whose rows decide and whose layout then asks for a newer build: the phone stops and says to update, and sends nothing more.
+      const name = acct();
+      const r = await history({ dirs: [ROOT, ROOT], rows: R, name, outside: true, strict: true, switched: true, script: [S6(0, 'check')] });
+      const [A] = r.phones;
+      const L = JSON.parse((await r.C.rows()).find(x => x.kind === 'meta' && x.id === 'layout').body);
+      await R.call(name, 'records', 'push', [[{ kind: 'meta', id: 'layout', body: JSON.stringify({ ...L, level: 3, gen: L.gen + 1 }), t: r.clock.t + 1000, dev: 'dev-new', a: 0 }]]);
+      await r.run(S6(0, 'note', { id: 's1', v: 'typed after the account asked for more' }));
+      await A.sync();
+      const row = (await r.C.rows()).find(x => x.kind === 'session' && x.id === 's1');
+      ok(A.E.cloud.status === 'offline' && A.E.cloud.err === A.E.ROWS_UPDATE && !/typed after/.test(row.body) && A.state().sessions.find(x => x.id === 's1').notes === 'typed after the account asked for more', 'once the rows decide, an account that asks for a newer build stops the phone, which says to update and keeps what it typed', { status: A.E.cloud.status, err: A.E.cloud.err, row: row.body.slice(0, 80) });
+    }
+    lockCase = async dir => {
+      // A tab frozen in the background while it holds the rows' lock never stops the other tab from saving: it waits LOCK_MS, then saves.
+      const name = acct();
+      const r = await history({ dirs: [dir, dir], tabs: { 1: 0 }, rows: R, name, strict: true, switched: true, script: [S6(0, 'check')] });
+      const [A, B] = r.phones;
+      let froze = false;
+      A.hook = async (kind, when) => { if (!froze && kind === 'rows-pull' && when === 'before') { froze = true; A.freeze(); } };
+      // Not waited for: the tab's own request waits until it is thawed.
+      const aGoing = r.run(S6(0, 'note', { id: 's1', v: 'typed in the tab that froze' }));
+      for (let i = 0; i < 2000 && !froze; i++) await new Promise(q => setImmediate(q));
+      A.hook = null;
+      if (!froze) return ['the first tab never froze in its pass'];
+      B.edit(S => { S.sessions.find(x => x.id === 's2').notes = 'typed in the other tab'; });
+      const going = B.flush();
+      // The phone's clock on, its timers fired, until the sync that waited for the lock has saved (each wait is LOCK_MS).
+      let done = false;
+      void going.then(() => { done = true; });
+      for (let i = 0; i < 12 && !done; i++) { r.clock.t += 6000; B.fire(); for (let j = 0; j < 200 && !done; j++) await new Promise(q => setImmediate(q)); }
+      const row = (await r.C.rows()).find(x => x.kind === 'session' && x.id === 's2');
+      const out = [];
+      if (!done || !row || !/typed in the other tab/.test(row.body)) out.push('the other tab did not save while the frozen tab held the lock: ' + JSON.stringify({ done, row: row && row.body.slice(0, 60), status: B.E.cloud.status, errors: B.errors().slice(-3), note: B.state().sessions.find(x => x.id === 's2').notes }));
+      A.thaw();
+      await aGoing;
+      await r.check();
+      out.push(...said(r));
+      return out;
+    };
+    {
+      const out = await lockCase(ROOT);
+      ok(out.length === 0, 'a tab frozen holding the rows\' lock never stops the other tab from saving', out.slice(0, 3));
+      const dir = brokenCopy('the lock waited for without end', `    stop.abort();\n`, ``);
+      const bad = await lockCase(dir).catch(e => ['crashed ' + e.message]);
+      ok(bad.length > 0, 'the case fails with the lock waited for without end', 'nothing failed');
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+    const lookCase = async dir => {
+      /* A document written just before the switch, its row not yet written (that phone's push lost): the one look at the
+         switch crosses it, records first and the frozen rows after, so a look stopped between the two writes is crossed
+         again; frozen first, the record's change would be taken as crossed and lost. */
+      const r = await history({ dirs: [dir, dir], rows: R, name: acct(), strict: true, switchable: true, script: [S6(0, 'check')] });
+      const [A, B] = r.phones;
+      B.drop = { kind: 'rows-push', when: 'before', n: 5 };
+      await r.run(S6(1, 'note', { id: 's3', v: 'from B before the switch' }));
+      B.drop = null; B.off = true;
+      let n = 0;
+      A.hook = async (kind, when) => { if (kind === 'rows-push' && when === 'before' && ++n === 3) throw new Error('rows: no answer in time'); };
+      const sw = await A.E.switchNow();
+      A.hook = null; B.off = false;
+      if (!sw) return ['the account did not switch'];
+      await r.check();
+      const out = [];
+      for (const P of r.phones) { const s3 = P.state().sessions.find(x => x.id === 's3'); if (!s3 || s3.notes !== 'from B before the switch') out.push(`${P.name} lost what B wrote just before the switch (${s3 && s3.notes})`); }
+      return out;
+    };
+    {
+      const out = await lookCase(ROOT);
+      ok(out.length === 0, 'a document written just before the switch, its look stopped half way, still reaches the rows', out.slice(0, 3));
+      const dir = brokenCopy('the frozen rows written before their records', `  for (let i = 0; i < out.length; i += WRITE_ROWS)
+    if (!rec(await soon(R.push(out.slice(i, i + WRITE_ROWS))))) return false;
+  for (let i = 0; i < moved.length; i += WRITE_ROWS)
+    if (!rec(await soon(R.push(moved.slice(i, i + WRITE_ROWS))))) return false;`, `  for (let i = 0; i < moved.length; i += WRITE_ROWS)
+    if (!rec(await soon(R.push(moved.slice(i, i + WRITE_ROWS))))) return false;
+  for (let i = 0; i < out.length; i += WRITE_ROWS)
+    if (!rec(await soon(R.push(out.slice(i, i + WRITE_ROWS))))) return false;`);
+      const bad = await lookCase(dir).catch(e => ['crashed ' + e.message]);
+      ok(bad.length > 0, 'the case fails with the frozen rows written before their records', 'nothing failed');
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+    {
+      // An account whose documents are not guarded never switches.
+      const name = acct();
+      const r = await history({ dirs: [ROOT, ROOT], rows: R, name, strict: true, script: [S6(0, 'check')] });
+      const A = r.phones[0];
+      const g = A.E.cloud.db.rows.guarded; A.E.cloud.db.rows.guarded = async () => null;
+      const sw = await A.E.switchNow(); A.E.cloud.db.rows.guarded = g;
+      ok(sw === false, 'an account whose documents are not guarded is never switched', sw);
+    }
+    {
+      // Histories from seeds once the rows decide: two phones, three, the account switching midway, two tabs of one phone.
+      const N = Number(process.env.ROWS_SEEDS || 40);
+      const runs = [['two phones', { dirs: 2, switched: true, from: 1, n: N }], ['three phones', { dirs: 3, switched: true, from: 5001, n: Math.ceil(N / 2) }], ['the account switched midway on two phones', { dirs: 2, switchable: true, from: 101, n: N }], ['two tabs of one phone and a second phone', { dirs: 3, tabs: { 1: 0 }, switched: true, from: 201, n: Math.ceil(N / 2) }]];
+      for (const [what, o] of runs) {
+        let bad = 0, first = null, sw = 0; const known = {}; const t0 = Date.now();
+        for (let seed = o.from; seed < o.from + o.n; seed++) {
+          const r = await history({ dirs: Array(o.dirs).fill(ROOT), tabs: o.tabs, seed, steps: 60, rows: R, name: acct(), strict: true, switched: o.switched, switchable: o.switchable });
+          if (r.switchedAt >= 0) sw++;
+          for (const k of Object.keys(r.known)) known[k] = (known[k] || 0) + 1;
+          if (said(r).length) { bad++; if (!first) first = { seed, said: said(r).slice(0, 2), script: told(r.script).slice(0, 400) }; }
+        }
+        ok(bad === 0, `${o.n} strict histories once the rows decide, ${what}${o.switchable ? ` (${sw} switched)` : ''}: the lifter's rules hold (${Math.round((Date.now() - t0) / 1000)} s)`, first);
+        if (Object.keys(known).length) console.log('     counted apart, not failed: ' + Object.keys(known).map(k => `${k} (${known[k]} histories)`).join('; '));
+      }
+    }
+    /* A copy of the rows' sync with one rule broken fails a case. */
+    const BROKEN_DECIDE = [
+      ['a write whose answer was lost read as another phone\'s', `if (o && o.t === X.t && o.dev === X.dev && o.a === X.a && o.place === placeOf(X) && o.s === X.s) {`, `if (false && o) {`, ['a write whose answer was lost is this phone\'s own']],
+      ['two copies of one workout\'s session decided by the later edit', `if (mineLive && theirsLive && m.kind === 'session' && baseFor(W, m.id) && g.body)`, `if (false && mineLive)`, ['one workout finished on two phones keeps every set', 'the saved session edited while the other phone ticks']],
+      ['a different workout swapped into the account', `return way(M, false, { held: { id: M.id, copy: A && A.id === M.id ? A : null } });`, `return way(T, false, { held: null });`, ['two different workouts each stay on their own phone']],
+      ['the join of a workout closed elsewhere kept to its ticked sets', `const kept = have ? draftSession(lost, true) : draftSession(lost),`, `const kept = draftSession(lost),`, ['a date or a note changed on the phone behind joins the session']],
+      ['a copy only put back taken as an edit', `if (putBack(m, h) && theirsLive && !theirsBack) return { v: 'take', clash: false };`, ``, ['a put-back that meets an edit it had not seen keeps the edit', 'a copy only put back never beats an edit made elsewhere']],
+      ['a put-back kept where the answer says it replaced an edit', `if (putBack(mine.get(g.k), was)) {`, `if (false) {`, ['a put-back written over an edit it had not seen gives the edit back']],
+      ['a held workout let go while still open', `  if (M && M.id === W.held.id) return;`, `  if (false) return;`, ['two different workouts each stay on their own phone']],
+      ['a workout this phone finished elsewhere not joined when the account opened another', `  if (M && !M.editingId && state.sessions.some(s => s.id === M.id) && (!T || T.id !== M.id)) {`, `  if (false && M) {`, ['a workout finished elsewhere joins its session whatever opens next']]
+    ];
+    for (const [name, from, to, which] of BROKEN_DECIDE) {
+      let out = [];
+      const dir = brokenCopy(name, from, to);
+      try { out = await decideCases(dir, R, which); } catch (e) { out = ['crashed: ' + String((e && e.message) || e).slice(0, 120)]; }
+      ok(out.length > 0, `the cases fail on the rows' sync with one rule broken: ${name}`, 'nothing failed');
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  }
+  if (part('gate')) {
+    /* ---------- 7. the switch by itself (decision 4), and what holds it ---------- */
+    const DAY = 24 * 3600000;
+    const layoutOf = async r => { const L = (await r.C.rows()).find(x => x.kind === 'meta' && x.id === 'layout'); return L ? JSON.parse(L.body) : null; };
+    const decides = async r => ((await layoutOf(r)) || {}).decides;
+    const line = P => { const d = P.E.rowsDiag(); return d ? d.line + (d.hold ? ' | ' + d.hold.text : '') : ''; };
+    /** A day on which the phones given are opened: the clock moved on a day, then every phone given syncs until quiet. */
+    const day = async (r, on) => { r.clock.t += DAY; for (const P of r.phones) P.off = !on.includes(P.name); for (let i = 0; i < 4; i++) { r.clock.t += 61000; for (const P of r.phones) if (on.includes(P.name)) { await P.tick(); await P.sync(); } } for (const P of r.phones) P.off = false; };
+    const gateCases = {
+      // One phone, its daily checks clean on three days: the account switches by itself at the third, not before.
+      async 'one phone switches by itself at its third clean day'(dir) {
+        const out = [];
+        const r = await history({ dirs: [dir], rows: R, name: acct(), strict: true, switchable: true, script: [S6(0, 'check')] });
+        const [A] = r.phones;
+        const seen = [line(A)];
+        if ((await decides(r)) !== 'docs') out.push('switched at the first check');
+        await day(r, ['A']); seen.push(line(A));
+        if ((await decides(r)) !== 'docs') out.push('switched at the second clean day');
+        await day(r, ['A']); seen.push(line(A));
+        if ((await decides(r)) !== 'rows') out.push('did not switch at the third clean day: ' + seen.join(' / '));
+        if (!/1 of 3 clean days/.test(seen[0]) || !/2 of 3 clean days/.test(seen[1])) out.push('the line does not count the days: ' + seen.join(' / '));
+        if (!/^Saving by rows since /.test(line(A))) out.push('after the switch the line says: ' + line(A));
+        await r.run(S6(0, 'note', { id: 's1', v: 'after the switch' })); await r.check();
+        out.push(...said(r));
+        return out;
+      },
+      // On the preview no clean days are needed: the first daily check switches.
+      async 'the preview switches at its first daily check'(dir) {
+        const r = await history({ dirs: [dir], rows: R, name: acct(), strict: true, switchable: true, env: 'preview', script: [S6(0, 'check')] });
+        return (await decides(r)) === 'rows' ? said(r) : ['not switched: ' + line(r.phones[0])];
+      },
+      // A second phone not opened for three days holds the switch (its clean days are not recent); Forget it lets it go.
+      async 'a device not opened lately holds the switch until it is forgotten'(dir) {
+        const out = [];
+        const r = await history({ dirs: [dir, dir], rows: R, name: acct(), strict: true, switchable: true, script: [S6(0, 'check')] });
+        const [A, B] = r.phones;
+        await day(r, ['A']); await day(r, ['A']); await day(r, ['A']);
+        if ((await decides(r)) !== 'docs') out.push('switched while B had not been opened for three days');
+        const d = A.E.rowsDiag();
+        if (!d || !d.hold || d.hold.dev !== B.E.cloud.devId || !/^Waiting for another device, 0 of 3 clean days, last seen /.test(d.hold.text)) out.push('the line does not name B: ' + line(A));
+        if (!(await A.E.forgetDevice(B.E.cloud.devId))) out.push('Forget it was not written');
+        await day(r, ['A']);
+        if ((await decides(r)) !== 'rows') out.push('not switched once B was forgotten: ' + line(A));
+        await r.check();
+        out.push(...said(r));
+        return out;
+      },
+      // B's three clean days are long past (it has not been opened for three days): they no longer count.
+      async 'clean days long past do not count'(dir) {
+        const out = [];
+        const name = acct();
+        const r = await history({ dirs: [dir, dir], rows: R, name, strict: false, outside: true, switchable: true, script: [S6(0, 'check')] });
+        const [A, B] = r.phones;
+        // Day 2: a difference on A alone (its row of s3 changed from outside while B is not opened), so A's count restarts and B's does not.
+        r.clock.t += DAY; B.off = true;
+        await R.call(name, 'records', 'push', [[{ kind: 'session', id: 's3', body: '{"id":"s3","notes":"not what the documents hold"}', t: r.clock.t + 5000, dev: 'dev-other', a: 0 }]]);
+        for (let i = 0; i < 4; i++) { r.clock.t += 61000; await A.tick(); await A.pull(); }
+        B.off = false;
+        for (let i = 0; i < 3; i++) { r.clock.t += 61000; await B.tick(); await B.sync(); }
+        await day(r, ['A', 'B']);
+        if (!/3 of 3 clean days/.test(line(B))) out.push('B has not its three clean days: ' + line(B));
+        if ((await decides(r)) !== 'docs') out.push('switched while A had a difference');
+        await day(r, ['A']); await day(r, ['A']); await day(r, ['A']);
+        if ((await decides(r)) !== 'docs') out.push('switched on clean days of B three days old');
+        return out;
+      },
+      // Both phones opened each day: three clean days on each, and the account switches; nothing either holds is lost.
+      async 'two phones each clean three days switch, nothing lost'(dir) {
+        const out = [];
+        const r = await history({ dirs: [dir, dir], rows: R, name: acct(), strict: true, switchable: true, script: [S6(0, 'check')] });
+        await day(r, ['A', 'B']); await r.run(S6(1, 'note', { id: 's2', v: 'from B on day 2' }));
+        await day(r, ['A', 'B']);
+        if ((await decides(r)) !== 'rows') out.push('not switched: ' + line(r.phones[0]) + ' / ' + line(r.phones[1]));
+        await r.run(S6(0, 'note', { id: 's1', v: 'after' })); await r.check();
+        for (const P of r.phones) { const s = P.state().sessions.find(x => x.id === 's2'); if (!s || s.notes !== 'from B on day 2') out.push(P.name + ' lost the note of day 2'); }
+        out.push(...said(r));
+        return out;
+      },
+      // A phone on 2.78.2 (its own row at level 1) holds the switch as a device on an older version.
+      async 'a device on 2.78 holds the switch'(dir) {
+        const old = sourceAt(DOCS_DECIDE);
+        const r = await history({ dirs: [dir, old], rows: R, name: acct(), strict: false, script: [S6(0, 'check')] });
+        await day(r, ['A', 'B']); await day(r, ['A', 'B']); await day(r, ['A', 'B']);
+        const d = r.phones[0].E.rowsDiag();
+        const out = [];
+        if ((await decides(r)) !== 'docs') out.push('switched while a phone on 2.78 syncs the account');
+        if (!d || !d.hold || !/^Waiting for a device on an older version, last seen /.test(d.hold.text)) out.push('the line does not say so: ' + line(r.phones[0]));
+        return out;
+      },
+      // A phone on 2.77.1, which writes no row of its own, is seen by the documents it writes, and holds the switch.
+      async 'a device that writes no row of its own holds the switch'(dir) {
+        const before = sourceAt(BEFORE);
+        const r = await history({ dirs: [dir, before], rows: R, name: acct(), strict: false, script: [S6(0, 'check')] });
+        await day(r, ['A', 'B']); await r.run(S6(1, 'note', { id: 's2', v: 'from 2.77' }));
+        await day(r, ['A', 'B']); await day(r, ['A', 'B']);
+        const d = r.phones[0].E.rowsDiag();
+        const out = [];
+        if ((await decides(r)) !== 'docs') out.push('switched while a phone on 2.77 writes the documents');
+        if (!d || !d.hold || !/^Waiting for a device on an older version/.test(d.hold.text)) out.push('the line does not say so: ' + line(r.phones[0]));
+        return out;
+      },
+      // A difference found later on a day already checked clean is written to the device's row the same day: no other phone reads that device as clean that day.
+      async 'a difference found after the day was checked holds the switch that day'(dir) {
+        const out = [];
+        const name = acct();
+        const r = await history({ dirs: [dir, dir], rows: R, name, strict: false, outside: true, switchable: true, script: [S6(0, 'check')] });
+        const [A, B] = r.phones;
+        await day(r, ['A', 'B']);
+        r.clock.t += DAY; A.off = true;
+        for (let i = 0; i < 3; i++) { r.clock.t += 61000; await B.tick(); await B.sync(); }
+        /* B's day 3 is checked clean and its row written; then the account's row of s3 is changed from outside the
+           phones, which B's next pass (after a change on B) records as a difference and puts right, so A, reading
+           later, finds the rows in step and knows of it only by B's row. */
+        await R.call(name, 'records', 'push', [[{ kind: 'session', id: 's3', body: '{"id":"s3","notes":"not what the documents hold"}', t: r.clock.t + 5000, dev: 'dev-other', a: 0 }]]);
+        await r.run(S6(1, 'note', { id: 's2', v: 'a note on B, read by its next pass' }));
+        for (let i = 0; i < 4; i++) { r.clock.t += 61000; await B.tick(); await B.pull(); }
+        if (!/1 difference/.test(line(B))) out.push('B found no difference: ' + line(B));
+        A.off = false;
+        for (let i = 0; i < 4; i++) { r.clock.t += 61000; await A.tick(); await A.sync(); }
+        if ((await decides(r)) !== 'docs') out.push('A switched on the day B found a difference');
+        return out;
+      },
+      // Decision 2: a record another phone deleted is no difference; one the documents lost with no device deleting it is.
+      async 'a record deleted on another phone keeps the count; one gone with no delete restarts it'(dir) {
+        const out = [];
+        const name = acct();
+        const r = await history({ dirs: [dir, dir], rows: R, name, strict: false, outside: true, switchable: true, script: [S6(0, 'check')] });
+        const [A] = r.phones;
+        await r.run(S6(1, 'bw', { id: 'w9', v: 81.5, d: '2026-11-10' })); await r.check();
+        await day(r, ['A', 'B']);
+        await r.run(S6(1, 'del', { id: 's4' })); await r.run(S6(1, 'forgood', { id: 's4' })); await r.check();
+        if (!/2 of 3 clean days/.test(line(A))) out.push('a delete on B held the count: ' + line(A));
+        // The documents lose s1 with no device deleting it: its document written again without it, as from A.
+        const k = [...r.C.store.keys()].find(x => { const d = JSON.parse(r.C.store.get(x)); return typeof d.json === 'string' && JSON.parse(d.json).sessions && JSON.parse(d.json).sessions.some(z => z.id === 's1'); });
+        const d = JSON.parse(r.C.store.get(k)), j = JSON.parse(d.json);
+        j.sessions = j.sessions.filter(z => z.id !== 's1');
+        r.C.store.set(k, JSON.stringify({ ...d, json: JSON.stringify(j), at: r.clock.t, w: A.E.cloud.devId + '.zzzz' }));
+        await r.check(); await r.check();
+        if (!/1 difference, 1 removed with no delete/.test(line(A))) out.push('a record gone with no delete is not a difference: ' + line(A));
+        await day(r, ['A', 'B']);
+        if ((await decides(r)) !== 'docs') out.push('switched although a record went with no delete two days ago');
+        return out;
+      }
+    };
+    // The same, with the documents read inside the phone's own pass: the record gone is still noted, and still a difference (REV32-4).
+    gateCases['a record gone with no delete during a pass is still a difference'] = async dir => {
+      const r = await history({ dirs: [dir, dir], rows: R, name: acct(), strict: false, outside: true, switchable: true, script: [S6(0, 'check')] });
+      const [A] = r.phones;
+      const k = [...r.C.store.keys()].find(x => { const d = JSON.parse(r.C.store.get(x)); return typeof d.json === 'string' && JSON.parse(d.json).sessions && JSON.parse(d.json).sessions.some(z => z.id === 's1'); });
+      const d = JSON.parse(r.C.store.get(k)), j = JSON.parse(d.json);
+      j.sessions = j.sessions.filter(z => z.id !== 's1');
+      r.C.store.set(k, JSON.stringify({ ...d, json: JSON.stringify(j), at: r.clock.t, w: A.E.cloud.devId + '.zzzz' }));
+      let once = true;
+      A.hook = async (kind, when) => { if (kind === 'rows-pull' && when === 'after' && once) { once = false; await A.E.cq(A.E.cloudPull); } };
+      await r.run(S6(0, 'note', { id: 's2', v: 'typed on A' }));
+      A.hook = null; await A.settle();
+      if (once || A.state().sessions.some(x => x.id === 's1')) return ['the read of the documents did not run inside the pass'];
+      await r.check(); await r.check();
+      return /1 difference, 1 removed with no delete/.test(line(A)) ? [] : ['not a difference: ' + line(A)];
+    };
+    // The same, read by the other tab of the phone while this tab's pass is under way: the pass keeps what that tab noted.
+    gateCases['a record gone with no delete, read by the other tab during a pass, is still a difference'] = async dir => {
+      const r = await history({ dirs: [dir, dir, dir], tabs: { 1: 0 }, rows: R, name: acct(), strict: false, outside: true, switchable: true, script: [S6(0, 'check')] });
+      const [A, B] = r.phones;
+      const k = [...r.C.store.keys()].find(x => { const d = JSON.parse(r.C.store.get(x)); return typeof d.json === 'string' && JSON.parse(d.json).sessions && JSON.parse(d.json).sessions.some(z => z.id === 's1'); });
+      const d = JSON.parse(r.C.store.get(k)), j = JSON.parse(d.json);
+      j.sessions = j.sessions.filter(z => z.id !== 's1');
+      r.C.store.set(k, JSON.stringify({ ...d, json: JSON.stringify(j), at: r.clock.t, w: A.E.cloud.devId + '.zzzz' }));
+      let once = true;
+      A.hook = async (kind, when) => { if (kind === 'rows-pull' && when === 'after' && once) { once = false; await B.E.cq(B.E.cloudPull); } };
+      await r.run(S6(0, 'note', { id: 's2', v: 'typed on A' }));
+      A.hook = null; await A.settle();
+      if (once || B.state().sessions.some(x => x.id === 's1')) return ['the other tab did not read the documents during the pass'];
+      await r.check(); await r.check();
+      return /1 difference, 1 removed with no delete/.test(line(A)) ? [] : ['not a difference: ' + line(A)];
+    };
+    const gateRun = async (dir, only) => { const out = []; for (const [n, f] of Object.entries(gateCases)) { if (only && !only.includes(n)) continue; for (const x of await f(dir)) out.push(n + ': ' + x); } return out; };
+    for (const n of Object.keys(gateCases)) { const out = await gateRun(ROOT, [n]); ok(out.length === 0, `the switch: ${n}`, out.slice(0, 3)); }
+    {
+      // On 2.78.2 an account never switches by itself.
+      const out = await gateRun(sourceAt(DOCS_DECIDE), ['one phone switches by itself at its third clean day']);
+      ok(out.some(x => /did not switch at the third clean day/.test(x)), 'on 2.78.2 the same phone never switches (the case fails there)', out.slice(0, 2));
+    }
+    const BROKEN_GATE = [
+      ['a device not on a build that lets the rows decide counted', `if (!D || D.level < SWITCH_LEVEL) holders.push`, `if (!D) holders.push`, ['a device on 2.78 holds the switch']],
+      ['a device seen only by its documents not counted', `if (!holders.some(x => x.dev === w.dev)) holders.push`, `if (false) holders.push`, ['a device that writes no row of its own holds the switch']],
+      ['clean days counted however long ago', `    if (n === 0 && daysBetween(D.d, day) > RECENT_DAYS) return 0;\n`, ``, ['clean days long past do not count']],
+      ['a device row not written again after a difference', `  if (gone) D.gone++;\n  N.devDay = null;`, `  if (gone) D.gone++;`, ['a difference found after the day was checked holds the switch that day']],
+      ['a record gone noted by the other tab written over by the pass', `      for (const k in other.gone) N.gone[k] ??= other.gone[k] ?? 0;\n`, ``, ['a record gone with no delete, read by the other tab during a pass, is still a difference']],
+      ['a record gone during a pass not known to the pass', `    for (const k of keys) notes.gone[k] ??= now;`, `    for (const k of keys) void k;`, ['a record gone with no delete during a pass is still a difference']],
+      ['a record gone with no delete sent as a plain delete', `      if (!m && N.gone[k] !== undefined) N.wait[k] ??= N.gone[k] ?? now;\n`, ``, ['a record deleted on another phone keeps the count; one gone with no delete restarts it']]
+    ];
+    for (const [name, from, to, which] of BROKEN_GATE) {
+      let out = [];
+      const dir = brokenCopy(name, from, to);
+      try { out = await gateRun(dir, which); } catch (e) { out = ['crashed: ' + String((e && e.message) || e).slice(0, 120)]; }
+      ok(out.length > 0, `the switch's cases fail with one rule broken: ${name}`, 'nothing failed');
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  }
+  if (part('back')) {
+    /* ---------- 8. Switch back (5.1, 5.2) ---------- */
+    const DAY = 24 * 3600000;
+    const layoutOf = async r => { const L = (await r.C.rows()).find(x => x.kind === 'meta' && x.id === 'layout'); return L ? JSON.parse(L.body) : null; };
+    const day = async r => { r.clock.t += DAY; for (let i = 0; i < 4; i++) { r.clock.t += 61000; for (const P of r.phones) { await P.tick(); await P.sync(); } } };
+    const backCases = {
+      // A switches back; B, offline then, had typed a note: it reaches the documents, both logs end the same, nothing lost, and the account never switches again by itself.
+      async 'switched back from one phone, the other crosses back with what it typed'(dir) {
+        const out = [];
+        const r = await history({ dirs: [dir, dir], rows: R, name: acct(), strict: true, switched: true, script: [S6(0, 'note', { id: 's1', v: 'after the switch' }), S6(0, 'check'), S6(1, 'off'), S6(1, 'note', { id: 's2', v: 'typed on B offline' })] });
+        const [A, B] = r.phones;
+        const before = await layoutOf(r);
+        const got = await A.E.switchBack();
+        if (got !== 'done') return ['Switch back said ' + got];
+        const L = await layoutOf(r);
+        if (L.decides !== 'docs' || L.level !== 1 || L.hold !== true || L.made !== before.made || L.gen !== before.gen + 1) out.push('the layout written back is ' + JSON.stringify(L));
+        const docs = r.C.all('u');
+        const inDocs = id => Object.values(docs).flatMap(d => (d && d.sessions) || []).find(x => x.id === id);
+        if (!inDocs('s1') || inDocs('s1').notes !== 'after the switch') out.push('the documents do not hold what the rows decided');
+        await r.run(S6(1, 'on')); await r.check();
+        for (const P of r.phones) { const s2 = P.state().sessions.find(x => x.id === 's2'); if (!s2 || s2.notes !== 'typed on B offline') out.push(P.name + ' lost what B typed offline'); }
+        if (B.E.rowsDecideHere() || A.E.rowsDecideHere()) out.push('a phone still lets the rows decide');
+        await day(r); await day(r); await day(r);
+        if ((await layoutOf(r)).decides !== 'docs') out.push('the account switched again by itself after Switch back');
+        out.push(...said(r));
+        return out;
+      },
+      // A phone on 2.78.2, stopped by the switch, syncs the account again once it is switched back, and leaves the layout as written.
+      async 'after Switch back a phone on 2.78.2 syncs again and keeps the layout'(dir) {
+        const out = [];
+        const old = sourceAt(DOCS_DECIDE);
+        const r = await history({ dirs: [dir, dir, old], rows: R, name: acct(), strict: false, switched: true, script: [S6(0, 'note', { id: 's1', v: 'after the switch' }), S6(0, 'check')] });
+        const [A, , O] = r.phones;
+        if (O.E.cloud.status !== 'offline') out.push('the phone on 2.78.2 did not stop at the switch: ' + O.E.cloud.status);
+        if ((await A.E.switchBack()) !== 'done') return ['Switch back failed'];
+        const L = await layoutOf(r);
+        await r.run(S6(2, 'note', { id: 's3', v: 'typed on 2.78.2' })); await r.check();
+        for (const P of r.phones) for (const [id, v] of [['s1', 'after the switch'], ['s3', 'typed on 2.78.2']]) { const s = P.state().sessions.find(x => x.id === id); if (!s || s.notes !== v) out.push(`${P.name} does not hold "${v}"`); }
+        if (JSON.stringify(await layoutOf(r)) !== JSON.stringify(L)) out.push('the phone on 2.78.2 wrote the layout again: ' + JSON.stringify(await layoutOf(r)));
+        return out;
+      }
+    };
+    // A phone on 2.77.1 after the switch: its writes refused by the guard, its log kept; once it updates, what it typed reaches the account.
+    backCases['a phone on 2.77.1 after the switch keeps its log, and what it typed reaches the account once it updates'] = async dir => {
+      const out = [];
+      const r = await history({ dirs: [dir, sourceAt(BEFORE)], rows: R, name: acct(), strict: false, switched: true, script: [S6(0, 'check')] });
+      const [A, O] = r.phones;
+      const before = r.C.writes.length;
+      await r.run(S6(1, 'note', { id: 's2', v: 'typed on 2.77.1 after the switch' }));
+      for (let i = 0; i < 3; i++) { r.clock.t += 61000; await O.tick(); await O.sync(); }
+      if (r.C.writes.slice(before).some(w => w.who === 'B')) out.push('a document write of the phone on 2.77.1 went through after the switch');
+      if (O.state().sessions.find(x => x.id === 's2').notes !== 'typed on 2.77.1 after the switch') out.push('the phone on 2.77.1 lost what it typed');
+      if (O.E.cloud.status === 'synced') out.push('the phone on 2.77.1 says its log is saved');
+      const U = phoneOf(dir, { name: 'B', clock: r.clock, storage: O.ls, seed: 31 }).start(); U.signIn(r.C);
+      for (let i = 0; i < 3; i++) { r.clock.t += 61000; await U.tick(); await U.sync(); await A.tick(); await A.sync(); }
+      for (const P of [A, U]) { const s2 = P.state().sessions.find(x => x.id === 's2'); if (!s2 || s2.notes !== 'typed on 2.77.1 after the switch') out.push(`${P === A ? 'A' : 'the updated phone'} does not hold what was typed on 2.77.1`); }
+      return out;
+    };
+    const backRun = async (dir, only) => { const out = []; for (const [n, f] of Object.entries(backCases)) { if (only && !only.includes(n)) continue; for (const x of await f(dir)) out.push(n + ': ' + x); } return out; };
+    for (const n of Object.keys(backCases)) { const out = await backRun(ROOT, [n]); ok(out.length === 0, `Switch back: ${n}`, out.slice(0, 3)); }
+    const BROKEN_BACK = [
+      ['Switch back without made', `      made: N.made,\n      decides: 'docs',`, `      made: null,\n      decides: 'docs',`, ['after Switch back a phone on 2.78.2 syncs again and keeps the layout']],
+      ['Switch back without hold', `      at: top,\n      hold: true\n`, `      at: top\n`, ['switched back from one phone, the other crosses back with what it typed']],
+      ['Switch back at level 2', `      level: BACK_LEVEL,`, `      level: 2,`, ['after Switch back a phone on 2.78.2 syncs again and keeps the layout']],
+      ['the other phone not crossing back', `      await S.crossBack();\n`, ``, ['switched back from one phone, the other crosses back with what it typed']]
+    ];
+    for (const [name, from, to, which] of BROKEN_BACK) {
+      let out = [];
+      const dir = brokenCopy(name, from, to);
+      try { out = await backRun(dir, which); } catch (e) { out = ['crashed: ' + String((e && e.message) || e).slice(0, 120)]; }
+      ok(out.length > 0, `Switch back's cases fail with one rule broken: ${name}`, 'nothing failed');
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  }
   if (part('broken')) {
     const BROKEN = [
       ['a row a read brought in waits only for the pass that read it', `      if (MIRRORED.has(X['kind'])) N.wait[k] ??= Date.now();`, ``, ['a row read by a pass that stopped early is still left alone by the next pass']],
@@ -566,7 +1048,7 @@ const CASES = {
     return;
   }
   if (prefSet(ROWS_KEY, text)) written = text;`, ['a record a sync removed while a pass was under way is still counted']],
-      ['the layout is forgotten when the app is closed', `    blocked = !!L && L['acct'] === cloud.uid && needsNewer(layoutOf(layoutText));`, `    blocked = false;`, ['an account that asks for a newer build: the phone stops syncing and says to update']],
+      ['the layout is forgotten when the app is closed', `  const mine = !!L && L['acct'] === cloud.uid;`, `  const mine = false && !!L;`, ['an account that asks for a newer build: the phone stops syncing and says to update']],
       ['a level that is not a number is read as the first', `typeof lv === 'number' && Number.isFinite(lv) && lv >= 1 ? lv : Infinity`, `typeof lv === 'number' && Number.isFinite(lv) && lv >= 1 ? lv : 1`, ['an account that asks for a newer build: the phone stops syncing and says to update']],
       ['a record gone from the log is not marked in its row', `    if (!h) return null;
     const cut = k.indexOf('/');`, `    if (h) return null;

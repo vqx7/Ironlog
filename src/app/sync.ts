@@ -47,7 +47,9 @@ import { invalidate } from './live';
 import { AUTH, codeOf } from './providers';
 import { photoHeld, photoNote, photoOf, photoPending, photoSent, photoTake } from './photo';
 import { ROWS_UPDATE, rowsRemoved, rowsSoon, rowsStart } from './rows';
-import { rowsAsked, rowsBlocked, rowsForget, rowsGate } from './rowsnotes';
+import { errlogFlush } from './errlog';
+import { rowsAsked, rowsBlocked, rowsDecideHere, rowsForget, rowsGate } from './rowsnotes';
+import { rowSync, rowsUnsent, rowsyncStart } from './rowsync';
 import { rowsLogKeys } from './rowslog';
 import { acct, cloud, fx, setState, state, ui } from './store';
 import type { Base, CloudDb, CloudDbIn, CloudDoc, CloudRef, CloudSeen, CloudStatus, State, SyncNote } from './store';
@@ -68,13 +70,13 @@ import {
 } from './storage';
 import { storedElsewhere, writeLocal, writeTakenIn } from './save';
 import {
-  SYNC_KEY,
   draftOf,
   epOf,
   joinNotes,
   knownTime,
   laterEntry,
   newEp,
+  normChunk,
   notesAt,
   notesCatchUp,
   notesEpNow,
@@ -83,10 +85,11 @@ import {
   notesSeenNow,
   saveMeta,
   sentIn,
+  SYNC_KEY,
   timesIn
 } from './syncnotes';
 import { editsPending, laterThanSeen, markEdit, recordKeys, resyncLocalH, seenAsIs, trackEdits } from './edits';
-import { conflictNote, draftNote, keepLost, loggedSince, lostNote } from './twoplaces';
+import { changedSince, conflictNote, draftNote, keepLost, lostNote } from './twoplaces';
 import type { Kept } from './twoplaces';
 import { firstJoin, joinLogs } from './firstjoin';
 
@@ -288,8 +291,12 @@ export function setCloud(st: CloudStatus, err?: string | undefined): void {
   cloud.err = err || null;
   fx.setSaveState();
   fx.syncLine();
-  // The documents are in step with the account: the account's rows are made to say what the log says (rows.ts).
-  if (st === 'synced') rowsSoon();
+  // The documents are in step with the account: the account's rows are made to say what the log says (rows.ts), and
+  // errors met before the account was known go to its error log (errlog.ts).
+  if (st === 'synced') {
+    rowsSoon();
+    errlogFlush();
+  }
 }
 /** Stops the sync on an account whose layout asks for a newer build than this one, and says so: nothing more is read from the account or written to it. True when it stopped. */
 function rowsStop(): boolean {
@@ -307,6 +314,13 @@ function ref(id: string): CloudRef {
 function cloudFail(e: unknown): void {
   const E = rec(e);
   const c = codeOf(e);
+  /* The account's documents refused the write: its rows decide now (SUPABASE.md, Part 9). The layout is read, and the
+     sync goes on by the rows, from which this phone crosses with what it had not yet sent. */
+  if (E && /docs_frozen/.test(String(E.message))) {
+    setCloud('saving');
+    void rowsGate().then(() => cq(cloudFlush));
+    return;
+  }
   if (c === 'revoked' || c === 'not_granted' || c === 'capability_disabled' || c === 'capability_removed') {
     const was = cloud.on;
     cloud.on = false;
@@ -371,22 +385,6 @@ function cloudFail(e: unknown): void {
    straight from the logger lacks defaults that normalize() adds later (demo,
    light), so without this the same session read as edited and a deletion on
    the other device was undone. */
-function normChunk(id: string, data: unknown): Rec | null {
-  if (!data) return null;
-  // A document read by its fields; one that is no record reads as empty, as spreading it did.
-  const D = rec(data) || {};
-  try {
-    if (id === 'core') return chunksOf(normalize({ ...D, sessions: [], cardio: [], draft: null })).core;
-    if (id === 'draft') return { draft: normalize({ draft: D.draft || null }).draft };
-    if (id.startsWith('b-'))
-      return chunksOf(normalize({ bodyweights: D.bodyweights || [], measurements: D.measurements || [] }))[id] || {};
-    return chunksOf(normalize({ sessions: D.sessions || [], cardio: D.cardio || [] }))[id] || { sessions: [] };
-  } catch (e) {
-    // A document normalize() cannot read is compared as it came.
-    log('sync-norm', e);
-    return D;
-  }
-}
 /** A document's merge base: the fingerprint of every record (by list), field and setting it holds; for the draft, the copy itself too. */
 export function baseOf(id: string, data: unknown): Base | null {
   if (!data) return null;
@@ -745,6 +743,8 @@ export function photoSyncSoon(): void {
 /** Whether anything here has not reached the account yet. */
 export function hasUnsent(): boolean {
   if (!cloud.on) return false;
+  // An account whose rows decide: what the rows' sync has not sent (rowsync.ts).
+  if (rowsDecideHere()) return rowsUnsent();
   if (cloud.status !== 'synced' || photoPending()) return true;
   try {
     const ch = chunksOf(state);
@@ -858,6 +858,8 @@ function movesBetweenDocs(id: string, mine: unknown, merged: unknown): boolean {
 /** Writes every document that changed here to the account; one the account changed meanwhile is merged first, or taken in with every other changed one by a pull (above). */
 export async function cloudFlush(): Promise<void> {
   if (!cloud.on) return;
+  // An account whose rows decide is synced by its rows (rowsync.ts); its documents are never written again here.
+  if (rowsDecideHere()) return rowSync();
   notesCatchUp();
   /* No pull has come through since the sync started (it failed, or got no
      answer): this one pulls first, which then sends. A retry that only sent
@@ -868,6 +870,7 @@ export async function cloudFlush(): Promise<void> {
   const asked = rowsAsked();
   if (asked) await asked;
   if (rowsStop()) return;
+  if (rowsDecideHere()) return rowSync();
   if (editsPending()) trackEdits();
   const todo = changedDocs();
   /* The draft goes up last: Finish empties it and adds the
@@ -995,8 +998,8 @@ export async function cloudFlush(): Promise<void> {
             if (x.id === 'draft' && dn) {
               // The copy that lost (this device's, dirty here, or the account's, which a later edit here replaced) keeps its sets.
               const remoteDraft = draftOf(rec(rd));
-              if (loggedSince(prev, agreed)) dn.kept = keepLost(prev, mergedDraft, agreed, remoteWins) || dn.kept;
-              if (loggedSince(remoteDraft, agreed))
+              if (changedSince(prev, agreed)) dn.kept = keepLost(prev, mergedDraft, agreed, remoteWins) || dn.kept;
+              if (changedSince(remoteDraft, agreed))
                 dn.lost = keepLost(remoteDraft, mergedDraft, agreed, remoteWins) || dn.lost;
               if (dn.kept || dn.lost || canon(state.sessions) !== canon(dn.sessions0)) again = true;
             }
@@ -1087,6 +1090,76 @@ export async function cloudFlush(): Promise<void> {
     log('sync-flush', e);
     cloudFail(e);
   }
+}
+/* "Switch back" (rowsswitch.ts): the rows have decided the log since the switch, and the documents are frozen as
+   they were then (the guard, SUPABASE.md Part 9). Every document is written over with this phone's whole log, which
+   equals the rows at the account's last change, each over the copy read and marked `back`, the one mark the guard
+   lets through, each record's time sent beside it (`rt`) and the latest of them as the document's edit time (`et`),
+   so a phone on an earlier build that later decides a clash decides it by those times, not by this moment. */
+/** Writes the log over every document (above): true once every one is written; false when one changed since it was
+    read (the caller reads again and tries again). */
+async function writeBack(): Promise<boolean> {
+  const db = cloud.db;
+  if (!db || !cloud.uid) return false;
+  const snap = await withTimeout(db.collection(`data/users/${cloud.uid}`).get(), SYNC_MS.net, 'sync-pull');
+  const read = new Map<string, Rec | null>();
+  for (const d of snap.docs) if (d.exists && isChunkId(d.id)) read.set(d.id, rec(d.data()));
+  const mine = chunksOf(state);
+  for (const id of new Set([...Object.keys(mine), ...read.keys()])) {
+    const json = storedJson(mine[id] || emptyChunk(id));
+    const rt = timesOut(id, parseJson(json));
+    const at = Date.now();
+    const latest = rt ? Math.max(...Object.values(rt)) : 0;
+    const doc: CloudDoc = {
+      v: 1,
+      at,
+      et: latest > 0 ? latest : cloud.editAt[id] || at,
+      w: writeMark(),
+      json,
+      ...(rt ? { rt } : {}),
+      back: true
+    };
+    if (!(await withTimeout(ref(id).setIf(doc, seenOf(read.get(id) ?? null)), SYNC_MS.net, 'sync-write'))) return false;
+    cloud.meta[id] = { h: hashStr(json), at, b: baseOf(id, parseJson(json)) };
+  }
+  cloud.sent = {};
+  saveMeta();
+  return true;
+}
+/* Another phone switched the account back to its documents: they now hold that phone's log, which was the rows'. They
+   are taken as the agreed copies, so what this phone holds beyond them (its own changes, and what it took from the
+   rows since, each with its time) is what its next send writes to them. */
+/** Takes the documents as they are now as the agreed copies (above), then sends. */
+async function crossBack(): Promise<void> {
+  const db = cloud.db;
+  if (!db || !cloud.uid) return;
+  const snap = await withTimeout(db.collection(`data/users/${cloud.uid}`).get(), SYNC_MS.net, 'sync-pull');
+  const meta: Record<string, SyncNote> = {};
+  for (const d of snap.docs) {
+    const b = d.exists && isChunkId(d.id) ? rec(d.data()) : null;
+    if (!b || typeof b.json !== 'string') continue;
+    meta[d.id] = { h: hashStr(b.json), at: Number(b.at) || 0, b: baseOf(d.id, parseJson(b.json)) };
+  }
+  cloud.meta = meta;
+  cloud.sent = {};
+  writers = writersOf(snap.docs);
+  saveMeta();
+  cq(cloudFlush);
+}
+/** Each document's last writer, as the last whole read of the documents found it (its write mark names the device,
+    `writeMark`): how the switch sees a device on a build that writes no row of its own (rowsgate.ts). */
+let writers: Record<string, { dev: string; at: number }> = {};
+/** The last writer of each document read (above); a document with no write mark is left out. */
+function writersOf(docs: readonly { id: string; exists: boolean; data(): unknown }[]): typeof writers {
+  const out: typeof writers = {};
+  for (const d of docs) {
+    if (!d.exists) continue;
+    const b = rec(d.data());
+    const w = b && typeof b.w === 'string' ? b.w : '';
+    const cut = w.lastIndexOf('.');
+    if (cut > 0) out[d.id] = { dev: w.slice(0, cut), at: Number(b?.at) || 0 };
+  }
+  return out;
 }
 /** One document of the account as read: its write time, its edit time, its data and the hash of its text. */
 type Remote = { at: number; et: number; data: unknown; h: string; rt: Record<string, number> | null };
@@ -1298,6 +1371,7 @@ export async function cloudPull(): Promise<void> {
 /** The pull: `said`, the clashes a send counted in the documents it took in before it handed over to this pull (cloudFlush), said with the pull's own. */
 async function pullAll(said: number): Promise<void> {
   if (!cloud.on || !cloud.db) return;
+  if (rowsDecideHere()) return rowSync();
   if (editsPending()) trackEdits();
   if (offline()) {
     conflictNote({ conflicts: said });
@@ -1308,7 +1382,13 @@ async function pullAll(said: number): Promise<void> {
   setCloud('connecting');
   const began = Date.now();
   // The account's layout is asked for beside its documents: what it says stops this sync below, or its send (cloudFlush).
-  void rowsGate();
+  const gate = rowsGate();
+  /* A phone that has never synced this account waits for the answer first: an account whose rows decide is read from
+     its rows, never from documents frozen at its switch. */
+  if (!Object.keys(cloud.meta).length) {
+    await gate;
+    if (rowsDecideHere()) return rowSync();
+  }
   let snap: Awaited<ReturnType<ReturnType<CloudDb['collection']>['get']>>;
   try {
     snap = await withTimeout(cloud.db.collection(`data/users/${cloud.uid}`).get(), SYNC_MS.net, 'sync-pull');
@@ -1324,8 +1404,14 @@ async function pullAll(said: number): Promise<void> {
     conflictNote({ conflicts: said });
     return;
   }
+  // The account switched to its rows while its documents were read: they are left unread, and the rows' sync runs.
+  if (rowsDecideHere()) {
+    conflictNote({ conflicts: said });
+    return rowSync();
+  }
   // What the other tab synced while this one waited for the account is read before this tab's notes are.
   notesCatchUp();
+  writers = writersOf(snap.docs);
   // The profile photo, from the same listing: a document of its own, so nothing below reads it.
   const ph = snap.docs.find(x => x.id === PHOTO_DOC && x.exists);
   await photoReconcile(ph ? rec(ph.data()) : null);
@@ -1401,8 +1487,8 @@ async function pullAll(said: number): Promise<void> {
     // A workout merged with the account's copy: the copy that lost keeps its sets (this device's, which held changes the account did not have, or the account's, which a later edit here replaced).
     if (draftMerged) {
       const remoteDraft = remote.draft ? draftOf(rec(remote.draft.data)) : null;
-      if (loggedSince(dr0, agreedDraft)) kept = keepLost(dr0, state.draft, agreedDraft, draftRemoteWins);
-      if (loggedSince(remoteDraft, agreedDraft))
+      if (changedSince(dr0, agreedDraft)) kept = keepLost(dr0, state.draft, agreedDraft, draftRemoteWins);
+      if (changedSince(remoteDraft, agreedDraft))
         lost = keepLost(remoteDraft, state.draft, agreedDraft, draftRemoteWins);
     }
   }
@@ -1472,6 +1558,7 @@ function stillSeen(d: Rec | null, seen: CloudSeen): boolean {
 function storeOf(raw: CloudDbIn): CloudDb {
   return {
     rows: raw.rows,
+    errors: raw.errors,
     collection: p => raw.collection(p),
     doc(path) {
       const d = raw.doc(path);
@@ -1988,8 +2075,8 @@ function mergeIn(text: string, own: boolean): void {
        workout back in History). Without this, a set ticked in a tab behind, in a workout the other tab had finished,
        would be dropped without a word. */
     const agreed = base.draft;
-    if (loggedSince(dr0, agreed)) kept = keepLost(dr0, state.draft, agreed, true, true);
-    if (loggedSince(incoming.draft, agreed)) keepLost(incoming.draft, state.draft, agreed, true, true);
+    if (changedSince(dr0, agreed)) kept = keepLost(dr0, state.draft, agreed, true, true);
+    if (changedSince(incoming.draft, agreed)) keepLost(incoming.draft, state.draft, agreed, true, true);
   }
   keepLastCopies(held);
   device.lastSaved = text;
@@ -2063,7 +2150,14 @@ export function syncStart(): void {
     cloud.recAt = {};
   }
   resyncLocalH();
-  rowsStart({ ep: () => notesEpNow(), unsent: hasUnsent, pulledAt: () => readBegan, stop: rowsStop });
+  rowsStart({
+    ep: () => notesEpNow(),
+    unsent: hasUnsent,
+    pulledAt: () => readBegan,
+    stop: rowsStop,
+    writers: () => writers
+  });
+  rowsyncStart({ status: setCloud, fail: cloudFail, mergeStored: t => mergeIn(t, false), writeBack, crossBack });
   window.addEventListener('storage', onStorage);
   document.addEventListener('visibilitychange', onVisibility);
   window.addEventListener('pagehide', onPageHide);

@@ -24,6 +24,8 @@ function start(root) {
   let recordsDb = null;         // the tables of SUPABASE.md, Part 8, on a real Postgres engine (tests/rowsdb.js), once a suite asks for them; until then the project has none, as before their SQL is run
   let minPassword = 6;          // the server's own shortest password (Supabase's default); a project can ask more
   const feedback = [];          // rows of public.feedback
+  const errors = [];            // every request to the app's error log (Part 9): who, the path, its headers' asks and the row sent
+  let errorsHang = false, errorsFail = false; // the error log's requests never answered, or answered with a failure
   const readers = new Set();    // user ids in public.feedback_readers
   let fbOn = true;              // false: the feedback tables are not created yet
   let fbKey = true;             // false: the table as step 1 made it before r63, with no client_id column (SUPABASE.md, Part 4)
@@ -207,71 +209,108 @@ function start(root) {
           return;
         }
       }
+      // ---- Data API: the documents guard's check and the app's error log (SUPABASE.md Part 9), with the rows' SQL ----
+      {
+        const g = /^\/rest\/v1\/rpc\/docs(_preview)?_guarded$/.exec(p);
+        if (g) {
+          if (!recordsDb) return send(res, 404, { code: 'PGRST202', message: `Could not find the function public.docs${g[1] || ''}_guarded in the schema cache` });
+          const c = caller(req);
+          recordsDb.then(R => R.call(c ? c.id : null, g[1] ? 'records_preview' : 'records', 'guarded')).then(out => send(res, 200, out), () => send(res, 401, { code: '42501', message: 'permission denied for function' }));
+          return;
+        }
+        const e = /^\/rest\/v1\/app_errors(_preview)?$/.exec(p);
+        if (e) {
+          if (!recordsDb) return send(res, 404, { code: 'PGRST205', message: `Could not find the table 'public.app_errors${e[1] || ''}' in the schema cache` });
+          if (req.method !== 'POST') return send(res, 401, { code: '42501', message: 'permission denied for table app_errors' });
+          const c = caller(req), b = json();
+          errors.push({ who: c ? c.email : null, path: p, prefer: String(req.headers.prefer || ''), select: u.searchParams.get('select'), row: b });
+          if (errorsHang) return;
+          if (errorsFail) return send(res, 500, { code: 'XX000', message: 'the error log failed' });
+          recordsDb.then(R => R.call(c ? c.id : null, e[1] ? 'records_preview' : 'records', 'erradd', [b])).then(() => send(res, 201), x => send(res, x.code === 'denied' ? 401 : 400, { code: x.code === 'denied' ? '42501' : '23514', message: String(x.message) }));
+          return;
+        }
+      }
       // ---- Data API: tables docs and docs_preview ----
       if (p === '/rest/v1/docs' || p === '/rest/v1/docs_preview') {
-        const rows = p === '/rest/v1/docs' ? rowsLive : rowsPreview;
-        if (rows === rowsPreview && !pvOn) return send(res, 404, { code: 'PGRST205', message: "Could not find the table 'public.docs_preview' in the schema cache" });
-        const c = caller(req);
-        if (c && c.expired) return send(res, 401, { code: 'PGRST303', message: 'JWT expired' });
-        if (!c) return send(res, 401, { code: '42501', message: 'permission denied for table docs' });
-        if (c.gone && req.method !== 'GET') return send(res, 409, { code: '23503', message: 'insert or update on table "docs" violates foreign key constraint "docs_user_id_fkey"', details: 'Key is not present in table "users".' });
-        if (deny) return send(res, 401, { code: '42501', message: 'permission denied for table docs' });
-        const prefer = String(req.headers.prefer || '');
-        const cols = (u.searchParams.get('select') || '*').split(',');
-        const shape = list => list.map(r => cols[0] === '*' ? r : Object.fromEntries(cols.map(k => [k, r[k]])));
-        /* The rows of the caller a request's filters pick, as PostgREST reads them: eq, is.null and like on a column or
-           on a field of a JSON column (data->>w reads data's field w as text, null when absent, 2.28). */
-        const picked = () => {
-          let list = [...rows.values()].filter(r => r.user_id === c.id);
-          for (const [k, v] of u.searchParams) {
-            if (['select', 'limit', 'order', 'offset', 'on_conflict', 'columns'].includes(k)) continue;
-            const [op, ...rest] = v.split('.'); const val = rest.join('.');
-            const at = r => { if (k.indexOf('->>') < 0) return r[k] === undefined ? null : r[k]; const [col, key] = k.split('->>'); const x = r[col] && r[col][key]; return x === undefined || x === null ? null : typeof x === 'object' ? JSON.stringify(x) : String(x); };
-            if (op === 'eq') list = list.filter(r => at(r) !== null && String(at(r)) === val);
-            else if (op === 'is' && val === 'null') list = list.filter(r => at(r) === null);
-            else if (op === 'like') { const re = likeRe(val); list = list.filter(r => re.test(String(at(r)))); }
-            else return { bad: op };
+        const docsRoute = () => {
+          const rows = p === '/rest/v1/docs' ? rowsLive : rowsPreview;
+          if (rows === rowsPreview && !pvOn) return send(res, 404, { code: 'PGRST205', message: "Could not find the table 'public.docs_preview' in the schema cache" });
+          const c = caller(req);
+          if (c && c.expired) return send(res, 401, { code: 'PGRST303', message: 'JWT expired' });
+          if (!c) return send(res, 401, { code: '42501', message: 'permission denied for table docs' });
+          if (c.gone && req.method !== 'GET') return send(res, 409, { code: '23503', message: 'insert or update on table "docs" violates foreign key constraint "docs_user_id_fkey"', details: 'Key is not present in table "users".' });
+          if (deny) return send(res, 401, { code: '42501', message: 'permission denied for table docs' });
+          const prefer = String(req.headers.prefer || '');
+          const cols = (u.searchParams.get('select') || '*').split(',');
+          const shape = list => list.map(r => cols[0] === '*' ? r : Object.fromEntries(cols.map(k => [k, r[k]])));
+          /* The rows of the caller a request's filters pick, as PostgREST reads them: eq, is.null and like on a column or
+             on a field of a JSON column (data->>w reads data's field w as text, null when absent, 2.28). */
+          const picked = () => {
+            let list = [...rows.values()].filter(r => r.user_id === c.id);
+            for (const [k, v] of u.searchParams) {
+              if (['select', 'limit', 'order', 'offset', 'on_conflict', 'columns'].includes(k)) continue;
+              const [op, ...rest] = v.split('.'); const val = rest.join('.');
+              const at = r => { if (k.indexOf('->>') < 0) return r[k] === undefined ? null : r[k]; const [col, key] = k.split('->>'); const x = r[col] && r[col][key]; return x === undefined || x === null ? null : typeof x === 'object' ? JSON.stringify(x) : String(x); };
+              if (op === 'eq') list = list.filter(r => at(r) !== null && String(at(r)) === val);
+              else if (op === 'is' && val === 'null') list = list.filter(r => at(r) === null);
+              else if (op === 'like') { const re = likeRe(val); list = list.filter(r => re.test(String(at(r)))); }
+              else return { bad: op };
+            }
+            return { list };
+          };
+          if (req.method === 'GET') {
+            const p0 = picked(); if (p0.bad) return send(res, 400, { code: 'PGRST100', message: 'unsupported filter ' + p0.bad });
+            const out = shape(p0.list);
+            if (/vnd\.pgrst\.object/.test(req.headers.accept || '')) {
+              if (out.length !== 1) return send(res, 406, { code: 'PGRST116', message: 'JSON object requested, multiple (or no) rows returned', details: `The result contains ${out.length} rows` });
+              return send(res, 200, out[0]);
+            }
+            return send(res, 200, out);
           }
-          return { list };
+          /* A write the row's write mark no longer matches (2.28, 2.27-F1): raceAlways makes every conditional write find
+             the row changed, as a device writing first would, until it is turned off. */
+          const answer = (code, list) => (/return=representation/.test(prefer) ? send(res, code, shape(list)) : send(res, code === 200 ? 204 : code));
+          if (req.method === 'POST') {
+            const b = json(); const arr = Array.isArray(b) ? b : [b];
+            // An upsert (2.27 and before: merge-duplicates) overwrites; a plain insert is refused when the row exists, as the primary key refuses it.
+            const upsert = /resolution=merge-duplicates/.test(prefer);
+            const made = [];
+            for (const r of arr) {
+              const user_id = r.user_id || c.id;
+              if (user_id !== c.id) return send(res, 403, { code: '42501', message: 'new row violates row-level security policy for table "docs"' });
+              const k = `${user_id} ${r.path}`;
+              if (!upsert && (rows.has(k) || raceAlways)) return send(res, 409, { code: '23505', message: 'duplicate key value violates unique constraint "docs_pkey"', details: `Key (user_id, path)=(${user_id}, ${r.path}) already exists.` });
+              const row = { user_id, path: r.path, data: r.data, updated_at: r.updated_at || new Date().toISOString() };
+              rows.set(k, row); made.push(row);
+            }
+            return answer(201, made);
+          }
+          if (req.method === 'PATCH') {
+            const p0 = picked(); if (p0.bad) return send(res, 400, { code: 'PGRST100', message: 'unsupported filter ' + p0.bad });
+            const b = json();
+            const changed = [];
+            for (const r of raceAlways ? [] : p0.list) {
+              const row = Object.assign({}, r, b.data !== undefined ? { data: b.data } : {}, { updated_at: b.updated_at || new Date().toISOString() });
+              rows.set(`${r.user_id} ${r.path}`, row); changed.push(row);
+            }
+            return answer(200, changed);
+          }
+          return send(res, 405, { message: 'method' });
         };
-        if (req.method === 'GET') {
-          const p0 = picked(); if (p0.bad) return send(res, 400, { code: 'PGRST100', message: 'unsupported filter ' + p0.bad });
-          const out = shape(p0.list);
-          if (/vnd\.pgrst\.object/.test(req.headers.accept || '')) {
-            if (out.length !== 1) return send(res, 406, { code: 'PGRST116', message: 'JSON object requested, multiple (or no) rows returned', details: `The result contains ${out.length} rows` });
-            return send(res, 200, out[0]);
-          }
-          return send(res, 200, out);
-        }
-        /* A write the row's write mark no longer matches (2.28, 2.27-F1): raceAlways makes every conditional write find
-           the row changed, as a device writing first would, until it is turned off. */
-        const answer = (code, list) => (/return=representation/.test(prefer) ? send(res, code, shape(list)) : send(res, code === 200 ? 204 : code));
-        if (req.method === 'POST') {
+        /* With the rows' SQL on, every document write goes through the documents guard first (SUPABASE.md Part 9): once
+           the account's rows decide, a write without `back` is refused by name, as the database refuses it. */
+        const gc = caller(req);
+        if (recordsDb && gc && !gc.expired && (req.method === 'POST' || req.method === 'PATCH')) {
           const b = json(); const arr = Array.isArray(b) ? b : [b];
-          // An upsert (2.27 and before: merge-duplicates) overwrites; a plain insert is refused when the row exists, as the primary key refuses it.
-          const upsert = /resolution=merge-duplicates/.test(prefer);
-          const made = [];
-          for (const r of arr) {
-            const user_id = r.user_id || c.id;
-            if (user_id !== c.id) return send(res, 403, { code: '42501', message: 'new row violates row-level security policy for table "docs"' });
-            const k = `${user_id} ${r.path}`;
-            if (!upsert && (rows.has(k) || raceAlways)) return send(res, 409, { code: '23505', message: 'duplicate key value violates unique constraint "docs_pkey"', details: `Key (user_id, path)=(${user_id}, ${r.path}) already exists.` });
-            const row = { user_id, path: r.path, data: r.data, updated_at: r.updated_at || new Date().toISOString() };
-            rows.set(k, row); made.push(row);
-          }
-          return answer(201, made);
+          const paths = req.method === 'POST' ? arr.map(r => [r.path, r.data]) : [[String(u.searchParams.get('path') || '').replace(/^eq\./, ''), b.data]];
+          const docsTable = p === '/rest/v1/docs' ? 'records' : 'records_preview';
+          recordsDb.then(async R => { for (const [path, data] of paths) if (data !== undefined) await R.call(gc.id, docsTable, 'docput', [path, data]); }).then(
+            () => docsRoute(),
+            x => send(res, 400, { code: 'P0001', message: String(x.message) })
+          );
+          return;
         }
-        if (req.method === 'PATCH') {
-          const p0 = picked(); if (p0.bad) return send(res, 400, { code: 'PGRST100', message: 'unsupported filter ' + p0.bad });
-          const b = json();
-          const changed = [];
-          for (const r of raceAlways ? [] : p0.list) {
-            const row = Object.assign({}, r, b.data !== undefined ? { data: b.data } : {}, { updated_at: b.updated_at || new Date().toISOString() });
-            rows.set(`${r.user_id} ${r.path}`, row); changed.push(row);
-          }
-          return answer(200, changed);
-        }
-        return send(res, 405, { message: 'method' });
+        return docsRoute();
       }
       // ---- static files ----
       let fp = decodeURIComponent(p); if (fp.endsWith('/')) fp += 'index.html';
@@ -287,6 +326,8 @@ function start(root) {
       /* Runs the SQL of SUPABASE.md, Part 8 (the project now has `records` and `records_preview`); answers with the
          database, whose `rows(uid)` reads an account's rows and whose `call(uid, table, name, args)` writes as it. */
       recordsOn() { recordsDb = recordsDb || require('./rowsdb').rowsDb(); return recordsDb; },
+      /* The app's error log: every request to it (errors), and its requests left unanswered (hang) or failed (fail). */
+      errors, errorsHang(on) { errorsHang = !!on; }, errorsFail(on) { errorsFail = !!on; },
       setMinPassword(n) { minPassword = n; },
       addUser(email, password) { const nu = { id: crypto.randomUUID(), email, password, confirmed: true, created: new Date().toISOString() }; users.set(email, nu); return nu; },
       confirm(email) { const x = users.get(email); if (x) { x.confirmed = true; x.code = null; } },

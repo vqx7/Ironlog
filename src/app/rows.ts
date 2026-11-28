@@ -15,11 +15,12 @@
 
 import { cloud } from './store';
 import { log } from './storage';
-import { codeOf } from './providers';
+import { netFault } from './providers';
 import {
   NO_TABLE,
   ROWS_KEY,
   blockedNow,
+  rowsDecide,
   ctxNow,
   ctxSet,
   gateBusy,
@@ -33,6 +34,7 @@ import {
 import type { Ctx, Finding } from './rowsnotes';
 import { logForget, rowsLogKeys } from './rowslog';
 import { mirrorForget, mirrorPass } from './rowsmirror';
+import { gateNow, gatePass, seenDay } from './rowsgate';
 
 /** What a phone on a build that cannot sync its account says. */
 export const ROWS_UPDATE = 'Update the app to keep saving to your account. Your log stays on this phone.';
@@ -64,19 +66,15 @@ export function rowsSoon(): void {
     again = true;
     return;
   }
-  running = oneTab(mirrorPass)
+  // The gate is read after the pass, in the same hold of the lock, so no other tab's pass runs between them.
+  running = oneTab(async () => {
+    await mirrorPass();
+    await gatePass();
+  })
     .catch((e: unknown) => {
       log('rows', e);
       // No answer, or a sign-in the sync itself will say is lost, is no fault of the rows: the next sync tries again. Anything else stops them for this visit.
-      const c = codeOf(e);
-      if (
-        navigator.onLine !== false &&
-        c !== 'timeout' &&
-        c !== 'revoked' &&
-        c !== 'gone' &&
-        !/no answer in time|unavailable|offline|Failed to fetch|NetworkError|Load failed/i.test(said(e))
-      )
-        turnOff(said(e).slice(0, WHY_MAX));
+      if (!netFault(e)) turnOff(said(e).slice(0, WHY_MAX));
     })
     .finally(() => {
       running = null;
@@ -86,18 +84,24 @@ export function rowsSoon(): void {
       }
     });
 }
-/** Counts the records the document sync just took out of the log (in `before`, in neither the log nor Recently deleted now): on an account used on one phone there should be none. Not counted on a phone that has not yet mirrored this account: its first sync takes the account's log in place of what it held (a new phone's starter routine). */
+/** Notes the records the document sync just took out of the log (in `before`, in neither the log nor Recently deleted now): each is a difference unless a device's mark deleting it reaches the rows within the mirror's wait (rowsmirror.ts). Not noted on a phone that has not yet mirrored this account: its first sync takes the account's log in place of what it held (a new phone's starter routine). */
 export function rowsRemoved(before: Set<string>): void {
   const C = ctxNow();
   if (!C || !cloud.uid || !cloud.db || !cloud.db.rows || offWhy()) return;
   const now = rowsLogKeys();
-  let n = 0;
-  for (const k of before) if (!now.has(k)) n++;
-  if (!n) return;
-  notesRemoved(cloud.uid, C.ep(), n, !!running);
+  const gone = [...before].filter(k => !now.has(k));
+  if (!gone.length) return;
+  notesRemoved(cloud.uid, C.ep(), gone, !!running);
 }
-/** The rows' state for Diagnostics: one line, and the findings kept. */
-export function rowsDiag(): { line: string; findings: Finding[] } | null {
+/** The device that keeps the account from switching, as Settings > "More" says it under the rows' line: the words,
+    and the device's id for **Forget it**. */
+interface RowsHold {
+  text: string;
+  dev: string;
+}
+/** The rows' state for Diagnostics: one line, the findings kept, while the switch waits for another device that
+    device, and once the rows decide whether **Switch back** is offered. */
+export function rowsDiag(): { line: string; findings: Finding[]; hold?: RowsHold; back?: boolean } | null {
   if (!cloud.on || !cloud.db || !cloud.db.rows) return null;
   const off = offWhy(),
     notes = notesNow();
@@ -105,11 +109,35 @@ export function rowsDiag(): { line: string; findings: Finding[] } | null {
   if (off) return { line: `Rows check: off (${off})`, findings: notes ? notes.find : [] };
   if (blockedNow()) return { line: 'Rows check: this account needs a newer version of the app', findings: [] };
   if (!notes) return { line: 'Rows check: not run yet', findings: [] };
-  const c = notes.chk;
   const n = (k: number, one: string, many: string): string => `${k} ${k === 1 ? one : many}`;
+  const waiting = Object.keys(notes.wait).length ? `, ${Object.keys(notes.wait).length} waiting` : '';
+  if (rowsDecide()) {
+    const L = notes.rows['meta/layout'];
+    return {
+      line: `Saving by rows${L && L.t ? ` since ${seenDay(L.t)}` : ''}, ${n(notes.chk.diffs, 'difference', 'differences')}${waiting}`,
+      findings: notes.find,
+      back: true
+    };
+  }
+  // The differences and the records no device deleted, over the daily checks the switch reads.
+  const diffs = notes.days.reduce((a, D) => a + D.diffs, 0),
+    gone = notes.days.reduce((a, D) => a + D.gone, 0);
+  const G = gateNow();
+  const days = G && G.need ? `${G.have} of ${G.need} clean days, ` : '';
+  const H = G ? G.holder : null;
   return {
-    line: `Rows check: ${n(c.clean, 'clean day', 'clean days')}, ${n(c.diffs, 'difference', 'differences')}, ${c.removed} removed by another phone${Object.keys(notes.wait).length ? `, ${Object.keys(notes.wait).length} waiting` : ''}`,
-    findings: notes.find
+    line: `Rows check: ${days}${n(diffs, 'difference', 'differences')}, ${gone} removed with no delete${waiting}`,
+    findings: notes.find,
+    ...(H
+      ? {
+          hold: {
+            text: H.older
+              ? `Waiting for a device on an older version, last seen ${seenDay(H.seen)}.`
+              : `Waiting for another device, ${H.have} of ${G ? G.need : 0} clean days, last seen ${seenDay(H.seen)}.`,
+            dev: H.dev
+          }
+        }
+      : {})
   };
 }
 /** Whether a pass is running or asked for: what the suites wait on. */

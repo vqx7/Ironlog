@@ -1253,6 +1253,10 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
     const row = await P.ev(() => { const b = document.querySelector('#view [data-act="restore"][data-id="t22"]'); return b ? b.closest('li').innerText.replace(/\s+/g, ' ') : null; });
     ok(row && /Day 22, .*deleted/.test(row), 'S-8: the deleted session is listed under Recently deleted in History, newest first', row);
     ok((await ids())[0] === 't22', 'S-8: newest first', await ids());
+    /* One day's entries in one order on every phone, by id after the day: the account's rows carry no order of their own,
+       and a phone's limits must drop the same entries wherever a list is made from them (design 3.5, REV35-15). */
+    const sameDay = await P.ev(() => { const L = window.__ironlog; const e = (id, kind) => ({ id, kind, date: '2026-11-10', data: { id, date: '2026-11-01', dayName: id, ex: [] } }); return [L.normalize({ trash: [e('zz', 'session'), e('aa', 'session'), e('mm', 'cardio')] }).trash, L.normalize({ trash: [e('mm', 'cardio'), e('aa', 'session'), e('zz', 'session')] }).trash].map(t => t.map(x => x.id).join(',')); });
+    ok(sameDay[0] === 'aa,mm,zz' && sameDay[1] === 'aa,mm,zz', 'S-8: entries of one day are in one order whatever order they came in: by id', sameDay);
     // Cardio goes there too.
     await P.ev(() => { window.__ironlog.ACT.cardioDel ? window.__ironlog.ACT.cardioDel({ dataset: { id: 'c1' } }) : 0; }); await wait(100);
     if (await P.ev(() => !!window.__ironlog.ui.modal)) await confirmOk(P);

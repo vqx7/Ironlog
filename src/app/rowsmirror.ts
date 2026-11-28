@@ -3,11 +3,10 @@
    compares the log with the rows as the notes hold them and asks the account only where one differs; what the
    account changed, or holds as the later copy, is left alone for a while before the log's copy goes over it. */
 
-import { APP_VERSION } from './config';
+import { APP_VERSION, DISPLAY_VERSION } from './config';
 import { today, uid } from './util';
 import { rec } from './records';
 import type { Rec } from './records';
-import { md5 } from './md5';
 import { cloud, state } from './store';
 import type { CloudRows, RowIn } from './store';
 import { device } from './storage';
@@ -18,9 +17,11 @@ import {
   ansText,
   blockedNow,
   ctxNow,
+  dayNow,
   found,
   heldText,
   keyOf,
+  notesDigest,
   notesFor,
   notesOut,
   offWhy,
@@ -42,10 +43,18 @@ const WAIT_MS = 60000;
 /** The level an account's first layout says: the first phase's, whatever this build's own, so a phone still on a
     first-phase build syncs the account as before. */
 const FIRST_LEVEL = 1;
-/** The last character a single UTF-16 unit holds. */
-const UNIT_TOP = 0xffff;
 /** What was last sent as it stood for a record the account then did not take, by key: the same is not sent as it stands again (it waits, then goes over the account's). */
 const tried = new Map<string, string>();
+
+/** How long a document's writer counts as one of the account's devices since it wrote, in milliseconds (30 days, as the switch reads it). */
+const WRITER_MS = 30 * 86400000;
+/** Whether a device that writes no row of its own has written a document in the last 30 days, as the last whole read found them. */
+function rowlessWriter(N: Notes, writers: Readonly<Record<string, { dev: string; at: number }>>): boolean {
+  const now = Date.now();
+  return Object.values(writers).some(
+    w => now - w.at <= WRITER_MS && w.dev !== cloud.devId && !N.rows['device/' + w.dev]
+  );
+}
 
 /* ---------- one pass ---------- */
 
@@ -149,6 +158,14 @@ export async function mirrorPass(): Promise<void> {
       delete N.wait[k];
       tried.delete(k);
     }
+  /* A record the documents took out that is back in the log, or that a device's mark has deleted, is explained; so is
+     every one while a device that writes no rows of its own writes the documents (a build before the rows deletes
+     without a mark, and holds the switch anyway). */
+  const rowless = rowlessWriter(N, C.writers());
+  for (const k in N.gone) {
+    const h = N.rows[k];
+    if (rowless || L.mine.has(k) || !h || placeOf(h) === 'good') delete N.gone[k];
+  }
   const differs = (): boolean => {
     for (const k of keysOf(N, L)) if (!inStep(L.mine.get(k), N.rows[k])) return true;
     return false;
@@ -185,6 +202,7 @@ export async function mirrorPass(): Promise<void> {
         h = N.rows[k];
       if (inStep(m, h)) {
         delete N.wait[k];
+        delete N.gone[k];
         tried.delete(k);
         continue;
       }
@@ -193,6 +211,10 @@ export async function mirrorPass(): Promise<void> {
          the row). So does one the account would not take as the log holds it (the account's copy is the later one).
          If it still differs a minute on, and after a whole read of the documents since, the documents did decide
          otherwise, and the log's state is sent over the account's. */
+      /* A record the documents took out of the log while its row still holds it, with no device's mark deleting it,
+         waits too: the device that deleted it marks its row at its own next pass. If none has within the wait, no
+         device deleted it, which is what the daily check is there to catch: it is a difference (`gone`). */
+      if (!m && N.gone[k] !== undefined) N.wait[k] ??= N.gone[k] ?? now;
       const since = N.wait[k];
       const ripe = since !== undefined && now - since >= WAIT_MS && C.pulledAt() > since;
       /* Sent as it stands: a row this phone has not seen change since it last agreed with the log, which the account
@@ -210,15 +232,20 @@ export async function mirrorPass(): Promise<void> {
       if (m) sums.set(k, m.s);
       if (!plain) {
         forced.add(k);
+        const gone = !m && N.gone[k] !== undefined;
         found(
           N,
           k,
           m
             ? 'the documents kept a copy the rows held a later version of; the log was sent over it'
-            : 'the rows held a record the documents do not; it was marked deleted',
+            : gone
+              ? 'the documents took out a record no device deleted; it was marked deleted'
+              : 'the rows held a record the documents do not; it was marked deleted',
           mineText(m),
-          h ? `${placeOf(h)} ${heldText(h)}` : 'no row'
+          h ? `${placeOf(h)} ${heldText(h)}` : 'no row',
+          gone
         );
+        delete N.gone[k];
       }
     }
     if (out.length && !(await send(R, N, out, sums))) {
@@ -282,58 +309,24 @@ async function draftRow(R: CloudRows, N: Notes): Promise<void> {
     }
   }
 }
-/** Two texts in the order of their bytes, as the account orders them: by code point, which a comparison of UTF-16 units is not for characters past U+FFFF. */
-function bytesCmp(a: string, b: string): number {
-  if (a === b) return 0;
-  const n = Math.min(a.length, b.length);
-  for (let i = 0; i < n; i++) {
-    const x = a.codePointAt(i) ?? 0,
-      y = b.codePointAt(i) ?? 0;
-    if (x !== y) return x < y ? -1 : 1;
-    if (x > UNIT_TOP) i++;
-  }
-  return a.length < b.length ? -1 : 1;
-}
 /** The daily check: the account's one checksum over all its rows against the same worked out from the notes. A difference means the notes are not the account's rows: they are made again, and it is said. */
 async function check(R: CloudRows, N: Notes): Promise<void> {
   const d = rec(await soon(R.digest()));
   if (!d) return;
   // Rows changed since this pass read them: checked at the next pass.
   if (ansNum(d['top']) !== N.n) return;
-  const keys = Object.keys(N.rows).sort((a, b) => {
-    const ca = a.indexOf('/'),
-      cb = b.indexOf('/');
-    return bytesCmp(a.slice(0, ca), b.slice(0, cb)) || bytesCmp(a.slice(ca + 1), b.slice(cb + 1));
-  });
-  const text = keys
-    .map(k => {
-      const h = N.rows[k];
-      const cut = k.indexOf('/');
-      return h
-        ? [
-            k.slice(0, cut),
-            k.slice(cut + 1),
-            h.t,
-            h.dev,
-            h.a,
-            h.s,
-            h.saw === null ? '' : h.saw,
-            h.saw === null ? '' : h.sawDev,
-            h.good ? 1 : 0
-          ].join('\x1f')
-        : '';
-    })
-    .join('\x1e');
-  if (ansNum(d['n']) === keys.length && ansText(d['sum']) === md5(text)) {
+  const { n, sum } = notesDigest(N);
+  if (ansNum(d['n']) === n && ansText(d['sum']) === sum) {
     if (N.chk.day !== today()) N.chk.clean++;
     N.chk.day = today();
+    dayNow(N, today()).ok = true;
     return;
   }
   found(
     N,
     '',
     'the notes were not what the account holds; they were made again',
-    `${keys.length} rows`,
+    `${n} rows`,
     `${ansNum(d['n'])} rows`
   );
   N.chk.day = today();
@@ -341,20 +334,31 @@ async function check(R: CloudRows, N: Notes): Promise<void> {
   N.n = 0;
   if (!(await takeIn(R, N))) turnOff(NO_TABLE);
 }
-/** This phone's own row: its build, the level it syncs at, the day it was last here and how its checks stand. Written once a day at most. */
+/** This phone's own row: its build and version, the level it syncs at, the day it was last here, how its checks
+    stand and its last daily checks (`days`, which the switch reads, rowsgate.ts). Written once a day, and again the
+    same day once a difference is found (found). */
 async function deviceRow(R: CloudRows, N: Notes): Promise<void> {
   const id = cloud.devId;
   if (!id || N.devDay === today()) return;
   const body = JSON.stringify({
     build: APP_VERSION,
+    ver: DISPLAY_VERSION,
     level: LEVEL,
     seen: today(),
     checked: N.chk.day,
     clean: N.chk.clean,
     diffs: N.chk.diffs,
-    removed: N.chk.removed
+    removed: N.chk.removed,
+    days: N.days
   });
   if (await send(R, N, [{ kind: 'device', id, body, t: Date.now(), dev: id, a: 0 }])) N.devDay = today();
+}
+/** Whether the log's every record reads as its row in notes `N` and nothing waits: the first phase's pass found the rows saying what the log says. */
+export function mirrorInStep(N: Notes): boolean {
+  if (Object.keys(N.wait).length) return false;
+  const L = logNow(N);
+  for (const k of keysOf(N, L)) if (!inStep(L.mine.get(k), N.rows[k])) return false;
+  return true;
 }
 /** Forgets what was last sent and not taken: wherever the notes are forgotten (rowsOnForget). */
 export function mirrorForget(): void {

@@ -26,7 +26,10 @@ function bundleOf(dir) {
           "export { canon } from './merge';",
           "export { draftSession } from './session';",
           "export { DISPLAY_VERSION } from './config';",
-          has('rows') ? "export { rowsBusy, rowsDiag, ROWS_UPDATE } from './rows';" : ''
+          has('rows') ? "export { rowsBusy, rowsDiag, ROWS_UPDATE } from './rows';" : '',
+          has('rowsswitch') ? (fs.readFileSync(path.join(app, 'rowsswitch.ts'), 'utf8').includes('export async function switchBack') ? "export { switchNow, switchBack } from './rowsswitch';" : "export { switchNow } from './rowsswitch';") : '',
+          has('rowsgate') ? "export { gateNow, forgetDevice } from './rowsgate';" : '',
+          has('rowsync') ? "export { rowsDecideHere } from './rowsnotes';" : ''
         ].join('\n'),
         resolveDir: app, loader: 'ts', sourcefile: 'sim-entry.ts'
       },
@@ -58,7 +61,7 @@ function accountOf(o = {}) {
       await net('rows-' + name, 'after');
       return r;
     };
-    return { push: (rows, top) => call('push', [rows, top]), pull: (since, most) => call('pull', [since, most]), digest: () => call('digest', []), list: (since, most) => call('list', [since, most]) };
+    return { push: (rows, top) => call('push', [rows, top]), pull: (since, most) => call('pull', [since, most]), digest: () => call('digest', []), list: (since, most) => call('list', [since, most]), guarded: () => call('guarded', []) };
   };
   const dbFor = (who, net) => ({
     rows: rowsFor(who, net),
@@ -68,6 +71,8 @@ function accountOf(o = {}) {
         await net('set', 'before');
         const now = store.has(p) ? JSON.parse(store.get(p)) : null;
         const still = !seen ? !now : !now ? false : 'w' in seen ? now.w === seen.w : now.w === undefined && (now.at === undefined ? null : Number(now.at)) === seen.at;
+        // Where the account has rows, the document goes through its table on the database too, whose guard refuses a write once the rows decide (SUPABASE.md, Part 9).
+        if (still && o.rows && !o.rows.missing) await o.rows.R.call(o.rows.name, o.rows.table || 'records', 'docput', [p.slice(p.lastIndexOf('/') + 1), doc]);
         if (still) { store.set(p, JSON.stringify(doc)); writes.push({ who, p }); }
         await net('set', 'after');
         return still;
@@ -108,7 +113,8 @@ function phoneOf(dir, o = {}) {
   class D extends Date { constructor(...a) { if (a.length) super(...a); else super(now()); } static now() { return now(); } }
   const noop = () => {};
   const listen = (type, fn) => { if (listeners[type]) listeners[type].push(fn); };
-  const window = { IRONLOG_STARTER: 'legacy', addEventListener: listen, removeEventListener: noop, scrollTo: noop, matchMedia: () => ({ matches: false }) };
+  // o.env 'preview': the preview's build, as its page's head says (storage.ts ENV).
+  const window = { IRONLOG_STARTER: 'legacy', ...(o.env ? { IRONLOG_ENV: o.env } : {}), addEventListener: listen, removeEventListener: noop, scrollTo: noop, matchMedia: () => ({ matches: false }) };
   const document = { addEventListener: listen, removeEventListener: noop, visibilityState: 'visible', getElementById: () => null, querySelector: () => null, querySelectorAll: () => [], documentElement: { dataset: {} } };
   /* Web Locks, for the tabs of one phone: a lock is held by one tab at a time; `ifAvailable` answers at once with no
      lock when another tab holds it; a request with a `signal` waits and gives up when it is aborted. A tab frozen
@@ -188,6 +194,8 @@ function phoneOf(dir, o = {}) {
     await P.settle();
   };
   P.edit = change => { E.act(() => change(E.state)); };
+  /** The timers due by the phone's clock run now, without waiting for the sync's queue: a wait the queue itself is in (a lock's) gives up as its timer says. */
+  P.fire = () => { for (const [id, x] of [...timers.entries()].filter(([, x]) => x.at <= now()).sort((a, b) => a[1].at - b[1].at)) { timers.delete(id); x.fn(); } };
   P.flush = async () => { await E.cq(E.cloudFlush); await P.settle(); };
   P.pull = async () => { await E.cq(E.cloudPull); await P.settle(); };
   P.sync = async () => { await P.flush(); await P.pull(); };

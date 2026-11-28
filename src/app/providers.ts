@@ -82,6 +82,16 @@ export function codeOf(e: unknown): ServiceCode | null {
   const c = e && typeof e === 'object' && 'code' in e ? e.code : null;
   return typeof c === 'string' && KNOWN.has(c) ? SERVICE_CODES.find(k => k === c) || null : null;
 }
+/** Whether an error is the network's, not the app's: no answer in time, the phone offline, a request that could not
+    be made, or a sign-in refused or gone. The rows stop for this visit on any other error (rows.ts), and the app's
+    error log sends only the others (errlog.ts). */
+export function netFault(e: unknown): boolean {
+  const c = codeOf(e);
+  if (c === 'timeout' || c === 'revoked' || c === 'gone') return true;
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return true;
+  const m = e && typeof e === 'object' && 'message' in e ? e.message : e;
+  return /no answer in time|unavailable|offline|Failed to fetch|NetworkError|Load failed/i.test(String(m));
+}
 /** An error's message, or the words given when it has none. */
 export function said(e: unknown, or: string): string {
   const m = e && typeof e === 'object' && 'message' in e ? e.message : null;

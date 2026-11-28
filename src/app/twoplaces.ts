@@ -51,15 +51,17 @@ export function draftNote(prev: unknown, kept?: Kept, where = 'on another device
   fx.toast(
     kept === 'joined' || kept === 'cardioJoined'
       ? `Your workout was saved ${where}. Sets done here since were added to it.`
-      : kept === 'saved' || kept === 'cardio'
-        ? `Your workout was ${state.draft ? 'replaced by the one' : 'closed'} ${where}. Your ${kept === 'saved' ? 'sets are' : 'cardio is'} in **History**.`
-        : state.draft
-          ? saved
-            ? `Your workout was replaced by the one ${where}. Your sets are in **History**.`
-            : `Your workout was replaced by the one ${where}.`
-          : saved
-            ? `Your workout was saved ${where}.`
-            : `Your workout was closed ${where}.`
+      : kept === 'changed'
+        ? `Your workout was saved ${where}. Your changes here were added to it.`
+        : kept === 'saved' || kept === 'cardio'
+          ? `Your workout was ${state.draft ? 'replaced by the one' : 'closed'} ${where}. Your ${kept === 'saved' ? 'sets are' : 'cardio is'} in **History**.`
+          : state.draft
+            ? saved
+              ? `Your workout was replaced by the one ${where}. Your sets are in **History**.`
+              : `Your workout was replaced by the one ${where}.`
+            : saved
+              ? `Your workout was saved ${where}.`
+              : `Your workout was closed ${where}.`
   );
 }
 /* The copy of the workout in progress that loses a merge is never dropped:
@@ -81,7 +83,7 @@ export function draftNote(prev: unknown, kept?: Kept, where = 'on another device
    in, its sets as they were, by a phone that only opened the app) is no reason to bring back a workout discarded on
    the phone it was done on. With no agreed copy every set ticked counts. */
 /** Whether copy `d` holds a set ticked or cardio entered that the agreed copy lacks (above). */
-export function loggedSince(d: DraftLike | null | undefined, agreed: DraftLike | null | undefined): boolean {
+function loggedSince(d: DraftLike | null | undefined, agreed: DraftLike | null | undefined): boolean {
   if (!d) return false;
   const was = agreed && agreed.id === d.id ? agreed : null;
   const rows = new Set(was ? was.ex.flatMap(b => b.sets.filter(x => x.done).map(x => canon(x))) : []);
@@ -92,8 +94,20 @@ export function loggedSince(d: DraftLike | null | undefined, agreed: DraftLike |
   );
 }
 
-/** What became of a losing copy (keepLost): its sets saved as a session, joined to the one saved elsewhere, its cardio alone saved, or nothing. */
-export type Kept = 'saved' | 'joined' | 'cardio' | 'cardioJoined' | null;
+/** What became of a losing copy (keepLost): its sets saved as a session, joined to the one saved elsewhere, its cardio alone saved, its other changes (a date, a note) joined, or nothing. */
+export type Kept = 'saved' | 'joined' | 'cardio' | 'cardioJoined' | 'changed' | null;
+/* A copy of a workout finished elsewhere joins the session it became with every change the lifter made to it, not
+   only its ticked sets: its date and its notes too, against the copy agreed (mergeSession is three-way, so what this
+   copy did not change does not move). A copy discarded elsewhere is kept only for what was logged in it
+   (loggedSince): a date or a note alone never brings back a discarded workout. */
+/** Whether copy `d` holds something its session would keep that the agreed copy lacks: anything logged since (loggedSince), or, where a session of its id is saved to join, a change of the session's own fields (its date, its notes). */
+export function changedSince(d: DraftLike | null | undefined, agreed: DraftLike | null | undefined): boolean {
+  if (loggedSince(d, agreed)) return true;
+  if (!d || !agreed || agreed.id !== d.id || d.editingId || !state.sessions.some(s => s.id === d.id)) return false;
+  const a = draftSession(agreed, true),
+    b = draftSession(d, true);
+  return !!a && !!b && canon({ ...a, ex: [] }) !== canon({ ...b, ex: [] });
+}
 /** Keeps a losing copy's ticked sets and cardio (above); says what was done, for the toast. */
 export function keepLost(
   lost: DraftLike | null | undefined,
@@ -103,11 +117,12 @@ export function keepLost(
   tabs = false
 ): Kept {
   if (!lost || lost.editingId || (now && now.id === lost.id)) return null;
-  const kept = draftSession(lost),
+  const have = state.sessions.find(q => q.id === lost.id);
+  // Joined to a session saved elsewhere, every change counts (above); saved alone, only what was logged.
+  const kept = have ? draftSession(lost, true) : draftSession(lost),
     cardio = draftCardio(lost);
   if (!kept && !cardio.length) return null;
   const was = agreed && agreed.id === lost.id ? agreed : null;
-  const have = state.sessions.find(q => q.id === lost.id);
   if (have) {
     /* The agreed copy is the base, an agreed copy with nothing ticked an
        empty one (read as none, two identical sets ticked
@@ -138,7 +153,8 @@ export function keepLost(
     );
     edited(joined.date, lostKeys(lost.id, cardio));
     conflictNote(stat, tabs);
-    return sets ? 'joined' : 'cardioJoined';
+    if (!sets) return 'cardioJoined';
+    return loggedSince(lost, was) ? 'joined' : 'changed';
   }
   // Closed on the other phone with no session of its id (discarded there): what was done here is kept, as its ticked sets are.
   setState(
@@ -171,6 +187,7 @@ export function lostNote(kept: Kept): void {
   else if (kept === 'joined') fx.toast('Sets ticked on another device were added to the session saved here.');
   else if (kept === 'cardio') fx.toast('Cardio logged on another device was saved in **History**.');
   else if (kept === 'cardioJoined') fx.toast('Cardio logged on another device was added to the session saved here.');
+  else if (kept === 'changed') fx.toast('Changes made on another device were added to the session saved here.');
 }
 /** Says how many records were edited on two devices, if any (the later edit kept). */
 /* What a clash kept, in words that are true of it. Between devices the later edit is kept, by each document's time
