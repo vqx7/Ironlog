@@ -399,6 +399,9 @@ async function pullSince(
   for (;;) {
     const p = rec(await soon(R.pull(at, PAGE)));
     if (!p) return null;
+    const c = counted();
+    c.pulls++;
+    c.pullBytes += JSON.stringify(p).length;
     layout = p['layout'];
     // Every answer carries the layout: a phone whose account asks for a newer build, or no longer lets its rows decide, learns it here.
     layoutTaken(layout);
@@ -569,7 +572,9 @@ export async function rowSync(): Promise<void> {
   if (editsPending()) trackEdits();
   S.status('connecting');
   try {
+    const began = Date.now();
     await oneTab(() => syncOnce(R, acct, C.ep()));
+    counted().ms = Date.now() - began;
   } catch (e) {
     log('rows-sync', e);
     overs.clear();
@@ -614,6 +619,27 @@ async function oneTab(fn: () => Promise<void>): Promise<void> {
 function otherTab(): void {
   const other = storedElsewhere();
   if (other && ctx) ctx.mergeStored(other);
+}
+/** What the rows' sync did today on this phone, for "Copy diagnostics" (V's numbers, the design's part 2, 11): its
+    reads and writes and their sizes in characters, and how long its last pass took, in milliseconds. */
+interface Counted {
+  day: string;
+  pulls: number;
+  pullBytes: number;
+  pushes: number;
+  pushBytes: number;
+  ms: number;
+}
+let tally: Counted | null = null;
+/** Today's tally, begun again each day. */
+function counted(): Counted {
+  const day = today();
+  if (!tally || tally.day !== day) tally = { day, pulls: 0, pullBytes: 0, pushes: 0, pushBytes: 0, ms: 0 };
+  return tally;
+}
+/** The rows' numbers for "Copy diagnostics": today's tally and the sizes of the two keys the rows keep on the phone. */
+export function rowsNumbers(): Counted & { table: number; small: number } {
+  return { ...counted(), table: (prefGet(ROWS_KEY) || '').length, small: (prefGet(NOW_KEY) || '').length };
 }
 /** Switch back's write of the log over every document, through the document sync (writeBack, sync.ts): true once every one is written. */
 export async function writeDocsBack(): Promise<boolean> {
@@ -902,6 +928,9 @@ async function sendOut(R: CloudRows, N: Notes, W: Now, sd: Said): Promise<boolea
     let ans: Rec | null;
     try {
       ans = rec(await soon(R.push(part)));
+      const c = counted();
+      c.pushes++;
+      c.pushBytes += JSON.stringify(part).length;
     } catch (e) {
       // The workout's row was written elsewhere first, and the write refused whole: read again, merged, written again.
       if (!/rows_draft_(stale|time)/.test(said(e))) throw e;

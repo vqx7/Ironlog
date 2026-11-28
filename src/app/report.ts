@@ -30,6 +30,7 @@ import type { Report } from './providers';
 import { rowsDiag } from './rows';
 import { forgetDevice } from './rowsgate';
 import { switchBack } from './rowsswitch';
+import { rowsNumbers } from './rowsync';
 import { isStandalone } from './env';
 import { closeModal, confirmBox, openModal, renderModal, rerenderKeepScroll } from './page';
 import { toast } from './toast';
@@ -442,6 +443,7 @@ export const REPORT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         version: DISPLAY_VERSION,
         cloud: { on: cloud.on, status: cloud.status, err: cloud.err, last: cloud.last },
         rows: rowsDiag(),
+        rowsNumbers: rowsNumbers(),
         log: logBuf
       },
       null,

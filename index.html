@@ -7534,9 +7534,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (x2.dropOnly) continue;
       const j3 = prJudge(ex, h3, x2);
       x2.progress = j3.progress;
-      const counted = prCounted(ex, h3, x2, noBodyIn(M3, ex));
-      const pr = counted ?? (j3.pr ? { ...j3.pr, big: false } : null);
-      const heavy = counted && j3.pr && j3.pr.type === "Weight PR" && !(counted.type === "Weight PR" && counted.w >= j3.pr.w - EPS_SAME) ? { w: j3.pr.w, u: j3.pr.u, r: j3.pr.r } : null;
+      const counted2 = prCounted(ex, h3, x2, noBodyIn(M3, ex));
+      const pr = counted2 ?? (j3.pr ? { ...j3.pr, big: false } : null);
+      const heavy = counted2 && j3.pr && j3.pr.type === "Weight PR" && !(counted2.type === "Weight PR" && counted2.w >= j3.pr.w - EPS_SAME) ? { w: j3.pr.w, u: j3.pr.u, r: j3.pr.r } : null;
       if (pr) prs.push({ date: x2.date, sid: x2.sid, exId: id, ...pr, ...heavy ? { heavy } : {} });
       prAdd(h3, x2);
       if (x2.best != null) maxBest = maxBest == null ? x2.best : Math.max(maxBest, x2.best);
@@ -10652,7 +10652,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const from = wk(fk) < first ? first : wk(fk);
       if (wk(tk) < first) return null;
       const to = tk === 0 ? M3.today() : addDays(wk(tk), SUNDAY);
-      let counted = 0, sess = 0, hard = 0, missed = 0, light = 0;
+      let counted2 = 0, sess = 0, hard = 0, missed = 0, light = 0;
       for (let w2 = from; w2 <= wk(tk); w2 = addDays(w2, WEEK_DAYS)) {
         const n3 = weekSessionsIn(M3, w2);
         if (w2 >= cur2 || w2 < c0 || isRestWeekIn(M3, w2)) continue;
@@ -10664,7 +10664,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           light++;
           continue;
         }
-        counted++;
+        counted2++;
         sess += n3;
         hard += I2.weekHard[w2] || 0;
       }
@@ -10673,9 +10673,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         from,
         to,
         weeks: Math.round(daysBetween(from, wk(tk)) / WEEK_DAYS) + 1,
-        counted,
-        sess: counted ? sess / counted : null,
-        hard: counted ? hard / counted : null,
+        counted: counted2,
+        sess: counted2 ? sess / counted2 : null,
+        hard: counted2 ? hard / counted2 : null,
         prs,
         missed,
         light
@@ -13420,6 +13420,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     for (; ; ) {
       const p3 = rec(await soon(R2.pull(at2, PAGE2)));
       if (!p3) return null;
+      const c4 = counted();
+      c4.pulls++;
+      c4.pullBytes += JSON.stringify(p3).length;
       layout = p3["layout"];
       layoutTaken(layout);
       top = Math.max(top, ansNum(p3["top"]));
@@ -13528,7 +13531,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (editsPending()) trackEdits();
     S4.status("connecting");
     try {
+      const began = Date.now();
       await oneTab(() => syncOnce(R2, acct2, C2.ep()));
+      counted().ms = Date.now() - began;
     } catch (e5) {
       log("rows-sync", e5);
       overs.clear();
@@ -13565,6 +13570,15 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function otherTab() {
     const other = storedElsewhere();
     if (other && ctx2) ctx2.mergeStored(other);
+  }
+  var tally = null;
+  function counted() {
+    const day = today();
+    if (!tally || tally.day !== day) tally = { day, pulls: 0, pullBytes: 0, pushes: 0, pushBytes: 0, ms: 0 };
+    return tally;
+  }
+  function rowsNumbers() {
+    return { ...counted(), table: (prefGet(ROWS_KEY) || "").length, small: (prefGet(NOW_KEY) || "").length };
   }
   async function writeDocsBack() {
     return ctx2 ? ctx2.writeBack() : false;
@@ -13819,6 +13833,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       let ans;
       try {
         ans = rec(await soon(R2.push(part)));
+        const c4 = counted();
+        c4.pushes++;
+        c4.pushBytes += JSON.stringify(part).length;
       } catch (e5) {
         if (!/rows_draft_(stale|time)/.test(said3(e5))) throw e5;
         for (const r4 of part) delete W2.out[keyOf(r4.kind, r4.id)];
@@ -27281,6 +27298,7 @@ ${JSON.stringify(ctx3, null, 1)}`;
           version: DISPLAY_VERSION,
           cloud: { on: cloud.on, status: cloud.status, err: cloud.err, last: cloud.last },
           rows: rowsDiag(),
+          rowsNumbers: rowsNumbers(),
           log: logBuf
         },
         null,

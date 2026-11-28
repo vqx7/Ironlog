@@ -525,6 +525,35 @@ const CASES = {
     const B = phoneOf(ROOT, { name: 'B', clock, seed: 6 }).start(); B.signIn(C); const at = C.calls.length; await B.sync();
     const b = C.calls.slice(at).filter(c => c.who === 'B');
     ok(b.filter(c => c.name === 'list').length === Math.ceil((rows.length + 1) / 500) + (rows.length % 500 === 0 ? 0 : 0) && pushesOf(C, 'B', at).every(k => k.startsWith('device/')), `a second phone reads the list in ${b.filter(c => c.name === 'list').length} reads of 500 rows, with no copies, and sends only its own device row`, b.map(c => c.name + ':' + c.n));
+    // Once the rows decide (2.79): the switch at three years, then what a phone asks and writes (the design's part 2, 11).
+    {
+      await A.settle();
+      const ts = Date.now(), sw = await A.E.switchNow(), switchMs = Date.now() - ts;
+      const swPush = C.calls.filter(c => c.name === 'push').slice(-3);
+      ok(sw === true && swPush.every(c => c.n <= 200), `the switch at three years: ${switchMs} ms here, its writes ${swPush.map(c => c.n).join(' and ')} rows`, { sw, n: swPush.map(c => c.n) });
+      const num = () => A.E.rowsNumbers();
+      clock.t += 5000; await A.sync();
+      let n0 = num(), c0 = C.calls.length;
+      clock.t += 5000; await A.pull();
+      let n1 = num();
+      const idle = C.calls.slice(c0);
+      ok(idle.length === 1 && idle[0].name === 'pull' && n1.pullBytes - n0.pullBytes < 1024, `a sync with nothing changed, the rows deciding: one request, ${n1.pullBytes - n0.pullBytes} characters back (under 1 KB)`, idle.map(c => c.name));
+      n0 = num(); c0 = C.calls.length;
+      A.edit(S => { S.sessions[5].notes = 'edited once the rows decide'; }); clock.t += 1500; await A.tick(); await A.flush();
+      n1 = num();
+      const ed = C.calls.slice(c0);
+      ok(ed.filter(c => c.name === 'push').length === 1 && n1.pushBytes - n0.pushBytes < 4096, `one edited session sent: ${ed.map(c => c.name).join(', ')}, the write ${n1.pushBytes - n0.pushBytes} characters (about 2 KB), its pass ${n1.ms} ms here`, ed.map(c => c.name));
+      A.edit(S => { S.draft = { id: 'kcost', date: '2026-11-22', ex: [{ exId: 'bench', sets: [{ w: 100, r: 5, rir: 2, done: false }, { w: 100, r: 5, rir: 2, done: false }, { w: 100, r: 5, rir: 2, done: false }] }] }; });
+      clock.t += 1500; await A.tick(); await A.flush();
+      n0 = num(); c0 = C.calls.length;
+      const tt = Date.now();
+      A.edit(S => { S.draft.ex[0].sets[0].done = true; }); clock.t += 1500; await A.tick(); await A.flush();
+      const tickMs = Date.now() - tt;
+      n1 = num();
+      const tk = C.calls.slice(c0);
+      ok(tk.filter(c => c.name === 'push').length === 1 && tk.filter(c => c.name === 'push')[0].keys.join() === 'draft/draft', `one set ticked: ${tk.map(c => c.name).join(', ')}, the workout's row ${n1.pushBytes - n0.pushBytes} characters, ${tickMs} ms here from the tick to its write's answer`, tk.map(c => c.keys));
+      ok(n1.table <= 150000, `the table of the rows' notes is ${Math.round(n1.table / 1024)} KB (150 KB at most), the small key ${Math.round(n1.small / 1024 * 10) / 10} KB`, n1);
+    }
   }
 
   /* ---------- 4. histories from seeds ---------- */

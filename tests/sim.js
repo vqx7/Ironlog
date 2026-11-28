@@ -29,7 +29,8 @@ function bundleOf(dir) {
           has('rows') ? "export { rowsBusy, rowsDiag, ROWS_UPDATE } from './rows';" : '',
           has('rowsswitch') ? (fs.readFileSync(path.join(app, 'rowsswitch.ts'), 'utf8').includes('export async function switchBack') ? "export { switchNow, switchBack } from './rowsswitch';" : "export { switchNow } from './rowsswitch';") : '',
           has('rowsgate') ? "export { gateNow, forgetDevice } from './rowsgate';" : '',
-          has('rowsync') ? "export { rowsDecideHere } from './rowsnotes';" : ''
+          has('rowsync') ? "export { rowsDecideHere } from './rowsnotes';" : '',
+          has('rowsync') && fs.readFileSync(path.join(app, 'rowsync.ts'), 'utf8').includes('export function rowsNumbers') ? "export { rowsNumbers } from './rowsync';" : ''
         ].join('\n'),
         resolveDir: app, loader: 'ts', sourcefile: 'sim-entry.ts'
       },
