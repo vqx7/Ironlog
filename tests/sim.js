@@ -84,16 +84,25 @@ function accountOf(o = {}) {
 
 /* A phone: `dir` its build, `o.clock` { t } its clock in ms (shared between phones for one clock), `o.skew` what its
    own clock is off by, `o.storage` a Map kept across an update (the same storage opened by another build), `o.seed`
-   its random numbers. */
+   its random numbers. `o.group`: the tabs of one phone (tabGroup), this phone one of them: one storage, each write
+   heard by the other tabs as a browser's storage event, a turn of the event loop later, and Web Locks between them. */
 function phoneOf(dir, o = {}) {
-  const ls = o.storage || new Map();
+  const G = o.group || null;
+  const ls = G ? G.ls : o.storage || new Map();
   const clock = o.clock || { t: Date.UTC(2026, 10, 11, 10) };
-  const P = { name: o.name || 'phone', dir, ls, clock, skew: o.skew || 0, toasts: [], off: false, drop: null, hook: null };
+  const P = { name: o.name || 'phone', dir, ls, clock, skew: o.skew || 0, toasts: [], off: false, drop: null, hook: null, frozen: null, heard: [] };
   const now = () => clock.t + P.skew;
   const timers = new Map(); let tid = 0;
   const listeners = { storage: [], visibilitychange: [], pagehide: [], online: [], offline: [] };
+  /** A write heard by the other tabs of the phone, as the browser tells them: after this turn, never in the tab that wrote. */
+  const told = (key, oldValue, newValue) => {
+    if (!G) return;
+    for (const T of G.tabs) if (T !== P) { T.heard.push({ key, oldValue, newValue }); setImmediate(() => T.hear()); }
+  };
   const localStorage = {
-    getItem: k => (ls.has(k) ? ls.get(k) : null), setItem: (k, v) => { if (P.full) throw new Error('QuotaExceededError'); ls.set(k, String(v)); }, removeItem: k => { ls.delete(k); },
+    getItem: k => (ls.has(k) ? ls.get(k) : null),
+    setItem: (k, v) => { if (P.full) throw new Error('QuotaExceededError'); const was = ls.has(k) ? ls.get(k) : null; ls.set(k, String(v)); if (was !== String(v)) told(k, was, String(v)); },
+    removeItem: k => { const was = ls.has(k) ? ls.get(k) : null; ls.delete(k); if (was !== null) told(k, was, null); },
     key: i => [...ls.keys()][i] ?? null, get length() { return ls.size; }
   };
   class D extends Date { constructor(...a) { if (a.length) super(...a); else super(now()); } static now() { return now(); } }
@@ -101,7 +110,28 @@ function phoneOf(dir, o = {}) {
   const listen = (type, fn) => { if (listeners[type]) listeners[type].push(fn); };
   const window = { IRONLOG_STARTER: 'legacy', addEventListener: listen, removeEventListener: noop, scrollTo: noop, matchMedia: () => ({ matches: false }) };
   const document = { addEventListener: listen, removeEventListener: noop, visibilityState: 'visible', getElementById: () => null, querySelector: () => null, querySelectorAll: () => [], documentElement: { dataset: {} } };
-  const navigator = { get onLine() { return !P.off; } };
+  /* Web Locks, for the tabs of one phone: a lock is held by one tab at a time; `ifAvailable` answers at once with no
+     lock when another tab holds it; a request with a `signal` waits and gives up when it is aborted. A tab frozen
+     with a lock (P.freeze) holds it until thawed, as iOS holds a lock of a tab it froze in the background. */
+  const locks = G ? G.locks : null;
+  const lockApi = locks && {
+    request(name, opts, cb) {
+      if (typeof opts === 'function') { cb = opts; opts = {}; }
+      const L = locks.get(name) || locks.set(name, { held: null, queue: [] }).get(name);
+      const run = async () => {
+        L.held = P;
+        try { if (P.frozen) await P.frozen; return await cb({ name }); } finally { L.held = null; const nx = L.queue.shift(); if (nx) nx(); }
+      };
+      if (!L.held) return run();
+      if (opts && opts.ifAvailable) return Promise.resolve().then(() => cb(null));
+      return new Promise((res, rej) => {
+        const go = () => run().then(res, rej);
+        L.queue.push(go);
+        if (opts && opts.signal) opts.signal.addEventListener('abort', () => { const i = L.queue.indexOf(go); if (i >= 0) { L.queue.splice(i, 1); rej(Object.assign(new Error('The request was aborted'), { name: 'AbortError' })); } });
+      });
+    }
+  };
+  const navigator = { get onLine() { return !P.off; }, ...(lockApi ? { locks: lockApi } : {}) };
   // A timer of no delay is a turn of the event loop, not a wait: it runs at Node's next turn, whatever the phone's clock says.
   const st = (fn, ms) => { if (!ms) { setImmediate(fn); return 0; } timers.set(++tid, { fn, at: now() + ms }); return tid; };
   const ct = id => { timers.delete(id); };
@@ -116,11 +146,20 @@ function phoneOf(dir, o = {}) {
      them or after. `P.hook(kind, when)` runs inside every request, while it is in flight: what another phone does
      at that very moment. */
   const net = async (kind, when) => {
+    if (P.frozen) await P.frozen;
     if (P.hook) await P.hook(kind, when);
     if (P.off) throw dropped();
     const d = P.drop;
     if (d && d.n > 0 && (d.kind === '*' || d.kind === kind) && d.when === when) { d.n--; throw dropped(); }
   };
+  /** The writes of the other tabs heard so far, delivered as storage events; a frozen tab hears them once thawed. */
+  P.hear = () => {
+    if (P.frozen) return;
+    while (P.heard.length) { const ev = P.heard.shift(); for (const fn of listeners.storage) fn({ ...ev, storageArea: localStorage }); }
+  };
+  /** Freezes the tab, as iOS does in the background: its timers, its requests and its locks wait until thawed. */
+  P.freeze = () => { if (!P.frozen) P.frozen = new Promise(r => { P.thawIt = r; }); return P; };
+  P.thaw = () => { const t = P.thawIt; P.frozen = null; P.thawIt = null; if (t) t(); setImmediate(() => P.hear()); return P; };
   /** The app's start: the log read from storage (a new log when there is none), then the sync's notes. */
   P.start = seed => {
     if (seed && !ls.has(E.KEY)) { const s = E.normalize(null); seed(s); ls.set(E.KEY, JSON.stringify(E.normalize(s))); }
@@ -138,6 +177,7 @@ function phoneOf(dir, o = {}) {
   };
   /** Timers due by the phone's clock run in order (the edit notes after 800 ms, a flush after 1200 ms, retries). */
   P.tick = async () => {
+    if (P.frozen) return;
     for (let guard = 0; guard < 50; guard++) {
       const due = [...timers.entries()].filter(([, x]) => x.at <= now()).sort((a, b) => a[1].at - b[1].at)[0];
       if (!due) break;
@@ -155,6 +195,9 @@ function phoneOf(dir, o = {}) {
   P.notes = () => JSON.parse(ls.get(E.KEY + '.sync') || 'null');
   P.rowNotes = () => JSON.parse(ls.get(E.KEY + '.rows') || 'null');
   P.errors = () => E.logBuf.filter(x => !/^sync-(race|conflict)$/.test(x.a)).map(x => `${x.a}: ${x.m}`);
+  if (G) G.tabs.push(P);
   return P;
 }
-module.exports = { phoneOf, accountOf, bundleOf, rng };
+/** The tabs of one phone: one storage and one set of locks (phoneOf's `o.group`). */
+const tabGroup = (ls = new Map()) => ({ ls, tabs: [], locks: new Map() });
+module.exports = { phoneOf, accountOf, bundleOf, rng, tabGroup };

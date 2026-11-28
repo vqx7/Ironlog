@@ -8,9 +8,11 @@
 //   4. Histories written from seeds, on two and on three phones, checked against the lifter's rules.
 //   5. The histories are trusted because they find, on the source of 2.76, the losses the reviews of 2.76 and 2.77
 //      found by hand (tests/sim-cases.json keeps the shortest history of each), and because a copy of the rows
-//      module with one rule broken fails.
+//      module with one rule broken fails. The strict rules (simlib.js), which the rows must keep once they decide,
+//      find on the source of 2.78 the workout's losses no document sync can decide, by script and from seeds.
 //   ROWS_SEEDS=200 node tests/rows.js     more histories (default 40 with rows, 120 without)
 //   ROWS_PART=mirror|cost|seeds|old|broken node tests/rows.js     one part alone
+//   ROWS_PART=mirror ROWS_CASE=workout node tests/rows.js         the mirror's cases whose name holds the text
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -27,6 +29,8 @@ const ok = (c, m, x) => { if (!c) fails.push(m); console.log((c ? 'ok   ' : 'FAI
 const OLD = '13f77cdf1d6c1d993b4a7edd9d35104dd65d69e5';
 // The source of 2.77.1 (build r124), the build before the rows: a phone that has not updated yet.
 const BEFORE = 'a90bfabc59c70793de70a0137cf3885f8f3c7e53';
+// The source of 2.78.2 (build r127), the last build on which the documents decide every account.
+const DOCS_DECIDE = '4094416377777222f458ddd4524b55980232eb19';
 /** The app's source at commit `sha`, unpacked once into the temporary directory; fetched when this clone does not hold the commit. */
 function sourceAt(sha) {
   const dir = path.join(os.tmpdir(), 'ironlog-src-' + sha.slice(0, 10));
@@ -372,7 +376,7 @@ const CASES = {
       const asks = (/const LISTED = '([^']+)'/.exec(fs.readFileSync(path.join(ROOT, 'scripts', 'cloud-supabase.js'), 'utf8')) || [])[1];
       ok(asks === LIST, 'scripts/cloud-supabase.js reads the list with the columns the suites\' database gives a phone', { asks, LIST });
     }
-    for (const name of Object.keys(CASES)) { const out = await CASES[name](ROOT, R); ok(out.length === 0, name, out.slice(0, 4)); }
+    for (const name of Object.keys(CASES).filter(n => n.includes(process.env.ROWS_CASE || ''))) { const out = await CASES[name](ROOT, R); ok(out.length === 0, name, out.slice(0, 4)); }
 
     /* ---------- 2. what the rows never do ---------- */
     const script = (await history({ dirs: [ROOT, ROOT], seed: 77, steps: 50 })).script;
@@ -455,7 +459,7 @@ const CASES = {
     const cases = JSON.parse(fs.readFileSync(path.join(__dirname, 'sim-cases.json'), 'utf8'));
     let old = null;
     try { old = sourceAt(OLD); } catch (e) { ok(false, 'the source of 2.76 could not be read from git', String((e && e.message) || e).slice(0, 300)); }
-    for (const c of cases) {
+    for (const c of cases.filter(x => !x.on)) {
       const now = await history({ dirs: [ROOT, ROOT], script: c.script });
       ok(said(now).length === 0, `${c.name}: right on this build (${told(c.script)})`, said(now));
       if (!old) continue;
@@ -478,6 +482,25 @@ const CASES = {
         ] });
         const sent = r.C.calls.filter(c => c.who === 'AB'[o]);
         ok(said(r).length === 0 && sent.length === 0 && r.phones[o].E.rowsDiag === undefined && (await r.C.rows()).filter(x => x.kind === 'device').length === 1, `a phone still on 2.77.1 beside this build (${older ? 'this build signed in first' : 'the older phone signed in first'}): the lifter's rules hold, the older phone asks nothing of the rows, and what it changed is in the rows as the log holds it`, { said: said(r), asked: sent.length });
+      }
+    }
+    {
+      /* The strict rules, calibrated: what the rows must keep once they decide fails on the build before them, each
+         kept case by the rule it names and the seeds by themselves (two phones, with rows, as on V's account). */
+      let docs = null;
+      try { docs = sourceAt(DOCS_DECIDE); } catch (e) { ok(false, 'the source of 2.78.2 could not be read from git', String((e && e.message) || e).slice(0, 300)); }
+      for (const c of docs ? cases.filter(x => x.on === '2.78') : []) {
+        const was = await history({ dirs: [docs, docs], rows: R, name: acct(), strict: true, script: c.script });
+        ok(was.fails.some(f => f.rule === c.rule), `${c.name}: on the source of 2.78.2 it fails the rule "${c.rule}" (${told(c.script)}): the strict histories find ${c.found}`, was.fails);
+      }
+      if (docs) {
+        const rules = {}; let bad = 0;
+        for (let seed = 1; seed <= 20; seed++) for (const n of [2, 3]) {
+          const r = await history({ dirs: Array(n).fill(docs), seed: seed + (n === 3 ? 5000 : 0), steps: 60, rows: R, name: acct(), strict: true });
+          if (r.fails.length) bad++;
+          for (const f of r.fails) rules[f.rule] = (rules[f.rule] || 0) + 1;
+        }
+        ok(bad >= 3 && rules.sets > 0 && rules.date > 0, `40 strict histories from seeds on the source of 2.78.2 (20 on two phones, 20 on three): ${bad} fail a lifter's rule (${Object.keys(rules).map(k => k + ' ' + rules[k]).join(', ')})`, rules);
       }
     }
     if (old) {
