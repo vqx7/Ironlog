@@ -188,13 +188,14 @@ async function history(o) {
            deleted. That happens when the phone that tapped Finish had not seen a set the other had ticked and that
            phone ticks again before it syncs; when Finish is tapped on both; when the saved session is edited or
            moved, or the open workout's date changed, on one phone while the other ticks; and when a third phone
-           ticks. The rows of the release after hold each record, and the workout, as a row of its own. */
+           ticks, or the phone that ticked late, the workout finished on the other meanwhile, edits or moves the saved
+           session before it syncs. The rows of the release after hold each record, and the workout, as a row of its own. */
         const a = acts[w] || [];
         const fin = a.find(x => x.op === 'finish');
         const late = fin ? new Set(a.filter(x => x.op === 'tick' && x.round === fin.round && x.p !== fin.p).map(x => x.p)) : new Set();
         const both = fin && a.some(x => x.op === 'tick' && x.p !== fin.p && x.round === fin.round && x.seq < fin.seq && a.some(y => y.op === 'tick' && y.p === x.p && y.round === fin.round && y.seq > fin.seq));
         const why = tabbed.has(w) ? TABS_TWICE : sid(w) ? '' : raced.has(w) ? 'two workouts started on two phones at once'
-          : late.size > 1 || both || new Set(a.filter(x => x.op === 'finish').map(x => x.p)).size > 1 || a.some(x => x.op === 'tick' && a.some(y => y.round === x.round && y.p !== x.p && (y.op === 'note' || y.op === 'move' || y.op === 'restore' || y.op === 'redate'))) ? LATER
+          : late.size > 1 || both || new Set(a.filter(x => x.op === 'finish').map(x => x.p)).size > 1 || a.some(x => x.op === 'tick' && a.some(y => y.round === x.round && (y.p !== x.p || (fin && fin.p !== x.p && fin.round === x.round && y.seq > fin.seq)) && (y.op === 'note' || y.op === 'move' || y.op === 'restore' || y.op === 'redate'))) ? LATER
           : '';
         // Strict: the workout open on any phone counts, once (a workout held on one phone is open there alone).
         const open = S.draft && S.draft.id === w ? S.draft : rowsNow() ? (phones.map(Q => Q.state().draft).find(d => d && d.id === w) || null) : null;

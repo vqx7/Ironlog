@@ -501,7 +501,7 @@ export async function takeIn(R: CloudRows, N: Notes): Promise<boolean> {
     const X = rec(x);
     if (!X || typeof X['kind'] !== 'string' || typeof X['id'] !== 'string') return 0;
     const k = keyOf(X['kind'], X['id']),
-      h = heldOf(X);
+      h = heldAfter(X, N.rows[k]);
     if (!sameHeld(N.rows[k], h)) {
       /* Noted here, wherever a read brings a changed row in, and not by the pass that asked: a pass that ends before
          it compares (the lifter changed something meanwhile), the workout row's second try and the daily check's
@@ -578,7 +578,7 @@ export async function send(R: CloudRows, N: Notes, rows: RowIn[], sums?: Map<str
       const X = rec(x);
       if (!X || typeof X['kind'] !== 'string' || typeof X['id'] !== 'string') continue;
       const k = keyOf(X['kind'], X['id']);
-      const h = heldOf(X);
+      const h = heldAfter(X, N.rows[k]);
       N.rows[k] = h;
       if (X['took'] === true && ansNum(X['seq']) > N.n) own++;
       // The account's checksum of a copy it took as sent is the checksum of the text sent, or the copy did not arrive whole.

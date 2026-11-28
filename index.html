@@ -11886,7 +11886,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const note = (x2) => {
       const X = rec(x2);
       if (!X || typeof X["kind"] !== "string" || typeof X["id"] !== "string") return 0;
-      const k2 = keyOf(X["kind"], X["id"]), h3 = heldOf(X);
+      const k2 = keyOf(X["kind"], X["id"]), h3 = heldAfter(X, N2.rows[k2]);
       if (!sameHeld(N2.rows[k2], h3)) {
         if (MIRRORED.has(X["kind"])) N2.wait[k2] ??= Date.now();
       }
@@ -11957,7 +11957,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         const X = rec(x2);
         if (!X || typeof X["kind"] !== "string" || typeof X["id"] !== "string") continue;
         const k2 = keyOf(X["kind"], X["id"]);
-        const h3 = heldOf(X);
+        const h3 = heldAfter(X, N2.rows[k2]);
         N2.rows[k2] = h3;
         if (X["took"] === true && ansNum(X["seq"]) > N2.n) own2++;
         const sentRow = part.find((r4) => r4.kind === X["kind"] && r4.id === X["id"]);
@@ -12381,7 +12381,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         if (!m3 && N2.gone[k2] !== void 0) N2.wait[k2] ??= N2.gone[k2] ?? now3;
         const since = N2.wait[k2];
         const ripe = since !== void 0 && now3 - since >= WAIT_MS && C2.pulledAt() > since;
-        const plain = since === void 0 ? takes(m3, h3) : !!m3 && (!h3 || timeOf(m3) > h3.t) && tried.get(k2) !== mineText(m3);
+        const stale = !!m3 && !!h3 && placeOf2(h3) !== "log" && (m3.s === h3.s || m3.s === h3.gs) && m3.place !== placeOf2(h3);
+        const plain = since === void 0 ? takes(m3, h3) : !!m3 && !stale && (!h3 || timeOf(m3) > h3.t) && tried.get(k2) !== mineText(m3);
         if (!plain && !ripe) {
           N2.wait[k2] ??= now3;
           continue;
@@ -12501,6 +12502,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   function mirrorInStep(N2) {
     if (Object.keys(N2.wait).length) return false;
+    const d3 = N2.rows["draft/draft"];
+    if (d3 ? d3.s !== sumOf(state.draft ? bodyOf(state.draft) : "null") : !!state.draft) return false;
     const L2 = logNow(N2);
     for (const k2 of keysOf(N2, L2)) if (!inStep(L2.mine.get(k2), N2.rows[k2])) return false;
     return true;

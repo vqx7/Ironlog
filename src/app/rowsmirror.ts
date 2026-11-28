@@ -221,7 +221,12 @@ export async function mirrorPass(): Promise<void> {
          will take (the log moved, not the account); or, of a row that waits, only a copy the documents time later
          than the account's, once (the lifter changed it here since: the account is behind, not ahead). A record gone
          from the log, or one whose time is not later, is never sent over a row that waits before the wait is over. */
-      const plain = since === undefined ? takes(m, h) : !!m && (!h || timeOf(m) > h.t) && tried.get(k) !== mineText(m);
+      /* A row deleted elsewhere whose mark names the very copy the log holds is ahead of the documents here, whatever
+         time they give the copy (a copy put in Recently deleted keeps its version, which the documents do not): never
+         sent over before the wait is over. */
+      const stale = !!m && !!h && placeOf(h) !== 'log' && (m.s === h.s || m.s === h.gs) && m.place !== placeOf(h);
+      const plain =
+        since === undefined ? takes(m, h) : !!m && !stale && (!h || timeOf(m) > h.t) && tried.get(k) !== mineText(m);
       if (!plain && !ripe) {
         N.wait[k] ??= now;
         continue;
@@ -353,9 +358,13 @@ async function deviceRow(R: CloudRows, N: Notes): Promise<void> {
   });
   if (await send(R, N, [{ kind: 'device', id, body, t: Date.now(), dev: id, a: 0 }])) N.devDay = today();
 }
-/** Whether the log's every record reads as its row in notes `N` and nothing waits: the first phase's pass found the rows saying what the log says. */
+/** Whether the log's every record reads as its row in notes `N`, the workout in progress too, and nothing waits: the
+    first phase's pass found the rows saying what the log says. The workout's row is written over whatever it holds, so
+    one another phone wrote since (a set ticked there) differs from the workout here until the documents bring it. */
 export function mirrorInStep(N: Notes): boolean {
   if (Object.keys(N.wait).length) return false;
+  const d = N.rows['draft/draft'];
+  if (d ? d.s !== sumOf(state.draft ? bodyOf(state.draft) : 'null') : !!state.draft) return false;
   const L = logNow(N);
   for (const k of keysOf(N, L)) if (!inStep(L.mine.get(k), N.rows[k])) return false;
   return true;

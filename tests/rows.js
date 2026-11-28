@@ -716,6 +716,19 @@ const CASES = {
       ok(bad.length > 0, 'the case fails with the lock waited for without end', 'nothing failed');
       fs.rmSync(dir, { recursive: true, force: true });
     }
+    // A set ticked on B just before A switches the account: A switches only once the workout's row says what its own workout says, so the set is kept.
+    const tickCase = async dir => {
+      const r = await history({ dirs: [dir, dir], rows: R, name: acct(), strict: true, switchable: true, script: [S6(0, 'start', { id: 'k8', v: '2026-11-20' }), S6(0, 'check'), S6(1, 'tick', { i: 3 }), S6(0, 'switch'), S6(0, 'check')] });
+      return said(r);
+    };
+    {
+      const out = await tickCase(ROOT);
+      ok(out.length === 0, 'a set ticked on the other phone just before the switch is kept', out.slice(0, 3));
+      const dir = brokenCopy('the switch made with the workout\'s row not in step', `  if (d ? d.s !== sumOf(state.draft ? bodyOf(state.draft) : 'null') : !!state.draft) return false;\n`, ``);
+      const bad = await tickCase(dir).catch(e => ['crashed ' + e.message]);
+      ok(bad.length > 0, 'the case fails with the switch made while the workout\'s row is not in step', 'nothing failed');
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
     const lookCase = async dir => {
       /* A document written just before the switch, its row not yet written (that phone's push lost): the one look at the
          switch crosses it, records first and the frozen rows after, so a look stopped between the two writes is crossed
@@ -937,6 +950,14 @@ const CASES = {
         return out;
       }
     };
+    /* Deleted for good on B while A has not yet read the documents that say so: A's copy in Recently deleted is the very
+       copy B's mark names, so A leaves the row alone until its documents catch up, and nothing is a difference. */
+    gateCases['a record deleted for good on one phone, the other not yet caught up, is no difference'] = async dir => {
+      const r = await history({ dirs: [dir, dir], rows: R, name: acct(), strict: true, switchable: true, script: [S6(1, 'del', { id: 's3' }), S6(1, 'check'), S6(1, 'forgood', { id: 's3' }), S6(0, 'add', { id: 'x10', v: '2026-11-03' }), S6(0, 'check')] });
+      const out = said(r);
+      for (const P of r.phones) if (!/, 0 differences, /.test(line(P))) out.push(`${P.name}: ${line(P)}`);
+      return out;
+    };
     // The same, with the documents read inside the phone's own pass: the record gone is still noted, and still a difference (REV32-4).
     gateCases['a record gone with no delete during a pass is still a difference'] = async dir => {
       const r = await history({ dirs: [dir, dir], rows: R, name: acct(), strict: false, outside: true, switchable: true, script: [S6(0, 'check')] });
@@ -983,6 +1004,7 @@ const CASES = {
       ['a device row not written again after a difference', `  if (gone) D.gone++;\n  N.devDay = null;`, `  if (gone) D.gone++;`, ['a difference found after the day was checked holds the switch that day']],
       ['a record gone noted by the other tab written over by the pass', `      for (const k in other.gone) N.gone[k] ??= other.gone[k] ?? 0;\n`, ``, ['a record gone with no delete, read by the other tab during a pass, is still a difference']],
       ['a record gone during a pass not known to the pass', `    for (const k of keys) notes.gone[k] ??= now;`, `    for (const k of keys) void k;`, ['a record gone with no delete during a pass is still a difference']],
+      ['a stale copy sent over a mark that names it', `      const stale = !!m && !!h && placeOf(h) !== 'log' && (m.s === h.s || m.s === h.gs) && m.place !== placeOf(h);`, `      const stale = false;`, ['a record deleted for good on one phone, the other not yet caught up, is no difference']],
       ['a record gone with no delete sent as a plain delete', `      if (!m && N.gone[k] !== undefined) N.wait[k] ??= N.gone[k] ?? now;\n`, ``, ['a record deleted on another phone keeps the count; one gone with no delete restarts it']]
     ];
     for (const [name, from, to, which] of BROKEN_GATE) {

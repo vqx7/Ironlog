@@ -4,7 +4,7 @@
 // rows, signed-out requests see nothing). It also serves a folder of static
 // files, so the app and its "cloud" share one origin like in production.
 //
-// start(root) -> {base, users, rows, feedback, setMinPassword(n), confirm(email), addReader(email), feedbackTables(on), feedbackKey(on), loseReplies(n), expireTokens(email?), captchaSeen, captcha(on), raceAlways(on), failOnce(path, status, body), log, close()}
+// start(root) -> {base, users, rows, feedback, setMinPassword(n), confirm(email), addReader(email), feedbackTables(on), feedbackKey(on), loseReplies(n), expireTokens(email?), captchaSeen, captcha(on), raceAlways(on), failOnce(path, status, body), recordsOn() (the rows' SQL, with the documents guard and the error log of Part 9), errors, errorsHang(on), errorsFail(on), log, close()}
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
