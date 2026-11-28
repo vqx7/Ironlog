@@ -10,7 +10,8 @@
    tests/r57.js reads every step on the page after each action's tap. */
 
 import { CLOSED_KEY, log, prefDel, prefGet, prefSet, snapshot, undoKeepsNow, undoPersist, undoStack } from './storage';
-import { assemble, baseOf, editsNoted, mergeChunk, saveNow, saveSoon, seenAsIs } from './sync';
+import { assemble, baseOf, mergeChunk, saveNow, saveSoon } from './sync';
+import { editsNoted, seenAsIs } from './edits';
 import { canon, mergeDraft } from './merge';
 import { chunksOf, emptyChunk } from './chunks';
 import type { Rec } from './records';

@@ -38,17 +38,19 @@ function sourceAt(sha) {
   execFileSync('tar', ['-x', '-C', dir], { input: git(['archive', sha, 'src/app']) });
   return dir;
 }
-/** A copy of this checkout's source with `from` replaced by `to` in src/app/rows.ts: the rows module with one rule broken. A rule kept in two places is broken in both (`from` a list of pairs). */
+/** A copy of this checkout's source with `from` replaced by `to` in the rows' modules (src/app/rows*.ts): the rows with one rule broken. A rule kept in two places is broken in both (`from` a list of pairs). */
 function brokenCopy(name, from, to) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ironlog-broken-'));
   fs.cpSync(path.join(ROOT, 'src', 'app'), path.join(dir, 'src', 'app'), { recursive: true });
-  const f = path.join(dir, 'src', 'app', 'rows.ts');
-  let text = fs.readFileSync(f, 'utf8');
+  const app = path.join(dir, 'src', 'app');
+  const files = fs.readdirSync(app).filter(f => /^rows\w*\.ts$/.test(f));
+  const text = new Map(files.map(f => [f, fs.readFileSync(path.join(app, f), 'utf8')]));
   for (const [a, b] of Array.isArray(from) ? from : [[from, to]]) {
-    if (!text.includes(a)) throw new Error(`rows.ts no longer holds the text the broken copy "${name}" replaces: ${a.slice(0, 50)}`);
-    text = text.split(a).join(b);
+    const holds = files.filter(f => text.get(f).includes(a));
+    if (!holds.length) throw new Error(`no rows module holds the text the broken copy "${name}" replaces: ${a.slice(0, 50)}`);
+    for (const f of holds) text.set(f, text.get(f).split(a).join(b));
   }
-  fs.writeFileSync(f, text);
+  for (const f of files) fs.writeFileSync(path.join(app, f), text.get(f));
   return dir;
 }
 let accounts = 0;
@@ -514,7 +516,7 @@ const CASES = {
       ['a tab writes the notes it read before over what another tab has stored since', [[`notes.ep !== ep || stored !== written) {`, `notes.ep !== ep) {`], [`if (stored !== null && stored !== written) {`, `if (stored === 'never') {`]], '', ['a second tab of the phone never writes its older notes over what the first recorded']],
       ['a mark read by its time alone, not its device', `  if (h.saw === null || h.saw !== h.t || h.sawDev !== h.dev) return 'log';`, `  if (h.saw === null || h.saw !== h.t) return 'log';`, ['a mark of another copy, the app\'s own write, an account begun again, and the photo']],
       ['the app\'s own write sent with its count unmoved', `  if (h && t === h.t) return { t: h.t, dev: h.dev, a: h.a + 1 };`, `  if (h && t === h.t) return { t: h.t, dev: h.dev, a: h.a };`, ['a mark of another copy, the app\'s own write, an account begun again, and the photo']],
-      ['an account begun again is not noticed', `  if (!none() && (num(p['top']) < N.n || (N.made !== null && (!L || L.made !== N.made)))) {`, `  if (!none() && num(p['top']) < -1) {`, ['a mark of another copy, the app\'s own write, an account begun again, and the photo']],
+      ['an account begun again is not noticed', `  if (!none() && (ansNum(p['top']) < N.n || (N.made !== null && (!L || L.made !== N.made)))) {`, `  if (!none() && ansNum(p['top']) < -1) {`, ['a mark of another copy, the app\'s own write, an account begun again, and the photo']],
       ['the photo has no row', `  if (photo && (photoHeld() !== null || N.rows['photo/photo'])) mine.set('photo/photo', photo);`, ``, ['a mark of another copy, the app\'s own write, an account begun again, and the photo']],
       ['the rows\' notes are kept at "Sign out"', `  // Notes storage would not forget name the log they were for, and are not read for another.
   prefDel(ROWS_KEY);`, ``, ['"Sign out" then signed in again changes nothing in the account']]

@@ -1548,11 +1548,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     shift1: 16,
     shift2: 13
   };
-  function hashStr(str2) {
+  function hashStr(str) {
     const C2 = CYRB53;
     let h1 = C2.seed1, h22 = C2.seed2;
-    for (let i5 = 0; i5 < str2.length; i5++) {
-      const c4 = str2.charCodeAt(i5);
+    for (let i5 = 0; i5 < str.length; i5++) {
+      const c4 = str.charCodeAt(i5);
       h1 = Math.imul(h1 ^ c4, C2.mul1);
       h22 = Math.imul(h22 ^ c4, C2.mul2);
     }
@@ -8284,8 +8284,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     M3 = liftModelIn(M3, ex);
     if (u4 == null || u4 === UIn(M3)) return loadLabelIn(M3, ex, kg2);
     const n3 = (v3) => shownNum(u4 === "lb" ? v3 / LB : v3);
-    const num4 = ex.bw ? kg2 > 0 ? `BW+${n3(kg2)}` : `BW−${n3(-kg2)}` : n3(kg2);
-    return `${num4} ${u4}`;
+    const num3 = ex.bw ? kg2 > 0 ? `BW+${n3(kg2)}` : `BW−${n3(-kg2)}` : n3(kg2);
+    return `${num3} ${u4}`;
   }
   function listLabelIn(M3, ex, kg2, t4, named2) {
     const lift = liftUIn(M3, ex), u4 = t4 ?? lift;
@@ -11544,21 +11544,17 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return hexLE(a0) + hexLE(b0) + hexLE(c0) + hexLE(d0);
   }
 
-  // src/app/rows.ts
+  // src/app/rowsnotes.ts
   var ROWS_KEY = KEY + ".rows";
   var LAYOUT_KEY = ROWS_KEY + ".layout";
   var LEVEL = 1;
-  var ROWS_UPDATE = "Update the app to keep saving to your account. Your log stays on this phone.";
   var SUM_LEN = 12;
   var PAGE = 500, WRITE_ROWS = 200, WRITE_BYTES = 4e5;
-  var WAIT_MS = 6e4;
   var FIND_MAX = 20;
   var PAST_ALL = Number.MAX_SAFE_INTEGER;
   var B36 = 36;
   var WORDS_MARKED = 9, WORDS_NAMED = 4;
   var NO_TABLE = "not set up";
-  var WHY_MAX = 120;
-  var UNIT_TOP = 65535;
   var KIND = {
     sessions: "session",
     cardio: "cardio",
@@ -11569,7 +11565,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     injuries: "injury"
   };
   var MIRRORED = /* @__PURE__ */ new Set([...Object.values(KIND), "setting", "core", "photo"]);
-  var TRASHED = /* @__PURE__ */ new Set(["session", "cardio", "routine"]);
   var ctx = null;
   var notes = null;
   var off = null;
@@ -11577,8 +11572,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var layoutFor = null;
   var layoutText = null;
   var asked = null;
-  var running = null;
-  var again = false;
   var asking = 0;
   var written = null;
   function heed(L2) {
@@ -11610,19 +11603,19 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       })
     ]);
   }
-  var num = (v3) => typeof v3 === "number" && Number.isFinite(v3) ? v3 : 0;
-  var str = (v3) => typeof v3 === "string" ? v3 : "";
+  var ansNum = (v3) => typeof v3 === "number" && Number.isFinite(v3) ? v3 : 0;
+  var ansText = (v3) => typeof v3 === "string" ? v3 : "";
   var sumOf = (body) => md5(body).slice(0, SUM_LEN);
   function heldOf(x2) {
     return {
-      t: num(x2["t"]),
-      dev: str(x2["dev"]),
-      a: num(x2["a"]),
-      s: str(x2["sum"]).slice(0, SUM_LEN),
-      saw: x2["gone_saw"] == null ? null : num(x2["gone_saw"]),
-      sawDev: str(x2["gone_saw_dev"]),
+      t: ansNum(x2["t"]),
+      dev: ansText(x2["dev"]),
+      a: ansNum(x2["a"]),
+      s: ansText(x2["sum"]).slice(0, SUM_LEN),
+      saw: x2["gone_saw"] == null ? null : ansNum(x2["gone_saw"]),
+      sawDev: ansText(x2["gone_saw_dev"]),
       good: x2["gone_good"] === true,
-      day: str(x2["gone_day"]),
+      day: ansText(x2["gone_day"]),
       clash: x2["gone_clash"] === true
     };
   }
@@ -11690,7 +11683,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (!m3 || m3["acct"] !== acct2 || m3["ep"] !== ep) return null;
     const out = fresh(acct2, ep);
     out.made = typeof m3["made"] === "string" ? m3["made"] : null;
-    out.n = num(m3["n"]);
+    out.n = ansNum(m3["n"]);
     const rows2 = rec(m3["rows"]) || {};
     for (const k2 in rows2) {
       const h3 = heldIn2(rows2[k2]);
@@ -11698,28 +11691,28 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       out.rows[k2] = h3;
     }
     const wait2 = rec(m3["wait"]) || {};
-    for (const k2 in wait2) if (typeof wait2[k2] === "number") out.wait[k2] = num(wait2[k2]);
+    for (const k2 in wait2) if (typeof wait2[k2] === "number") out.wait[k2] = ansNum(wait2[k2]);
     const c4 = rec(m3["chk"]) || {};
     out.chk = {
       day: typeof c4["day"] === "string" ? c4["day"] : null,
-      clean: num(c4["clean"]),
-      diffs: num(c4["diffs"]),
-      removed: num(c4["removed"])
+      clean: ansNum(c4["clean"]),
+      diffs: ansNum(c4["diffs"]),
+      removed: ansNum(c4["removed"])
     };
     for (const f3 of arr(m3["find"]) || []) {
       const F3 = rec(f3);
       if (F3)
         out.find.push({
-          at: str(F3["at"]),
-          key: str(F3["key"]),
-          why: str(F3["why"]),
-          mine: str(F3["mine"]),
-          theirs: str(F3["theirs"])
+          at: ansText(F3["at"]),
+          key: ansText(F3["key"]),
+          why: ansText(F3["why"]),
+          mine: ansText(F3["mine"]),
+          theirs: ansText(F3["theirs"])
         });
     }
     out.devDay = typeof m3["devDay"] === "string" ? m3["devDay"] : null;
     const ph = rec(m3["ph"]);
-    if (ph && typeof ph["s"] === "string") out.ph = { at: num(ph["at"]), len: num(ph["len"]), s: ph["s"] };
+    if (ph && typeof ph["s"] === "string") out.ph = { at: ansNum(ph["at"]), len: ansNum(ph["len"]), s: ph["s"] };
     return out;
   }
   function notesOut(N2, own2 = true) {
@@ -11751,6 +11744,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     if (prefSet(ROWS_KEY, text) && own2) written = text;
   }
+  var forgets = /* @__PURE__ */ new Set();
+  function rowsOnForget(f3) {
+    forgets.add(f3);
+  }
   function rowsForget() {
     notes = null;
     written = null;
@@ -11758,8 +11755,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     blocked = false;
     layoutFor = null;
     asked = null;
-    docSeen.clear();
-    tried.clear();
+    for (const f3 of forgets) f3();
     prefDel(ROWS_KEY);
   }
   function found(N2, key, why, mine, theirs) {
@@ -11768,6 +11764,188 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     N2.chk.diffs++;
     N2.chk.clean = 0;
   }
+  function layoutOf(v3) {
+    if (typeof v3 !== "string") return null;
+    let L2 = null;
+    try {
+      L2 = rec(parseJson(v3));
+    } catch (e5) {
+      log("rows-layout", e5);
+    }
+    if (!L2) return null;
+    const lv = L2["level"];
+    return {
+      made: typeof L2["made"] === "string" ? L2["made"] : null,
+      decides: L2["decides"] === void 0 ? "docs" : typeof L2["decides"] === "string" ? L2["decides"] : "?",
+      level: lv === void 0 ? 1 : typeof lv === "number" && Number.isFinite(lv) && lv >= 1 ? lv : Infinity
+    };
+  }
+  var needsNewer = (L2) => !!L2 && (L2.decides !== "docs" || L2.level > LEVEL);
+  async function takeIn(R2, N2) {
+    const note = (x2) => {
+      const X = rec(x2);
+      if (!X || typeof X["kind"] !== "string" || typeof X["id"] !== "string") return 0;
+      const k2 = keyOf(X["kind"], X["id"]), h3 = heldOf(X);
+      if (!sameHeld(N2.rows[k2], h3)) {
+        if (MIRRORED.has(X["kind"])) N2.wait[k2] ??= Date.now();
+      }
+      N2.rows[k2] = h3;
+      return ansNum(X["seq"]);
+    };
+    const none = () => N2.n === 0 && !Object.keys(N2.rows).length;
+    let p3 = rec(await soon(none() ? R2.pull(PAST_ALL, 1) : R2.pull(N2.n, PAGE)));
+    if (!p3) return false;
+    const L2 = layoutOf(p3["layout"]);
+    heed(L2);
+    if (!none() && (ansNum(p3["top"]) < N2.n || N2.made !== null && (!L2 || L2.made !== N2.made))) {
+      N2.rows = {};
+      N2.wait = {};
+      N2.n = 0;
+    }
+    N2.made = L2 ? L2.made : null;
+    if (none()) {
+      let at2 = 0;
+      for (; ; ) {
+        const page = arr(await soon(R2.list(at2, PAGE)));
+        if (!page) return false;
+        let last = at2;
+        for (const x2 of page) last = Math.max(last, note(x2));
+        const moved = last > at2;
+        at2 = last;
+        if (page.length < PAGE || !moved) break;
+      }
+      N2.n = at2;
+      return true;
+    }
+    for (; ; ) {
+      const rows2 = arr(p3["rows"]) || [];
+      let last = N2.n;
+      for (const x2 of rows2) last = Math.max(last, note(x2));
+      if (rows2.length < PAGE || last === N2.n) {
+        N2.n = last;
+        break;
+      }
+      N2.n = last;
+      p3 = rec(await soon(R2.pull(N2.n, PAGE)));
+      if (!p3) return false;
+    }
+    return true;
+  }
+  async function send(R2, N2, rows2, sums) {
+    let at2 = 0;
+    while (at2 < rows2.length) {
+      const part = [];
+      let bytes = 0;
+      while (at2 < rows2.length && part.length < WRITE_ROWS) {
+        const r4 = rows2[at2];
+        if (!r4) break;
+        const size = r4.body ? r4.body.length : 0;
+        if (part.length && bytes + size > WRITE_BYTES) break;
+        part.push(r4);
+        bytes += size;
+        at2++;
+      }
+      const ans = rec(await soon(R2.push(part)));
+      if (!ans) return false;
+      const L2 = layoutOf(ans["layout"]);
+      heed(L2);
+      if (L2 && L2.made && !N2.made) N2.made = L2.made;
+      let own2 = 0;
+      for (const x2 of arr(ans["rows"]) || []) {
+        const X = rec(x2);
+        if (!X || typeof X["kind"] !== "string" || typeof X["id"] !== "string") continue;
+        const k2 = keyOf(X["kind"], X["id"]);
+        const h3 = heldOf(X);
+        N2.rows[k2] = h3;
+        if (X["took"] === true && ansNum(X["seq"]) > N2.n) own2++;
+        const sentRow = part.find((r4) => r4.kind === X["kind"] && r4.id === X["id"]);
+        if (X["took"] === true && X["body"] === void 0 && sentRow && sentRow.body !== null && h3.s) {
+          const s3 = sums?.get(k2) ?? sumOf(sentRow.body);
+          if (s3 !== h3.s && h3.t === sentRow.t && h3.dev === sentRow.dev && h3.a === sentRow.a)
+            found(N2, k2, "the account holds another checksum than the copy sent", s3, h3.s);
+        }
+      }
+      const top = ansNum(ans["top"]);
+      if (top - N2.n === own2) N2.n = top;
+    }
+    return true;
+  }
+  function notesFor(acct2, ep) {
+    const stored = prefGet(ROWS_KEY);
+    let read = false;
+    if (!notes || notes.acct !== acct2 || notes.ep !== ep || stored !== written) {
+      notes = notesIn(acct2, ep, stored) || fresh(acct2, ep);
+      written = stored;
+      read = true;
+    }
+    return { N: notes, read };
+  }
+  function notesRemoved(acct2, ep, n3, busy) {
+    const stored = prefGet(ROWS_KEY);
+    const N2 = notesIn(acct2, ep, stored);
+    if (!N2 || !N2.n) return;
+    N2.chk.removed += n3;
+    if (!busy) {
+      notes = N2;
+      written = stored;
+    }
+    notesOut(N2, !busy);
+  }
+  var notesNow = () => notes;
+  function ctxSet(c4) {
+    ctx = c4;
+  }
+  var ctxNow = () => ctx;
+  var offWhy = () => off;
+  function turnOff(why) {
+    off = why;
+  }
+  var blockedNow = () => blocked;
+  var gateBusy = () => asking > 0;
+  function rowsGate() {
+    const p3 = gate();
+    asked = p3;
+    void p3.finally(() => {
+      if (asked === p3) asked = null;
+    });
+    return p3;
+  }
+  async function gate() {
+    const R2 = cloud.db && cloud.db.rows;
+    if (!R2 || off === NO_TABLE) return false;
+    asking++;
+    try {
+      const p3 = rec(await soon(R2.pull(PAST_ALL, 1)));
+      if (!p3) {
+        off = NO_TABLE;
+        return false;
+      }
+      heed(layoutOf(p3["layout"]));
+    } catch (e5) {
+      log("rows-gate", e5);
+    } finally {
+      asking--;
+    }
+    return blocked;
+  }
+  function rowsBlocked() {
+    if (layoutFor !== cloud.uid && cloud.uid && cloud.db && cloud.db.rows) {
+      layoutFor = cloud.uid;
+      layoutText = prefGet(LAYOUT_KEY);
+      let L2 = null;
+      try {
+        L2 = rec(parseJson(layoutText || "null"));
+      } catch (e5) {
+        log("rows-layout", e5);
+      }
+      blocked = !!L2 && L2["acct"] === cloud.uid && needsNewer(layoutOf(layoutText));
+    }
+    return blocked;
+  }
+  var rowsAsked = () => asked;
+
+  // src/app/rowslog.ts
+  var TRASHED = /* @__PURE__ */ new Set(["session", "cardio", "routine"]);
   var docSeen = /* @__PURE__ */ new Map();
   var bodyOf = (x2) => canon(x2);
   function recsOf(doc, D2) {
@@ -11786,7 +11964,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (doc !== "core") return out;
     for (const x2 of arr(D2["trash"]) || []) {
       const R2 = rec(x2);
-      const kind = R2 ? str(R2["kind"]) : "";
+      const kind = R2 ? ansText(R2["kind"]) : "";
       const data = R2 ? rec(R2["data"]) : null;
       if (!R2 || !data || typeof R2["id"] !== "string" || !TRASHED.has(kind) || live2.has(keyOf(kind, R2["id"]))) continue;
       out.push({
@@ -11796,7 +11974,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         rk: recordKey("trash", R2["id"]),
         s: sumOf(bodyOf(data)),
         place: "trash",
-        day: str(R2["date"]),
+        day: ansText(R2["date"]),
         clash: R2["clash"] === true
       });
     }
@@ -11879,128 +12057,35 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     for (const t4 of state.trash) out.add(keyOf(t4.kind, t4.id));
     return out;
   }
-  function rowsRemoved(before2) {
-    if (!ctx || !cloud.uid || !cloud.db || !cloud.db.rows || off) return;
-    const now2 = rowsLogKeys();
-    let n3 = 0;
-    for (const k2 of before2) if (!now2.has(k2)) n3++;
-    if (!n3) return;
-    const stored = prefGet(ROWS_KEY);
-    const N2 = notesIn(cloud.uid, ctx.ep(), stored);
-    if (!N2 || !N2.n) return;
-    N2.chk.removed += n3;
-    if (!running) {
-      notes = N2;
-      written = stored;
-    }
-    notesOut(N2, !running);
+  function photoMine(N2) {
+    if (photoPending()) return null;
+    const n3 = photoNote();
+    const held3 = photoHeld();
+    const at2 = n3 ? n3.et : 0, len = held3 === null ? -1 : held3.length;
+    if (!N2.ph || N2.ph.at !== at2 || N2.ph.len !== len) N2.ph = { at: at2, len, s: sumOf(JSON.stringify(held3)) };
+    return { kind: "photo", id: "photo", doc: "photo", rk: "", s: N2.ph.s, place: "log", photo: true, at: at2 };
   }
-  function layoutOf(v3) {
-    if (typeof v3 !== "string") return null;
-    let L2 = null;
-    try {
-      L2 = rec(parseJson(v3));
-    } catch (e5) {
-      log("rows-layout", e5);
-    }
-    if (!L2) return null;
-    const lv = L2["level"];
-    return {
-      made: typeof L2["made"] === "string" ? L2["made"] : null,
-      decides: L2["decides"] === void 0 ? "docs" : typeof L2["decides"] === "string" ? L2["decides"] : "?",
-      level: lv === void 0 ? 1 : typeof lv === "number" && Number.isFinite(lv) && lv >= 1 ? lv : Infinity
-    };
+  function logNow(N2) {
+    const ch = chunksOf(state);
+    const mine = mineNow(ch);
+    const photo = photoMine(N2);
+    if (photo && (photoHeld() !== null || N2.rows["photo/photo"])) mine.set("photo/photo", photo);
+    return { ch, mine, photo: !!photo };
   }
-  var needsNewer = (L2) => !!L2 && (L2.decides !== "docs" || L2.level > LEVEL);
-  async function takeIn(R2, N2) {
-    const note = (x2) => {
-      const X = rec(x2);
-      if (!X || typeof X["kind"] !== "string" || typeof X["id"] !== "string") return 0;
-      const k2 = keyOf(X["kind"], X["id"]), h3 = heldOf(X);
-      if (!sameHeld(N2.rows[k2], h3)) {
-        if (MIRRORED.has(X["kind"])) N2.wait[k2] ??= Date.now();
-      }
-      N2.rows[k2] = h3;
-      return num(X["seq"]);
-    };
-    const none = () => N2.n === 0 && !Object.keys(N2.rows).length;
-    let p3 = rec(await soon(none() ? R2.pull(PAST_ALL, 1) : R2.pull(N2.n, PAGE)));
-    if (!p3) return false;
-    const L2 = layoutOf(p3["layout"]);
-    heed(L2);
-    if (!none() && (num(p3["top"]) < N2.n || N2.made !== null && (!L2 || L2.made !== N2.made))) {
-      N2.rows = {};
-      N2.wait = {};
-      N2.n = 0;
-    }
-    N2.made = L2 ? L2.made : null;
-    if (none()) {
-      let at2 = 0;
-      for (; ; ) {
-        const page = arr(await soon(R2.list(at2, PAGE)));
-        if (!page) return false;
-        let last = at2;
-        for (const x2 of page) last = Math.max(last, note(x2));
-        const moved = last > at2;
-        at2 = last;
-        if (page.length < PAGE || !moved) break;
-      }
-      N2.n = at2;
-      return true;
-    }
-    for (; ; ) {
-      const rows2 = arr(p3["rows"]) || [];
-      let last = N2.n;
-      for (const x2 of rows2) last = Math.max(last, note(x2));
-      if (rows2.length < PAGE || last === N2.n) {
-        N2.n = last;
-        break;
-      }
-      N2.n = last;
-      p3 = rec(await soon(R2.pull(N2.n, PAGE)));
-      if (!p3) return false;
-    }
-    return true;
+  function keysOf(N2, L2) {
+    const keys = new Set(L2.mine.keys());
+    for (const k2 in N2.rows) if (MIRRORED.has(k2.slice(0, k2.indexOf("/"))) && (L2.photo || k2 !== "photo/photo")) keys.add(k2);
+    return keys;
   }
-  async function send(R2, N2, rows2, sums) {
-    let at2 = 0;
-    while (at2 < rows2.length) {
-      const part = [];
-      let bytes = 0;
-      while (at2 < rows2.length && part.length < WRITE_ROWS) {
-        const r4 = rows2[at2];
-        if (!r4) break;
-        const size = r4.body ? r4.body.length : 0;
-        if (part.length && bytes + size > WRITE_BYTES) break;
-        part.push(r4);
-        bytes += size;
-        at2++;
-      }
-      const ans = rec(await soon(R2.push(part)));
-      if (!ans) return false;
-      const L2 = layoutOf(ans["layout"]);
-      heed(L2);
-      if (L2 && L2.made && !N2.made) N2.made = L2.made;
-      let own2 = 0;
-      for (const x2 of arr(ans["rows"]) || []) {
-        const X = rec(x2);
-        if (!X || typeof X["kind"] !== "string" || typeof X["id"] !== "string") continue;
-        const k2 = keyOf(X["kind"], X["id"]);
-        const h3 = heldOf(X);
-        N2.rows[k2] = h3;
-        if (X["took"] === true && num(X["seq"]) > N2.n) own2++;
-        const sentRow = part.find((r4) => r4.kind === X["kind"] && r4.id === X["id"]);
-        if (X["took"] === true && X["body"] === void 0 && sentRow && sentRow.body !== null && h3.s) {
-          const s3 = sums?.get(k2) ?? sumOf(sentRow.body);
-          if (s3 !== h3.s && h3.t === sentRow.t && h3.dev === sentRow.dev && h3.a === sentRow.a)
-            found(N2, k2, "the account holds another checksum than the copy sent", s3, h3.s);
-        }
-      }
-      const top = num(ans["top"]);
-      if (top - N2.n === own2) N2.n = top;
-    }
-    return true;
+  var mineText = (m3) => m3 ? `${m3.place} ${m3.s} ${timeOf(m3).toString(B36)}${m3.place === "trash" ? " " + (m3.day || "") : ""}` : "not in the log";
+  function logForget() {
+    docSeen.clear();
   }
+
+  // src/app/rowsmirror.ts
+  var WAIT_MS = 6e4;
+  var UNIT_TOP = 65535;
+  var tried = /* @__PURE__ */ new Map();
   function inStep(m3, h3) {
     if (!m3) return !h3 || placeOf2(h3) === "good";
     if (!h3 || placeOf2(h3) !== m3.place || h3.s !== m3.s) return false;
@@ -12060,47 +12145,20 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       ...made
     };
   }
-  function photoMine(N2) {
-    if (photoPending()) return null;
-    const n3 = photoNote();
-    const held3 = photoHeld();
-    const at2 = n3 ? n3.et : 0, len = held3 === null ? -1 : held3.length;
-    if (!N2.ph || N2.ph.at !== at2 || N2.ph.len !== len) N2.ph = { at: at2, len, s: sumOf(JSON.stringify(held3)) };
-    return { kind: "photo", id: "photo", doc: "photo", rk: "", s: N2.ph.s, place: "log", photo: true, at: at2 };
-  }
-  function logNow(N2) {
-    const ch = chunksOf(state);
-    const mine = mineNow(ch);
-    const photo = photoMine(N2);
-    if (photo && (photoHeld() !== null || N2.rows["photo/photo"])) mine.set("photo/photo", photo);
-    return { ch, mine, photo: !!photo };
-  }
-  function keysOf(N2, L2) {
-    const keys = new Set(L2.mine.keys());
-    for (const k2 in N2.rows) if (MIRRORED.has(k2.slice(0, k2.indexOf("/"))) && (L2.photo || k2 !== "photo/photo")) keys.add(k2);
-    return keys;
-  }
-  var tried = /* @__PURE__ */ new Map();
-  var mineText = (m3) => m3 ? `${m3.place} ${m3.s} ${timeOf(m3).toString(B36)}${m3.place === "trash" ? " " + (m3.day || "") : ""}` : "not in the log";
-  async function pass() {
+  async function mirrorPass() {
     const R2 = cloud.db && cloud.db.rows;
-    const C2 = ctx;
+    const C2 = ctxNow();
     const acct2 = cloud.uid;
-    if (!R2 || !C2 || !acct2 || !cloud.on || off || blocked || !device.ok) return;
+    if (!R2 || !C2 || !acct2 || !cloud.on || offWhy() || blockedNow() || !device.ok) return;
     await pause();
     await warm();
     if (!cloud.on || cloud.uid !== acct2) return;
     const ep = C2.ep();
-    const still = () => cloud.on && cloud.uid === acct2 && C2.ep() === ep && !off && !blocked;
+    const still = () => cloud.on && cloud.uid === acct2 && C2.ep() === ep && !offWhy() && !blockedNow();
     const quiet = () => cloud.status === "synced" && !C2.unsent();
     if (!quiet()) return;
-    const stored = prefGet(ROWS_KEY);
-    if (!notes || notes.acct !== acct2 || notes.ep !== ep || stored !== written) {
-      notes = notesIn(acct2, ep, stored) || fresh(acct2, ep);
-      written = stored;
-      tried.clear();
-    }
-    const N2 = notes;
+    const { N: N2, read } = notesFor(acct2, ep);
+    if (read) tried.clear();
     const day = today();
     let L2 = logNow(N2);
     for (const k2 in N2.wait)
@@ -12115,7 +12173,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const daily = N2.chk.day !== day || N2.devDay !== day;
     if (!N2.made || daily || differs()) {
       if (!await takeIn(R2, N2)) {
-        off = NO_TABLE;
+        turnOff(NO_TABLE);
         return;
       }
       if (!still()) return;
@@ -12123,7 +12181,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         const layout = JSON.stringify({ made: uid(), decides: "docs", level: LEVEL, gen: 1, at: 0 });
         const row = { kind: "meta", id: "layout", body: layout, t: Date.now(), dev: cloud.devId || "", a: 0 };
         if (!await send(R2, N2, [row])) {
-          off = NO_TABLE;
+          turnOff(NO_TABLE);
           return;
         }
         if (!still()) return;
@@ -12167,7 +12225,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         }
       }
       if (out.length && !await send(R2, N2, out, sums)) {
-        off = NO_TABLE;
+        turnOff(NO_TABLE);
         return;
       }
       if (!still()) return;
@@ -12234,7 +12292,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   async function check(R2, N2) {
     const d3 = rec(await soon(R2.digest()));
     if (!d3) return;
-    if (num(d3["top"]) !== N2.n) return;
+    if (ansNum(d3["top"]) !== N2.n) return;
     const keys = Object.keys(N2.rows).sort((a2, b2) => {
       const ca = a2.indexOf("/"), cb = b2.indexOf("/");
       return bytesCmp(a2.slice(0, ca), b2.slice(0, cb)) || bytesCmp(a2.slice(ca + 1), b2.slice(cb + 1));
@@ -12254,7 +12312,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         h3.good ? 1 : 0
       ].join("") : "";
     }).join("");
-    if (num(d3["n"]) === keys.length && str(d3["sum"]) === md5(text)) {
+    if (ansNum(d3["n"]) === keys.length && ansText(d3["sum"]) === md5(text)) {
       if (N2.chk.day !== today()) N2.chk.clean++;
       N2.chk.day = today();
       return;
@@ -12264,12 +12322,12 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       "",
       "the notes were not what the account holds; they were made again",
       `${keys.length} rows`,
-      `${num(d3["n"])} rows`
+      `${ansNum(d3["n"])} rows`
     );
     N2.chk.day = today();
     N2.rows = {};
     N2.n = 0;
-    if (!await takeIn(R2, N2)) off = NO_TABLE;
+    if (!await takeIn(R2, N2)) turnOff(NO_TABLE);
   }
   async function deviceRow(R2, N2) {
     const id = cloud.devId;
@@ -12285,6 +12343,15 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     });
     if (await send(R2, N2, [{ kind: "device", id, body, t: Date.now(), dev: id, a: 0 }])) N2.devDay = today();
   }
+  function mirrorForget() {
+    tried.clear();
+  }
+
+  // src/app/rows.ts
+  var ROWS_UPDATE = "Update the app to keep saving to your account. Your log stays on this phone.";
+  var WHY_MAX = 120;
+  var running = null;
+  var again = false;
   async function oneTab(fn) {
     const L2 = typeof navigator !== "undefined" ? navigator.locks : void 0;
     if (!L2 || typeof L2.request !== "function") return fn();
@@ -12293,19 +12360,21 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     });
   }
   function rowsStart(c4) {
-    ctx = c4;
+    ctxSet(c4);
+    rowsOnForget(logForget);
+    rowsOnForget(mirrorForget);
   }
   function rowsSoon() {
-    if (off || !cloud.on || !cloud.db || !cloud.db.rows) return;
+    if (offWhy() || !cloud.on || !cloud.db || !cloud.db.rows) return;
     if (running) {
       again = true;
       return;
     }
-    running = oneTab(pass).catch((e5) => {
+    running = oneTab(mirrorPass).catch((e5) => {
       log("rows", e5);
       const c4 = codeOf(e5);
       if (navigator.onLine !== false && c4 !== "timeout" && c4 !== "revoked" && c4 !== "gone" && !/no answer in time|unavailable|offline|Failed to fetch|NetworkError|Load failed/i.test(said2(e5)))
-        off = said2(e5).slice(0, WHY_MAX);
+        turnOff(said2(e5).slice(0, WHY_MAX));
     }).finally(() => {
       running = null;
       if (again) {
@@ -12314,81 +12383,32 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       }
     });
   }
-  function rowsGate() {
-    const p3 = gate();
-    asked = p3;
-    void p3.finally(() => {
-      if (asked === p3) asked = null;
-    });
-    return p3;
+  function rowsRemoved(before2) {
+    const C2 = ctxNow();
+    if (!C2 || !cloud.uid || !cloud.db || !cloud.db.rows || offWhy()) return;
+    const now2 = rowsLogKeys();
+    let n3 = 0;
+    for (const k2 of before2) if (!now2.has(k2)) n3++;
+    if (!n3) return;
+    notesRemoved(cloud.uid, C2.ep(), n3, !!running);
   }
-  async function gate() {
-    const R2 = cloud.db && cloud.db.rows;
-    if (!R2 || off === NO_TABLE) return false;
-    asking++;
-    try {
-      const p3 = rec(await soon(R2.pull(PAST_ALL, 1)));
-      if (!p3) {
-        off = NO_TABLE;
-        return false;
-      }
-      heed(layoutOf(p3["layout"]));
-    } catch (e5) {
-      log("rows-gate", e5);
-    } finally {
-      asking--;
-    }
-    return blocked;
-  }
-  function rowsBlocked() {
-    if (layoutFor !== cloud.uid && cloud.uid && cloud.db && cloud.db.rows) {
-      layoutFor = cloud.uid;
-      layoutText = prefGet(LAYOUT_KEY);
-      let L2 = null;
-      try {
-        L2 = rec(parseJson(layoutText || "null"));
-      } catch (e5) {
-        log("rows-layout", e5);
-      }
-      blocked = !!L2 && L2["acct"] === cloud.uid && needsNewer(layoutOf(layoutText));
-    }
-    return blocked;
-  }
-  var rowsAsked = () => asked;
   function rowsDiag() {
     if (!cloud.on || !cloud.db || !cloud.db.rows) return null;
-    if (off === NO_TABLE) return null;
-    if (off) return { line: `Rows check: off (${off})`, findings: notes ? notes.find : [] };
-    if (blocked) return { line: "Rows check: this account needs a newer version of the app", findings: [] };
-    if (!notes) return { line: "Rows check: not run yet", findings: [] };
-    const c4 = notes.chk;
+    const off2 = offWhy(), notes2 = notesNow();
+    if (off2 === NO_TABLE) return null;
+    if (off2) return { line: `Rows check: off (${off2})`, findings: notes2 ? notes2.find : [] };
+    if (blockedNow()) return { line: "Rows check: this account needs a newer version of the app", findings: [] };
+    if (!notes2) return { line: "Rows check: not run yet", findings: [] };
+    const c4 = notes2.chk;
     const n3 = (k2, one, many) => `${k2} ${k2 === 1 ? one : many}`;
     return {
-      line: `Rows check: ${n3(c4.clean, "clean day", "clean days")}, ${n3(c4.diffs, "difference", "differences")}, ${c4.removed} removed by another phone${Object.keys(notes.wait).length ? `, ${Object.keys(notes.wait).length} waiting` : ""}`,
-      findings: notes.find
+      line: `Rows check: ${n3(c4.clean, "clean day", "clean days")}, ${n3(c4.diffs, "difference", "differences")}, ${c4.removed} removed by another phone${Object.keys(notes2.wait).length ? `, ${Object.keys(notes2.wait).length} waiting` : ""}`,
+      findings: notes2.find
     };
   }
-  var rowsBusy = () => !!running || again || asking > 0;
+  var rowsBusy = () => !!running || again || gateBusy();
 
-  // src/app/sync.ts
-  var SYNC_MS = {
-    save: 400,
-    track: 800,
-    flush: 1200,
-    net: NET_MS,
-    errToast: 8e3,
-    pullAfter: 2e4
-  };
-  var RETRY_S = [5, 15, 60, 180];
-  var SIGNIN_AGAIN = "Sign-in expired. Sign in again to keep saving. Your log stays on this phone.";
-  function signInAgain() {
-    fx.toast(SIGNIN_AGAIN, null, SYNC_MS.errToast);
-  }
-  var offline = () => navigator.onLine === false;
-  var DOC_MAX = 25e4;
-  var WRITE_TRIES = 3;
-  var KEEP_TRIES = 10;
-  var saveT = null;
+  // src/app/save.ts
   var savedHooks = [];
   function onSaved(f3) {
     savedHooks.push(f3);
@@ -12414,37 +12434,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       return null;
     }
   }
-  var mergeDue = false;
-  function saveNow() {
-    clearTimer(saveT);
-    saveT = null;
-    capturePost();
-    if (storedElsewhere() != null) {
-      if (!mergeDue) {
-        mergeDue = true;
-        queueMicrotask(() => {
-          mergeDue = false;
-          const cur2 = storedElsewhere();
-          if (cur2 != null) mergeIn(cur2, true);
-          else saveNow();
-        });
-      }
-      return;
-    }
-    if (device.boot) {
-      try {
-        writeLocal(storedJson(state));
-        device.ok = true;
-      } catch (e5) {
-        device.ok = false;
-        log("storage", e5);
-      }
-    }
-    markEdit();
-    if (tabsHeard) trackEdits();
-    fx.setSaveState();
-    cloudSoon();
-  }
   function writeTakenIn() {
     if (!device.boot) return false;
     try {
@@ -12457,14 +12446,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     fx.setSaveState();
     return device.ok;
   }
-  function saveSoon() {
-    clearTimer(saveT);
-    saveT = setTimeout(saveNow, SYNC_MS.save);
-  }
-  function commit() {
-    invalidate();
-    saveNow();
-  }
+
+  // src/app/syncnotes.ts
   var SYNC_KEY = KEY + ".sync";
   var stringsIn = (v3) => {
     const R2 = rec(v3);
@@ -12551,12 +12534,20 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return { meta, editAt, recAt, last: typeof m3.last === "number" ? m3.last : null };
   };
   var notesEp = 0;
+  var notesEpNow = () => notesEp;
+  function notesAt(ep) {
+    notesEp = ep;
+  }
   var newEp = () => {
     notesEp = Math.max(Date.now(), notesEp + 1);
     rowsForget();
   };
   var epOf = (m3) => m3 && typeof m3.ep === "number" ? m3.ep : 0;
   var notesSeen = null;
+  var notesSeenNow = () => notesSeen;
+  function notesRead(text) {
+    notesSeen = text;
+  }
   var sameNote = (a2, b2) => a2 === b2 || !!a2 && !!b2 && a2.h === b2.h && a2.at === b2.at;
   function joinNotes(m3, text) {
     const { meta, editAt, recAt, last } = notesIn2(m3, "tabs");
@@ -12633,6 +12624,387 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       log("sync-meta", e5);
       return false;
     }
+  }
+  var draftOf = (D2) => normalize({ draft: D2 && D2.draft || null }).draft;
+  function timesIn(v3) {
+    const r4 = rec(v3);
+    if (!r4) return null;
+    const out = {};
+    for (const k2 in r4) {
+      const t4 = r4[k2];
+      if (typeof t4 === "number" && Number.isFinite(t4)) out[k2] = t4;
+    }
+    return Object.keys(out).length ? out : null;
+  }
+  var laterEntry = (a2, b2) => Math.abs(b2) > Math.abs(a2) ? b2 : a2;
+  var knownTime = (t4) => t4 !== void 0 && t4 > 0 ? t4 : void 0;
+
+  // src/app/edits.ts
+  var TRACK_MS = 800;
+  function recordKeys(id, chunk, hash) {
+    const c4 = rec(chunk) || {};
+    const out = {};
+    if (id === "draft") return out;
+    const lists = id === "core" ? CORE_ARR : id.startsWith("b-") ? ["bodyweights", "measurements"] : ["sessions", "cardio"];
+    for (const k2 of lists)
+      for (const x2 of arr(c4[k2]) || []) {
+        const R2 = rec(x2);
+        if (R2 && typeof R2.id === "string") out[recordKey(k2, R2.id)] = hash(R2);
+      }
+    if (id === "core") {
+      for (const k2 of CORE_FIELDS) if (c4[k2] !== void 0) out[recordKey("", k2)] = hash(c4[k2]);
+      const set = rec(c4.settings) || {};
+      for (const k2 in set) out[recordKey("settings", k2)] = hash(set[k2]);
+    }
+    return out;
+  }
+  var savedHash = (x2) => hashStr(storedJson(x2));
+  function latestSeen() {
+    let t4 = 0;
+    for (const k2 in cloud.editAt) t4 = Math.max(t4, cloud.editAt[k2]);
+    for (const d3 in cloud.recAt) for (const k2 in cloud.recAt[d3]) t4 = Math.max(t4, Math.abs(cloud.recAt[d3][k2]));
+    return t4;
+  }
+  var laterThanSeen = (t4) => Math.max(t4, latestSeen() + 1);
+  function noteRecords(id, was, now2, at2) {
+    if (was === void 0) return;
+    let before2;
+    try {
+      before2 = recordKeys(id, parseJson(was), savedHash);
+    } catch (e5) {
+      log("sync-track", e5);
+      return;
+    }
+    const after2 = recordKeys(id, now2, savedHash);
+    const times = cloud.recAt[id] = cloud.recAt[id] || {};
+    for (const k2 in after2) if (before2[k2] !== after2[k2]) times[k2] = at2;
+    for (const k2 in times) if (!(k2 in after2)) delete times[k2];
+  }
+  var trackT = null;
+  var editsPending = () => !!trackT || !!cloud.pendAt;
+  var seenText = {};
+  var seenOnce = false;
+  function markEdit() {
+    if (!cloud.pendAt) cloud.pendAt = Date.now();
+    clearTimer(trackT);
+    trackT = setTimeout(trackEdits, TRACK_MS);
+  }
+  function trackEdits() {
+    clearTimer(trackT);
+    trackT = null;
+    try {
+      const ch = chunksOf(state);
+      const now2 = cloud.pendAt || Date.now();
+      cloud.pendAt = null;
+      let at2 = null;
+      const stamp = () => at2 ??= laterThanSeen(now2);
+      let moved = false;
+      for (const id of /* @__PURE__ */ new Set([...Object.keys(ch), ...Object.keys(cloud.localH)])) {
+        const doc = ch[id] || emptyChunk(id);
+        const text = storedJson(doc);
+        const h3 = hashStr(text);
+        if (cloud.localH[id] !== h3) {
+          if (cloud.localH[id] !== void 0) {
+            cloud.editAt[id] = stamp();
+            noteRecords(id, seenText[id], doc, stamp());
+            moved = true;
+          } else if (seenOnce) {
+            noteRecords(id, storedJson(emptyChunk(id)), doc, stamp());
+            moved = true;
+          }
+          cloud.localH[id] = h3;
+          seenText[id] = text;
+        }
+      }
+      if (moved) saveMeta();
+    } catch (e5) {
+      log("sync-track", e5);
+    }
+  }
+  function resyncLocalH() {
+    try {
+      const ch = chunksOf(state);
+      cloud.localH = {};
+      seenText = {};
+      seenOnce = true;
+      for (const id in ch) {
+        seenText[id] = storedJson(ch[id]);
+        cloud.localH[id] = hashStr(seenText[id]);
+      }
+      for (const id in cloud.meta)
+        if (!(id in cloud.localH)) {
+          seenText[id] = storedJson(emptyChunk(id));
+          cloud.localH[id] = hashStr(seenText[id]);
+        }
+    } catch (e5) {
+      log("sync-track", e5);
+    }
+  }
+  function editsNoted() {
+    trackEdits();
+  }
+  function seenAsIs() {
+    clearTimer(trackT);
+    trackT = null;
+    cloud.pendAt = null;
+    resyncLocalH();
+  }
+
+  // src/app/twoplaces.ts
+  function draftNote(prev, kept, where = "on another device") {
+    const P2 = rec(prev);
+    const d3 = state.draft;
+    if (!P2 || d3 && d3.id === P2.id) return;
+    if (P2.editingId) {
+      if (!d3) fx.toast("The edit in progress was closed on another device.");
+      else if (d3.editingId) {
+        const s3 = state.sessions.find((x2) => x2.id === d3.editingId);
+        fx.toast(
+          s3 ? `Now editing ${s3.dayName || "a session"}, ${fmtDate(s3.date)}, opened on another device.` : "A different saved session was opened for editing on another device."
+        );
+      } else fx.toast("The edit in progress was replaced by the workout on another device.");
+      return;
+    }
+    const saved = state.sessions.some((s3) => s3.id === P2.id);
+    fx.toast(
+      kept === "joined" || kept === "cardioJoined" ? `Your workout was saved ${where}. Sets done here since were added to it.` : kept === "saved" || kept === "cardio" ? `Your workout was ${state.draft ? "replaced by the one" : "closed"} ${where}. Your ${kept === "saved" ? "sets are" : "cardio is"} in **History**.` : state.draft ? saved ? `Your workout was replaced by the one ${where}. Your sets are in **History**.` : `Your workout was replaced by the one ${where}.` : saved ? `Your workout was saved ${where}.` : `Your workout was closed ${where}.`
+    );
+  }
+  function loggedSince(d3, agreed) {
+    if (!d3) return false;
+    const was = agreed && agreed.id === d3.id ? agreed : null;
+    const rows2 = new Set(was ? was.ex.flatMap((b2) => b2.sets.filter((x2) => x2.done).map((x2) => canon(x2))) : []);
+    const cards = new Set(was ? (was.cardio || []).map((c4) => canon(c4)) : []);
+    return d3.ex.some((b2) => b2.sets.some((x2) => x2.done && !rows2.has(canon(x2)))) || (d3.cardio || []).some((c4) => !!c4.min && !cards.has(canon(c4)));
+  }
+  function keepLost2(lost, now2, agreed, remoteWins, tabs = false) {
+    if (!lost || lost.editingId || now2 && now2.id === lost.id) return null;
+    const kept = draftSession(lost), cardio = draftCardio(lost);
+    if (!kept && !cardio.length) return null;
+    const was = agreed && agreed.id === lost.id ? agreed : null;
+    const have = state.sessions.find((q) => q.id === lost.id);
+    if (have) {
+      const base = was ? draftSession(was, true) : null;
+      const stat = { conflicts: 0 };
+      const joined2 = kept ? mergeSession(base, kept, have, base ? remoteWins : true, stat) : have;
+      const norm = (l4) => l4.map((c4) => cleanCardio(c4));
+      const ids = new Set(
+        [...was ? draftCardio(was) : [], ...cardio].map((c4) => c4.id).filter((x2) => typeof x2 === "string")
+      );
+      const bh = {};
+      for (const c4 of norm(was ? draftCardio(was) : [])) if (typeof c4.id === "string") bh[c4.id] = Hx(c4);
+      const theirs = state.cardio.filter((c4) => ids.has(c4.id));
+      const merged = merge3List(was ? bh : null, norm(cardio), theirs, base ? remoteWins : true, stat);
+      const cardioNow = [...state.cardio.filter((c4) => !ids.has(c4.id)), ...merged];
+      const sets = canon(joined2) !== canon(have), rows2 = canon(normalize({ cardio: cardioNow }).cardio) !== canon(state.cardio);
+      if (!sets && !rows2) return null;
+      setState(
+        normalize({ ...state, sessions: state.sessions.map((q) => q.id === lost.id ? joined2 : q), cardio: cardioNow })
+      );
+      edited(joined2.date, lostKeys(lost.id, cardio));
+      conflictNote(stat, tabs);
+      return sets ? "joined" : "cardioJoined";
+    }
+    setState(
+      normalize({
+        ...state,
+        sessions: kept ? [...state.sessions, kept] : state.sessions,
+        cardio: unionById(state.cardio, cardio)
+      })
+    );
+    edited(lost.date, lostKeys(lost.id, cardio));
+    return kept ? "saved" : "cardio";
+  }
+  var lostKeys = (id, cardio) => [
+    recordKey("sessions", id),
+    ...cardio.flatMap((c4) => typeof c4.id === "string" ? [recordKey("cardio", c4.id)] : [])
+  ];
+  function edited(date, keys) {
+    const id = chunkOf(date), at2 = laterThanSeen(Date.now());
+    cloud.editAt[id] = at2;
+    const times = cloud.recAt[id] = cloud.recAt[id] || {};
+    for (const k2 of keys) times[k2] = at2;
+    saveMeta();
+  }
+  function lostNote(kept) {
+    if (kept === "saved") fx.toast("Sets ticked on another device were saved in **History**.");
+    else if (kept === "joined") fx.toast("Sets ticked on another device were added to the session saved here.");
+    else if (kept === "cardio") fx.toast("Cardio logged on another device was saved in **History**.");
+    else if (kept === "cardioJoined") fx.toast("Cardio logged on another device was added to the session saved here.");
+  }
+  function conflictNote(stat, tabs = false) {
+    const n3 = stat.conflicts;
+    if (!n3) return;
+    const later = !tabs || (stat.byTime || 0) === n3;
+    log(
+      "sync-conflict",
+      `${n3} record(s) edited ${tabs ? `in two tabs; kept ${later ? "the later change" : "the other tab's copy"}` : "on two devices; kept the later edit"}`
+    );
+    const items = `${n3} item${n3 === 1 ? " was" : "s were"}`, was = n3 === 1 ? " was" : "s were";
+    fx.toast(
+      tabs ? `${items} changed in two tabs at once. ${later ? `The later change${was}` : `The other tab's change${was}`} kept.` : `${items} edited on two devices. The later edit was kept.`
+    );
+  }
+
+  // src/app/firstjoin.ts
+  function firstUnnamed(ss, other) {
+    const there = new Set(other.map((q) => q.id)), lifts = new Set(other.flatMap((q) => q.ex.map((b2) => b2.exId)));
+    const shared = /* @__PURE__ */ new Set(), seen = /* @__PURE__ */ new Set();
+    for (const q of [...ss].sort(sessCmp))
+      for (const b2 of q.ex)
+        if (!seen.has(b2.exId)) {
+          seen.add(b2.exId);
+          if (there.has(q.id)) shared.add(b2.exId);
+        }
+    const strip = (b2) => b2.mc === FIRST_MACHINE && lifts.has(b2.exId) && !shared.has(b2.exId);
+    const unnamed = /* @__PURE__ */ new Map();
+    const sessions = ss.map((q) => {
+      if (there.has(q.id) || !q.ex.some(strip)) return q;
+      return {
+        ...q,
+        ex: q.ex.map((b2) => {
+          if (!strip(b2)) return b2;
+          const ids = unnamed.get(b2.exId) || /* @__PURE__ */ new Set();
+          unnamed.set(b2.exId, ids.add(q.id));
+          const c4 = { ...b2 };
+          unname(c4);
+          return c4;
+        })
+      };
+    });
+    return { sessions, unnamed, own: new Set(ss.filter((q) => !there.has(q.id)).map((q) => q.id)) };
+  }
+  function nameJoined(st, unnamed, own2) {
+    const rd = machineReadings(st);
+    const named2 = /* @__PURE__ */ new Map();
+    for (const [exId, ids] of unnamed)
+      for (const light of [0, 1]) {
+        let to;
+        for (const q of [...st.sessions].sort(sessCmp)) {
+          const r4 = ids.has(q.id) ? rd.get(`${q.id}|${exId}|${light}`) : void 0;
+          if (!r4) continue;
+          if (to === void 0) to = r4.key;
+          else if (own2.has(r4.key) && !own2.has(to)) {
+            const at2 = named2.get(q) || /* @__PURE__ */ new Map();
+            for (const i5 of r4.at) at2.set(i5, to);
+            named2.set(q, at2);
+          }
+        }
+      }
+    nameSessions(st, named2);
+  }
+  function firstJoin(mine, rState) {
+    const base = realCount(mine) > realCount(rState) ? mine : rState, other = base === mine ? rState : mine;
+    const aside = state.draft && rState.draft && rState.draft.id !== state.draft.id ? rState.draft : null;
+    const kept = aside ? draftSession(aside) : null;
+    const keptDraft = !!kept && ![...mine.sessions, ...rState.sessions].some((x2) => x2.id === kept.id);
+    const own2 = firstUnnamed(mine.sessions, rState.sessions);
+    const trash = unionById(state.trash, rState.trash);
+    const acct2 = (list, phone, kind, keep) => {
+      const by = new Map(phone.map((x2) => [x2.id, x2]));
+      return list.map((y2) => {
+        const x2 = y2.id ? by.get(y2.id) : void 0;
+        if (!x2 || !x2.id) return y2;
+        if (sameRecord(y2, x2)) return keep(y2, x2);
+        putAside(trash, { ...x2, id: x2.id }, kind);
+        return y2;
+      });
+    };
+    const acctSessions = acct2(
+      keptDraft && kept ? [...rState.sessions, kept] : rState.sessions,
+      own2.sessions,
+      "session",
+      keptOnSession
+    ), acctCardio = acct2(aside ? [...rState.cardio, ...draftCardio(aside)] : rState.cardio, mine.cardio, "cardio", (y2) => y2);
+    const joined2 = normalize({
+      ...base,
+      exercises: joinExercises(base.exercises, other.exercises),
+      routines: unionById(base.routines, other.routines),
+      sessions: unionById(acctSessions, own2.sessions),
+      bodyweights: unionById(mine.bodyweights, rState.bodyweights),
+      measurements: unionById(mine.measurements, rState.measurements),
+      cardio: unionById(acctCardio, mine.cardio),
+      trash,
+      draft: state.draft || rState.draft
+    });
+    nameJoined(joined2, own2.unnamed, own2.own);
+    return { joined: joined2, keptDraft };
+  }
+  function joinLogs(base, here) {
+    const away = base.draft && here.draft && here.draft.id !== base.draft.id ? base.draft : null;
+    const kept = away ? draftSession(away) : null;
+    const own2 = firstUnnamed(kept ? [...here.sessions, kept] : here.sessions, base.sessions);
+    const joined2 = normalize({
+      ...base,
+      exercises: joinExercises(base.exercises, here.exercises),
+      routines: unionById(base.routines, here.routines),
+      sessions: unionById(base.sessions, own2.sessions),
+      bodyweights: unionById(base.bodyweights, here.bodyweights),
+      measurements: unionById(base.measurements, here.measurements),
+      cardio: unionById(base.cardio, away ? [...here.cardio, ...draftCardio(away)] : here.cardio),
+      trash: unionById(arr(base.trash) || [], arr(here.trash) || []),
+      draft: here.draft || base.draft
+    });
+    nameJoined(joined2, own2.unnamed, own2.own);
+    return joined2;
+  }
+
+  // src/app/sync.ts
+  var SYNC_MS = {
+    save: 400,
+    flush: 1200,
+    net: NET_MS,
+    errToast: 8e3,
+    pullAfter: 2e4
+  };
+  var RETRY_S = [5, 15, 60, 180];
+  var SIGNIN_AGAIN = "Sign-in expired. Sign in again to keep saving. Your log stays on this phone.";
+  function signInAgain() {
+    fx.toast(SIGNIN_AGAIN, null, SYNC_MS.errToast);
+  }
+  var offline = () => navigator.onLine === false;
+  var DOC_MAX = 25e4;
+  var WRITE_TRIES = 3;
+  var KEEP_TRIES = 10;
+  var saveT = null;
+  var mergeDue = false;
+  function saveNow() {
+    clearTimer(saveT);
+    saveT = null;
+    capturePost();
+    if (storedElsewhere() != null) {
+      if (!mergeDue) {
+        mergeDue = true;
+        queueMicrotask(() => {
+          mergeDue = false;
+          const cur2 = storedElsewhere();
+          if (cur2 != null) mergeIn(cur2, true);
+          else saveNow();
+        });
+      }
+      return;
+    }
+    if (device.boot) {
+      try {
+        writeLocal(storedJson(state));
+        device.ok = true;
+      } catch (e5) {
+        device.ok = false;
+        log("storage", e5);
+      }
+    }
+    markEdit();
+    if (tabsHeard) trackEdits();
+    fx.setSaveState();
+    cloudSoon();
+  }
+  function saveSoon() {
+    clearTimer(saveT);
+    saveT = setTimeout(saveNow, SYNC_MS.save);
+  }
+  function commit() {
+    invalidate();
+    saveNow();
   }
   function assemble(parts) {
     const core = parts.core || {};
@@ -12783,7 +13155,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       return D2;
     }
   }
-  var draftOf = (D2) => normalize({ draft: D2 && D2.draft || null }).draft;
   function baseOf(id, data) {
     if (!data) return null;
     const D2 = normChunk(id, data) || {};
@@ -12899,57 +13270,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         })
       );
   }
-  function recordKeys(id, chunk, hash) {
-    const c4 = rec(chunk) || {};
-    const out = {};
-    if (id === "draft") return out;
-    const lists = id === "core" ? CORE_ARR : id.startsWith("b-") ? ["bodyweights", "measurements"] : ["sessions", "cardio"];
-    for (const k2 of lists)
-      for (const x2 of arr(c4[k2]) || []) {
-        const R2 = rec(x2);
-        if (R2 && typeof R2.id === "string") out[recordKey(k2, R2.id)] = hash(R2);
-      }
-    if (id === "core") {
-      for (const k2 of CORE_FIELDS) if (c4[k2] !== void 0) out[recordKey("", k2)] = hash(c4[k2]);
-      const set = rec(c4.settings) || {};
-      for (const k2 in set) out[recordKey("settings", k2)] = hash(set[k2]);
-    }
-    return out;
-  }
-  var savedHash = (x2) => hashStr(storedJson(x2));
-  function timesIn(v3) {
-    const r4 = rec(v3);
-    if (!r4) return null;
-    const out = {};
-    for (const k2 in r4) {
-      const t4 = r4[k2];
-      if (typeof t4 === "number" && Number.isFinite(t4)) out[k2] = t4;
-    }
-    return Object.keys(out).length ? out : null;
-  }
-  function latestSeen() {
-    let t4 = 0;
-    for (const k2 in cloud.editAt) t4 = Math.max(t4, cloud.editAt[k2]);
-    for (const d3 in cloud.recAt) for (const k2 in cloud.recAt[d3]) t4 = Math.max(t4, Math.abs(cloud.recAt[d3][k2]));
-    return t4;
-  }
-  var laterEntry = (a2, b2) => Math.abs(b2) > Math.abs(a2) ? b2 : a2;
-  var knownTime = (t4) => t4 !== void 0 && t4 > 0 ? t4 : void 0;
-  var laterThanSeen = (t4) => Math.max(t4, latestSeen() + 1);
-  function noteRecords(id, was, now2, at2) {
-    if (was === void 0) return;
-    let before2;
-    try {
-      before2 = recordKeys(id, parseJson(was), savedHash);
-    } catch (e5) {
-      log("sync-track", e5);
-      return;
-    }
-    const after2 = recordKeys(id, now2, savedHash);
-    const times = cloud.recAt[id] = cloud.recAt[id] || {};
-    for (const k2 in after2) if (before2[k2] !== after2[k2]) times[k2] = at2;
-    for (const k2 in times) if (!(k2 in after2)) delete times[k2];
-  }
   function clashRule(id, theirs, doc) {
     const mine = cloud.recAt[id];
     if (!theirs || !mine) return doc;
@@ -12987,155 +13307,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     return Object.keys(out).length ? out : void 0;
   }
-  var trackT = null;
-  var seenText = {};
-  var seenOnce = false;
-  function markEdit() {
-    if (!cloud.pendAt) cloud.pendAt = Date.now();
-    clearTimer(trackT);
-    trackT = setTimeout(trackEdits, SYNC_MS.track);
-  }
-  function trackEdits() {
-    clearTimer(trackT);
-    trackT = null;
-    try {
-      const ch = chunksOf(state);
-      const now2 = cloud.pendAt || Date.now();
-      cloud.pendAt = null;
-      let at2 = null;
-      const stamp = () => at2 ??= laterThanSeen(now2);
-      let moved = false;
-      for (const id of /* @__PURE__ */ new Set([...Object.keys(ch), ...Object.keys(cloud.localH)])) {
-        const doc = ch[id] || emptyChunk(id);
-        const text = storedJson(doc);
-        const h3 = hashStr(text);
-        if (cloud.localH[id] !== h3) {
-          if (cloud.localH[id] !== void 0) {
-            cloud.editAt[id] = stamp();
-            noteRecords(id, seenText[id], doc, stamp());
-            moved = true;
-          } else if (seenOnce) {
-            noteRecords(id, storedJson(emptyChunk(id)), doc, stamp());
-            moved = true;
-          }
-          cloud.localH[id] = h3;
-          seenText[id] = text;
-        }
-      }
-      if (moved) saveMeta();
-    } catch (e5) {
-      log("sync-track", e5);
-    }
-  }
-  function resyncLocalH() {
-    try {
-      const ch = chunksOf(state);
-      cloud.localH = {};
-      seenText = {};
-      seenOnce = true;
-      for (const id in ch) {
-        seenText[id] = storedJson(ch[id]);
-        cloud.localH[id] = hashStr(seenText[id]);
-      }
-      for (const id in cloud.meta)
-        if (!(id in cloud.localH)) {
-          seenText[id] = storedJson(emptyChunk(id));
-          cloud.localH[id] = hashStr(seenText[id]);
-        }
-    } catch (e5) {
-      log("sync-track", e5);
-    }
-  }
-  function editsNoted() {
-    trackEdits();
-  }
-  function seenAsIs() {
-    clearTimer(trackT);
-    trackT = null;
-    cloud.pendAt = null;
-    resyncLocalH();
-  }
-  function draftNote(prev, kept, where = "on another device") {
-    const P2 = rec(prev);
-    const d3 = state.draft;
-    if (!P2 || d3 && d3.id === P2.id) return;
-    if (P2.editingId) {
-      if (!d3) fx.toast("The edit in progress was closed on another device.");
-      else if (d3.editingId) {
-        const s3 = state.sessions.find((x2) => x2.id === d3.editingId);
-        fx.toast(
-          s3 ? `Now editing ${s3.dayName || "a session"}, ${fmtDate(s3.date)}, opened on another device.` : "A different saved session was opened for editing on another device."
-        );
-      } else fx.toast("The edit in progress was replaced by the workout on another device.");
-      return;
-    }
-    const saved = state.sessions.some((s3) => s3.id === P2.id);
-    fx.toast(
-      kept === "joined" || kept === "cardioJoined" ? `Your workout was saved ${where}. Sets done here since were added to it.` : kept === "saved" || kept === "cardio" ? `Your workout was ${state.draft ? "replaced by the one" : "closed"} ${where}. Your ${kept === "saved" ? "sets are" : "cardio is"} in **History**.` : state.draft ? saved ? `Your workout was replaced by the one ${where}. Your sets are in **History**.` : `Your workout was replaced by the one ${where}.` : saved ? `Your workout was saved ${where}.` : `Your workout was closed ${where}.`
-    );
-  }
-  function loggedSince(d3, agreed) {
-    if (!d3) return false;
-    const was = agreed && agreed.id === d3.id ? agreed : null;
-    const rows2 = new Set(was ? was.ex.flatMap((b2) => b2.sets.filter((x2) => x2.done).map((x2) => canon(x2))) : []);
-    const cards = new Set(was ? (was.cardio || []).map((c4) => canon(c4)) : []);
-    return d3.ex.some((b2) => b2.sets.some((x2) => x2.done && !rows2.has(canon(x2)))) || (d3.cardio || []).some((c4) => !!c4.min && !cards.has(canon(c4)));
-  }
-  function keepLost2(lost, now2, agreed, remoteWins, tabs = false) {
-    if (!lost || lost.editingId || now2 && now2.id === lost.id) return null;
-    const kept = draftSession(lost), cardio = draftCardio(lost);
-    if (!kept && !cardio.length) return null;
-    const was = agreed && agreed.id === lost.id ? agreed : null;
-    const have = state.sessions.find((q) => q.id === lost.id);
-    if (have) {
-      const base = was ? draftSession(was, true) : null;
-      const stat = { conflicts: 0 };
-      const joined2 = kept ? mergeSession(base, kept, have, base ? remoteWins : true, stat) : have;
-      const norm = (l4) => l4.map((c4) => cleanCardio(c4));
-      const ids = new Set(
-        [...was ? draftCardio(was) : [], ...cardio].map((c4) => c4.id).filter((x2) => typeof x2 === "string")
-      );
-      const bh = {};
-      for (const c4 of norm(was ? draftCardio(was) : [])) if (typeof c4.id === "string") bh[c4.id] = Hx(c4);
-      const theirs = state.cardio.filter((c4) => ids.has(c4.id));
-      const merged = merge3List(was ? bh : null, norm(cardio), theirs, base ? remoteWins : true, stat);
-      const cardioNow = [...state.cardio.filter((c4) => !ids.has(c4.id)), ...merged];
-      const sets = canon(joined2) !== canon(have), rows2 = canon(normalize({ cardio: cardioNow }).cardio) !== canon(state.cardio);
-      if (!sets && !rows2) return null;
-      setState(
-        normalize({ ...state, sessions: state.sessions.map((q) => q.id === lost.id ? joined2 : q), cardio: cardioNow })
-      );
-      edited(joined2.date, lostKeys(lost.id, cardio));
-      conflictNote(stat, tabs);
-      return sets ? "joined" : "cardioJoined";
-    }
-    setState(
-      normalize({
-        ...state,
-        sessions: kept ? [...state.sessions, kept] : state.sessions,
-        cardio: unionById(state.cardio, cardio)
-      })
-    );
-    edited(lost.date, lostKeys(lost.id, cardio));
-    return kept ? "saved" : "cardio";
-  }
-  var lostKeys = (id, cardio) => [
-    recordKey("sessions", id),
-    ...cardio.flatMap((c4) => typeof c4.id === "string" ? [recordKey("cardio", c4.id)] : [])
-  ];
-  function edited(date, keys) {
-    const id = chunkOf(date), at2 = laterThanSeen(Date.now());
-    cloud.editAt[id] = at2;
-    const times = cloud.recAt[id] = cloud.recAt[id] || {};
-    for (const k2 of keys) times[k2] = at2;
-    saveMeta();
-  }
-  function lostNote(kept) {
-    if (kept === "saved") fx.toast("Sets ticked on another device were saved in **History**.");
-    else if (kept === "joined") fx.toast("Sets ticked on another device were added to the session saved here.");
-    else if (kept === "cardio") fx.toast("Cardio logged on another device was saved in **History**.");
-    else if (kept === "cardioJoined") fx.toast("Cardio logged on another device was added to the session saved here.");
-  }
   async function sessionFromCloud(d3, legB) {
     if (d3.editingId || state.sessions.some((q) => q.id === d3.id)) return true;
     const id = chunkOf(d3.date);
@@ -13161,19 +13332,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     saveMeta();
     resyncLocalH();
     return true;
-  }
-  function conflictNote(stat, tabs = false) {
-    const n3 = stat.conflicts;
-    if (!n3) return;
-    const later = !tabs || (stat.byTime || 0) === n3;
-    log(
-      "sync-conflict",
-      `${n3} record(s) edited ${tabs ? `in two tabs; kept ${later ? "the later change" : "the other tab's copy"}` : "on two devices; kept the later edit"}`
-    );
-    const items = `${n3} item${n3 === 1 ? " was" : "s were"}`, was = n3 === 1 ? " was" : "s were";
-    fx.toast(
-      tabs ? `${items} changed in two tabs at once. ${later ? `The later change${was}` : `The other tab's change${was}`} kept.` : `${items} edited on two devices. The later edit was kept.`
-    );
   }
   function seenOf(d3) {
     if (!d3) return null;
@@ -13331,7 +13489,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const asked2 = rowsAsked();
     if (asked2) await asked2;
     if (rowsStop()) return;
-    if (trackT || cloud.pendAt) trackEdits();
+    if (editsPending()) trackEdits();
     const todo = changedDocs();
     todo.sort((a2, b2) => +(a2.id === "draft") - +(b2.id === "draft"));
     if (!todo.length) {
@@ -13519,87 +13677,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     return remote;
   }
-  function firstUnnamed(ss, other) {
-    const there = new Set(other.map((q) => q.id)), lifts = new Set(other.flatMap((q) => q.ex.map((b2) => b2.exId)));
-    const shared = /* @__PURE__ */ new Set(), seen = /* @__PURE__ */ new Set();
-    for (const q of [...ss].sort(sessCmp))
-      for (const b2 of q.ex)
-        if (!seen.has(b2.exId)) {
-          seen.add(b2.exId);
-          if (there.has(q.id)) shared.add(b2.exId);
-        }
-    const strip = (b2) => b2.mc === FIRST_MACHINE && lifts.has(b2.exId) && !shared.has(b2.exId);
-    const unnamed = /* @__PURE__ */ new Map();
-    const sessions = ss.map((q) => {
-      if (there.has(q.id) || !q.ex.some(strip)) return q;
-      return {
-        ...q,
-        ex: q.ex.map((b2) => {
-          if (!strip(b2)) return b2;
-          const ids = unnamed.get(b2.exId) || /* @__PURE__ */ new Set();
-          unnamed.set(b2.exId, ids.add(q.id));
-          const c4 = { ...b2 };
-          unname(c4);
-          return c4;
-        })
-      };
-    });
-    return { sessions, unnamed, own: new Set(ss.filter((q) => !there.has(q.id)).map((q) => q.id)) };
-  }
-  function nameJoined(st, unnamed, own2) {
-    const rd = machineReadings(st);
-    const named2 = /* @__PURE__ */ new Map();
-    for (const [exId, ids] of unnamed)
-      for (const light of [0, 1]) {
-        let to;
-        for (const q of [...st.sessions].sort(sessCmp)) {
-          const r4 = ids.has(q.id) ? rd.get(`${q.id}|${exId}|${light}`) : void 0;
-          if (!r4) continue;
-          if (to === void 0) to = r4.key;
-          else if (own2.has(r4.key) && !own2.has(to)) {
-            const at2 = named2.get(q) || /* @__PURE__ */ new Map();
-            for (const i5 of r4.at) at2.set(i5, to);
-            named2.set(q, at2);
-          }
-        }
-      }
-    nameSessions(st, named2);
-  }
   function mergeFirstLink(mine, rState, rids, remote) {
-    const base = realCount(mine) > realCount(rState) ? mine : rState, other = base === mine ? rState : mine;
-    const aside = state.draft && rState.draft && rState.draft.id !== state.draft.id ? rState.draft : null;
-    const kept = aside ? draftSession(aside) : null;
-    const keptDraft = !!kept && ![...mine.sessions, ...rState.sessions].some((x2) => x2.id === kept.id);
-    const own2 = firstUnnamed(mine.sessions, rState.sessions);
-    const trash = unionById(state.trash, rState.trash);
-    const acct2 = (list, phone, kind, keep) => {
-      const by = new Map(phone.map((x2) => [x2.id, x2]));
-      return list.map((y2) => {
-        const x2 = y2.id ? by.get(y2.id) : void 0;
-        if (!x2 || !x2.id) return y2;
-        if (sameRecord(y2, x2)) return keep(y2, x2);
-        putAside(trash, { ...x2, id: x2.id }, kind);
-        return y2;
-      });
-    };
-    const acctSessions = acct2(
-      keptDraft && kept ? [...rState.sessions, kept] : rState.sessions,
-      own2.sessions,
-      "session",
-      keptOnSession
-    ), acctCardio = acct2(aside ? [...rState.cardio, ...draftCardio(aside)] : rState.cardio, mine.cardio, "cardio", (y2) => y2);
-    const joined2 = normalize({
-      ...base,
-      exercises: joinExercises(base.exercises, other.exercises),
-      routines: unionById(base.routines, other.routines),
-      sessions: unionById(acctSessions, own2.sessions),
-      bodyweights: unionById(mine.bodyweights, rState.bodyweights),
-      measurements: unionById(mine.measurements, rState.measurements),
-      cardio: unionById(acctCardio, mine.cardio),
-      trash,
-      draft: state.draft || rState.draft
-    });
-    nameJoined(joined2, own2.unnamed, own2.own);
+    const { joined: joined2, keptDraft } = firstJoin(mine, rState);
     setState(joined2);
     const minePart = chunksOf(mine), joinedPart = chunksOf(joined2);
     for (const id of rids) {
@@ -13731,7 +13810,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   async function pullAll(said3) {
     if (!cloud.on || !cloud.db) return;
-    if (trackT || cloud.pendAt) trackEdits();
+    if (editsPending()) trackEdits();
     if (offline()) {
       conflictNote({ conflicts: said3 });
       setCloud("offline");
@@ -13921,12 +14000,12 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (!m3) return;
     const now2 = typeof m3.acct === "string" ? m3.acct : null;
     if (now2 === cloud.acct) {
-      if (epOf(m3) === notesEp && text !== notesSeen) joinNotes(m3, text);
-      notesEp = epOf(m3);
+      if (epOf(m3) === notesEpNow() && text !== notesSeenNow()) joinNotes(m3, text);
+      notesAt(epOf(m3));
       return;
     }
-    notesEp = epOf(m3);
-    notesSeen = text;
+    notesAt(epOf(m3));
+    notesRead(text);
     const n3 = notesIn2(m3, "tabs");
     cloud.meta = n3.meta || {};
     cloud.sent = {};
@@ -13952,24 +14031,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const mine = { ...state };
     stripDemo(mine);
     return !!(realCount(mine) || mine.bodyweights.length || mine.measurements.length || state.draft || mine.cardio.length || mine.routines.some((r4) => !plainTemplate(r4) && !routineEmpty(r4)) || mine.exercises.some((e5) => e5.custom));
-  }
-  function joinLogs(base, here) {
-    const away = base.draft && here.draft && here.draft.id !== base.draft.id ? base.draft : null;
-    const kept = away ? draftSession(away) : null;
-    const own2 = firstUnnamed(kept ? [...here.sessions, kept] : here.sessions, base.sessions);
-    const joined2 = normalize({
-      ...base,
-      exercises: joinExercises(base.exercises, here.exercises),
-      routines: unionById(base.routines, here.routines),
-      sessions: unionById(base.sessions, own2.sessions),
-      bodyweights: unionById(base.bodyweights, here.bodyweights),
-      measurements: unionById(base.measurements, here.measurements),
-      cardio: unionById(base.cardio, away ? [...here.cardio, ...draftCardio(away)] : here.cardio),
-      trash: unionById(arr(base.trash) || [], arr(here.trash) || []),
-      draft: here.draft || base.draft
-    });
-    nameJoined(joined2, own2.unnamed, own2.own);
-    return joined2;
   }
   async function keepHere(from) {
     const notes2 = { meta: cloud.meta, editAt: cloud.editAt, last: cloud.last };
@@ -14017,7 +14078,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       recAt: cloud.recAt,
       last: cloud.last,
       acct: cloud.acct,
-      ep: notesEp
+      ep: notesEpNow()
     };
     if (use && from) {
       const k2 = await keepHere(from);
@@ -14055,7 +14116,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       cloud.recAt = before2.recAt;
       cloud.last = before2.last;
       cloud.acct = before2.acct;
-      notesEp = before2.ep;
+      notesAt(before2.ep);
       commit();
       saveMeta();
       if (use && from) await dropAside(from);
@@ -14148,10 +14209,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (ev.key === SYNC_KEY && ev.newValue) {
       try {
         const m3 = rec(parseJson(ev.newValue));
-        if (m3 && epOf(m3) < notesEp) {
+        if (m3 && epOf(m3) < notesEpNow()) {
           log("tabs", new Error("older sync notes from another tab; this tab wrote its own back"));
           saveMeta();
-        } else if (m3 && epOf(m3) === notesEp && (typeof m3.acct === "string" ? m3.acct : null) === cloud.acct) {
+        } else if (m3 && epOf(m3) === notesEpNow() && (typeof m3.acct === "string" ? m3.acct : null) === cloud.acct) {
           if (joinNotes(m3, ev.newValue)) saveMeta();
         } else if (m3) {
           const { meta, editAt, recAt, last } = notesIn2(m3, "tabs");
@@ -14161,8 +14222,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           cloud.recAt = recAt || {};
           cloud.last = last;
           cloud.acct = typeof m3.acct === "string" ? m3.acct : null;
-          notesEp = epOf(m3);
-          notesSeen = ev.newValue;
+          notesAt(epOf(m3));
+          notesRead(ev.newValue);
         }
       } catch (e5) {
         log("tabs", e5);
@@ -14181,9 +14242,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function otherTabTimes() {
     try {
       const text = localStorage.getItem(SYNC_KEY);
-      if (text == null || text === notesSeen) return null;
+      if (text == null || text === notesSeenNow()) return null;
       const m3 = rec(parseJson(text));
-      if (!m3 || epOf(m3) !== notesEp || (typeof m3.acct === "string" ? m3.acct : null) !== cloud.acct) return null;
+      if (!m3 || epOf(m3) !== notesEpNow() || (typeof m3.acct === "string" ? m3.acct : null) !== cloud.acct) return null;
       return notesIn2(m3, "tabs").recAt;
     } catch (e5) {
       log("tabs", e5);
@@ -14264,13 +14325,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   function onPageHide() {
     if (saveT) saveNow();
-    if (trackT || cloud.pendAt) trackEdits();
+    if (editsPending()) trackEdits();
   }
   function syncStart() {
     try {
       const text = localStorage.getItem(SYNC_KEY);
       const m3 = rec(parseJson(text || "null"));
-      notesSeen = text;
+      notesRead(text);
       if (m3) {
         const { meta, editAt, recAt, last } = notesIn2(m3, "sync-meta");
         cloud.meta = meta || {};
@@ -14280,7 +14341,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         cloud.devId = typeof m3.devId === "string" ? m3.devId : null;
         cloud.acct = typeof m3.acct === "string" ? m3.acct : null;
         cloud.sent = sentIn(m3.sent);
-        notesEp = epOf(m3);
+        notesAt(epOf(m3));
       }
     } catch (e5) {
       log("sync-meta", e5);
@@ -14294,7 +14355,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       cloud.recAt = {};
     }
     resyncLocalH();
-    rowsStart({ ep: () => notesEp, unsent: hasUnsent, pulledAt: () => readBegan, stop: rowsStop });
+    rowsStart({ ep: () => notesEpNow(), unsent: hasUnsent, pulledAt: () => readBegan, stop: rowsStop });
     window.addEventListener("storage", onStorage);
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("pagehide", onPageHide);
@@ -15969,7 +16030,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   var KEYS_MIN = 120;
   var KEYS_GAP = 16;
   var KEYS_WAIT_MS = 900;
-  var keysKey = (num4, side) => `${KEY}.keysH${num4 ? "Num" : ""}${side ? "Side" : ""}`;
+  var keysKey = (num3, side) => `${KEY}.keysH${num3 ? "Num" : ""}${side ? "Side" : ""}`;
   function pageEl() {
     const el = document.getElementById("page");
     if (el) return el;
@@ -16022,8 +16083,8 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     return h3 >= KEYS_MIN ? h3 : 0;
   }
   function keysAt(f3) {
-    const num4 = f3 instanceof HTMLInputElement && (["numeric", "decimal"].includes(f3.inputMode) || ["number", "tel"].includes(f3.type));
-    return keysKey(num4, window.innerWidth > screenH());
+    const num3 = f3 instanceof HTMLInputElement && (["numeric", "decimal"].includes(f3.inputMode) || ["number", "tel"].includes(f3.type));
+    return keysKey(num3, window.innerWidth > screenH());
   }
   function keysLearned(f3) {
     const h3 = Number(prefGet(keysAt(f3)));
@@ -17678,8 +17739,8 @@ It stays under **Recently deleted** for ${TRASH_DAYS} days (the ${TRASH_MAX} mos
   var monthNum = (w2) => MON[w2.slice(0, MON_LONG)] || MON[w2.slice(0, MON_SHORT)];
   var MONTHS2 = 12, MONTH_DAYS = 31, CENTURY = 100, Y2K = 2e3, IMPORT_YEARS = 20;
   var SERIAL = { epoch: Date.UTC(1899, 11, 30), min: 2e4, max: 8e4 };
-  function dateText(str2) {
-    return String(str2 || "").toLowerCase().replace(/(\d)(st|nd|rd|th)\b/g, "$1").trim();
+  function dateText(str) {
+    return String(str || "").toLowerCase().replace(/(\d)(st|nd|rd|th)\b/g, "$1").trim();
   }
   var NUM_DATE = /\b(\d{1,2})[/.-](\d{1,2})(?:[/.-](\d{2,4}))?\b/;
   var YEAR_FIRST = /(?<!\d)(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?!\d)/;
@@ -17696,8 +17757,8 @@ It stays under **Recently deleted** for ${TRASH_DAYS} days (the ${TRASH_MAX} mos
     }
     return dm > 0 && md === 0 ? "dm" : void 0;
   }
-  function impDate(str2, ref2, order) {
-    const s3 = dateText(str2);
+  function impDate(str, ref2, order) {
+    const s3 = dateText(str);
     if (!s3) return null;
     const t4 = ref2 || today();
     const ty = +yearOf(t4);
@@ -18066,13 +18127,13 @@ It stays under **Recently deleted** for ${TRASH_DAYS} days (the ${TRASH_MAX} mos
   };
   var csvGuard = (s3) => needsMark(s3) ? "'" + s3 : s3;
   var csvUnguard = (s3) => s3.startsWith("'") && needsMark(s3.slice(1)) ? s3.slice(1) : s3;
-  var num2 = (v3) => {
+  var num = (v3) => {
     const n3 = parseFloat(String(v3 == null ? "" : v3).replace(",", "."));
     return isFinite(n3) ? n3 : null;
   };
   function ownCardio(date, ex, minCell, hrCell, note) {
     const kind = (CARDIO.find(([, l4]) => l4 === ex) || ["other"])[0];
-    const min = num2(minCell), hr = num2(hrCell);
+    const min = num(minCell), hr = num(hrCell);
     const o3 = { date, kind, secs: min != null && min > 0 ? min * MINUTE_S : 0, dist: 0, name: ex };
     if (min != null && min > 0) o3.min = Math.round(min);
     if (hr != null && hr > 0) o3.hr = Math.round(hr);
@@ -18090,8 +18151,8 @@ It stays under **Recently deleted** for ${TRASH_DAYS} days (the ${TRASH_MAX} mos
   function rowSet(cell, w2, reps, secs, missed, numTypes, u4) {
     const ty = cell("type").toLowerCase();
     const yes = (v3) => /^(1|true|yes|y|x)$/i.test(v3);
-    const rpe = num2(cell("rpe"));
-    let rir = num2(cell("rir"));
+    const rpe = num(cell("rpe"));
+    let rir = num(cell("rir"));
     if (rir == null && rpe != null && rpe >= RPE_LOW && rpe <= EFFORT_TOP) rir = Math.max(0, EFFORT_TOP - rpe);
     const code = numTypes ? ty : "";
     if (ty === "f" || ty === "failure" || code === "4") rir = 0;
@@ -18135,7 +18196,7 @@ It stays under **Recently deleted** for ${TRASH_DAYS} days (the ${TRASH_MAX} mos
       const raw = (f3) => map[f3] == null ? "" : String(r4[map[f3]] == null ? "" : r4[map[f3]]).trim();
       const cell = (f3) => ours ? csvUnguard(raw(f3)) : raw(f3);
       let date = cell("date");
-      date = date ? impDate(date, void 0, order) || impSerial(num2(date)) : lastDate;
+      date = date ? impDate(date, void 0, order) || impSerial(num(date)) : lastDate;
       const ex = cell("ex") || lastEx;
       if (!date || !ex) {
         skipped++;
@@ -18146,8 +18207,8 @@ It stays under **Recently deleted** for ${TRASH_DAYS} days (the ${TRASH_MAX} mos
       lastEx = ex;
       const name = cell("name") || (cell("date") ? "" : lastName);
       lastName = name;
-      const reps = num2(cell("r")), secs = num2(cell("secs"));
-      const w2 = num2(cell("w")) || 0;
+      const reps = num(cell("r")), secs = num(cell("secs"));
+      const w2 = num(cell("w")) || 0;
       if (/^rest timer$/i.test(ex) || /rest/i.test(cell("type"))) {
         skipped++;
         continue;
@@ -18159,7 +18220,7 @@ It stays under **Recently deleted** for ${TRASH_DAYS} days (the ${TRASH_MAX} mos
         continue;
       }
       const ck = impCardioKind(ex);
-      const dist = num2(cell("dist"));
+      const dist = num(cell("dist"));
       if (dist > 0 || ck && !(reps > 0)) {
         cardio++;
         const k3 = date + "|" + (ck || "other");
@@ -18174,7 +18235,7 @@ It stays under **Recently deleted** for ${TRASH_DAYS} days (the ${TRASH_MAX} mos
         skipped++;
         continue;
       }
-      const tu = at2(r4, cTypedU), tw = num2(at2(r4, cTyped));
+      const tu = at2(r4, cTypedU), tw = num(at2(r4, cTyped));
       const tuK = tu === "kg" ? "kg" : tu === "lb" ? "lb" : null;
       const asTyped2 = tuK && tw != null && (tw >= 0 || w2 < 0) ? { w: tw, u: tuK } : null;
       const set = rowSet(cell, asTyped2 ? asTyped2.w : w2, reps, secs, missed, numTypes, asTyped2 ? asTyped2.u : rowUnit(r4));
@@ -18183,7 +18244,7 @@ It stays under **Recently deleted** for ${TRASH_DAYS} days (the ${TRASH_MAX} mos
       const ss = S4.get(k2);
       const sn = ours ? at2(r4, cNote) : cell("snote");
       if (!ss.note && sn) ss.note = sn;
-      const dm = ours ? num2(at2(r4, cMin)) : impSpan(strong ? cell("dur") : "", cell("date"), cell("end"), order);
+      const dm = ours ? num(at2(r4, cMin)) : impSpan(strong ? cell("dur") : "", cell("date"), cell("end"), order);
       if (ss.durMin == null && dm != null && dm >= 1 && dm <= LIMITS.minutes) ss.durMin = Math.round(dm);
       if (/^(yes|true|1|y)$/i.test(String(cell("deload") || "").trim())) ss.deload = true;
       let it = ss.items.get(ex);
@@ -18195,7 +18256,7 @@ It stays under **Recently deleted** for ${TRASH_DAYS} days (the ${TRASH_MAX} mos
       if (machine && !it.machine) it.machine = machine;
       const en = String(cell("note") || "").trim();
       if (en && !it.note.split("; ").includes(en)) it.note = (it.note ? it.note + "; " + en : en).slice(0, LIMITS.note);
-      const n3 = Math.min(Math.max(Math.round(num2(cell("sets")) || 1), 1), ROW_SETS);
+      const n3 = Math.min(Math.max(Math.round(num(cell("sets")) || 1), 1), ROW_SETS);
       for (let j3 = 0; j3 < n3; j3++) it.sets.push({ ...set });
     }
     return {
@@ -21052,7 +21113,7 @@ Pictures on this phone go too, and **Undo** does not bring them back. Export a b
     )}</div>${tipButton(COMMON_TIP, "About Most common and Less common")}</div></div>
   <div id="libList">${libCards()}</div>`;
   }
-  var num3 = (v3) => +(v3 ?? NaN);
+  var num2 = (v3) => +(v3 ?? NaN);
   function namesLift(data, id) {
     const named2 = (xs) => (arr(xs) || []).some((b2) => rec(b2)?.["exId"] === id);
     return named2(data["ex"]) || (arr(data["days"]) || []).some((d3) => named2(rec(d3)?.["items"]));
@@ -21063,24 +21124,24 @@ Pictures on this phone go too, and **Undo** does not bring them back. Export a b
       rerenderKeepScroll();
     },
     iUp(t4) {
-      const d3 = curRoutineB().days[num3(t4.dataset.day)];
+      const d3 = curRoutineB().days[num2(t4.dataset.day)];
       if (!d3) return;
-      act(() => move(d3.items, num3(t4.dataset.i), num3(t4.dataset.i) - 1));
+      act(() => move(d3.items, num2(t4.dataset.i), num2(t4.dataset.i) - 1));
       rerenderKeepScroll();
     },
     iDown(t4) {
-      const d3 = curRoutineB().days[num3(t4.dataset.day)];
+      const d3 = curRoutineB().days[num2(t4.dataset.day)];
       if (!d3) return;
-      act(() => move(d3.items, num3(t4.dataset.i), num3(t4.dataset.i) + 1));
+      act(() => move(d3.items, num2(t4.dataset.i), num2(t4.dataset.i) + 1));
       rerenderKeepScroll();
     },
     iDel(t4) {
-      const d3 = curRoutineB().days[num3(t4.dataset.day)];
+      const d3 = curRoutineB().days[num2(t4.dataset.day)];
       if (!d3) return;
       let gone2;
       act(
         () => {
-          [gone2] = d3.items.splice(num3(t4.dataset.i), 1);
+          [gone2] = d3.items.splice(num2(t4.dataset.i), 1);
         },
         { undo: true }
       );
@@ -21221,7 +21282,7 @@ Pictures on this phone go too, and **Undo** does not bring them back. Export a b
     },
     dUp(t4) {
       const R2 = curRoutineB();
-      const i5 = num3(t4.dataset.day);
+      const i5 = num2(t4.dataset.day);
       if (!(i5 >= 1)) return;
       act(() => move(R2.days, i5, i5 - 1));
       ui.todayDay = null;
@@ -21229,7 +21290,7 @@ Pictures on this phone go too, and **Undo** does not bring them back. Export a b
     },
     dDown(t4) {
       const R2 = curRoutineB();
-      const i5 = num3(t4.dataset.day);
+      const i5 = num2(t4.dataset.day);
       if (!(i5 < R2.days.length - 1)) return;
       act(() => move(R2.days, i5, i5 + 1));
       ui.todayDay = null;
@@ -21237,7 +21298,7 @@ Pictures on this phone go too, and **Undo** does not bring them back. Export a b
     },
     dDel(t4) {
       const R2 = curRoutineB();
-      const i5 = num3(t4.dataset.day);
+      const i5 = num2(t4.dataset.day);
       if (R2.schedule === "weekly") return;
       if (R2.days.length < 2) {
         toast("A cycle needs at least one day");
@@ -21391,7 +21452,7 @@ Pictures on this phone go too, and **Undo** does not bring them back. Export a b
       return true;
     }
     if (t4.dataset.dayname != null) {
-      const d3 = curRoutineB().days[num3(t4.dataset.dayname)];
+      const d3 = curRoutineB().days[num2(t4.dataset.dayname)];
       if (d3)
         act(
           () => {
@@ -21402,7 +21463,7 @@ Pictures on this phone go too, and **Undo** does not bring them back. Export a b
       return true;
     }
     if (t4.dataset.daypm != null) {
-      const d3 = curRoutineB().days[num3(t4.dataset.daypm)];
+      const d3 = curRoutineB().days[num2(t4.dataset.daypm)];
       const v3 = t4.value.trim().slice(0, LIMITS.name);
       if (d3)
         act(
@@ -21438,7 +21499,7 @@ Pictures on this phone go too, and **Undo** does not bring them back. Export a b
       return true;
     }
     if (t4.dataset.dayname != null) {
-      const d3 = curRoutineB().days[num3(t4.dataset.dayname)];
+      const d3 = curRoutineB().days[num2(t4.dataset.dayname)];
       if (d3)
         act(() => {
           d3.name = within(t4.value, d3.name, LIMITS.name);
@@ -21451,7 +21512,7 @@ Pictures on this phone go too, and **Undo** does not bring them back. Export a b
       return true;
     }
     if (t4.dataset.dayrest != null) {
-      const d3 = curRoutineB().days[num3(t4.dataset.dayrest)];
+      const d3 = curRoutineB().days[num2(t4.dataset.dayrest)];
       if (!d3) return true;
       const on = t4 instanceof HTMLInputElement && t4.checked;
       act(
@@ -21556,7 +21617,7 @@ Pictures on this phone go too, and **Undo** does not bring them back. Export a b
     }, 0);
   };
   function dropItem(evt) {
-    const from = num3(evt.from.dataset.day), to = num3(evt.to.dataset.day);
+    const from = num2(evt.from.dataset.day), to = num2(evt.to.dataset.day);
     const oi = evt.oldIndex ?? -1, ni = evt.newIndex ?? -1;
     if (from === to && oi === ni) {
       dragDrop();
@@ -21598,7 +21659,7 @@ Pictures on this phone go too, and **Undo** does not bring them back. Export a b
       return;
     }
     if (evt.clone && evt.clone !== evt.item) evt.clone.remove();
-    const to = num3(evt.to.dataset.day);
+    const to = num2(evt.to.dataset.day);
     const exId = evt.item.dataset.ex;
     const ni = evt.newIndex ?? 0;
     after(() => {
@@ -21614,7 +21675,7 @@ Pictures on this phone go too, and **Undo** does not bring them back. Export a b
   }
   function dayKey(dg, up) {
     const R2 = curRoutineB();
-    const i5 = num3(dg.dataset.di);
+    const i5 = num2(dg.dataset.di);
     const j3 = i5 + (up ? -1 : 1);
     if (R2.schedule === "weekly" || !R2.days[i5] || j3 < 0 || j3 >= R2.days.length) return;
     act(() => move(R2.days, i5, j3));

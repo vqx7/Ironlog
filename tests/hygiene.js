@@ -752,14 +752,15 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     ok(builds >= cb, 'when a comment stops naming a build, the number in ARCHITECTURE.md is lowered to match', { builds, cb });
   }
   // Every stored value is read in one place (r56.1, PENDING 305): localStorage
-  // and IndexedDB are named only in storage.ts and sync.ts, and JSON text is
+  // and IndexedDB are named only in storage.ts and the sync's own modules (sync.ts and the save and notes
+  // split out of it, save.ts and syncnotes.ts), and JSON text is
   // parsed only by records.ts's parseJson, so every raw value comes through
   // the readers that check it. The legacy parts keep their account and
   // screen keys until phase 5. Read from the syntax tree's identifiers, so a
   // mention in a comment is not one.
   {
     const hits = [];
-    const ALLOWED = { localStorage: ['storage', 'sync'], indexedDB: ['storage'], sessionStorage: [] };
+    const ALLOWED = { localStorage: ['storage', 'sync', 'save', 'syncnotes'], indexedDB: ['storage'], sessionStorage: [] };
     for (const id of MODS) {
       const f = id + '.ts', txt = fs.readFileSync(path.join(APP, f), 'utf8');
       const sf = ts.createSourceFile(f, txt, ts.ScriptTarget.Latest, true);
@@ -770,7 +771,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
       };
       walk(sf);
     }
-    ok(hits.length === 0, 'localStorage and IndexedDB are named only in storage.ts and sync.ts, and JSON is parsed only by records.ts (every stored value comes through one reader)', hits);
+    ok(hits.length === 0, 'localStorage and IndexedDB are named only in storage.ts and the sync\'s own modules (sync.ts, save.ts, syncnotes.ts), and JSON is parsed only by records.ts (every stored value comes through one reader)', hits);
   }
   // The screen frame (2.78.1, NEW-218): the page scrolls inside #page and the document never does, so nothing outside
   // frame.ts scrolls or reads the document's scroll, by any of its names (the page itself is scrolled by frame.ts, or
